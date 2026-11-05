@@ -9,7 +9,7 @@ export function Hero() {
   const { t, lang } = useTranslation();
 
   return (
-    <section className="relative min-h-[80vh] flex items-center overflow-hidden bg-muted">
+    <section className="relative min-h-[60vh] md:min-h-[70vh] flex items-center overflow-hidden bg-muted">
       {/* Dynamic Background Image */}
       <div 
         className="absolute inset-0 bg-cover bg-center z-0 scale-105"
@@ -21,25 +21,25 @@ export function Hero() {
       </div>
 
       <div className="container mx-auto px-4 relative z-20">
-        <div className="max-w-2xl space-y-8">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest border border-primary/10">
-            <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+        <div className="max-w-xl space-y-6">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[9px] font-black uppercase tracking-widest border border-primary/10">
+            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
             {lang === 'ar' ? 'تراث الروضة - شبوة' : 'AL-RAWDAH HERITAGE'}
           </div>
           
-          <h1 className="text-4xl md:text-6xl font-black leading-[1.1] text-foreground p-1">
+          <h1 className="text-3xl md:text-5xl font-black leading-[1.1] text-foreground">
             {t.hero.title}
           </h1>
           
-          <p className="text-lg md:text-xl text-muted-foreground leading-relaxed max-w-lg">
+          <p className="text-base md:text-lg text-muted-foreground leading-relaxed max-w-md">
             {t.hero.subtitle}
           </p>
           
-          <div className="flex flex-wrap gap-4 pt-4">
-            <Button size="lg" className="h-14 px-8 text-base font-bold rounded-full shadow-lg hover:shadow-xl transition-all" asChild>
+          <div className="flex flex-wrap gap-3 pt-2">
+            <Button size="lg" className="h-12 px-6 text-sm font-bold rounded-full shadow-lg hover:shadow-xl transition-all" asChild>
               <Link href="/products">{t.hero.ctaPrimary}</Link>
             </Button>
-            <Button size="lg" variant="outline" className="h-14 px-8 text-base font-bold rounded-full bg-background/40 backdrop-blur-sm border-white/20" asChild>
+            <Button size="lg" variant="outline" className="h-12 px-6 text-sm font-bold rounded-full bg-background/40 backdrop-blur-sm border-white/20" asChild>
               <Link href="/contact">{t.hero.ctaSecondary}</Link>
             </Button>
           </div>
