@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -20,7 +19,7 @@ export default function ProductsPage() {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('all');
 
-  // Demo data (will be replaced by Firestore logic)
+  // Demo data
   const allProducts = [
     { id: '1', nameAr: 'معوز ملكي فاخر', nameEn: 'Premium Royal Maawiz', price: 15000, categoryAr: 'ملكي', categoryEn: 'Royal', image: 'https://picsum.photos/seed/p1/600/800', status: 'available' },
     { id: '2', nameAr: 'معوز حليسي كلاسيك', nameEn: 'Classic Halisi Maawiz', price: 12000, categoryAr: 'حليسي', categoryEn: 'Halisi', image: 'https://picsum.photos/seed/p2/600/800', status: 'available' },
@@ -40,33 +39,31 @@ export default function ProductsPage() {
   }, [search, category, lang]);
 
   return (
-    <div className="py-20 min-h-screen bg-muted/10">
+    <div className="py-12 md:py-20 min-h-screen bg-muted/10">
       <div className="container mx-auto px-4">
-        {/* Header */}
-        <div className="mb-12 space-y-4">
-          <h1 className="text-4xl font-bold">{t.products.title}</h1>
-          <p className="text-muted-foreground">{t.products.subtitle}</p>
+        <div className="mb-8 md:mb-12 space-y-3">
+          <h1 className="text-3xl md:text-4xl font-bold">{t.products.title}</h1>
+          <p className="text-muted-foreground text-sm md:text-base">{t.products.subtitle}</p>
         </div>
 
-        {/* Filters */}
-        <div className="bg-background p-6 rounded-2xl shadow-sm border mb-12 flex flex-col lg:flex-row gap-6 items-center justify-between">
+        <div className="bg-background p-4 md:p-6 rounded-2xl shadow-sm border mb-8 md:mb-12 flex flex-col lg:flex-row gap-4 md:gap-6 items-center justify-between">
           <div className="relative w-full lg:max-w-md">
-            <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground rtl:left-3 rtl:right-auto" />
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 md:h-5 md:w-5 text-muted-foreground rtl:left-3 rtl:right-auto" />
             <Input 
               placeholder={t.products.search}
-              className="pl-12 rtl:pr-12 rtl:pl-4"
+              className="pl-10 md:pl-12 rtl:pr-10 md:rtl:pr-12 rtl:pl-4 h-10 md:h-12"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
 
-          <div className="flex flex-wrap items-center gap-4 w-full lg:w-auto">
-            <div className="flex items-center gap-2 text-sm font-bold text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+            <div className="flex items-center gap-2 text-xs md:text-sm font-bold text-muted-foreground">
               <Filter className="h-4 w-4" />
               {t.products.filter}:
             </div>
             <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-full sm:w-[180px] h-10 md:h-12 rounded-xl">
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
               <SelectContent>
@@ -81,7 +78,7 @@ export default function ProductsPage() {
             </Select>
 
             {(search || category !== 'all') && (
-              <Button variant="ghost" size="sm" onClick={() => { setSearch(''); setCategory('all'); }}>
+              <Button variant="ghost" size="sm" onClick={() => { setSearch(''); setCategory('all'); }} className="text-xs font-bold">
                 <X className="h-4 w-4 mr-2" />
                 {lang === 'ar' ? 'إعادة تعيين' : 'Reset'}
               </Button>
@@ -89,8 +86,7 @@ export default function ProductsPage() {
           </div>
         </div>
 
-        {/* Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-8">
           {filteredProducts.map((product) => (
             <ProductCard key={product.id} product={product} />
           ))}
