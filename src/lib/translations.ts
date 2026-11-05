@@ -57,7 +57,7 @@ export const translations = {
     },
     footer: {
       description: 'جمعية الصناعات النسيجية للمعاوز والغزل – الروضة، محافظة شبوة، اليمن. نحافظ على تراثنا وننسج مستقبلنا.',
-      rights: 'جميع الحقوق محفوظة © 2024'
+      rights: 'جميع الحقوق محفوظة © 2027'
     }
   },
   en: {
@@ -115,7 +115,7 @@ export const translations = {
     },
     footer: {
       description: 'Textile Industries Cooperative Association – Al-Rawdah, Shabwa, Yemen. Preserving our heritage and weaving our future.',
-      rights: 'All Rights Reserved © 2024'
+      rights: 'All Rights Reserved © 2027'
     }
   }
 };
