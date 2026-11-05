@@ -51,7 +51,8 @@ export function FAQ() {
           <Accordion type="single" collapsible className="w-full">
             {faqs.map((faq, idx) => (
               <AccordionItem key={idx} value={`item-${idx}`} className="border-b-2 border-muted">
-                <AccordionTrigger className="text-lg font-bold hover:text-primary transition-colors text-right rtl:flex-row-reverse">
+                {/* تم إزالة rtl:flex-row-reverse ليعود السهم للجهة اليسرى في العربي */}
+                <AccordionTrigger className="text-lg font-bold hover:text-primary transition-colors text-right">
                   {lang === 'ar' ? faq.qAr : faq.qEn}
                 </AccordionTrigger>
                 <AccordionContent className="text-muted-foreground text-md leading-relaxed">
