@@ -59,12 +59,12 @@ export function Footer() {
 
           {/* Categories Quick Access */}
           <div className="space-y-6">
-            <h3 className="font-black text-[10px] uppercase tracking-widest text-primary/80">{t.nav.products}</h3>
+            <h3 className="font-black text-[10px] uppercase tracking-widest text-primary/80">{lang === 'ar' ? 'فئات المعاوز' : 'Maawiz Types'}</h3>
             <ul className="space-y-3 text-sm font-bold">
               <li><Link href="/products?category=ملكي" className="text-[#F4F1E9]/40 hover:text-white transition-colors">المعاوز الملكي</Link></li>
               <li><Link href="/products?category=حليسي" className="text-[#F4F1E9]/40 hover:text-white transition-colors">المعاوز الحليسي</Link></li>
-              <li><Link href="/products?category=شمزان" className="text-[#F4F1E9]/40 hover:text-white transition-colors">الشمزان التقليدية</Link></li>
-              <li><Link href="/products?category=شيلان" className="text-[#F4F1E9]/40 hover:text-white transition-colors">الشيلان اليدوية</Link></li>
+              <li><Link href="/products?category=بيضاني" className="text-[#F4F1E9]/40 hover:text-white transition-colors">المعاوز البيضاني</Link></li>
+              <li><Link href="/products?category=سلاطيني" className="text-[#F4F1E9]/40 hover:text-white transition-colors">المعاوز السلاطيني</Link></li>
             </ul>
           </div>
 

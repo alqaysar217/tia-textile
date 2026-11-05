@@ -1,9 +1,8 @@
-
 {
   "entities": {
     "Product": {
       "title": "Product",
-      "description": "A textile product offered by the association",
+      "description": "A traditional Yemeni Maawiz product",
       "type": "object",
       "properties": {
         "nameAr": { "type": "string", "description": "Product name in Arabic" },
@@ -12,7 +11,7 @@
         "descriptionEn": { "type": "string", "description": "Full description in English" },
         "shortDescriptionAr": { "type": "string" },
         "shortDescriptionEn": { "type": "string" },
-        "category": { "type": "string", "enum": ["حليسي", "ملكي", "بيضاني", "حديدي", "سلاطيني", "شمزان", "شيلان", "أخرى"] },
+        "category": { "type": "string", "enum": ["حليسي", "ملكي", "بيضاني", "حديدي", "سلاطيني", "أخرى"] },
         "price": { "type": "number" },
         "originalPrice": { "type": "number" },
         "discount": { "type": "number" },
@@ -27,7 +26,7 @@
     },
     "Category": {
       "title": "Category",
-      "description": "Product categories",
+      "description": "Maawiz categories",
       "type": "object",
       "properties": {
         "nameAr": { "type": "string" },
@@ -54,11 +53,11 @@
   "firestore": {
     "/products": {
       "schema": "Product",
-      "description": "Collection of textile products"
+      "description": "Collection of traditional Maawiz"
     },
     "/categories": {
       "schema": "Category",
-      "description": "Product categories"
+      "description": "Maawiz categories"
     },
     "/stats": {
       "schema": "Stat",
