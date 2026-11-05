@@ -100,7 +100,7 @@ export function Navbar() {
                 <Menu className="h-6 w-6" />
               </Button>
             </SheetTrigger>
-            <SheetContent side={dir === 'rtl' ? 'right' : 'left'} className="w-[300px] border-none rounded-l-3xl">
+            <SheetContent side={dir === 'rtl' ? 'right' : 'left'} className="w-[300px] border-none rounded-l-3xl rtl:rounded-l-none rtl:rounded-r-3xl">
               <SheetHeader className="mb-8 text-right">
                 <SheetTitle className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-xl overflow-hidden bg-muted/50 p-0">
