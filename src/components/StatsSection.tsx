@@ -1,12 +1,16 @@
-
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from './LanguageProvider';
 import { Users, History, Scissors, Heart } from 'lucide-react';
 
 export function StatsSection() {
-  const { lang, t } = useTranslation();
+  const { lang } = useTranslation();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const stats = [
     {
@@ -23,7 +27,7 @@ export function StatsSection() {
     },
     {
       icon: <Scissors className="h-8 w-8 text-primary" />,
-      value: '500k',
+      value: '500,000',
       labelAr: 'إنتاج سنوي (معوز)',
       labelEn: 'Annual Production'
     },
@@ -36,14 +40,20 @@ export function StatsSection() {
   ];
 
   return (
-    <section className="py-20 bg-muted/30">
+    <section className="py-24 bg-muted/20">
       <div className="container mx-auto px-4">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
           {stats.map((stat, idx) => (
-            <div key={idx} className="text-center space-y-4 p-8 bg-background rounded-2xl shadow-sm border border-border/50 hover:border-primary transition-colors">
-              <div className="flex justify-center">{stat.icon}</div>
-              <div className="text-3xl font-bold text-foreground">{stat.value}</div>
-              <div className="text-sm text-muted-foreground font-medium">
+            <div key={idx} className="group text-center space-y-4 p-8 bg-background rounded-[2rem] shadow-sm border border-border/50 hover:border-primary/50 hover:shadow-xl transition-all duration-500">
+              <div className="flex justify-center transform group-hover:scale-110 transition-transform duration-300">
+                <div className="p-4 rounded-2xl bg-primary/10 text-primary">
+                  {stat.icon}
+                </div>
+              </div>
+              <div className="text-3xl font-black text-foreground tabular-nums">
+                {stat.value}
+              </div>
+              <div className="text-sm text-muted-foreground font-semibold uppercase tracking-wider">
                 {lang === 'ar' ? stat.labelAr : stat.labelEn}
               </div>
             </div>
