@@ -64,7 +64,7 @@ export function Features() {
               : 'We combine heritage and quality to provide you with the best.'}
           </p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
           {features.map((feature, idx) => (
             <div 
               key={idx} 
@@ -73,10 +73,10 @@ export function Features() {
               <div className="mb-4 bg-primary/5 p-3 md:p-4 rounded-2xl text-primary group-hover:bg-primary group-hover:text-white transition-all duration-500 transform group-hover:scale-105 shadow-sm">
                 {feature.icon}
               </div>
-              <h3 className="text-lg font-bold mb-2 group-hover:text-primary transition-colors">
+              <h3 className="text-sm md:text-lg font-bold mb-2 group-hover:text-primary transition-colors">
                 {lang === 'ar' ? feature.titleAr : feature.titleEn}
               </h3>
-              <p className="text-muted-foreground leading-relaxed text-xs md:text-sm max-w-[240px]">
+              <p className="text-muted-foreground leading-relaxed text-[10px] md:text-sm max-w-[240px]">
                 {lang === 'ar' ? feature.descAr : feature.descEn}
               </p>
             </div>

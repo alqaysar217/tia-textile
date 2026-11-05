@@ -41,12 +41,12 @@ export function CategoriesSection() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8">
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8">
           {categories.map((cat, idx) => (
             <Link 
               key={idx} 
               href={`/products?category=${cat.nameAr}`}
-              className="group relative h-64 md:h-80 overflow-hidden rounded-2xl shadow-lg hover:shadow-xl transition-all duration-500"
+              className="group relative h-48 md:h-80 overflow-hidden rounded-2xl shadow-lg hover:shadow-xl transition-all duration-500"
             >
               <img 
                 src={`https://picsum.photos/seed/${cat.image}/600/600`}
@@ -54,13 +54,13 @@ export function CategoriesSection() {
                 className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-foreground/90 via-foreground/20 to-transparent opacity-70 group-hover:opacity-85 transition-opacity" />
-              <div className="absolute bottom-0 left-0 right-0 p-6 text-white space-y-1.5">
+              <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6 text-white space-y-1.5">
                 <span className="inline-block px-2 py-0.5 rounded-full bg-primary/20 backdrop-blur-sm text-[8px] font-black uppercase border border-white/10">
                   {lang === 'ar' ? 'صناعة يدوية' : 'Handmade'}
                 </span>
-                <h3 className="text-xl md:text-2xl font-black">{lang === 'ar' ? cat.nameAr : cat.nameEn}</h3>
-                <div className="flex items-center gap-2 text-primary font-bold text-[10px] md:text-sm transform translate-y-3 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
-                  {lang === 'ar' ? 'تصفح هذه الفئة' : 'Browse Category'}
+                <h3 className="text-sm md:text-2xl font-black">{lang === 'ar' ? cat.nameAr : cat.nameEn}</h3>
+                <div className="flex items-center gap-2 text-primary font-bold text-[8px] md:text-sm transform translate-y-3 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
+                  {lang === 'ar' ? 'تصفح' : 'Browse'}
                   {dir === 'rtl' ? <ArrowLeft className="h-3 w-3 md:h-4 md:w-4" /> : <ArrowRight className="h-3 w-3 md:h-4 md:w-4" />}
                 </div>
               </div>
