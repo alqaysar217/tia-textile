@@ -11,14 +11,14 @@ export default function NotFound() {
   return (
     <div className="min-h-[70vh] flex flex-col items-center justify-center text-center px-4 space-y-8 bg-background">
       <div className="space-y-4">
-        <h1 className="text-8xl font-black text-primary/10">404</h1>
+        <h1 className="text-8xl font-black text-primary/10 tabular-nums">404</h1>
         <h2 className="text-4xl font-bold text-foreground">
-          {lang === 'ar' ? 'غير جاهزه' : 'Not Ready'}
+          {lang === 'ar' ? 'الصفحة غير موجودة' : 'Page Not Found'}
         </h2>
         <p className="text-xl text-muted-foreground max-w-md mx-auto">
           {lang === 'ar' 
-            ? 'عذراً، هذه الصفحة قيد التطوير حالياً أو لا يمكن العثور عليها.' 
-            : 'Sorry, this page is currently under development or could not be found.'}
+            ? 'عذراً، هذه الصفحة غير متوفرة حالياً أو تم نقلها.' 
+            : 'Sorry, this page is not available or has been moved.'}
         </p>
       </div>
       
@@ -28,7 +28,6 @@ export default function NotFound() {
         </Link>
       </Button>
 
-      {/* Decorative background element */}
       <div className="fixed inset-0 -z-10 opacity-[0.03] pointer-events-none textile-pattern" />
     </div>
   );
