@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -9,6 +8,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
+import { cn } from '@/lib/utils';
 
 export function FAQ() {
   const { lang } = useTranslation();
@@ -51,11 +51,16 @@ export function FAQ() {
           <Accordion type="single" collapsible className="w-full">
             {faqs.map((faq, idx) => (
               <AccordionItem key={idx} value={`item-${idx}`} className="border-b-2 border-muted">
-                {/* تم إزالة rtl:flex-row-reverse ليعود السهم للجهة اليسرى في العربي */}
-                <AccordionTrigger className="text-lg font-bold hover:text-primary transition-colors text-right">
+                <AccordionTrigger className={cn(
+                  "text-lg font-bold hover:text-primary transition-colors",
+                  lang === 'ar' ? "text-right" : "text-left"
+                )}>
                   {lang === 'ar' ? faq.qAr : faq.qEn}
                 </AccordionTrigger>
-                <AccordionContent className="text-muted-foreground text-md leading-relaxed">
+                <AccordionContent className={cn(
+                  "text-muted-foreground text-md leading-relaxed",
+                  lang === 'ar' ? "text-right" : "text-left"
+                )}>
                   {lang === 'ar' ? faq.aAr : faq.aEn}
                 </AccordionContent>
               </AccordionItem>
