@@ -1,3 +1,22 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "hero-textile",
+      "description": "Authentic Yemeni Textile Patterns",
+      "imageUrl": "https://picsum.photos/seed/textile1/1920/1080",
+      "imageHint": "yemeni textile pattern"
+    },
+    {
+      "id": "maawiz-1",
+      "description": "Traditional Yemeni Maawiz",
+      "imageUrl": "https://picsum.photos/seed/maawiz1/600/800",
+      "imageHint": "traditional garment"
+    },
+    {
+      "id": "weaving",
+      "description": "Handmade Weaving Process",
+      "imageUrl": "https://picsum.photos/seed/weaving/800/600",
+      "imageHint": "weaving hands"
+    }
+  ]
 }
