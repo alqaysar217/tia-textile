@@ -28,100 +28,97 @@ export function Navbar() {
   ];
 
   return (
-    <nav className="sticky top-0 z-50 w-full bg-background/90 backdrop-blur-xl border-b border-primary/5">
+    <nav className="sticky top-0 z-50 w-full bg-background/95 backdrop-blur-md border-b border-primary/5">
       <div className="container mx-auto px-4 h-20 flex items-center justify-between">
-        {/* Logo */}
-        <Link href="/" className="flex items-center gap-4 group">
-          <div className="relative w-14 h-14 transition-transform duration-500 group-hover:scale-105">
+        {/* Logo Section */}
+        <Link href="/" className="flex items-center gap-3 group">
+          <div className="relative w-12 h-12 overflow-hidden">
             <img 
               src="/images/logo.png" 
-              alt="Textile Industries Cooperative Association" 
+              alt="Logo" 
               className="w-full h-full object-contain"
             />
           </div>
           <div className="hidden sm:block">
-            <h1 className="text-base font-black leading-tight tracking-tight text-primary">
+            <h1 className="text-sm font-black leading-tight text-primary uppercase tracking-tighter">
               {lang === 'ar' ? 'جمعية الصناعات النسيجية' : 'Textile Cooperative'}
             </h1>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-[0.2em] font-bold opacity-70">
+            <p className="text-[10px] text-muted-foreground font-bold opacity-60 uppercase tracking-widest">
               Shabwa - Yemen
             </p>
           </div>
         </Link>
 
-        {/* Desktop Nav */}
-        <div className="hidden lg:flex items-center gap-8">
+        {/* Desktop Nav Links */}
+        <div className="hidden lg:flex items-center gap-6">
           {navLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="flex items-center gap-2 text-sm font-bold hover:text-primary transition-all duration-300 relative group py-2"
+              className="flex items-center gap-2 text-xs font-black uppercase tracking-wider hover:text-primary transition-colors py-2 relative group"
             >
-              <span className="text-primary/40 group-hover:text-primary transition-colors">{link.icon}</span>
+              <span className="opacity-40 group-hover:opacity-100 transition-opacity">{link.icon}</span>
               {link.name}
               <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary transition-all duration-300 group-hover:w-full" />
             </Link>
           ))}
         </div>
 
-        {/* Actions */}
-        <div className="flex items-center gap-3">
+        {/* Actions Menu */}
+        <div className="flex items-center gap-2">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')}
-            className="rounded-full hover:bg-primary/10 transition-colors"
+            className="rounded-full hover:bg-primary/5"
           >
             <Globe className="h-5 w-5" />
           </Button>
 
           <Link href="/cart">
-            <Button variant="ghost" size="icon" className="relative rounded-full hover:bg-primary/10 transition-colors">
+            <Button variant="ghost" size="icon" className="relative rounded-full hover:bg-primary/5">
               <ShoppingCart className="h-5 w-5" />
               {totalItems > 0 && (
-                <span className="absolute -top-1 -right-1 bg-accent text-accent-foreground text-[10px] font-black px-1.5 py-0.5 rounded-full min-w-[18px] text-center shadow-lg animate-in zoom-in">
+                <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow-md animate-in zoom-in">
                   {totalItems}
                 </span>
               )}
             </Button>
           </Link>
 
-          <Button className="hidden md:flex gap-2 rounded-full px-8 h-11 shadow-md hover:shadow-xl transition-all duration-300 active:scale-95" asChild>
+          <Button className="hidden md:flex gap-2 rounded-full px-6 h-10 shadow-sm hover:shadow-md transition-all active:scale-95" asChild>
             <a href="https://wa.me/967771687041" target="_blank" rel="noopener noreferrer">
               <Phone className="h-4 w-4" />
               {t.nav.orderWhatsApp}
             </a>
           </Button>
 
-          {/* Mobile Menu */}
+          {/* Mobile Menu Trigger */}
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="lg:hidden rounded-full hover:bg-primary/10 transition-colors">
+              <Button variant="ghost" size="icon" className="lg:hidden rounded-full">
                 <Menu className="h-6 w-6" />
               </Button>
             </SheetTrigger>
-            <SheetContent side={dir === 'rtl' ? 'right' : 'left'} className="w-[320px] rounded-l-3xl rtl:rounded-r-3xl border-none">
-              <SheetHeader className="mb-8">
-                <SheetTitle className="text-right flex items-center gap-4">
-                  <img src="/images/logo.png" alt="Logo" className="w-12 h-12 object-contain" />
-                  <div className="text-right">
-                    <div className="text-sm font-black">{lang === 'ar' ? 'القائمة الرئيسية' : 'Main Menu'}</div>
-                    <div className="text-[10px] opacity-50 uppercase tracking-widest font-bold">Navigation</div>
-                  </div>
+            <SheetContent side={dir === 'rtl' ? 'right' : 'left'} className="w-[300px] border-none">
+              <SheetHeader className="mb-8 text-right">
+                <SheetTitle className="flex items-center gap-3">
+                  <img src="/images/logo.png" alt="Logo" className="w-10 h-10 object-contain" />
+                  <span className="text-sm font-black">{lang === 'ar' ? 'القائمة الرئيسية' : 'Main Menu'}</span>
                 </SheetTitle>
               </SheetHeader>
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-2">
                 {navLinks.map((link) => (
                   <Link
                     key={link.href}
                     href={link.href}
-                    className="flex items-center gap-4 text-lg font-bold p-4 rounded-2xl hover:bg-primary/5 transition-all duration-300 group"
+                    className="flex items-center gap-4 text-base font-bold p-4 rounded-xl hover:bg-primary/5 transition-colors"
                   >
-                    <span className="text-primary group-hover:scale-110 transition-transform">{link.icon}</span>
+                    <span className="text-primary">{link.icon}</span>
                     {link.name}
                   </Link>
                 ))}
-                <Button className="mt-8 gap-3 h-14 rounded-2xl text-lg font-bold shadow-lg" asChild>
+                <Button className="mt-6 gap-3 h-12 rounded-xl text-base font-bold shadow-lg" asChild>
                   <a href="https://wa.me/967771687041" target="_blank" rel="noopener noreferrer">
                     <Phone className="h-5 w-5" />
                     {t.nav.orderWhatsApp}

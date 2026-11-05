@@ -4,48 +4,33 @@
 
 @layer base {
   :root {
-    --background: 45 40% 98%; /* Warm Ivory #F8F6EF */
-    --foreground: 120 10% 15%; /* Charcoal #242824 */
+    --background: 45 40% 98%; /* Natural Ecru #F8F6EF */
+    --foreground: 120 10% 15%; /* Deep Forest Charcoal #242824 */
     --card: 0 0% 100%;
     --card-foreground: 120 10% 15%;
     --popover: 0 0% 100%;
     --popover-foreground: 120 10% 15%;
-    --primary: 151 88% 26%; /* Forest Green #087C43 */
+    --primary: 151 88% 22%; /* Deep Artisan Forest Green #065F34 */
     --primary-foreground: 45 40% 98%;
-    --secondary: 151 75% 34%; /* Deep Green #159653 */
+    --secondary: 41 42% 53%; /* Refined Gold/Amber #B99A55 */
     --secondary-foreground: 45 40% 98%;
-    --muted: 45 30% 93%; /* Sand Beige #E9DFC9 */
-    --muted-foreground: 120 5% 40%;
-    --accent: 41 42% 53%; /* Muted Gold #B99A55 */
-    --accent-foreground: 45 40% 98%;
+    --muted: 45 30% 94%; /* Soft Sand #F1EFE7 */
+    --muted-foreground: 120 5% 45%;
+    --accent: 151 40% 92%; /* Soft Mint #E8F3E8 */
+    --accent-foreground: 151 88% 22%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 45 20% 85%;
-    --input: 45 20% 85%;
-    --ring: 151 88% 26%;
-    --radius: 1.5rem; /* Soft rounded corners (24px) - Professional & Subtle */
+    --border: 45 20% 88%;
+    --input: 45 20% 88%;
+    --ring: 151 88% 22%;
+    --radius: 1.5rem; /* Soft Professional Corners (24px) */
   }
 
   .dark {
-    --background: 120 10% 15%;
+    --background: 120 10% 10%;
     --foreground: 45 40% 98%;
-    --card: 120 10% 20%;
-    --card-foreground: 45 40% 98%;
-    --popover: 120 10% 20%;
-    --popover-foreground: 45 40% 98%;
     --primary: 151 88% 26%;
-    --primary-foreground: 45 40% 98%;
-    --secondary: 151 75% 34%;
-    --secondary-foreground: 45 40% 98%;
-    --muted: 120 5% 25%;
-    --muted-foreground: 45 20% 70%;
-    --accent: 41 42% 53%;
-    --accent-foreground: 45 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 120 5% 25%;
-    --input: 120 5% 25%;
-    --ring: 151 88% 26%;
+    --accent: 120 10% 15%;
   }
 }
 
@@ -57,7 +42,7 @@
     @apply bg-background text-foreground antialiased;
   }
   h1, h2, h3, h4, h5, h6 {
-    @apply font-bold tracking-tight;
+    @apply tracking-tight font-bold;
   }
 }
 
@@ -71,14 +56,13 @@
   line-height: 1.6;
 }
 
-.textile-pattern {
-  background-image: radial-gradient(var(--secondary) 0.5px, transparent 0.5px);
-  background-size: 20px 20px;
-  opacity: 0.05;
-}
-
-/* Ensure numbers are always in English format (LTR) and Western Arabic glyphs */
+/* Tabular numbers for clear English-style digits */
 .tabular-nums {
   font-variant-numeric: tabular-nums;
-  unicode-bidi: plaintext;
+}
+
+.textile-pattern {
+  background-image: radial-gradient(var(--secondary) 0.5px, transparent 0.5px);
+  background-size: 30px 30px;
+  opacity: 0.03;
 }
