@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { useTranslation } from '@/components/LanguageProvider';
 import { useCart } from '@/components/CartProvider';
@@ -15,6 +15,11 @@ export default function ProductDetailsPage() {
   const { lang, t, dir } = useTranslation();
   const { addToCart } = useCart();
   const [quantity, setQuantity] = useState(1);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Demo product (will be fetched via useDoc in real scenario)
   const product = {
@@ -37,6 +42,10 @@ export default function ProductDetailsPage() {
     const encoded = encodeURIComponent(message);
     window.open(`https://wa.me/967771687041?text=${encoded}`, '_blank');
   };
+
+  const formattedPrice = mounted 
+    ? product.price.toLocaleString('en-US') 
+    : product.price.toString();
 
   return (
     <div className="py-20 bg-muted/5">
@@ -62,8 +71,8 @@ export default function ProductDetailsPage() {
                 {product.isNew && <Badge variant="accent">{lang === 'ar' ? 'جديد' : 'New'}</Badge>}
               </div>
               <h1 className="text-4xl font-bold">{lang === 'ar' ? product.nameAr : product.nameEn}</h1>
-              <div className="text-3xl font-bold text-primary">
-                {product.price.toLocaleString()} ريال
+              <div className="text-3xl font-bold text-primary tabular-nums">
+                {formattedPrice} <span className="text-xs font-medium opacity-70">{lang === 'ar' ? 'ريال' : 'YER'}</span>
               </div>
               <p className="text-muted-foreground leading-relaxed text-lg">
                 {lang === 'ar' ? product.descriptionAr : product.descriptionEn}

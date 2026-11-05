@@ -1,7 +1,7 @@
 
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from '@/components/LanguageProvider';
 import { useCart } from '@/components/CartProvider';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,15 @@ import Link from 'next/link';
 export default function CartPage() {
   const { lang, t } = useTranslation();
   const { cart, removeFromCart, updateQuantity, totalPrice, totalItems } = useCart();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const formatPrice = (price: number) => {
+    return mounted ? price.toLocaleString('en-US') : price.toString();
+  };
 
   const handleWhatsAppCheckout = () => {
     const phone = '+967771687041';
@@ -19,11 +28,11 @@ export default function CartPage() {
     cart.forEach((item, index) => {
       message += `${index + 1}. اسم المنتج: ${lang === 'ar' ? item.nameAr : item.nameEn}\n`;
       message += `   الكمية: ${item.quantity}\n`;
-      message += `   السعر: ${item.price.toLocaleString()} ريال\n\n`;
+      message += `   السعر: ${item.price.toLocaleString('en-US')} ريال\n\n`;
     });
 
     message += `--------------------\n`;
-    message += `الإجمالي التقديري: ${totalPrice.toLocaleString()} ريال يمني.\n\n`;
+    message += `الإجمالي التقديري: ${totalPrice.toLocaleString('en-US')} ريال يمني.\n\n`;
     message += `أرجو تأكيد توفر المنتجات وتفاصيل استلام الطلب.\nشكراً لكم.`;
 
     const encodedMessage = encodeURIComponent(message);
@@ -58,7 +67,7 @@ export default function CartPage() {
               </div>
               <div className="flex-grow space-y-2">
                 <h3 className="text-xl font-bold">{lang === 'ar' ? item.nameAr : item.nameEn}</h3>
-                <p className="text-primary font-bold">{item.price.toLocaleString()} ريال</p>
+                <p className="text-primary font-bold tabular-nums">{formatPrice(item.price)} ريال</p>
                 <div className="flex items-center gap-4 mt-4">
                   <div className="flex items-center border rounded-lg">
                     <Button 
@@ -69,7 +78,7 @@ export default function CartPage() {
                     >
                       <Minus className="h-4 w-4" />
                     </Button>
-                    <span className="w-12 text-center font-bold">{item.quantity}</span>
+                    <span className="w-12 text-center font-bold tabular-nums">{item.quantity}</span>
                     <Button 
                       variant="ghost" 
                       size="icon" 
@@ -89,7 +98,7 @@ export default function CartPage() {
                 </div>
               </div>
               <div className="text-right sm:text-left flex flex-col justify-between">
-                <div className="text-lg font-bold">{(item.price * item.quantity).toLocaleString()} ريال</div>
+                <div className="text-lg font-bold tabular-nums">{formatPrice(item.price * item.quantity)} ريال</div>
               </div>
             </div>
           ))}
@@ -101,11 +110,11 @@ export default function CartPage() {
             <h2 className="text-2xl font-bold border-b border-white/10 pb-4">ملخص الطلب</h2>
             <div className="flex justify-between text-lg">
               <span>عدد المنتجات</span>
-              <span>{totalItems}</span>
+              <span className="tabular-nums">{totalItems}</span>
             </div>
             <div className="flex justify-between text-2xl font-bold text-primary pt-4 border-t border-white/10">
               <span>{t.cart.total}</span>
-              <span>{totalPrice.toLocaleString()} ريال</span>
+              <span className="tabular-nums">{formatPrice(totalPrice)} ريال</span>
             </div>
             <p className="text-xs text-muted-foreground">
               * سيتم التواصل معكم عبر واتساب لتأكيد توفر المنتجات وتكاليف الشحن إن وجدت.
