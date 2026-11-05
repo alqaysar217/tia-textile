@@ -67,19 +67,19 @@ export default function Home() {
       
       <StatsSection />
       
-      <section className="py-16 md:py-24 bg-background">
+      <section className="py-12 md:py-24 bg-background">
         <div className="container mx-auto px-4">
-          <div className="text-center max-w-2xl mx-auto mb-12 md:mb-16 space-y-4">
+          <div className="text-center max-w-2xl mx-auto mb-10 md:mb-16 space-y-3 md:space-y-4">
             <h2 className="text-3xl md:text-5xl font-black text-primary">{t.products.title}</h2>
-            <p className="text-muted-foreground text-base md:text-xl font-medium">{t.products.subtitle}</p>
+            <p className="text-muted-foreground text-sm md:text-xl font-medium">{t.products.subtitle}</p>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-8">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-8">
             {featuredProducts.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
           </div>
-          <div className="mt-12 md:mt-16 text-center">
-            <Button size="lg" variant="outline" className="px-12 rounded-full h-14 md:h-16 text-lg font-bold border-primary text-primary hover:bg-primary hover:text-white transition-all shadow-xl" asChild>
+          <div className="mt-10 md:mt-16 text-center">
+            <Button size="lg" variant="outline" className="w-full md:w-auto px-12 rounded-full h-14 md:h-16 text-lg font-bold border-primary text-primary hover:bg-primary hover:text-white transition-all shadow-xl" asChild>
               <Link href="/products">{t.products.viewAll}</Link>
             </Button>
           </div>
@@ -90,10 +90,10 @@ export default function Home() {
         <Features />
       </div>
 
-      <section className="py-16 md:py-24 bg-background">
+      <section className="py-16 md:py-24 bg-background overflow-hidden">
         <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 md:gap-24 items-center">
-            <div className="relative aspect-video lg:aspect-square overflow-hidden rounded-3xl shadow-2xl">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 md:gap-24 items-center">
+            <div className="relative aspect-[4/3] md:aspect-square overflow-hidden rounded-2xl md:rounded-3xl shadow-2xl">
               <img 
                 src="https://picsum.photos/seed/association/1000/1000" 
                 alt="Association Heritage" 
@@ -101,15 +101,15 @@ export default function Home() {
               />
               <div className="absolute inset-0 bg-primary/10 mix-blend-multiply" />
             </div>
-            <div className="space-y-8 text-center lg:text-right rtl:lg:text-right ltr:lg:text-left">
-              <h2 className="text-4xl md:text-6xl font-black leading-tight">
+            <div className="space-y-6 md:space-y-8 text-center lg:text-right rtl:lg:text-right ltr:lg:text-left">
+              <h2 className="text-3xl md:text-6xl font-black leading-tight">
                 {t.about.historyTitle}
               </h2>
-              <div className="space-y-6 text-lg md:text-xl text-muted-foreground leading-relaxed">
+              <div className="space-y-4 md:space-y-6 text-base md:text-xl text-muted-foreground leading-relaxed">
                 <p>{t.about.content}</p>
                 <p>{t.about.historyContent}</p>
               </div>
-              <Button size="lg" className="px-12 rounded-full h-14 md:h-16 text-lg font-bold shadow-2xl hover:scale-105 transition-transform" asChild>
+              <Button size="lg" className="w-full md:w-auto px-12 rounded-full h-14 md:h-16 text-lg font-bold shadow-2xl hover:scale-105 transition-transform" asChild>
                 <Link href="/about">تعرف على قصتنا الكاملة</Link>
               </Button>
             </div>

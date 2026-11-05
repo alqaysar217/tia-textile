@@ -14,25 +14,25 @@ export function StatsSection() {
 
   const stats = [
     {
-      icon: <History className="h-8 w-8 text-primary" />,
+      icon: <History className="h-6 w-6 md:h-8 md:w-8 text-primary" />,
       value: '1973',
       labelAr: 'سنة التأسيس',
       labelEn: 'Founded Year'
     },
     {
-      icon: <Users className="h-8 w-8 text-primary" />,
+      icon: <Users className="h-6 w-6 md:h-8 md:w-8 text-primary" />,
       value: '3,000+',
       labelAr: 'عضو تعاوني',
       labelEn: 'Cooperative Members'
     },
     {
-      icon: <Scissors className="h-8 w-8 text-primary" />,
+      icon: <Scissors className="h-6 w-6 md:h-8 md:w-8 text-primary" />,
       value: '500,000',
-      labelAr: 'إنتاج سنوي (معوز)',
+      labelAr: 'إنتاج سنوي',
       labelEn: 'Annual Production'
     },
     {
-      icon: <Heart className="h-8 w-8 text-primary" />,
+      icon: <Heart className="h-6 w-6 md:h-8 md:w-8 text-primary" />,
       value: '60%',
       labelAr: 'مشاركة نسائية',
       labelEn: 'Women Participation'
@@ -40,20 +40,20 @@ export function StatsSection() {
   ];
 
   return (
-    <section className="py-24 bg-muted/20">
+    <section className="py-12 md:py-24 bg-muted/20">
       <div className="container mx-auto px-4">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-8">
           {stats.map((stat, idx) => (
-            <div key={idx} className="group text-center space-y-4 p-8 bg-background rounded-2xl shadow-sm border border-border/50 hover:border-primary/50 hover:shadow-xl transition-all duration-500">
+            <div key={idx} className="group text-center space-y-3 md:space-y-4 p-4 md:p-8 bg-background rounded-2xl shadow-sm border border-border/50 hover:border-primary/50 hover:shadow-xl transition-all duration-500">
               <div className="flex justify-center transform group-hover:scale-110 transition-transform duration-300">
-                <div className="p-4 rounded-xl bg-primary/10 text-primary">
+                <div className="p-3 md:p-4 rounded-xl bg-primary/10 text-primary">
                   {stat.icon}
                 </div>
               </div>
-              <div className="text-3xl font-black text-foreground tabular-nums">
+              <div className="text-xl md:text-3xl font-black text-foreground tabular-nums">
                 {stat.value}
               </div>
-              <div className="text-sm text-muted-foreground font-semibold uppercase tracking-wider">
+              <div className="text-[10px] md:text-sm text-muted-foreground font-semibold uppercase tracking-wider line-clamp-1">
                 {lang === 'ar' ? stat.labelAr : stat.labelEn}
               </div>
             </div>
