@@ -17,11 +17,11 @@ export function Footer() {
           {/* Brand Identity */}
           <div className="space-y-8">
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center p-2 backdrop-blur-sm">
+              <div className="w-16 h-16 bg-white/10 rounded-2xl overflow-hidden flex items-center justify-center p-0 backdrop-blur-sm border border-white/10">
                 <img 
                   src="/images/logo.png" 
                   alt="Logo" 
-                  className="w-full h-full object-contain" 
+                  className="w-full h-full object-cover rounded-2xl" 
                 />
               </div>
               <div>

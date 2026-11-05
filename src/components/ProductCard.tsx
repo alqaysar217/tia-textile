@@ -36,7 +36,7 @@ export function ProductCard({ product }: { product: any }) {
         <img 
           src={product.image} 
           alt={lang === 'ar' ? product.nameAr : product.nameEn}
-          className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105 opacity-100"
+          className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105 opacity-100 rounded-t-2xl"
           style={{ backfaceVisibility: 'hidden' }}
         />
         

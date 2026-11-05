@@ -32,11 +32,11 @@ export function Navbar() {
       <div className="container mx-auto px-4 h-20 flex items-center justify-between">
         {/* Logo Section */}
         <Link href="/" className="flex items-center gap-3 group">
-          <div className="relative w-14 h-14 overflow-hidden rounded-2xl bg-muted/30 p-1 flex items-center justify-center">
+          <div className="relative w-14 h-14 overflow-hidden rounded-2xl bg-muted/30 p-0 flex items-center justify-center border border-primary/5">
             <img 
               src="/images/logo.png" 
               alt="Logo" 
-              className="w-full h-full object-contain"
+              className="w-full h-full object-cover rounded-2xl"
             />
           </div>
           <div className="hidden sm:block">
@@ -103,8 +103,8 @@ export function Navbar() {
             <SheetContent side={dir === 'rtl' ? 'right' : 'left'} className="w-[300px] border-none rounded-l-3xl">
               <SheetHeader className="mb-8 text-right">
                 <SheetTitle className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-muted/50 p-1">
-                    <img src="/images/logo.png" alt="Logo" className="w-full h-full object-contain" />
+                  <div className="w-12 h-12 rounded-xl overflow-hidden bg-muted/50 p-0">
+                    <img src="/images/logo.png" alt="Logo" className="w-full h-full object-cover rounded-xl" />
                   </div>
                   <span className="text-sm font-black">{lang === 'ar' ? 'القائمة الرئيسية' : 'Main Menu'}</span>
                 </SheetTitle>
