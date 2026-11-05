@@ -23,7 +23,7 @@
     --border: 45 20% 88%;
     --input: 45 20% 88%;
     --ring: 151 88% 22%;
-    --radius: 1.5rem; /* Soft Professional Corners (24px) */
+    --radius: 1rem; /* Reduced softness (16px) */
   }
 
   .dark {

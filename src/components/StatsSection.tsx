@@ -44,9 +44,9 @@ export function StatsSection() {
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
           {stats.map((stat, idx) => (
-            <div key={idx} className="group text-center space-y-4 p-8 bg-background rounded-[2rem] shadow-sm border border-border/50 hover:border-primary/50 hover:shadow-xl transition-all duration-500">
+            <div key={idx} className="group text-center space-y-4 p-8 bg-background rounded-2xl shadow-sm border border-border/50 hover:border-primary/50 hover:shadow-xl transition-all duration-500">
               <div className="flex justify-center transform group-hover:scale-110 transition-transform duration-300">
-                <div className="p-4 rounded-2xl bg-primary/10 text-primary">
+                <div className="p-4 rounded-xl bg-primary/10 text-primary">
                   {stat.icon}
                 </div>
               </div>

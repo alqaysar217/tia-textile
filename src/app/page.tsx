@@ -97,7 +97,7 @@ export default function Home() {
       <section className="py-24 bg-background">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-            <div className="relative aspect-video lg:aspect-square overflow-hidden rounded-[3rem] shadow-2xl">
+            <div className="relative aspect-video lg:aspect-square overflow-hidden rounded-2xl shadow-2xl">
               <img 
                 src="https://picsum.photos/seed/association/1000/1000" 
                 alt="Association Heritage" 
