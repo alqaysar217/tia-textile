@@ -67,19 +67,19 @@ export default function Home() {
       
       <StatsSection />
       
-      <section className="py-12 md:py-24 bg-background">
+      <section className="py-10 md:py-16 bg-background">
         <div className="container mx-auto px-4">
-          <div className="text-center max-w-2xl mx-auto mb-10 md:mb-16 space-y-3 md:space-y-4">
-            <h2 className="text-3xl md:text-5xl font-black text-primary">{t.products.title}</h2>
-            <p className="text-muted-foreground text-sm md:text-xl font-medium">{t.products.subtitle}</p>
+          <div className="text-center max-w-2xl mx-auto mb-8 md:mb-12 space-y-2 md:space-y-3">
+            <h2 className="text-2xl md:text-4xl font-black text-primary">{t.products.title}</h2>
+            <p className="text-muted-foreground text-xs md:text-lg font-medium">{t.products.subtitle}</p>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-8">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-6">
             {featuredProducts.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
           </div>
-          <div className="mt-10 md:mt-16 text-center">
-            <Button size="lg" variant="outline" className="w-full md:w-auto px-12 rounded-full h-14 md:h-16 text-lg font-bold border-primary text-primary hover:bg-primary hover:text-white transition-all shadow-xl" asChild>
+          <div className="mt-8 md:mt-12 text-center">
+            <Button size="lg" variant="outline" className="w-full md:w-auto px-10 rounded-full h-12 md:h-14 text-base font-bold border-primary text-primary hover:bg-primary hover:text-white transition-all shadow-lg" asChild>
               <Link href="/products">{t.products.viewAll}</Link>
             </Button>
           </div>
@@ -90,26 +90,26 @@ export default function Home() {
         <Features />
       </div>
 
-      <section className="py-16 md:py-24 bg-background overflow-hidden">
+      <section className="py-12 md:py-20 bg-background overflow-hidden">
         <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 md:gap-24 items-center">
-            <div className="relative aspect-[4/3] md:aspect-square overflow-hidden rounded-2xl md:rounded-3xl shadow-2xl">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-16 items-center">
+            <div className="relative aspect-video md:aspect-[4/3] max-w-xl mx-auto overflow-hidden rounded-xl md:rounded-2xl shadow-xl">
               <img 
-                src="https://picsum.photos/seed/association/1000/1000" 
+                src="https://picsum.photos/seed/association/800/600" 
                 alt="Association Heritage" 
                 className="w-full h-full object-cover transition-transform duration-700 hover:scale-110"
               />
               <div className="absolute inset-0 bg-primary/10 mix-blend-multiply" />
             </div>
-            <div className="space-y-6 md:space-y-8 text-center lg:text-right rtl:lg:text-right ltr:lg:text-left">
-              <h2 className="text-3xl md:text-6xl font-black leading-tight">
+            <div className="space-y-4 md:space-y-6 text-center lg:text-right rtl:lg:text-right ltr:lg:text-left">
+              <h2 className="text-2xl md:text-5xl font-black leading-tight">
                 {t.about.historyTitle}
               </h2>
-              <div className="space-y-4 md:space-y-6 text-base md:text-xl text-muted-foreground leading-relaxed">
+              <div className="space-y-3 md:space-y-4 text-sm md:text-lg text-muted-foreground leading-relaxed">
                 <p>{t.about.content}</p>
                 <p>{t.about.historyContent}</p>
               </div>
-              <Button size="lg" className="w-full md:w-auto px-12 rounded-full h-14 md:h-16 text-lg font-bold shadow-2xl hover:scale-105 transition-transform" asChild>
+              <Button size="lg" className="w-full md:w-auto px-10 rounded-full h-12 md:h-14 text-base font-bold shadow-xl hover:scale-105 transition-transform" asChild>
                 <Link href="/about">تعرف على قصتنا الكاملة</Link>
               </Button>
             </div>

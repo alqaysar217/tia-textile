@@ -18,50 +18,50 @@ export function CategoriesSection() {
   ];
 
   return (
-    <section className="py-24 bg-background">
+    <section className="py-12 md:py-20 bg-background">
       <div className="container mx-auto px-4">
-        <div className="flex flex-col md:flex-row justify-between items-end gap-6 mb-16">
-          <div className="space-y-4">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/5 text-primary text-[10px] font-black uppercase tracking-[0.2em]">
-              <Tag className="h-3 w-3" />
+        <div className="flex flex-col md:flex-row justify-between items-end gap-4 mb-10 md:mb-12">
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-2 px-2 py-0.5 rounded-full bg-primary/5 text-primary text-[8px] font-black uppercase tracking-[0.15em]">
+              <Tag className="h-2.5 w-2.5" />
               {lang === 'ar' ? 'تشكيلتنا المتنوعة' : 'Our Diverse Collection'}
             </div>
-            <h2 className="text-4xl md:text-5xl font-black">
+            <h2 className="text-2xl md:text-4xl font-black">
               {lang === 'ar' ? 'أقسام المعاوز' : 'Maawiz Categories'}
             </h2>
-            <p className="text-muted-foreground text-lg max-w-lg">
+            <p className="text-muted-foreground text-sm md:text-lg max-w-lg">
               {lang === 'ar' 
                 ? 'تصفح مجموعتنا من المعاوز اليمنية المصنفة حسب النوع والعراقة.' 
                 : 'Browse our collection of Yemeni Maawiz categorized by type and heritage.'}
             </p>
           </div>
-          <Link href="/products" className="flex items-center gap-2 text-primary text-lg font-black hover:underline group">
+          <Link href="/products" className="flex items-center gap-2 text-primary text-sm md:text-lg font-black hover:underline group">
             {lang === 'ar' ? 'مشاهدة كل المعاوز' : 'View All Maawiz'}
-            {dir === 'rtl' ? <ArrowLeft className="h-5 w-5 transition-transform group-hover:-translate-x-2" /> : <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-2" />}
+            {dir === 'rtl' ? <ArrowLeft className="h-4 w-4 md:h-5 md:w-5 transition-transform group-hover:-translate-x-1" /> : <ArrowRight className="h-4 w-4 md:h-5 md:w-5 transition-transform group-hover:translate-x-1" />}
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8">
           {categories.map((cat, idx) => (
             <Link 
               key={idx} 
               href={`/products?category=${cat.nameAr}`}
-              className="group relative h-96 overflow-hidden rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-500"
+              className="group relative h-64 md:h-80 overflow-hidden rounded-2xl shadow-lg hover:shadow-xl transition-all duration-500"
             >
               <img 
-                src={`https://picsum.photos/seed/${cat.image}/800/800`}
+                src={`https://picsum.photos/seed/${cat.image}/600/600`}
                 alt={cat.nameAr}
                 className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-foreground/90 via-foreground/20 to-transparent opacity-80 group-hover:opacity-90 transition-opacity" />
-              <div className="absolute bottom-0 left-0 right-0 p-8 text-white space-y-2">
-                <span className="inline-block px-3 py-1 rounded-full bg-primary/20 backdrop-blur-sm text-[10px] font-black uppercase border border-white/10">
+              <div className="absolute inset-0 bg-gradient-to-t from-foreground/90 via-foreground/20 to-transparent opacity-70 group-hover:opacity-85 transition-opacity" />
+              <div className="absolute bottom-0 left-0 right-0 p-6 text-white space-y-1.5">
+                <span className="inline-block px-2 py-0.5 rounded-full bg-primary/20 backdrop-blur-sm text-[8px] font-black uppercase border border-white/10">
                   {lang === 'ar' ? 'صناعة يدوية' : 'Handmade'}
                 </span>
-                <h3 className="text-3xl font-black">{lang === 'ar' ? cat.nameAr : cat.nameEn}</h3>
-                <div className="flex items-center gap-2 text-primary font-bold text-sm transform translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
+                <h3 className="text-xl md:text-2xl font-black">{lang === 'ar' ? cat.nameAr : cat.nameEn}</h3>
+                <div className="flex items-center gap-2 text-primary font-bold text-[10px] md:text-sm transform translate-y-3 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
                   {lang === 'ar' ? 'تصفح هذه الفئة' : 'Browse Category'}
-                  {dir === 'rtl' ? <ArrowLeft className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
+                  {dir === 'rtl' ? <ArrowLeft className="h-3 w-3 md:h-4 md:w-4" /> : <ArrowRight className="h-3 w-3 md:h-4 md:w-4" />}
                 </div>
               </div>
             </Link>
