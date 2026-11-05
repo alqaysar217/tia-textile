@@ -44,7 +44,7 @@ export function Navbar() {
               {lang === 'ar' ? 'جمعية الصناعات النسيجية' : 'Textile Cooperative'}
             </h1>
             <p className="text-[10px] text-muted-foreground font-bold opacity-60 uppercase tracking-widest">
-              Shabwa - Yemen
+              {lang === 'ar' ? 'اليمن - شبوة' : 'Shabwa - Yemen'}
             </p>
           </div>
         </Link>
@@ -101,12 +101,19 @@ export function Navbar() {
               </Button>
             </SheetTrigger>
             <SheetContent side={dir === 'rtl' ? 'right' : 'left'} className="w-[300px] border-none rounded-l-3xl rtl:rounded-l-none rtl:rounded-r-3xl">
-              <SheetHeader className="mb-8 text-right">
-                <SheetTitle className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl overflow-hidden bg-muted/50 p-0">
-                    <img src="/images/logo.png" alt="Logo" className="w-full h-full object-cover rounded-xl" />
+              <SheetHeader className="mb-8">
+                <SheetTitle className="flex items-center gap-3 text-right">
+                  <div className="w-14 h-14 rounded-2xl overflow-hidden bg-muted/30 p-0 flex items-center justify-center border border-primary/5">
+                    <img src="/images/logo.png" alt="Logo" className="w-full h-full object-cover rounded-2xl" />
                   </div>
-                  <span className="text-sm font-black">{lang === 'ar' ? 'القائمة الرئيسية' : 'Main Menu'}</span>
+                  <div className="text-right">
+                    <h1 className="text-sm font-black leading-tight text-primary uppercase tracking-tighter">
+                      {lang === 'ar' ? 'جمعية الصناعات النسيجية' : 'Textile Cooperative'}
+                    </h1>
+                    <p className="text-[10px] text-muted-foreground font-bold opacity-60 uppercase tracking-widest">
+                      {lang === 'ar' ? 'اليمن - شبوة' : 'Shabwa - Yemen'}
+                    </p>
+                  </div>
                 </SheetTitle>
               </SheetHeader>
               <div className="flex flex-col gap-2">
