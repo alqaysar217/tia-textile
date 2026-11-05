@@ -3,10 +3,24 @@
 import React from 'react';
 import Link from 'next/link';
 import { useTranslation } from './LanguageProvider';
-import { Facebook, Instagram, Mail, Phone, MapPin } from 'lucide-react';
+import { Facebook, Instagram, Mail, Phone, MapPin, Package, Info, Image as ImageIcon, HelpCircle, Tag, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export function Footer() {
-  const { lang, t } = useTranslation();
+  const { lang, t, dir } = useTranslation();
+
+  const usefulLinks = [
+    { name: t.nav.products, href: '/products', icon: <Package className="h-4 w-4" /> },
+    { name: t.nav.about, href: '/about', icon: <Info className="h-4 w-4" /> },
+    { name: t.nav.gallery, href: '/gallery', icon: <ImageIcon className="h-4 w-4" /> },
+    { name: t.nav.faq, href: '/faq', icon: <HelpCircle className="h-4 w-4" /> },
+  ];
+
+  const categoryLinks = [
+    { name: 'المعاوز الملكي', href: '/products?category=ملكي' },
+    { name: 'المعاوز الحليسي', href: '/products?category=حليسي' },
+    { name: 'المعاوز البيضاني', href: '/products?category=بيضاني' },
+    { name: 'المعاوز السلاطيني', href: '/products?category=سلاطيني' },
+  ];
 
   return (
     <footer className="bg-[#1D3323] text-[#F4F1E9] pt-24 pb-12 overflow-hidden relative border-t border-white/5">
@@ -51,23 +65,39 @@ export function Footer() {
 
           {/* Navigation Links */}
           <div className="space-y-6">
-            <h3 className="font-black text-[10px] uppercase tracking-widest text-primary/80">{lang === 'ar' ? 'روابط هامة' : 'Useful Links'}</h3>
-            <ul className="space-y-3 text-sm font-bold">
-              <li><Link href="/products" className="text-[#F4F1E9]/40 hover:text-white transition-colors">{t.nav.products}</Link></li>
-              <li><Link href="/about" className="text-[#F4F1E9]/40 hover:text-white transition-colors">{t.nav.about}</Link></li>
-              <li><Link href="/gallery" className="text-[#F4F1E9]/40 hover:text-white transition-colors">{t.nav.gallery}</Link></li>
-              <li><Link href="/faq" className="text-[#F4F1E9]/40 hover:text-white transition-colors">{t.nav.faq}</Link></li>
+            <h3 className="font-black text-[10px] uppercase tracking-widest text-primary/80">
+              {lang === 'ar' ? 'روابط هامة' : 'Useful Links'}
+            </h3>
+            <ul className="space-y-4 text-sm font-bold">
+              {usefulLinks.map((link, idx) => (
+                <li key={idx}>
+                  <Link href={link.href} className="flex items-center gap-3 text-[#F4F1E9]/40 hover:text-white transition-colors group">
+                    <span className="p-1.5 rounded-lg bg-white/5 group-hover:bg-primary/20 transition-colors">
+                      {link.icon}
+                    </span>
+                    {link.name}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 
           {/* Categories Quick Access */}
           <div className="space-y-6">
-            <h3 className="font-black text-[10px] uppercase tracking-widest text-primary/80">{lang === 'ar' ? 'فئات المعاوز' : 'Maawiz Types'}</h3>
-            <ul className="space-y-3 text-sm font-bold">
-              <li><Link href="/products?category=ملكي" className="text-[#F4F1E9]/40 hover:text-white transition-colors">المعاوز الملكي</Link></li>
-              <li><Link href="/products?category=حليسي" className="text-[#F4F1E9]/40 hover:text-white transition-colors">المعاوز الحليسي</Link></li>
-              <li><Link href="/products?category=بيضاني" className="text-[#F4F1E9]/40 hover:text-white transition-colors">المعاوز البيضاني</Link></li>
-              <li><Link href="/products?category=سلاطيني" className="text-[#F4F1E9]/40 hover:text-white transition-colors">المعاوز السلاطيني</Link></li>
+            <h3 className="font-black text-[10px] uppercase tracking-widest text-primary/80">
+              {lang === 'ar' ? 'فئات المعاوز' : 'Maawiz Types'}
+            </h3>
+            <ul className="space-y-4 text-sm font-bold">
+              {categoryLinks.map((cat, idx) => (
+                <li key={idx}>
+                  <Link href={cat.href} className="flex items-center gap-3 text-[#F4F1E9]/40 hover:text-white transition-colors group">
+                    <span className="p-1.5 rounded-lg bg-white/5 group-hover:bg-primary/20 transition-colors">
+                      <Tag className="h-4 w-4" />
+                    </span>
+                    {cat.name}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 
@@ -75,16 +105,22 @@ export function Footer() {
           <div className="space-y-6">
             <h3 className="font-black text-[10px] uppercase tracking-widest text-primary/80">{t.contact.title}</h3>
             <ul className="space-y-5 text-sm">
-              <li className="flex items-start gap-3">
-                <MapPin className="h-5 w-5 text-primary shrink-0" />
+              <li className="flex items-start gap-4">
+                <div className="p-2 rounded-xl bg-white/5 shrink-0 text-primary">
+                  <MapPin className="h-5 w-5" />
+                </div>
                 <span className="text-[#F4F1E9]/60 font-medium leading-relaxed">{t.contact.location}</span>
               </li>
-              <li className="flex items-center gap-3">
-                <Phone className="h-5 w-5 text-primary shrink-0" />
+              <li className="flex items-center gap-4">
+                <div className="p-2 rounded-xl bg-white/5 shrink-0 text-primary">
+                  <Phone className="h-5 w-5" />
+                </div>
                 <span dir="ltr" className="tabular-nums font-black text-lg">0777 263 091</span>
               </li>
-              <li className="flex items-center gap-3">
-                <Mail className="h-5 w-5 text-primary shrink-0" />
+              <li className="flex items-center gap-4">
+                <div className="p-2 rounded-xl bg-white/5 shrink-0 text-primary">
+                  <Mail className="h-5 w-5" />
+                </div>
                 <span className="text-[#F4F1E9]/60 font-medium">nseeg202020@gmail.com</span>
               </li>
             </ul>
