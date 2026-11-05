@@ -5,7 +5,7 @@ import { useTranslation } from '@/components/LanguageProvider';
 import { ProductCard } from '@/components/ProductCard';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, Filter, X, LayoutGrid } from 'lucide-react';
+import { Search, Filter, X, LayoutGrid, SlidersHorizontal } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -41,62 +41,64 @@ export default function ProductsPage() {
   }, [search, category, lang]);
 
   return (
-    <div className="py-12 md:py-24 min-h-screen bg-muted/10">
+    <div className="py-8 md:py-16 min-h-screen bg-muted/5">
       <div className="container mx-auto px-4">
-        {/* Page Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
-          <div className="space-y-2">
-            <h1 className="text-4xl md:text-5xl font-black flex items-center gap-3">
-              <LayoutGrid className="h-8 w-8 text-primary" />
-              {t.products.title}
-            </h1>
-            <p className="text-muted-foreground text-lg max-w-xl">
-              {lang === 'ar' 
-                ? 'استكشف تشكيلة المعاوز اليمنية الأصلية من إنتاج جمعيتنا في شبوة.' 
-                : 'Explore the authentic collection of Yemeni Maawiz produced by our association in Shabwa.'}
-            </p>
+        {/* Simplified & Elegant Header */}
+        <div className="mb-10 space-y-3">
+          <div className="inline-flex items-center gap-2 text-primary bg-primary/5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-primary/10">
+            <LayoutGrid className="h-3 w-3" />
+            {lang === 'ar' ? 'تشكيلة الجمعية' : 'Association Collection'}
           </div>
+          <h1 className="text-3xl md:text-5xl font-black text-foreground">
+            {t.products.title}
+          </h1>
+          <p className="text-muted-foreground text-sm md:text-lg max-w-2xl font-medium">
+            {lang === 'ar' 
+              ? 'تصفح أجود أنواع المعاوز اليمنية المحاكة يدوياً في مديرية الروضة.' 
+              : 'Browse the finest hand-woven Yemeni Maawiz from Al-Rawdah district.'}
+          </p>
         </div>
 
-        {/* Filter Bar */}
-        <div className="bg-background p-6 rounded-2xl shadow-sm border border-border/50 mb-12 space-y-6">
-          <div className="flex flex-col lg:flex-row gap-6 items-center justify-between">
-            {/* Search */}
-            <div className="relative w-full lg:max-w-md group">
+        {/* Improved Filter Bar - More Compact & Clean */}
+        <div className="bg-background border border-border/50 rounded-2xl shadow-sm p-4 md:p-6 mb-10">
+          <div className="flex flex-col lg:flex-row gap-4">
+            {/* Search Input */}
+            <div className="relative flex-grow group">
               <Search className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors rtl:left-4 rtl:right-auto" />
               <Input 
                 placeholder={t.products.search}
-                className="pl-12 md:pl-14 rtl:pr-12 md:rtl:pr-14 rtl:pl-4 h-14 rounded-xl text-lg border-muted hover:border-primary/50 transition-all shadow-none focus:ring-primary/10"
+                className="pl-12 md:pl-14 rtl:pr-12 md:rtl:pr-14 rtl:pl-4 h-12 md:h-14 rounded-xl border-muted bg-muted/10 focus:bg-background transition-all"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
 
-            {/* Filter Group */}
-            <div className="flex flex-wrap items-center gap-4 w-full lg:w-auto">
-              <div className="flex items-center gap-2 text-sm font-black text-primary/70 uppercase tracking-widest">
-                <Filter className="h-4 w-4" />
-                {t.products.filter}
+            {/* Filters Group */}
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="relative min-w-[200px]">
+                <Select value={category} onValueChange={setCategory}>
+                  <SelectTrigger className="h-12 md:h-14 rounded-xl font-bold bg-muted/10 border-muted">
+                    <div className="flex items-center gap-2">
+                      <Filter className="h-4 w-4 opacity-50" />
+                      <SelectValue placeholder="Category" />
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-border shadow-xl">
+                    <SelectItem value="all" className="font-bold">{lang === 'ar' ? 'كل أنواع المعاوز' : 'All Maawiz Types'}</SelectItem>
+                    <SelectItem value="ملكي" className="font-bold">معاوز ملكي</SelectItem>
+                    <SelectItem value="حليسي" className="font-bold">معاوز حليسي</SelectItem>
+                    <SelectItem value="بيضاني" className="font-bold">معاوز بيضاني</SelectItem>
+                    <SelectItem value="حديدي" className="font-bold">معاوز حديدي</SelectItem>
+                    <SelectItem value="سلاطيني" className="font-bold">معاوز سلاطيني</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger className="w-full sm:w-[200px] h-14 rounded-xl font-bold border-muted hover:border-primary/50 transition-all shadow-none">
-                  <SelectValue placeholder="Category" />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl">
-                  <SelectItem value="all" className="font-bold">{lang === 'ar' ? 'جميع أنواع المعاوز' : 'All Maawiz Types'}</SelectItem>
-                  <SelectItem value="ملكي" className="font-bold">معاوز ملكي</SelectItem>
-                  <SelectItem value="حليسي" className="font-bold">معاوز حليسي</SelectItem>
-                  <SelectItem value="بيضاني" className="font-bold">معاوز بيضاني</SelectItem>
-                  <SelectItem value="حديدي" className="font-bold">معاوز حديدي</SelectItem>
-                  <SelectItem value="سلاطيني" className="font-bold">معاوز سلاطيني</SelectItem>
-                </SelectContent>
-              </Select>
 
               {(search || category !== 'all') && (
                 <Button 
                   variant="ghost" 
                   onClick={() => { setSearch(''); setCategory('all'); }} 
-                  className="h-14 px-6 text-sm font-black text-destructive hover:bg-destructive/5 rounded-xl gap-2"
+                  className="h-12 md:h-14 px-6 text-sm font-black text-destructive hover:bg-destructive/5 rounded-xl gap-2 border border-destructive/10"
                 >
                   <X className="h-4 w-4" />
                   {lang === 'ar' ? 'إعادة تعيين' : 'Reset'}
@@ -106,37 +108,38 @@ export default function ProductsPage() {
           </div>
         </div>
 
-        {/* Results Info */}
-        <div className="mb-8 flex items-center justify-between">
-          <div className="text-muted-foreground font-bold">
-            {lang === 'ar' ? `عرض ${filteredProducts.length} منتج` : `Showing ${filteredProducts.length} products`}
+        {/* Status Info */}
+        <div className="flex items-center justify-between mb-8">
+          <div className="inline-flex items-center gap-2 text-xs font-black text-muted-foreground uppercase tracking-widest bg-muted/20 px-4 py-1.5 rounded-full">
+            <SlidersHorizontal className="h-3 w-3" />
+            {lang === 'ar' ? `النتائج: ${filteredProducts.length} منتج` : `${filteredProducts.length} Products Found`}
           </div>
         </div>
 
-        {/* Products Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-8">
+        {/* Products Grid - Using the requested card design through the component */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-8">
           {filteredProducts.map((product) => (
             <ProductCard key={product.id} product={product} />
           ))}
         </div>
 
-        {/* Empty State */}
+        {/* Enhanced Empty State */}
         {filteredProducts.length === 0 && (
-          <div className="py-32 text-center bg-background rounded-3xl border border-dashed border-muted shadow-sm">
-            <div className="max-w-xs mx-auto space-y-4">
-              <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mx-auto">
-                <Search className="h-10 w-10 text-muted-foreground" />
-              </div>
-              <h3 className="text-xl font-bold">{lang === 'ar' ? 'لا توجد نتائج' : 'No Results Found'}</h3>
-              <p className="text-muted-foreground">
-                {lang === 'ar' 
-                  ? 'لم نجد أي معاوز تطابق بحثك الحالي، جرب كلمات بحث أخرى.' 
-                  : 'We could not find any Maawiz matching your search, try other terms.'}
-              </p>
-              <Button variant="outline" onClick={() => { setSearch(''); setCategory('all'); }} className="rounded-full">
-                {lang === 'ar' ? 'مسح البحث' : 'Clear Search'}
-              </Button>
+          <div className="py-24 text-center bg-background rounded-3xl border border-border/40 shadow-sm space-y-6">
+            <div className="w-20 h-20 bg-primary/5 rounded-full flex items-center justify-center mx-auto text-primary">
+              <Search className="h-10 w-10" />
             </div>
+            <div className="space-y-2">
+              <h3 className="text-2xl font-black">{lang === 'ar' ? 'عذراً، لم نجد نتائج' : 'No Results Found'}</h3>
+              <p className="text-muted-foreground max-w-xs mx-auto font-medium">
+                {lang === 'ar' 
+                  ? 'جرب البحث بكلمات أخرى أو تغيير نوع الفلترة.' 
+                  : 'Try searching for something else or change the filters.'}
+              </p>
+            </div>
+            <Button variant="outline" onClick={() => { setSearch(''); setCategory('all'); }} className="rounded-full h-12 px-8 font-bold border-primary text-primary hover:bg-primary hover:text-white">
+              {lang === 'ar' ? 'عرض جميع المعاوز' : 'Clear All Filters'}
+            </Button>
           </div>
         )}
       </div>
