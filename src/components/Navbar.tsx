@@ -32,7 +32,7 @@ export function Navbar() {
       <div className="container mx-auto px-4 h-20 flex items-center justify-between">
         {/* Logo Section */}
         <Link href="/" className="flex items-center gap-3 group">
-          <div className="relative w-12 h-12 overflow-hidden">
+          <div className="relative w-14 h-14 overflow-hidden rounded-2xl bg-muted/30 p-1 flex items-center justify-center">
             <img 
               src="/images/logo.png" 
               alt="Logo" 
@@ -100,10 +100,12 @@ export function Navbar() {
                 <Menu className="h-6 w-6" />
               </Button>
             </SheetTrigger>
-            <SheetContent side={dir === 'rtl' ? 'right' : 'left'} className="w-[300px] border-none">
+            <SheetContent side={dir === 'rtl' ? 'right' : 'left'} className="w-[300px] border-none rounded-l-3xl">
               <SheetHeader className="mb-8 text-right">
                 <SheetTitle className="flex items-center gap-3">
-                  <img src="/images/logo.png" alt="Logo" className="w-10 h-10 object-contain" />
+                  <div className="w-10 h-10 rounded-xl bg-muted/50 p-1">
+                    <img src="/images/logo.png" alt="Logo" className="w-full h-full object-contain" />
+                  </div>
                   <span className="text-sm font-black">{lang === 'ar' ? 'القائمة الرئيسية' : 'Main Menu'}</span>
                 </SheetTitle>
               </SheetHeader>
@@ -112,13 +114,13 @@ export function Navbar() {
                   <Link
                     key={link.href}
                     href={link.href}
-                    className="flex items-center gap-4 text-base font-bold p-4 rounded-xl hover:bg-primary/5 transition-colors"
+                    className="flex items-center gap-4 text-base font-bold p-4 rounded-2xl hover:bg-primary/5 transition-colors"
                   >
                     <span className="text-primary">{link.icon}</span>
                     {link.name}
                   </Link>
                 ))}
-                <Button className="mt-6 gap-3 h-12 rounded-xl text-base font-bold shadow-lg" asChild>
+                <Button className="mt-6 gap-3 h-14 rounded-2xl text-base font-bold shadow-lg" asChild>
                   <a href="https://wa.me/967771687041" target="_blank" rel="noopener noreferrer">
                     <Phone className="h-5 w-5" />
                     {t.nav.orderWhatsApp}

@@ -36,16 +36,16 @@ export function ProductCard({ product }: { product: any }) {
         <img 
           src={product.image} 
           alt={lang === 'ar' ? product.nameAr : product.nameEn}
-          className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110 opacity-100"
+          className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105 opacity-100"
           style={{ backfaceVisibility: 'hidden' }}
         />
         
         <div className="absolute top-4 right-4 left-4 flex justify-between items-start">
-          <Badge variant={status.variant} className="shadow-sm backdrop-blur-md bg-opacity-90">
+          <Badge variant={status.variant} className="shadow-sm backdrop-blur-md bg-opacity-90 rounded-lg">
             {lang === 'ar' ? status.labelAr : status.labelEn}
           </Badge>
           {product.isNew && (
-            <Badge variant="secondary" className="bg-primary text-primary-foreground shadow-sm">
+            <Badge variant="secondary" className="bg-primary text-primary-foreground shadow-sm rounded-lg">
               {lang === 'ar' ? 'جديد' : 'New'}
             </Badge>
           )}
@@ -53,7 +53,7 @@ export function ProductCard({ product }: { product: any }) {
         
         {/* Actions Overlay */}
         <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-3">
-          <Button variant="secondary" size="icon" className="rounded-full shadow-lg hover:scale-110 transition-transform" asChild>
+          <Button variant="secondary" size="icon" className="rounded-2xl shadow-lg hover:scale-110 transition-transform" asChild>
             <Link href={`/products/${product.id}`}>
               <Eye className="h-5 w-5" />
             </Link>
@@ -61,7 +61,7 @@ export function ProductCard({ product }: { product: any }) {
           <Button 
             variant="default" 
             size="icon" 
-            className="rounded-full shadow-lg hover:scale-110 transition-transform"
+            className="rounded-2xl shadow-lg hover:scale-110 transition-transform"
             onClick={() => addToCart({ ...product, quantity: 1 })}
           >
             <ShoppingCart className="h-5 w-5" />
@@ -84,7 +84,7 @@ export function ProductCard({ product }: { product: any }) {
           <Button 
             variant="ghost" 
             size="sm" 
-            className="rounded-full text-xs font-bold hover:bg-primary hover:text-white transition-all"
+            className="rounded-xl text-xs font-bold hover:bg-primary hover:text-white transition-all"
             onClick={() => addToCart({ ...product, quantity: 1 })}
           >
             {t.products.addToCart}

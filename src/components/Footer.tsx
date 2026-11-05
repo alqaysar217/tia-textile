@@ -9,7 +9,7 @@ export function Footer() {
   const { lang, t } = useTranslation();
 
   return (
-    <footer className="bg-[#1D3323] text-[#F4F1E9] pt-24 pb-12 overflow-hidden relative">
+    <footer className="bg-[#1D3323] text-[#F4F1E9] pt-24 pb-12 overflow-hidden relative border-t border-white/5">
       <div className="absolute inset-0 opacity-[0.03] textile-pattern pointer-events-none" />
       
       <div className="container mx-auto px-4 relative z-10">
@@ -17,11 +17,13 @@ export function Footer() {
           {/* Brand Identity */}
           <div className="space-y-8">
             <div className="flex items-center gap-4">
-              <img 
-                src="/images/logo.png" 
-                alt="Logo" 
-                className="w-14 h-14 object-contain brightness-0 invert" 
-              />
+              <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center p-2 backdrop-blur-sm">
+                <img 
+                  src="/images/logo.png" 
+                  alt="Logo" 
+                  className="w-full h-full object-contain" 
+                />
+              </div>
               <div>
                 <span className="block font-black text-lg leading-tight uppercase tracking-tighter">
                   {lang === 'ar' ? 'جمعية الصناعات' : 'Textile'}
