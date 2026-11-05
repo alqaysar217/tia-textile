@@ -43,6 +43,9 @@ export function Footer() {
               <a href="https://instagram.com/g_s.n__inst/" target="_blank" rel="noopener" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-primary transition-all">
                 <Instagram className="h-5 w-5" />
               </a>
+              <a href="https://wa.me/967771687041" target="_blank" rel="noopener" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-[#25D366] transition-all">
+                <Phone className="h-5 w-5" />
+              </a>
             </div>
           </div>
 

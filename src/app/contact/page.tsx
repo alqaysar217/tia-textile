@@ -91,6 +91,11 @@ export default function ContactPage() {
                     <Instagram className="h-6 w-6" />
                   </a>
                 </Button>
+                <Button variant="outline" size="lg" className="rounded-full h-14 w-14 hover:bg-[#25D366] hover:text-white transition-colors" asChild>
+                  <a href="https://wa.me/967771687041" target="_blank" rel="noopener">
+                    <Phone className="h-6 w-6" />
+                  </a>
+                </Button>
               </div>
             </div>
           </div>
