@@ -4,9 +4,7 @@ import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { LanguageProvider } from '@/components/LanguageProvider';
 import { CartProvider } from '@/components/CartProvider';
-import { Navbar } from '@/components/Navbar';
-import { Footer } from '@/components/Footer';
-import { FloatingWhatsApp } from '@/components/FloatingWhatsApp';
+import { MainLayoutWrapper } from '@/components/MainLayoutWrapper';
 
 export const metadata: Metadata = {
   title: 'جمعية الصناعات النسيجية | Textile Association',
@@ -23,18 +21,14 @@ export default function RootLayout({
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        {/* Modern high-end professional fonts: IBM Plex Sans Arabic and Inter */}
         <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
       </head>
       <body className="antialiased min-h-screen flex flex-col selection:bg-primary/20">
         <LanguageProvider>
           <CartProvider>
-            <Navbar />
-            <main className="flex-grow">
+            <MainLayoutWrapper>
               {children}
-            </main>
-            <Footer />
-            <FloatingWhatsApp />
+            </MainLayoutWrapper>
             <Toaster />
           </CartProvider>
         </LanguageProvider>
