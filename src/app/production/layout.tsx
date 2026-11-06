@@ -1,11 +1,13 @@
 
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Sidebar } from '@/components/production/Sidebar';
 import { Header } from '@/components/production/Header';
 import { useTranslation } from '@/components/LanguageProvider';
 import { SidebarProvider } from '@/components/ui/sidebar';
+import { useUser } from '@/firebase';
+import { useRouter, usePathname } from 'next/navigation';
 
 export default function ProductionLayout({
   children,
@@ -13,6 +15,43 @@ export default function ProductionLayout({
   children: React.ReactNode;
 }) {
   const { dir, lang } = useTranslation();
+  const { user, loading } = useUser();
+  const router = useRouter();
+  const pathname = usePathname();
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
+
+  useEffect(() => {
+    if (!loading) {
+      if (!user && pathname !== '/production/login') {
+        router.push('/production/login');
+      } else if (user && pathname === '/production/login') {
+        router.push('/production');
+      }
+      setIsAuthChecking(false);
+    }
+  }, [user, loading, pathname, router]);
+
+  if (loading || isAuthChecking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F8F9FA]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-16 h-16 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+          <p className="text-xs font-black text-primary uppercase tracking-[0.2em] animate-pulse">
+            {lang === 'ar' ? 'جاري التحقق من الصلاحيات...' : 'Verifying Access...'}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // If we are on the login page, don't show the dashboard shell
+  if (pathname === '/production/login') {
+    return (
+      <div className={lang === 'ar' ? 'arabic-font' : 'english-font'} dir={dir}>
+        {children}
+      </div>
+    );
+  }
 
   return (
     <SidebarProvider>
@@ -21,12 +60,10 @@ export default function ProductionLayout({
         dir={dir}
       >
         <div className="flex flex-1 overflow-hidden">
-          {/* Main Sidebar Wrapper */}
           <aside className="z-30">
             <Sidebar />
           </aside>
 
-          {/* Main Content Area */}
           <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
             <Header />
             <main className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8">

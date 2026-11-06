@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "Product": {
@@ -24,6 +25,19 @@
       },
       "required": ["nameAr", "nameEn", "price", "category", "status"]
     },
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Extended user information and system role",
+      "type": "object",
+      "properties": {
+        "fullName": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "factory_manager", "production_manager", "supervisor", "warehouse_keeper", "accountant", "viewer"] },
+        "departmentId": { "type": "string" },
+        "email": { "type": "string" },
+        "active": { "type": "boolean" }
+      },
+      "required": ["fullName", "role", "email"]
+    },
     "Category": {
       "title": "Category",
       "description": "Maawiz categories",
@@ -48,12 +62,16 @@
     }
   },
   "auth": {
-    "providers": ["google.com"]
+    "providers": ["google.com", "password"]
   },
   "firestore": {
     "/products": {
       "schema": "Product",
       "description": "Collection of traditional Maawiz"
+    },
+    "/users": {
+      "schema": "UserProfile",
+      "description": "System users and their permissions"
     },
     "/categories": {
       "schema": "Category",
