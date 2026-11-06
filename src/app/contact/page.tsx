@@ -12,9 +12,9 @@ import {
   User, 
   MessageSquare, 
   PhoneCall, 
-  Layout,
   Clock,
-  ExternalLink
+  ExternalLink,
+  MessageCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,179 +23,183 @@ import { Textarea } from '@/components/ui/textarea';
 export default function ContactPage() {
   const { lang, t } = useTranslation();
 
-  const offices = [
+  const branches = [
     {
       nameAr: 'المقر الرئيسي ووحدة الإنتاج',
       nameEn: 'Main Headquarters',
       locationAr: 'مديرية الروضة، محافظة شبوة، اليمن',
       locationEn: 'Al-Rawdah, Shabwa, Yemen',
-      descAr: 'مركز الإنتاج التعاوني الرئيسي',
-      descEn: 'Main cooperative production center'
+      type: 'hq'
     },
     {
       nameAr: 'فرع المبيعات ومعرض عتق',
       nameEn: 'Sales Branch - Ataq',
       locationAr: 'مدينة عتق، شبوة مول',
       locationEn: 'Ataq City, Shabwa Mall',
-      descAr: 'المعرض الجديد لتسهيل وصول العملاء لمنتجاتنا',
-      descEn: 'New showroom for customer accessibility',
-      phones: ['785043425', '783715551', '783715552']
+      phones: ['785043425', '783715551'],
+      type: 'branch'
     }
   ];
 
   return (
-    <div className="py-12 md:py-20 min-h-screen bg-background relative overflow-hidden">
-      {/* Decorative Background Elements */}
-      <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl -z-10 -mr-48 -mt-48" />
-      <div className="absolute bottom-0 left-0 w-96 h-96 bg-secondary/5 rounded-full blur-3xl -z-10 -ml-48 -mb-48" />
-      <div className="absolute inset-0 textile-pattern opacity-[0.02] pointer-events-none" />
+    <div className="min-h-screen bg-background relative overflow-hidden flex flex-col">
+      {/* Decorative Blur Background */}
+      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px] -z-10 -mr-64 -mt-64" />
+      <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-secondary/5 rounded-full blur-[120px] -z-10 -ml-64 -mb-64" />
 
-      <div className="container mx-auto px-4 relative z-10">
-        {/* Header Section */}
-        <div className="max-w-3xl mx-auto text-center mb-16 md:mb-24 space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/5 text-primary text-[10px] md:text-xs font-black uppercase tracking-widest border border-primary/10">
-            {lang === 'ar' ? 'نحن هنا لمساعدتك' : 'We are here to help'}
+      <div className="container mx-auto px-4 py-12 md:py-20 flex-grow max-w-7xl">
+        {/* Compact Header */}
+        <div className="mb-12 md:mb-16 text-center lg:text-right rtl:lg:text-right ltr:lg:text-left">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest mb-4">
+            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+            {lang === 'ar' ? 'نحن هنا لخدمتك' : 'GET IN TOUCH'}
           </div>
-          <h1 className="text-3xl md:text-6xl font-black text-foreground tracking-tight">
+          <h1 className="text-3xl md:text-5xl font-black text-foreground mb-4">
             {t.contact.title}
           </h1>
-          <p className="text-sm md:text-lg text-muted-foreground font-medium max-w-xl mx-auto">
+          <p className="text-sm md:text-base text-muted-foreground font-medium max-w-2xl">
             {t.contact.subtitle}
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 md:gap-16 items-start">
-          {/* Info Side (Column 5) */}
-          <div className="lg:col-span-5 space-y-8">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="group p-6 bg-muted/30 rounded-3xl border border-border/50 hover:border-primary/50 transition-all duration-500">
-                <div className="w-12 h-12 bg-background rounded-2xl flex items-center justify-center text-primary shadow-sm mb-4 group-hover:bg-primary group-hover:text-white transition-all">
-                  <PhoneCall className="h-6 w-6" />
-                </div>
-                <h3 className="text-sm font-black mb-1">{t.contact.phone}</h3>
-                <p className="text-muted-foreground text-xs font-bold tabular-nums" dir="ltr">0777 263 091</p>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+          {/* Info Panel */}
+          <div className="lg:col-span-5 space-y-6">
+            {/* Quick Contact Card */}
+            <div className="bg-primary text-primary-foreground rounded-3xl p-8 shadow-xl shadow-primary/20 relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform duration-500">
+                <MessageCircle className="w-32 h-32" />
               </div>
-              <div className="group p-6 bg-muted/30 rounded-3xl border border-border/50 hover:border-primary/50 transition-all duration-500">
-                <div className="w-12 h-12 bg-background rounded-2xl flex items-center justify-center text-primary shadow-sm mb-4 group-hover:bg-primary group-hover:text-white transition-all">
-                  <Mail className="h-6 w-6" />
+              
+              <div className="relative z-10 space-y-6">
+                <h2 className="text-2xl font-black">{lang === 'ar' ? 'معلومات التواصل المباشر' : 'Direct Contact Info'}</h2>
+                
+                <div className="space-y-4">
+                  <a href="tel:0777263091" className="flex items-center gap-4 group/item">
+                    <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center group-hover/item:bg-white group-hover/item:text-primary transition-all">
+                      <PhoneCall className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold opacity-60 uppercase">{t.contact.phone}</p>
+                      <p className="text-lg font-black tabular-nums" dir="ltr">0777 263 091</p>
+                    </div>
+                  </a>
+
+                  <a href="mailto:nseeg202020@gmail.com" className="flex items-center gap-4 group/item">
+                    <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center group-hover/item:bg-white group-hover/item:text-primary transition-all">
+                      <Mail className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold opacity-60 uppercase">{t.contact.email}</p>
+                      <p className="text-sm md:text-base font-black truncate">nseeg202020@gmail.com</p>
+                    </div>
+                  </a>
                 </div>
-                <h3 className="text-sm font-black mb-1">{t.contact.email}</h3>
-                <p className="text-muted-foreground text-[10px] md:text-xs font-bold truncate">nseeg202020@gmail.com</p>
+
+                <div className="flex gap-3 pt-2">
+                  <a href="https://facebook.com/abwhaneg/" target="_blank" rel="noopener" className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center hover:bg-white hover:text-primary transition-all">
+                    <Facebook className="w-5 h-5" />
+                  </a>
+                  <a href="https://instagram.com/g_s.n__inst/" target="_blank" rel="noopener" className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center hover:bg-white hover:text-primary transition-all">
+                    <Instagram className="w-5 h-5" />
+                  </a>
+                </div>
               </div>
             </div>
 
-            <div className="space-y-6">
-              <h2 className="text-xl md:text-2xl font-black flex items-center gap-3">
-                <MapPin className="h-6 w-6 text-primary" />
-                {lang === 'ar' ? 'فروعنا ومنافذنا' : 'Our Branches'}
-              </h2>
-              <div className="space-y-4">
-                {offices.map((office, idx) => (
-                  <div key={idx} className="group p-6 bg-background rounded-3xl border border-border/50 hover:shadow-xl transition-all duration-500 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 p-4 opacity-[0.03] group-hover:scale-110 transition-transform">
-                      <ExternalLink className="h-20 w-20" />
+            {/* Branches Section */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-black flex items-center gap-2 text-foreground/80 px-2">
+                <MapPin className="w-5 h-5 text-primary" />
+                {lang === 'ar' ? 'فروعنا ومراكزنا' : 'Our Branches'}
+              </h3>
+              
+              <div className="grid grid-cols-1 gap-4">
+                {branches.map((branch, idx) => (
+                  <div key={idx} className="bg-muted/30 border border-border/50 rounded-3xl p-6 flex gap-4 group hover:bg-background hover:shadow-lg transition-all duration-300">
+                    <div className="w-12 h-12 rounded-2xl bg-primary/5 flex items-center justify-center text-primary shrink-0 group-hover:bg-primary group-hover:text-white transition-all">
+                      {branch.type === 'hq' ? <Clock className="w-6 h-6" /> : <ExternalLink className="w-6 h-6" />}
                     </div>
-                    <h3 className="text-base md:text-lg font-black text-primary mb-2">
-                      {lang === 'ar' ? office.nameAr : office.nameEn}
-                    </h3>
-                    <p className="text-xs md:text-sm text-muted-foreground font-medium mb-3">
-                      {lang === 'ar' ? office.locationAr : office.locationEn}
-                    </p>
-                    {office.phones && (
-                      <div className="flex flex-wrap gap-3 pt-2">
-                        {office.phones.map((p, i) => (
-                          <a 
-                            key={i} 
-                            href={`tel:${p}`} 
-                            className="px-3 py-1 bg-muted rounded-full text-[10px] font-black tabular-nums hover:bg-primary hover:text-white transition-colors"
-                          >
-                            {p}
-                          </a>
-                        ))}
-                      </div>
-                    )}
+                    <div className="space-y-1">
+                      <h4 className="font-black text-sm md:text-base">{lang === 'ar' ? branch.nameAr : branch.nameEn}</h4>
+                      <p className="text-xs text-muted-foreground font-medium">
+                        {lang === 'ar' ? branch.locationAr : branch.locationEn}
+                      </p>
+                      {branch.phones && (
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {branch.phones.map((p, i) => (
+                            <span key={i} className="text-[10px] font-black bg-primary/10 text-primary px-2 py-0.5 rounded-full tabular-nums">
+                              {p}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
-
-            <div className="p-6 bg-primary rounded-3xl text-white shadow-xl shadow-primary/20 flex items-center justify-between">
-              <div className="space-y-1">
-                <h3 className="font-black text-lg">{lang === 'ar' ? 'تابعنا الآن' : 'Follow Us'}</h3>
-                <p className="text-xs text-white/70 font-medium">{lang === 'ar' ? 'كن أول من يعرف جديدنا' : 'Be the first to know'}</p>
-              </div>
-              <div className="flex gap-2">
-                <a href="https://facebook.com/abwhaneg/" target="_blank" rel="noopener" className="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-center transition-colors">
-                  <Facebook className="h-5 w-5" />
-                </a>
-                <a href="https://instagram.com/g_s.n__inst/" target="_blank" rel="noopener" className="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-center transition-colors">
-                  <Instagram className="h-5 w-5" />
-                </a>
-              </div>
-            </div>
           </div>
 
-          {/* Form Side (Column 7) */}
+          {/* Form Panel */}
           <div className="lg:col-span-7">
-            <div className="bg-card border border-border/50 rounded-[2.5rem] p-6 md:p-12 shadow-2xl relative">
-              <div className="space-y-8">
-                <div className="space-y-2">
-                  <h2 className="text-2xl md:text-3xl font-black">{lang === 'ar' ? 'أرسل لنا رسالة' : 'Send us a message'}</h2>
-                  <p className="text-xs md:text-sm text-muted-foreground font-medium">
-                    {lang === 'ar' ? 'سنقوم بالرد عليك في أقرب وقت ممكن.' : 'We will get back to you as soon as possible.'}
-                  </p>
+            <div className="bg-card border border-border/50 rounded-[2.5rem] p-8 md:p-10 shadow-2xl shadow-primary/5 h-full">
+              <div className="max-w-xl mx-auto space-y-8">
+                <div>
+                  <h2 className="text-2xl font-black mb-2">{lang === 'ar' ? 'أرسل لنا رسالة سريعة' : 'Send a Fast Message'}</h2>
+                  <p className="text-xs font-medium text-muted-foreground">{lang === 'ar' ? 'سنقوم بالرد عليك خلال أقل من 24 ساعة.' : 'We will respond in less than 24 hours.'}</p>
                 </div>
 
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2.5">
-                      <label className="text-xs font-black flex items-center gap-2 px-1">
-                        <User className="h-3.5 w-3.5 text-primary" />
+                <div className="space-y-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black uppercase tracking-wider text-muted-foreground flex items-center gap-2 ps-1">
+                        <User className="w-3.5 h-3.5 text-primary" />
                         {lang === 'ar' ? 'الاسم الكامل' : 'Full Name'}
                       </label>
                       <Input 
-                        placeholder={lang === 'ar' ? 'أدخل اسمك هنا' : 'Enter your name'}
-                        className="h-12 md:h-14 rounded-2xl bg-muted/20 border-border/50 focus:bg-background transition-all"
+                        className="h-12 rounded-2xl bg-muted/20 border-transparent focus:bg-background focus:ring-primary focus:border-primary transition-all px-4"
+                        placeholder={lang === 'ar' ? 'اكتب اسمك هنا' : 'Enter your name'}
                       />
                     </div>
-                    <div className="space-y-2.5">
-                      <label className="text-xs font-black flex items-center gap-2 px-1">
-                        <PhoneCall className="h-3.5 w-3.5 text-primary" />
-                        {lang === 'ar' ? 'رقم الهاتف' : 'Phone Number'}
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black uppercase tracking-wider text-muted-foreground flex items-center gap-2 ps-1">
+                        <PhoneCall className="w-3.5 h-3.5 text-primary" />
+                        {lang === 'ar' ? 'رقم الجوال' : 'Phone Number'}
                       </label>
                       <Input 
+                        className="h-12 rounded-2xl bg-muted/20 border-transparent focus:bg-background focus:ring-primary focus:border-primary transition-all px-4"
                         placeholder="7XX XXX XXX"
-                        className="h-12 md:h-14 rounded-2xl bg-muted/20 border-border/50 focus:bg-background transition-all"
                       />
                     </div>
                   </div>
 
-                  <div className="space-y-2.5">
-                    <label className="text-xs font-black flex items-center gap-2 px-1">
-                      <Layout className="h-3.5 w-3.5 text-primary" />
-                      {lang === 'ar' ? 'موضوع الرسالة' : 'Message Subject'}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-wider text-muted-foreground flex items-center gap-2 ps-1">
+                      <MessageSquare className="w-3.5 h-3.5 text-primary" />
+                      {lang === 'ar' ? 'الموضوع' : 'Subject'}
                     </label>
                     <Input 
-                      placeholder={lang === 'ar' ? 'ما الذي تود الاستفسار عنه؟' : 'What is your inquiry?'}
-                      className="h-12 md:h-14 rounded-2xl bg-muted/20 border-border/50 focus:bg-background transition-all"
+                      className="h-12 rounded-2xl bg-muted/20 border-transparent focus:bg-background focus:ring-primary focus:border-primary transition-all px-4"
+                      placeholder={lang === 'ar' ? 'بماذا يمكننا مساعدتك؟' : 'How can we help?'}
                     />
                   </div>
 
-                  <div className="space-y-2.5">
-                    <label className="text-xs font-black flex items-center gap-2 px-1">
-                      <MessageSquare className="h-3.5 w-3.5 text-primary" />
-                      {lang === 'ar' ? 'تفاصيل الرسالة' : 'Message Details'}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-wider text-muted-foreground flex items-center gap-2 ps-1">
+                      <MessageCircle className="w-3.5 h-3.5 text-primary" />
+                      {lang === 'ar' ? 'محتوى الرسالة' : 'Your Message'}
                     </label>
                     <Textarea 
-                      rows={5}
-                      placeholder={lang === 'ar' ? 'اكتب رسالتك هنا بالتفصيل...' : 'Write your message details here...'}
-                      className="rounded-2xl bg-muted/20 border-border/50 focus:bg-background transition-all resize-none p-4"
+                      rows={4}
+                      className="rounded-2xl bg-muted/20 border-transparent focus:bg-background focus:ring-primary focus:border-primary transition-all px-4 py-3 resize-none"
+                      placeholder={lang === 'ar' ? 'اكتب تفاصيل استفسارك هنا...' : 'Write your details here...'}
                     />
                   </div>
 
-                  <Button className="w-full h-14 md:h-16 text-base md:text-lg font-black gap-3 shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all rounded-2xl">
-                    <Send className="h-5 w-5" />
-                    {lang === 'ar' ? 'إرسال الرسالة' : 'Send Message'}
+                  <Button className="w-full h-14 rounded-2xl text-base font-black shadow-lg shadow-primary/20 hover:translate-y-[-2px] active:translate-y-0 transition-all gap-3">
+                    <Send className="w-5 h-5" />
+                    {lang === 'ar' ? 'إرسال الرسالة الآن' : 'Send Message Now'}
                   </Button>
                 </div>
               </div>
