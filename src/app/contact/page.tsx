@@ -26,19 +26,27 @@ export default function ContactPage() {
 
   const branches = [
     {
-      nameAr: 'المقر الرئيسي ووحدة الإنتاج',
-      nameEn: 'Main Headquarters',
+      nameAr: 'فرع عتق الرئيسي (الشارع العام)',
+      nameEn: 'Main Ataq Branch (Main St)',
+      locationAr: 'عتق، الشارع العام، بجانب مسجد الرحمن، أمام بن رازم للمواد الغذائية',
+      locationEn: 'Ataq, Main St, Next to Al-Rahman Mosque, opposite Bin Razem Foodstuffs',
+      phones: ['777263091', '785043425'],
+      type: 'branch'
+    },
+    {
+      nameAr: 'فرع شبوة مول',
+      nameEn: 'Shabwa Mall Branch',
+      locationAr: 'مدينة عتق، شبوة مول، الدور الأرضي',
+      locationEn: 'Ataq City, Shabwa Mall, Ground Floor',
+      phones: ['783715551'],
+      type: 'branch'
+    },
+    {
+      nameAr: 'المقر الرئيسي ووحدة الإنتاج (الروضة)',
+      nameEn: 'Main HQ & Production Unit (Al-Rawdah)',
       locationAr: 'مديرية الروضة، محافظة شبوة، اليمن',
       locationEn: 'Al-Rawdah, Shabwa, Yemen',
       type: 'hq'
-    },
-    {
-      nameAr: 'فرع المبيعات ومعرض عتق',
-      nameEn: 'Sales Branch - Ataq',
-      locationAr: 'مدينة عتق، شبوة مول',
-      locationEn: 'Ataq City, Shabwa Mall',
-      phones: ['785043425', '783715551'],
-      type: 'branch'
     }
   ];
 
@@ -49,7 +57,7 @@ export default function ContactPage() {
       <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-secondary/5 rounded-full blur-[120px] -z-10 -ml-64 -mb-64" />
 
       <div className="container mx-auto px-4 py-12 md:py-20 flex-grow max-w-7xl">
-        {/* Compact Header */}
+        {/* Header */}
         <div className="mb-12 md:mb-16 text-center lg:text-right rtl:lg:text-right ltr:lg:text-left">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest mb-4">
             <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
@@ -66,7 +74,6 @@ export default function ContactPage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch mb-12 md:mb-20">
           {/* Info Panel */}
           <div className="lg:col-span-5 space-y-6">
-            {/* Quick Contact Card */}
             <div className="bg-primary text-primary-foreground rounded-3xl p-8 shadow-xl shadow-primary/20 relative overflow-hidden group">
               <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform duration-500">
                 <MessageCircle className="w-32 h-32" />
@@ -111,7 +118,7 @@ export default function ContactPage() {
               </div>
             </div>
 
-            {/* Branches Section */}
+            {/* Branches List */}
             <div className="space-y-4">
               <h3 className="text-lg font-black flex items-center gap-2 text-foreground/80 px-2">
                 <MapPin className="w-5 h-5 text-primary" />
@@ -211,7 +218,7 @@ export default function ContactPage() {
           </div>
         </div>
 
-        {/* Interactive Map Section */}
+        {/* Updated Interactive Map Section with Ataq location */}
         <div className="space-y-6">
           <h3 className="text-xl md:text-2xl font-black flex items-center gap-3 text-foreground px-2">
             <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
@@ -220,34 +227,42 @@ export default function ContactPage() {
             {lang === 'ar' ? 'خريطة مواقعنا' : 'Our Locations Map'}
           </h3>
           
-          <div className="relative w-full h-[400px] md:h-[500px] rounded-[2.5rem] overflow-hidden border border-border/50 shadow-2xl group">
+          <div className="relative w-full h-[400px] md:h-[600px] rounded-[2.5rem] overflow-hidden border border-border/50 shadow-2xl group">
+            {/* Map centered on Ataq area */}
             <iframe 
-              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d15448.243547849583!2d47.288599449999995!3d14.53856245!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x161c55b6c93c316f%3A0xe5493b80b2a59a7f!2sAr%20Rawdah!5e0!3m2!1sen!2sye!4v1709400000000!5m2!1sen!2sye" 
+              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d15456.985652514336!2d46.82025185!3d14.5245846!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x161c360938b8d96f%3A0x8e83b0f5b128704!2sAtaq!5e0!3m2!1sen!2sye!4v1715600000000!5m2!1sen!2sye" 
               width="100%" 
               height="100%" 
               style={{ border: 0 }} 
               allowFullScreen={true} 
               loading="lazy" 
               referrerPolicy="no-referrer-when-downgrade"
-              className="grayscale-[0.2] contrast-[1.1] brightness-[0.95] group-hover:grayscale-0 transition-all duration-700"
+              className="grayscale-[0.1] contrast-[1.05] group-hover:grayscale-0 transition-all duration-700"
             ></iframe>
             
-            {/* Overlay for map context */}
-            <div className="absolute bottom-6 left-6 right-6 md:left-auto md:w-80 bg-background/90 backdrop-blur-md p-6 rounded-3xl border border-border/50 shadow-xl pointer-events-none md:pointer-events-auto">
+            {/* Overlay for precise Ataq context */}
+            <div className="absolute bottom-6 left-6 right-6 md:left-auto md:w-96 bg-background/90 backdrop-blur-md p-6 rounded-3xl border border-border/50 shadow-xl pointer-events-none md:pointer-events-auto">
               <h4 className="font-black text-primary mb-2 flex items-center gap-2">
                 <MapPin className="w-4 h-4" />
-                {lang === 'ar' ? 'مقر الجمعية الرئيسي' : 'Association HQ'}
+                {lang === 'ar' ? 'فرع عتق الرئيسي' : 'Main Ataq Branch'}
               </h4>
-              <p className="text-xs text-muted-foreground leading-relaxed font-medium">
+              <p className="text-xs text-muted-foreground leading-relaxed font-medium mb-4">
                 {lang === 'ar' 
-                  ? 'يقع مركزنا الرئيسي في مديرية الروضة، حيث تتم عمليات الغزل والحياكة اليدوية التقليدية.' 
-                  : 'Our main center is located in Al-Rawdah District, where traditional spinning and hand-weaving processes take place.'}
+                  ? 'يقع معرضنا الرئيسي في مدينة عتق، الشارع العام، بجانب مسجد الرحمن وأمام بن رازم للمواد الغذائية. كما نرحب بكم في فرعنا داخل شبوة مول.' 
+                  : 'Our main showroom is located in Ataq City, Main St, next to Al-Rahman Mosque, opposite Bin Razem Foodstuffs. We also welcome you at our Shabwa Mall branch.'}
               </p>
-              <Button size="sm" variant="ghost" className="mt-4 w-full rounded-xl text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary/5 pointer-events-auto" asChild>
-                <a href="https://maps.google.com/?q=Al-Rawdah,Shabwah,Yemen" target="_blank" rel="noopener">
-                  {lang === 'ar' ? 'فتح في خرائط جوجل' : 'Open in Google Maps'}
-                </a>
-              </Button>
+              <div className="grid grid-cols-2 gap-2">
+                <Button size="sm" variant="ghost" className="rounded-xl text-[9px] font-black uppercase tracking-widest text-primary hover:bg-primary/5 pointer-events-auto" asChild>
+                  <a href="https://maps.google.com/?q=Ataq,Shabwah,Yemen" target="_blank" rel="noopener">
+                    {lang === 'ar' ? 'فرع الشارع العام' : 'Main St Branch'}
+                  </a>
+                </Button>
+                <Button size="sm" variant="ghost" className="rounded-xl text-[9px] font-black uppercase tracking-widest text-primary hover:bg-primary/5 pointer-events-auto" asChild>
+                  <a href="https://maps.google.com/?q=Shabwah+Mall,Ataq,Yemen" target="_blank" rel="noopener">
+                    {lang === 'ar' ? 'فرع شبوة مول' : 'Shabwa Mall'}
+                  </a>
+                </Button>
+              </div>
             </div>
           </div>
         </div>
