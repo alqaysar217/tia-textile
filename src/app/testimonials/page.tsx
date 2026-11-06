@@ -15,8 +15,8 @@ export default function TestimonialsPage() {
       <div className="absolute inset-0 opacity-[0.03] pointer-events-none textile-pattern" />
       <div className="absolute top-1/4 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px] -z-10" />
       
-      {/* Page Header with Geometric Shapes */}
-      <div className="py-20 md:py-32 bg-primary relative overflow-hidden text-primary-foreground">
+      {/* Page Header with Geometric Shapes - Reduced Height */}
+      <div className="py-12 md:py-20 bg-primary relative overflow-hidden text-primary-foreground">
         {/* SVG Decorative Lines */}
         <svg className="absolute inset-0 w-full h-full opacity-10" viewBox="0 0 100 100" preserveAspectRatio="none">
           <line x1="0" y1="0" x2="100" y2="100" stroke="white" strokeWidth="0.1" />
@@ -32,8 +32,8 @@ export default function TestimonialsPage() {
               <Star key={i} className="h-4 w-4 fill-secondary text-secondary animate-pulse" style={{ animationDelay: `${i * 200}ms` }} />
             ))}
           </div>
-          <h1 className="text-4xl md:text-7xl font-black drop-shadow-xl">{t.testimonials.title}</h1>
-          <p className="text-lg md:text-xl opacity-80 max-w-2xl mx-auto font-medium leading-relaxed">
+          <h1 className="text-3xl md:text-6xl font-black drop-shadow-xl">{t.testimonials.title}</h1>
+          <p className="text-sm md:text-lg opacity-80 max-w-2xl mx-auto font-medium leading-relaxed">
             {t.testimonials.subtitle}
           </p>
         </div>
