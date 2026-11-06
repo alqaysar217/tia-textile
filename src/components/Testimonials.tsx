@@ -7,6 +7,7 @@ import { Quote, Star, ArrowLeft, ArrowRight, User } from 'lucide-react';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { cn } from '@/lib/utils';
 
 interface TestimonialsProps {
   showViewMore?: boolean;
@@ -75,6 +76,13 @@ export function Testimonials({ showViewMore = false, limit }: TestimonialsProps)
 
   const displayReviews = limit ? allReviews.slice(0, limit) : allReviews;
 
+  // Define alternating identity colors for avatars
+  const avatarColors = [
+    'bg-primary/10 text-primary border-primary/20',
+    'bg-secondary/10 text-secondary border-secondary/20',
+    'bg-accent text-accent-foreground border-accent-foreground/10'
+  ];
+
   return (
     <section className="py-12 md:py-20 bg-muted/20 relative overflow-hidden">
       <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -z-10 -mr-32 -mt-32" />
@@ -113,7 +121,10 @@ export function Testimonials({ showViewMore = false, limit }: TestimonialsProps)
               </p>
 
               <div className="flex items-center gap-3 md:gap-4 border-t border-border/50 pt-4 md:pt-6">
-                <Avatar className="h-10 w-10 md:h-12 md:w-12 border-2 border-primary/10 bg-primary/5 flex items-center justify-center text-primary">
+                <Avatar className={cn(
+                  "h-10 w-10 md:h-12 md:w-12 border-2 flex items-center justify-center transition-colors duration-300",
+                  avatarColors[idx % 3]
+                )}>
                   <User className="h-5 w-5 md:h-6 md:w-6" />
                 </Avatar>
                 <div>
