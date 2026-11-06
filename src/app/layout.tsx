@@ -1,3 +1,4 @@
+
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
@@ -5,6 +6,7 @@ import { LanguageProvider } from '@/components/LanguageProvider';
 import { CartProvider } from '@/components/CartProvider';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
+import { FloatingWhatsApp } from '@/components/FloatingWhatsApp';
 
 export const metadata: Metadata = {
   title: 'جمعية الصناعات النسيجية | Textile Association',
@@ -32,6 +34,7 @@ export default function RootLayout({
               {children}
             </main>
             <Footer />
+            <FloatingWhatsApp />
             <Toaster />
           </CartProvider>
         </LanguageProvider>

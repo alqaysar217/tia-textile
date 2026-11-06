@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Hero } from '@/components/Hero';
@@ -9,7 +10,6 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { ProductCard } from '@/components/ProductCard';
 import { FAQ } from '@/components/FAQ';
-import { FloatingWhatsApp } from '@/components/FloatingWhatsApp';
 import { Testimonials } from '@/components/Testimonials';
 
 export default function Home() {
@@ -126,7 +126,7 @@ export default function Home() {
                   <span className="w-2 h-2 rounded-full bg-secondary animate-pulse" />
                   {lang === 'ar' ? 'أصالة منذ 1973' : 'SINCE 1973'}
                 </div>
-                <h2 className="text-2xl md:text-4xl font-black leading-tight drop-shadow-lg">
+                <h2 className="text-2xl md:text-3xl font-black leading-tight drop-shadow-lg">
                   {t.about.historyTitle}
                 </h2>
                 <div className="space-y-4 md:space-y-6 text-sm md:text-xl text-primary-foreground/80 leading-relaxed font-medium">
@@ -157,8 +157,6 @@ export default function Home() {
       <div className="bg-background">
         <FAQ showViewMore={true} />
       </div>
-
-      <FloatingWhatsApp />
     </div>
   );
 }
