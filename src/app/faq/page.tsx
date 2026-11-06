@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -17,29 +16,35 @@ export default function FAQPage() {
       
       {/* Abstract Grid & Lines Pattern */}
       <div className="absolute inset-0 opacity-[0.03] pointer-events-none textile-pattern" />
+      
+      {/* Organized Hexagonal Pattern for the main background */}
       <div className="absolute inset-0 opacity-[0.02] pointer-events-none" 
         style={{ 
-          backgroundImage: `linear-gradient(30deg, var(--primary) 12%, transparent 12.5%, transparent 87%, var(--primary) 87.5%, var(--primary)),
-                            linear-gradient(150deg, var(--primary) 12%, transparent 12.5%, transparent 87%, var(--primary) 87.5%, var(--primary)),
-                            linear-gradient(30deg, var(--primary) 12%, transparent 12.5%, transparent 87%, var(--primary) 87.5%, var(--primary)),
-                            linear-gradient(150deg, var(--primary) 12%, transparent 12.5%, transparent 87%, var(--primary) 87.5%, var(--primary)),
-                            linear-gradient(60deg, var(--primary) 25%, transparent 25.5%, transparent 75%, var(--primary) 75%, var(--primary)),
-                            linear-gradient(60deg, var(--primary) 25%, transparent 25.5%, transparent 75%, var(--primary) 75%, var(--primary))`,
-          backgroundSize: '80px 140px',
-          backgroundPosition: '0 0, 0 0, 40px 70px, 40px 70px, 0 0, 40px 70px'
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='104' viewBox='0 0 60 104' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M60 104l-30-17.321L0 104V69.359L30 52l30 17.359V104zm0-69.359L30 17.321 0 34.641V0l30 17.321L60 0v34.641z' fill='%23065F34' fill-opacity='1' fill-rule='evenodd'/%3E%3C/svg%3E")`,
+          backgroundSize: '60px 104px'
         }} 
       />
 
-      {/* Hero Header with "Wow" Patterns */}
+      {/* Hero Header with Organized Hexagonal Patterns */}
       <div className="py-20 md:py-32 bg-primary relative text-primary-foreground overflow-hidden">
-        {/* Animated Background Shapes */}
-        <div className="absolute top-0 left-0 w-full h-full">
-          <svg className="absolute top-0 right-0 w-1/2 h-full opacity-10" viewBox="0 0 100 100" preserveAspectRatio="none">
-            <path d="M0 0 L100 0 L100 100 Z" fill="currentColor" />
+        {/* Organized Background Shapes */}
+        <div className="absolute top-0 left-0 w-full h-full overflow-hidden">
+          {/* Hexagonal Overlay Pattern */}
+          <div className="absolute inset-0 opacity-10" 
+            style={{ 
+              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='104' viewBox='0 0 60 104' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M60 104l-30-17.321L0 104V69.359L30 52l30 17.359V104zm0-69.359L30 17.321 0 34.641V0l30 17.321L60 0v34.641z' fill='%23ffffff' fill-opacity='1' fill-rule='evenodd'/%3E%3C/svg%3E")`,
+              backgroundSize: '80px 138px'
+            }} 
+          />
+          
+          {/* Subtle Geometric accents */}
+          <svg className="absolute top-0 right-0 h-full w-1/3 opacity-10 text-white" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <polygon points="0,0 100,0 100,100" fill="currentColor" />
           </svg>
-          <div className="absolute top-1/4 left-10 w-24 h-24 border-4 border-white/10 rounded-full animate-bounce duration-[3000ms]" />
-          <div className="absolute bottom-1/4 right-20 w-32 h-32 border-2 border-white/5 rotate-45" />
-          <div className="absolute top-1/2 right-1/3 w-2 h-2 bg-secondary rounded-full animate-ping" />
+          
+          {/* Regulated Hexagonal accents instead of jumping circles */}
+          <div className="absolute top-10 left-10 w-20 h-20 opacity-10 border border-white/40" style={{ clipPath: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)' }} />
+          <div className="absolute bottom-10 right-10 w-32 h-32 opacity-10 border border-white/40" style={{ clipPath: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)' }} />
         </div>
 
         <div className="container mx-auto px-4 relative z-10 text-center space-y-6">
