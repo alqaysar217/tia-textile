@@ -32,18 +32,18 @@ export function Navbar() {
       <div className="container mx-auto px-4 h-20 flex items-center justify-between">
         {/* Logo Section */}
         <Link href="/" className="flex items-center gap-3 group">
-          <div className="relative w-14 h-14 overflow-hidden rounded-2xl bg-muted/30 p-0 flex items-center justify-center border border-primary/5">
+          <div className="relative w-12 h-12 md:w-14 md:h-14 overflow-hidden rounded-2xl bg-muted/30 p-0 flex items-center justify-center border border-primary/5">
             <img 
               src="/images/logo.png" 
               alt="Logo" 
               className="w-full h-full object-cover rounded-2xl"
             />
           </div>
-          <div className="hidden sm:block">
-            <h1 className="text-sm font-black leading-tight text-primary uppercase tracking-tighter">
+          <div className="flex flex-col">
+            <h1 className="text-[10px] md:text-sm font-black leading-tight text-primary uppercase tracking-tighter">
               {lang === 'ar' ? 'جمعية الصناعات النسيجية' : 'Textile Cooperative'}
             </h1>
-            <p className="text-[10px] text-muted-foreground font-bold opacity-60 uppercase tracking-widest">
+            <p className="text-[8px] md:text-[10px] text-muted-foreground font-bold opacity-60 uppercase tracking-widest">
               {lang === 'ar' ? 'اليمن - شبوة' : 'Shabwa - Yemen'}
             </p>
           </div>
