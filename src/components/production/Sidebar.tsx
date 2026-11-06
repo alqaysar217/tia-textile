@@ -104,8 +104,12 @@ export function Sidebar() {
       {/* Brand Section */}
       <div className="px-8 mb-10">
         <div className="flex items-center gap-4 group">
-          <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center border border-white/10 group-hover:scale-105 transition-transform duration-300">
-            <Factory className="w-7 h-7 text-white" />
+          <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center border border-white/10 group-hover:scale-105 transition-transform duration-300 overflow-hidden p-1 shadow-xl">
+            <img 
+              src="/images/logo.png" 
+              alt="Association Logo" 
+              className="w-full h-full object-contain rounded-xl"
+            />
           </div>
           <div>
             <h2 className="text-sm font-black text-white leading-tight uppercase tracking-tight">إدارة الإنتاج</h2>
@@ -128,7 +132,7 @@ export function Sidebar() {
             <CollapsibleContent className="space-y-1 mt-1 pr-10">
               {group.children?.map((item) => (
                 <Link
-                  key={item.href}
+                  key={item.name}
                   href={item.href}
                   className={cn(
                     "flex items-center p-2 rounded-lg text-[11px] font-bold transition-all relative",
