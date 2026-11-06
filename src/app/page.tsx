@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Hero } from '@/components/Hero';
@@ -93,8 +92,22 @@ export default function Home() {
       </div>
 
       <section className="py-12 md:py-24 bg-primary text-primary-foreground overflow-hidden relative">
-        {/* Decorative Background Pattern */}
-        <div className="absolute inset-0 opacity-10 textile-pattern pointer-events-none" />
+        {/* Decorative Background Pattern - Improved with Hexagons and Geometric shapes like FAQ */}
+        <div className="absolute inset-0 opacity-10" 
+          style={{ 
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='104' viewBox='0 0 60 104' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M60 104l-30-17.321L0 104V69.359L30 52l30 17.359V104zm0-69.359L30 17.321 0 34.641V0l30 17.321L60 0v34.641z' fill='%23ffffff' fill-opacity='1' fill-rule='evenodd'/%3E%3C/svg%3E")`,
+            backgroundSize: '80px 138px'
+          }} 
+        />
+        
+        {/* Subtle Geometric accents */}
+        <svg className="absolute top-0 right-0 h-full w-1/3 opacity-10 text-white" viewBox="0 0 100 100" preserveAspectRatio="none">
+          <polygon points="0,0 100,0 100,100" fill="currentColor" />
+        </svg>
+        
+        {/* Regulated Hexagonal accents */}
+        <div className="absolute top-10 left-10 w-20 h-20 opacity-10 border border-white/40" style={{ clipPath: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)' }} />
+        <div className="absolute bottom-10 right-10 w-32 h-32 opacity-10 border border-white/40" style={{ clipPath: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)' }} />
         
         <div className="container mx-auto px-4 relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-20 items-center">
