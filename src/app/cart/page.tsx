@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from '@/components/LanguageProvider';
 import { useCart } from '@/components/CartProvider';
 import { Button } from '@/components/ui/button';
-import { Trash2, Plus, Minus, Phone, ShoppingBag, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Trash2, Plus, Minus, Phone, ShoppingBag, ArrowRight, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 
 export default function CartPage() {
@@ -59,151 +59,183 @@ export default function CartPage() {
   }
 
   return (
-    <div className="py-8 md:py-16 bg-muted/5 min-h-screen">
-      <div className="container mx-auto px-4 max-w-5xl">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-          <div className="space-y-1">
-            <h1 className="text-2xl md:text-4xl font-black text-foreground">{t.cart.title}</h1>
-            <p className="text-xs font-bold text-muted-foreground flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-              {totalItems} {lang === 'ar' ? 'منتجات في سلتك' : 'Items in your cart'}
-            </p>
-          </div>
-          <Button variant="ghost" size="sm" className="text-primary font-black gap-2 w-fit" asChild>
-            <Link href="/products">
-              {dir === 'rtl' ? <ArrowRight className="h-4 w-4" /> : <ArrowLeft className="h-4 w-4" />}
-              {t.cart.continue}
-            </Link>
-          </Button>
+    <div className="py-6 md:py-12 bg-muted/20 min-h-screen">
+      <div className="container mx-auto px-4 max-w-6xl">
+        {/* Breadcrumb style navigation */}
+        <div className="mb-6 flex items-center gap-2 text-[10px] md:text-xs font-black uppercase tracking-widest text-muted-foreground">
+          <Link href="/" className="hover:text-primary transition-colors">{t.nav.home}</Link>
+          {dir === 'rtl' ? <ChevronLeft className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+          <Link href="/products" className="hover:text-primary transition-colors">{t.nav.products}</Link>
+          {dir === 'rtl' ? <ChevronLeft className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+          <span className="text-primary">{t.cart.title}</span>
         </div>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* Cart Items List - Row Style */}
-          <div className="lg:col-span-8 space-y-3">
-            {cart.map((item) => (
-              <div key={item.id} className="group relative flex items-center gap-3 md:gap-6 p-3 md:p-4 bg-background rounded-2xl border border-border/50 shadow-sm hover:shadow-md transition-all">
-                {/* Compact Image */}
-                <div className="w-16 h-16 md:w-24 md:h-24 rounded-xl overflow-hidden shrink-0 bg-muted/20 border border-border/10">
-                  <img src={item.image} alt={item.nameAr} className="w-full h-full object-cover" />
-                </div>
-                
-                {/* Compact Info Section */}
-                <div className="flex-grow grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4 items-center">
-                  <div className="space-y-0.5">
-                    <h3 className="text-sm md:text-lg font-black leading-tight line-clamp-1 group-hover:text-primary transition-colors">
-                      {lang === 'ar' ? item.nameAr : item.nameEn}
-                    </h3>
-                    <p className="text-primary font-bold text-xs md:text-base tabular-nums">
-                      {formatPrice(item.price)} <span className="text-[10px] opacity-60">{lang === 'ar' ? 'ريال' : 'YER'}</span>
-                    </p>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-10 items-start">
+          {/* Main Content Area */}
+          <div className="lg:col-span-8 space-y-6">
+            <div className="flex items-center justify-between border-b border-border/50 pb-4">
+              <div className="space-y-1">
+                <h1 className="text-2xl md:text-3xl font-black text-foreground">{t.cart.title}</h1>
+                <p className="text-xs font-bold text-primary flex items-center gap-2">
+                  <ShoppingBag className="h-3 w-3" />
+                  {totalItems} {lang === 'ar' ? 'منتجات جاهزة للطلب' : 'Items ready to order'}
+                </p>
+              </div>
+              <Button variant="ghost" size="sm" className="hidden md:flex text-muted-foreground hover:text-primary font-black gap-2 transition-all" asChild>
+                <Link href="/products">
+                  {dir === 'rtl' ? <ArrowRight className="h-4 w-4" /> : <ArrowLeft className="h-4 w-4" />}
+                  {t.cart.continue}
+                </Link>
+              </Button>
+            </div>
+
+            {/* Cart Items List */}
+            <div className="space-y-3">
+              {cart.map((item) => (
+                <div key={item.id} className="group relative flex items-center gap-3 md:gap-6 p-3 md:p-4 bg-background rounded-2xl border border-border/50 shadow-sm hover:shadow-md transition-all">
+                  {/* Compact Image */}
+                  <div className="w-16 h-16 md:w-20 md:h-20 rounded-xl overflow-hidden shrink-0 bg-muted/20 border border-border/10">
+                    <img src={item.image} alt={item.nameAr} className="w-full h-full object-cover" />
                   </div>
                   
-                  <div className="flex items-center justify-between md:justify-end gap-4 md:gap-8">
-                    {/* Compact Quantity Selector */}
-                    <div className="flex items-center bg-muted/30 rounded-lg p-0.5 border border-border/50 scale-90 md:scale-100 origin-right">
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-7 w-7 md:h-8 md:w-8 rounded-md hover:bg-background"
-                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                        disabled={item.quantity <= 1}
-                      >
-                        <Minus className="h-3 w-3" />
-                      </Button>
-                      <span className="w-8 md:w-10 text-center font-black text-sm md:text-base tabular-nums">{item.quantity}</span>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-7 w-7 md:h-8 md:w-8 rounded-md hover:bg-background"
-                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                      >
-                        <Plus className="h-3 w-3" />
-                      </Button>
+                  {/* Info Section */}
+                  <div className="flex-grow grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-4 items-center">
+                    <div className="md:col-span-5 space-y-0.5">
+                      <h3 className="text-sm md:text-base font-black leading-tight line-clamp-1 group-hover:text-primary transition-colors">
+                        {lang === 'ar' ? item.nameAr : item.nameEn}
+                      </h3>
+                      <p className="text-primary font-bold text-[10px] md:text-sm tabular-nums opacity-70">
+                        {formatPrice(item.price)} <span className="text-[8px] opacity-60 uppercase">{lang === 'ar' ? 'ريال' : 'YER'}</span>
+                      </p>
                     </div>
                     
-                    <div className="flex items-center gap-3 md:gap-6">
-                      <div className="text-right hidden sm:block">
-                        <p className="text-[8px] font-black uppercase text-muted-foreground tracking-widest">{lang === 'ar' ? 'المجموع' : 'Subtotal'}</p>
-                        <p className="text-sm md:text-lg font-black tabular-nums">{formatPrice(item.price * item.quantity)}</p>
+                    <div className="md:col-span-7 flex items-center justify-between md:justify-end gap-4">
+                      {/* Quantity Selector */}
+                      <div className="flex items-center bg-muted/50 rounded-lg p-0.5 border border-border/20 scale-90 md:scale-100 origin-right">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-7 w-7 rounded-md hover:bg-background transition-colors"
+                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                          disabled={item.quantity <= 1}
+                        >
+                          <Minus className="h-3 w-3" />
+                        </Button>
+                        <span className="w-8 text-center font-black text-xs md:text-sm tabular-nums">{item.quantity}</span>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-7 w-7 rounded-md hover:bg-background transition-colors"
+                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                        >
+                          <Plus className="h-3 w-3" />
+                        </Button>
                       </div>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="text-destructive/40 hover:text-destructive hover:bg-destructive/5 rounded-full h-8 w-8"
-                        onClick={() => removeFromCart(item.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      
+                      <div className="flex items-center gap-4 md:gap-8 min-w-[80px] md:min-w-[120px] justify-end">
+                        <div className="text-right">
+                          <p className="text-sm md:text-base font-black tabular-nums">{formatPrice(item.price * item.quantity)}</p>
+                        </div>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="text-destructive/30 hover:text-destructive hover:bg-destructive/5 rounded-full h-8 w-8 transition-colors"
+                          onClick={() => removeFromCart(item.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
+
+            {/* Mobile Continue Shopping */}
+            <Button variant="outline" className="md:hidden w-full rounded-xl h-12 font-bold text-muted-foreground border-dashed" asChild>
+              <Link href="/products">
+                {t.cart.continue}
+              </Link>
+            </Button>
           </div>
 
-          {/* Compact Summary Card */}
+          {/* Sidebar Summary Card */}
           <div className="lg:col-span-4 sticky top-24">
-            <div className="bg-[#1D3323] text-[#F4F1E9] p-6 md:p-8 rounded-[2rem] shadow-xl space-y-6 relative overflow-hidden">
-              <div className="absolute inset-0 textile-pattern opacity-[0.03] pointer-events-none" />
+            <div className="bg-background border border-primary/10 p-6 md:p-8 rounded-[2rem] shadow-xl space-y-6 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-secondary/5 rounded-full blur-2xl -mr-12 -mt-12" />
               
-              <div className="relative z-10 space-y-5">
-                <h2 className="text-xl md:text-2xl font-black border-b border-white/10 pb-4">
-                  {lang === 'ar' ? 'ملخص الطلب' : 'Order Summary'}
-                </h2>
+              <div className="relative z-10 space-y-6">
+                <div className="space-y-1">
+                  <h2 className="text-xl md:text-2xl font-black text-foreground">
+                    {lang === 'ar' ? 'ملخص الطلب' : 'Order Summary'}
+                  </h2>
+                  <div className="w-12 h-1 bg-secondary rounded-full" />
+                </div>
                 
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center text-white/50 text-xs font-bold">
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center text-muted-foreground text-xs font-bold">
                     <span>{lang === 'ar' ? 'عدد المنتجات' : 'Total Items'}</span>
-                    <span className="tabular-nums text-white">{totalItems}</span>
+                    <span className="tabular-nums text-foreground bg-muted px-2 py-0.5 rounded-lg">{totalItems}</span>
                   </div>
-                  <div className="flex justify-between items-center text-white/50 text-xs font-bold">
+                  <div className="flex justify-between items-center text-muted-foreground text-xs font-bold">
                     <span>{lang === 'ar' ? 'رسوم التوصيل' : 'Shipping'}</span>
-                    <span className="text-[9px] font-black bg-white/5 px-2 py-0.5 rounded-full text-primary-foreground/80">
+                    <span className="text-[9px] font-black text-secondary bg-secondary/5 px-3 py-1 rounded-full uppercase tracking-tighter">
                       {lang === 'ar' ? 'تحدد لاحقاً' : 'TBD'}
                     </span>
                   </div>
                 </div>
 
-                <div className="pt-4 border-t border-white/10">
+                <div className="pt-6 border-t border-border/50">
                   <div className="flex justify-between items-end mb-1">
-                    <span className="text-white/50 text-xs font-bold">{t.cart.total}</span>
+                    <span className="text-muted-foreground text-xs font-bold uppercase tracking-widest">{t.cart.total}</span>
                   </div>
-                  <div className="text-2xl md:text-3xl font-black text-primary tabular-nums">
-                    {formatPrice(totalPrice)}
-                    <span className="text-[10px] font-bold text-white/30 ms-1.5 uppercase">{lang === 'ar' ? 'ريال يمني' : 'YER'}</span>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-2xl md:text-4xl font-black text-primary tabular-nums">
+                      {formatPrice(totalPrice)}
+                    </span>
+                    <span className="text-[10px] md:text-xs font-black text-muted-foreground/60 uppercase">
+                      {lang === 'ar' ? 'ريال يمني' : 'YER'}
+                    </span>
                   </div>
                 </div>
 
                 <div className="space-y-3 pt-2">
                   <Button 
-                    className="w-full h-14 rounded-xl text-base font-black gap-2 shadow-lg bg-[#25D366] hover:bg-[#128C7E] text-white border-none" 
+                    className="w-full h-14 rounded-2xl text-base font-black gap-3 shadow-lg shadow-[#25D366]/20 bg-[#25D366] hover:bg-[#128C7E] text-white border-none hover:scale-[1.02] transition-all" 
                     onClick={handleWhatsAppCheckout}
                   >
                     <Phone className="h-5 w-5" />
                     {t.cart.checkout}
                   </Button>
                   <Button 
-                    variant="outline" 
-                    className="w-full h-12 rounded-xl text-xs font-bold bg-transparent border-white/10 hover:bg-white/5 text-white" 
+                    variant="ghost" 
+                    className="w-full h-12 rounded-2xl text-xs font-bold text-muted-foreground hover:text-primary hover:bg-primary/5" 
                     asChild
                   >
-                    <Link href="/products">{t.cart.continue}</Link>
+                    <Link href="/products" className="flex items-center justify-center gap-2">
+                      {t.cart.continue}
+                    </Link>
                   </Button>
                 </div>
 
-                <p className="text-[9px] text-center text-white/30 leading-relaxed font-medium pt-2">
-                  * {lang === 'ar' 
-                    ? 'سيتم تحويلك إلى واتساب لتأكيد تفاصيل الاستلام.' 
-                    : 'WhatsApp checkout for delivery confirmation.'}
-                </p>
+                <div className="p-3 rounded-xl bg-muted/30 border border-border/50 text-center space-y-1">
+                  <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
+                    {lang === 'ar' ? 'تسوق آمن ومباشر' : 'Secure Shopping'}
+                  </p>
+                  <p className="text-[8px] text-muted-foreground/60 leading-relaxed font-medium">
+                    * {lang === 'ar' 
+                      ? 'سيتم تحويلك إلى واتساب لتأكيد تفاصيل الاستلام والدفع.' 
+                      : 'You will be redirected to WhatsApp to confirm delivery details.'}
+                  </p>
+                </div>
               </div>
             </div>
             
-            <div className="mt-4 p-3 rounded-xl bg-primary/5 border border-primary/10 flex items-center justify-center gap-2">
-              <ShoppingBag className="w-4 h-4 text-primary opacity-40" />
-              <span className="text-[9px] font-black uppercase tracking-widest text-primary/60">
-                {lang === 'ar' ? 'تسوق آمن ومباشر' : 'Secure Shopping'}
-              </span>
+            <div className="mt-6 flex flex-col items-center gap-4 opacity-50">
+              <img src="/images/logo.png" alt="Logo" className="w-12 h-12 grayscale" />
+              <div className="text-[8px] font-black uppercase tracking-[0.3em] text-muted-foreground text-center">
+                {lang === 'ar' ? 'جمعية الصناعات النسيجية' : 'Textile Association'}
+              </div>
             </div>
           </div>
         </div>
