@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -38,14 +37,14 @@ export default function AboutPage() {
       year: 'اليوم', 
       titleAr: 'الحاضر', 
       titleEn: 'Present Day', 
-      descEn: 'أكثر من 3000 عضو والتزام مستمر بالحفاظ على التراث النسيجي اليمني.', 
-      descAr: 'More than 3,000 members with an ongoing commitment to Yemeni heritage.', 
+      descAr: 'أكثر من 3000 عضو والتزام مستمر بالحفاظ على التراث النسيجي اليمني.', 
+      descEn: 'More than 3,000 members with an ongoing commitment to Yemeni heritage.', 
       icon: <Calendar className="w-5 h-5 md:w-6 md:h-6" /> 
     }
   ];
 
   return (
-    <div className="py-12 md:py-24 bg-background min-h-screen">
+    <div className="py-12 md:py-24 bg-background min-h-screen overflow-x-hidden">
       <div className="container mx-auto px-4">
         {/* Story Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 md:gap-20 items-center mb-16 md:mb-32">
@@ -133,4 +132,3 @@ export default function AboutPage() {
     </div>
   );
 }
-
