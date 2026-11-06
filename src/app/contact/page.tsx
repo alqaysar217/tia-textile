@@ -103,6 +103,9 @@ export default function ContactPage() {
                   <a href="https://instagram.com/g_s.n__inst/" target="_blank" rel="noopener" className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center hover:bg-white hover:text-primary transition-all">
                     <Instagram className="w-5 h-5" />
                   </a>
+                  <a href="https://wa.me/967771687041" target="_blank" rel="noopener" className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center hover:bg-[#25D366] hover:text-white transition-all">
+                    <Phone className="w-5 h-5" />
+                  </a>
                 </div>
               </div>
             </div>
