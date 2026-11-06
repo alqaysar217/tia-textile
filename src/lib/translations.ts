@@ -55,6 +55,10 @@ export const translations = {
       whatsapp: 'واتساب',
       email: 'البريد الإلكتروني'
     },
+    testimonials: {
+      title: 'ماذا يقول عملاؤنا؟',
+      subtitle: 'نفتخر بثقة آلاف العملاء الذين اختاروا التميز والأصالة من جمعيتنا.'
+    },
     footer: {
       description: 'جمعية الصناعات النسيجية للمعاوز والغزل – الروضة، محافظة شبوة، اليمن. نحافظ على تراثنا وننسج مستقبلنا.',
       rights: 'جميع الحقوق محفوظة © 2027'
@@ -112,6 +116,10 @@ export const translations = {
       phone: 'Main Phone',
       whatsapp: 'WhatsApp',
       email: 'Email'
+    },
+    testimonials: {
+      title: 'What Our Customers Say',
+      subtitle: 'We are proud of the trust of thousands of customers who chose excellence and authenticity.'
     },
     footer: {
       description: 'Textile Industries Cooperative Association – Al-Rawdah, Shabwa, Yemen. Preserving our heritage and weaving our future.',

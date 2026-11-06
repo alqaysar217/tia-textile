@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Hero } from '@/components/Hero';
@@ -10,6 +11,7 @@ import Link from 'next/link';
 import { ProductCard } from '@/components/ProductCard';
 import { FAQ } from '@/components/FAQ';
 import { FloatingWhatsApp } from '@/components/FloatingWhatsApp';
+import { Testimonials } from '@/components/Testimonials';
 
 export default function Home() {
   const { lang, t } = useTranslation();
@@ -120,6 +122,8 @@ export default function Home() {
       <div className="bg-muted/30">
         <CategoriesSection />
       </div>
+
+      <Testimonials />
       
       <div className="bg-background">
         <FAQ />
