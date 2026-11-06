@@ -110,13 +110,32 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F4F5F7] flex flex-col items-center justify-center p-4 relative" dir={dir}>
-      {/* Subtle Background Pattern */}
-      <div className="fixed inset-0 opacity-[0.02] pointer-events-none textile-pattern" />
+    <div className="min-h-screen bg-white flex flex-col items-center justify-center p-4 relative overflow-hidden" dir={dir}>
+      {/* Dynamic Background Elements */}
+      <div className="fixed inset-0 bg-[#F8F9FB]" />
       
-      <div className="w-full max-w-[460px] animate-in fade-in zoom-in-95 duration-700">
+      {/* Technical Grid Overlay */}
+      <div className="fixed inset-0 opacity-[0.03] pointer-events-none" 
+        style={{ 
+          backgroundImage: `linear-gradient(#065F34 1px, transparent 1px), linear-gradient(90deg, #065F34 1px, transparent 1px)`,
+          backgroundSize: '40px 40px'
+        }} 
+      />
+
+      {/* Heritage-Tech Pattern Blobs */}
+      <div className="fixed -top-[10%] -right-[10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px] animate-pulse" />
+      <div className="fixed -bottom-[10%] -left-[10%] w-[40%] h-[40%] bg-secondary/5 rounded-full blur-[120px]" />
+
+      {/* Textile-inspired technical lines */}
+      <div className="fixed inset-0 opacity-[0.02] pointer-events-none" 
+        style={{ 
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M54.826 10.531c-.347.026-.642.239-.773.532L53.11 13H50v2h2.247l1.053-2.106c.038-.076.126-.145.247-.145.121 0 .209.069.247.145L54.753 15H57v-2h-3.11l-.943-1.937c-.131-.293-.426-.506-.773-.532zM5.174 10.531c-.347.026-.642.239-.773.532L3.457 13H1v2h2.247l1.053-2.106c.038-.076.126-.145.247-.145.121 0 .209.069.247.145L5.753 15H8v-2h-3.11l-.943-1.937c-.131-.293-.426-.506-.773-.532zM30 55a5 5 0 1 0 0-10 5 5 0 0 0 0 10zm0-2a3 3 0 1 1 0-6 3 3 0 0 1 0 6z' fill='%23065F34' fill-opacity='1' fill-rule='evenodd'/%3E%3C/svg%3E")`,
+        }} 
+      />
+
+      <div className="w-full max-w-[460px] animate-in fade-in zoom-in-95 duration-1000 relative z-10">
         {/* Main Login Card */}
-        <div className="bg-white border border-gray-100 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.05)] relative overflow-hidden">
+        <div className="bg-white/80 backdrop-blur-xl border border-white rounded-2xl shadow-[0_40px_80px_rgba(0,0,0,0.08)] relative overflow-hidden">
           {/* Top Decorative Gradient Line */}
           <div className="h-1.5 w-full bg-gradient-to-r from-primary via-[#0a7a44] to-secondary" />
           
@@ -260,3 +279,4 @@ export default function LoginPage() {
     </div>
   );
 }
+
