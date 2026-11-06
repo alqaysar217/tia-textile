@@ -14,7 +14,8 @@ import {
   PhoneCall, 
   Clock,
   ExternalLink,
-  MessageCircle
+  MessageCircle,
+  Map as MapIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -62,7 +63,7 @@ export default function ContactPage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch mb-12 md:mb-20">
           {/* Info Panel */}
           <div className="lg:col-span-5 space-y-6">
             {/* Quick Contact Card */}
@@ -206,6 +207,47 @@ export default function ContactPage() {
                   </Button>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Interactive Map Section */}
+        <div className="space-y-6">
+          <h3 className="text-xl md:text-2xl font-black flex items-center gap-3 text-foreground px-2">
+            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+              <MapIcon className="w-5 h-5" />
+            </div>
+            {lang === 'ar' ? 'خريطة مواقعنا' : 'Our Locations Map'}
+          </h3>
+          
+          <div className="relative w-full h-[400px] md:h-[500px] rounded-[2.5rem] overflow-hidden border border-border/50 shadow-2xl group">
+            <iframe 
+              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d15448.243547849583!2d47.288599449999995!3d14.53856245!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x161c55b6c93c316f%3A0xe5493b80b2a59a7f!2sAr%20Rawdah!5e0!3m2!1sen!2sye!4v1709400000000!5m2!1sen!2sye" 
+              width="100%" 
+              height="100%" 
+              style={{ border: 0 }} 
+              allowFullScreen={true} 
+              loading="lazy" 
+              referrerPolicy="no-referrer-when-downgrade"
+              className="grayscale-[0.2] contrast-[1.1] brightness-[0.95] group-hover:grayscale-0 transition-all duration-700"
+            ></iframe>
+            
+            {/* Overlay for map context */}
+            <div className="absolute bottom-6 left-6 right-6 md:left-auto md:w-80 bg-background/90 backdrop-blur-md p-6 rounded-3xl border border-border/50 shadow-xl pointer-events-none md:pointer-events-auto">
+              <h4 className="font-black text-primary mb-2 flex items-center gap-2">
+                <MapPin className="w-4 h-4" />
+                {lang === 'ar' ? 'مقر الجمعية الرئيسي' : 'Association HQ'}
+              </h4>
+              <p className="text-xs text-muted-foreground leading-relaxed font-medium">
+                {lang === 'ar' 
+                  ? 'يقع مركزنا الرئيسي في مديرية الروضة، حيث تتم عمليات الغزل والحياكة اليدوية التقليدية.' 
+                  : 'Our main center is located in Al-Rawdah District, where traditional spinning and hand-weaving processes take place.'}
+              </p>
+              <Button size="sm" variant="ghost" className="mt-4 w-full rounded-xl text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary/5 pointer-events-auto" asChild>
+                <a href="https://maps.google.com/?q=Al-Rawdah,Shabwah,Yemen" target="_blank" rel="noopener">
+                  {lang === 'ar' ? 'فتح في خرائط جوجل' : 'Open in Google Maps'}
+                </a>
+              </Button>
             </div>
           </div>
         </div>
