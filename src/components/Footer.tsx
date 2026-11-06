@@ -125,8 +125,8 @@ export function Footer() {
               </li>
             </ul>
             
-            {/* Mini Map Container */}
-            <div className="mt-6 w-full h-24 md:h-28 rounded-2xl overflow-hidden border border-white/10 shadow-inner group relative">
+            {/* Mini Map Container - Height increased here */}
+            <div className="mt-6 w-full h-32 md:h-40 rounded-2xl overflow-hidden border border-white/10 shadow-inner group relative">
               <iframe 
                 src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d15456.985652514336!2d46.82025185!3d14.5245846!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x161c360938b8d96f%3A0x8e83b0f5b128704!2sAtaq!5e0!3m2!1sen!2sye!4v1715600000000!5m2!1sen!2sye" 
                 width="100%" 
