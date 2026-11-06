@@ -3,10 +3,10 @@
 import React from 'react';
 import Link from 'next/link';
 import { useTranslation } from './LanguageProvider';
-import { Facebook, Instagram, Mail, Phone, MapPin, Package, Info, Image as ImageIcon, HelpCircle, Tag, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Facebook, Instagram, Mail, Phone, MapPin, Package, Info, Image as ImageIcon, HelpCircle, Tag } from 'lucide-react';
 
 export function Footer() {
-  const { lang, t, dir } = useTranslation();
+  const { lang, t } = useTranslation();
 
   const usefulLinks = [
     { name: t.nav.products, href: '/products', icon: <Package className="h-4 w-4" /> },
@@ -101,7 +101,7 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Contact Details */}
+          {/* Contact Details & Mini Map */}
           <div className="space-y-6">
             <h3 className="font-black text-[10px] uppercase tracking-widest text-primary/80">{t.contact.title}</h3>
             <ul className="space-y-5 text-sm">
@@ -124,6 +124,26 @@ export function Footer() {
                 <span className="text-[#F4F1E9]/60 font-medium">nseeg202020@gmail.com</span>
               </li>
             </ul>
+            
+            {/* Mini Map Container */}
+            <div className="mt-6 w-full h-24 md:h-28 rounded-2xl overflow-hidden border border-white/10 shadow-inner group relative">
+              <iframe 
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d15456.985652514336!2d46.82025185!3d14.5245846!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x161c360938b8d96f%3A0x8e83b0f5b128704!2sAtaq!5e0!3m2!1sen!2sye!4v1715600000000!5m2!1sen!2sye" 
+                width="100%" 
+                height="100%" 
+                style={{ border: 0 }} 
+                allowFullScreen={true} 
+                loading="lazy" 
+                referrerPolicy="no-referrer-when-downgrade"
+                className="grayscale opacity-50 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-700"
+              ></iframe>
+              <Link 
+                href="/contact" 
+                className="absolute inset-0 z-20 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity text-[8px] font-black uppercase tracking-widest text-white"
+              >
+                {lang === 'ar' ? 'عرض الخريطة الكاملة' : 'View Full Map'}
+              </Link>
+            </div>
           </div>
         </div>
 
