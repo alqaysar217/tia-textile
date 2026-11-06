@@ -119,7 +119,7 @@ export default function DepartmentsPage() {
                 <TableCell className="production-table-cell text-center">
                   <span className={`status-badge ${dept.active ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
                     {dept.active ? (lang === 'ar' ? 'نشط' : 'Active') : (lang === 'ar' ? 'متوقف' : 'Inactive')}
-                  </div>
+                  </span>
                 </TableCell>
                 <TableCell className="production-table-cell">
                   <DropdownMenu>
