@@ -25,8 +25,8 @@ export default function FAQPage() {
         }} 
       />
 
-      {/* Hero Header with Organized Hexagonal Patterns */}
-      <div className="py-20 md:py-32 bg-primary relative text-primary-foreground overflow-hidden">
+      {/* Hero Header with Organized Hexagonal Patterns - Reduced Height */}
+      <div className="py-12 md:py-20 bg-primary relative text-primary-foreground overflow-hidden">
         {/* Organized Background Shapes */}
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden">
           {/* Hexagonal Overlay Pattern */}
@@ -42,20 +42,16 @@ export default function FAQPage() {
             <polygon points="0,0 100,0 100,100" fill="currentColor" />
           </svg>
           
-          {/* Regulated Hexagonal accents instead of jumping circles */}
+          {/* Regulated Hexagonal accents */}
           <div className="absolute top-10 left-10 w-20 h-20 opacity-10 border border-white/40" style={{ clipPath: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)' }} />
           <div className="absolute bottom-10 right-10 w-32 h-32 opacity-10 border border-white/40" style={{ clipPath: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)' }} />
         </div>
 
-        <div className="container mx-auto px-4 relative z-10 text-center space-y-6">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md text-[10px] md:text-xs font-black uppercase tracking-[0.2em] border border-white/10 mb-2">
-            <Sparkles className="w-3 h-3 text-secondary" />
-            {lang === 'ar' ? 'مركز المساعدة المتطور' : 'ADVANCED HELP CENTER'}
-          </div>
-          <h1 className="text-4xl md:text-7xl font-black leading-tight drop-shadow-2xl">
+        <div className="container mx-auto px-4 relative z-10 text-center space-y-4">
+          <h1 className="text-3xl md:text-6xl font-black leading-tight drop-shadow-2xl">
             {t.faq.title}
           </h1>
-          <p className="text-base md:text-xl opacity-80 max-w-2xl mx-auto font-medium leading-relaxed">
+          <p className="text-sm md:text-lg opacity-80 max-w-2xl mx-auto font-medium leading-relaxed">
             {lang === 'ar' 
               ? 'كل ما تحتاج معرفته عن جمعية الصناعات النسيجية ومنتجاتنا، جمعنا لك أهم التساؤلات في مكان واحد.' 
               : 'Everything you need to know about the Textile Industries Association and our products, collected in one place.'}
@@ -64,7 +60,7 @@ export default function FAQPage() {
       </div>
 
       {/* FAQ Component */}
-      <div className="py-12 md:py-24 relative">
+      <div className="py-8 md:py-20 relative">
         {/* Subtle decorative circles in the content area */}
         <div className="absolute top-1/2 left-0 w-64 h-64 bg-primary/5 rounded-full -translate-x-1/2 blur-3xl" />
         <div className="absolute bottom-0 right-0 w-96 h-96 bg-secondary/5 rounded-full translate-x-1/2 blur-3xl" />
