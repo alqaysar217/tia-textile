@@ -92,7 +92,7 @@ export default function Home() {
       </div>
 
       <section className="py-12 md:py-24 bg-primary text-primary-foreground overflow-hidden relative">
-        {/* Decorative Background Pattern - Improved with Hexagons and Geometric shapes like FAQ */}
+        {/* Decorative Background Pattern */}
         <div className="absolute inset-0 opacity-10" 
           style={{ 
             backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='104' viewBox='0 0 60 104' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M60 104l-30-17.321L0 104V69.359L30 52l30 17.359V104zm0-69.359L30 17.321 0 34.641V0l30 17.321L60 0v34.641z' fill='%23ffffff' fill-opacity='1' fill-rule='evenodd'/%3E%3C/svg%3E")`,
@@ -139,7 +139,7 @@ export default function Home() {
                 <Button size="lg" variant="secondary" className="w-full md:w-auto px-10 rounded-full h-12 md:h-16 text-sm md:text-lg font-black shadow-2xl hover:scale-105 transition-transform" asChild>
                   <Link href="/about">تعرف على قصتنا الكاملة</Link>
                 </Button>
-                <Button size="lg" variant="outline" className="w-full md:w-auto px-10 rounded-full h-12 md:h-16 text-sm md:text-lg font-black border-white/20 text-white hover:bg-white/10 transition-all" asChild>
+                <Button size="lg" className="w-full md:w-auto px-10 rounded-full h-12 md:h-16 text-sm md:text-lg font-black bg-white text-primary hover:bg-transparent hover:text-white hover:border hover:border-white transition-all shadow-xl" asChild>
                   <Link href="/contact">{t.nav.contact}</Link>
                 </Button>
               </div>
