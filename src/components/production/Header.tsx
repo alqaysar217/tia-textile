@@ -9,7 +9,8 @@ import {
   LogOut, 
   Maximize,
   HelpCircle,
-  Calendar
+  Calendar,
+  Settings
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -86,7 +87,7 @@ export function Header() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="flex items-center gap-2 p-1 md:ps-4 md:pe-2 hover:bg-gray-50 rounded-xl">
-              <div className="hidden md:block text-left text-right">
+              <div className="hidden md:block text-right">
                 <p className="text-[11px] font-black leading-none">علي باحاج</p>
                 <p className="text-[9px] text-gray-400 font-bold mt-1 uppercase tracking-widest">المشرف العام</p>
               </div>

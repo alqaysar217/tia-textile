@@ -14,7 +14,9 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Clock,
-  ExternalLink
+  ExternalLink,
+  ClipboardList,
+  ShieldCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
