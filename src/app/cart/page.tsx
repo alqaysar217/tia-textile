@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -17,7 +18,9 @@ export default function CartPage() {
   }, []);
 
   const formatPrice = (price: number) => {
-    return mounted ? price.toLocaleString('en-US') : price.toString();
+    // Return stable representation for hydration, then localized on client
+    if (!mounted) return price.toString();
+    return price.toLocaleString('en-US');
   };
 
   const handleWhatsAppCheckout = () => {
@@ -104,7 +107,7 @@ export default function CartPage() {
                       <h3 className="text-sm md:text-base font-black leading-tight line-clamp-1 group-hover:text-primary transition-colors">
                         {lang === 'ar' ? item.nameAr : item.nameEn}
                       </h3>
-                      <p className="text-primary font-bold text-[10px] md:text-sm tabular-nums opacity-70">
+                      <p className="text-primary font-bold text-[10px] md:text-sm tabular-nums opacity-70" suppressHydrationWarning>
                         {formatPrice(item.price)} <span className="text-[8px] opacity-60 uppercase">{lang === 'ar' ? 'ريال' : 'YER'}</span>
                       </p>
                     </div>
@@ -134,7 +137,7 @@ export default function CartPage() {
                       
                       <div className="flex items-center gap-4 md:gap-8 min-w-[80px] md:min-w-[120px] justify-end">
                         <div className="text-right">
-                          <p className="text-sm md:text-base font-black tabular-nums">{formatPrice(item.price * item.quantity)}</p>
+                          <p className="text-sm md:text-base font-black tabular-nums" suppressHydrationWarning>{formatPrice(item.price * item.quantity)}</p>
                         </div>
                         <Button 
                           variant="ghost" 
@@ -190,7 +193,7 @@ export default function CartPage() {
                     <span className="text-muted-foreground text-xs font-bold uppercase tracking-widest">{t.cart.total}</span>
                   </div>
                   <div className="flex items-baseline gap-1.5">
-                    <span className="text-2xl md:text-4xl font-black text-primary tabular-nums">
+                    <span className="text-2xl md:text-4xl font-black text-primary tabular-nums" suppressHydrationWarning>
                       {formatPrice(totalPrice)}
                     </span>
                     <span className="text-[10px] md:text-xs font-black text-muted-foreground/60 uppercase">

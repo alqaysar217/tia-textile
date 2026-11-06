@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -130,8 +131,11 @@ export function Footer() {
               </li>
             </ul>
             
-            {/* Mini Map Container */}
-            <div className="mt-6 w-full h-32 md:h-40 rounded-2xl overflow-hidden border border-white/10 shadow-inner group relative">
+            {/* Mini Map Container - Height increased and suppression added for hydration stability */}
+            <div 
+              className="mt-6 w-full h-40 md:h-52 rounded-2xl overflow-hidden border border-white/10 shadow-inner group relative"
+              suppressHydrationWarning
+            >
               {mounted ? (
                 <>
                   <iframe 
@@ -139,7 +143,7 @@ export function Footer() {
                     width="100%" 
                     height="100%" 
                     style={{ border: 0 }} 
-                    allowFullScreen={true} 
+                    allowFullScreen
                     loading="lazy" 
                     referrerPolicy="no-referrer-when-downgrade"
                     className="grayscale opacity-50 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-700"
@@ -152,7 +156,6 @@ export function Footer() {
                   </Link>
                 </>
               ) : (
-                /* Static placeholder for SSR to avoid hydration mismatch */
                 <div className="w-full h-full bg-white/5 animate-pulse" />
               )}
             </div>
