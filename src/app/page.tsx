@@ -92,28 +92,44 @@ export default function Home() {
         <Features />
       </div>
 
-      <section className="py-12 md:py-20 bg-background overflow-hidden">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-16 items-center">
-            <div className="relative aspect-video md:aspect-[4/3] max-w-xl mx-auto overflow-hidden rounded-xl md:rounded-2xl shadow-xl">
+      <section className="py-12 md:py-24 bg-primary text-primary-foreground overflow-hidden relative">
+        {/* Decorative Background Pattern */}
+        <div className="absolute inset-0 opacity-10 textile-pattern pointer-events-none" />
+        
+        <div className="container mx-auto px-4 relative z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-20 items-center">
+            <div className="relative aspect-video md:aspect-[4/3] w-full max-w-xl mx-auto overflow-hidden rounded-[2rem] shadow-2xl border-4 border-white/10 group">
               <img 
                 src="https://picsum.photos/seed/association/800/600" 
                 alt="Association Heritage" 
-                className="w-full h-full object-cover transition-transform duration-700 hover:scale-110"
+                className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
               />
-              <div className="absolute inset-0 bg-primary/10 mix-blend-multiply" />
+              <div className="absolute inset-0 bg-primary/20 mix-blend-multiply" />
             </div>
-            <div className="space-y-4 md:space-y-6 text-center lg:text-right rtl:lg:text-right ltr:lg:text-left">
-              <h2 className="text-2xl md:text-5xl font-black leading-tight">
-                {t.about.historyTitle}
-              </h2>
-              <div className="space-y-3 md:space-y-4 text-sm md:text-lg text-muted-foreground leading-relaxed">
-                <p>{t.about.content}</p>
-                <p>{t.about.historyContent}</p>
+            
+            <div className="space-y-6 md:space-y-10 text-center lg:text-right rtl:lg:text-right ltr:lg:text-left">
+              <div className="space-y-4">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-white text-[10px] md:text-xs font-black uppercase tracking-widest border border-white/10">
+                  <span className="w-2 h-2 rounded-full bg-secondary animate-pulse" />
+                  {lang === 'ar' ? 'أصالة منذ 1973' : 'SINCE 1973'}
+                </div>
+                <h2 className="text-3xl md:text-6xl font-black leading-tight drop-shadow-lg">
+                  {t.about.historyTitle}
+                </h2>
+                <div className="space-y-4 md:space-y-6 text-sm md:text-xl text-primary-foreground/80 leading-relaxed font-medium">
+                  <p>{t.about.content}</p>
+                  <p>{t.about.historyContent}</p>
+                </div>
               </div>
-              <Button size="lg" className="w-full md:w-auto px-10 rounded-full h-12 md:h-14 text-base font-bold shadow-xl hover:scale-105 transition-transform" asChild>
-                <Link href="/about">تعرف على قصتنا الكاملة</Link>
-              </Button>
+              
+              <div className="flex flex-wrap gap-4 justify-center lg:justify-start">
+                <Button size="lg" variant="secondary" className="w-full md:w-auto px-10 rounded-full h-12 md:h-16 text-sm md:text-lg font-black shadow-2xl hover:scale-105 transition-transform" asChild>
+                  <Link href="/about">تعرف على قصتنا الكاملة</Link>
+                </Button>
+                <Button size="lg" variant="outline" className="w-full md:w-auto px-10 rounded-full h-12 md:h-16 text-sm md:text-lg font-black border-white/20 text-white hover:bg-white/10 transition-all" asChild>
+                  <Link href="/contact">{t.nav.contact}</Link>
+                </Button>
+              </div>
             </div>
           </div>
         </div>
