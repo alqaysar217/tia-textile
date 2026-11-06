@@ -1,14 +1,13 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Bell, 
   Search, 
   Menu, 
   User, 
   LogOut, 
-  Maximize,
-  HelpCircle,
+  HelpCircle, 
   Calendar,
   Settings
 } from 'lucide-react';
@@ -30,12 +29,18 @@ import {
 import { Sidebar } from './Sidebar';
 
 export function Header() {
-  const today = new Date().toLocaleDateString('ar-YE', { 
-    weekday: 'long', 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
-  });
+  const [mounted, setMounted] = useState(false);
+  const [today, setToday] = useState('');
+
+  useEffect(() => {
+    setMounted(true);
+    setToday(new Date().toLocaleDateString('ar-YE', { 
+      weekday: 'long', 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    }));
+  }, []);
 
   return (
     <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 md:px-8 z-20">
@@ -67,7 +72,9 @@ export function Header() {
         {/* Date Display */}
         <div className="hidden xl:flex items-center gap-2 text-[11px] font-black text-gray-400 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100">
           <Calendar className="w-3 h-3" />
-          {today}
+          <span suppressHydrationWarning>
+            {mounted ? today : '...'}
+          </span>
         </div>
 
         {/* Support */}
