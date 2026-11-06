@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useTranslation } from './LanguageProvider';
 import { useCart } from './CartProvider';
 import { Button } from '@/components/ui/button';
-import { ShoppingCart, Menu, Globe, Phone, Home, Package, Info, Image, MessageSquare, Tag } from 'lucide-react';
+import { ShoppingCart, Menu, Globe, Phone, Home, Package, Info, Image, MessageSquare, Tag, HelpCircle } from 'lucide-react';
 import {
   Sheet,
   SheetContent,
@@ -25,6 +25,7 @@ export function Navbar() {
     { name: t.nav.gallery, href: '/gallery', icon: <Image className="h-4 w-4" /> },
     { name: t.nav.offers, href: '/offers', icon: <Tag className="h-4 w-4" /> },
     { name: t.nav.contact, href: '/contact', icon: <MessageSquare className="h-4 w-4" /> },
+    { name: t.nav.faq, href: '/faq', icon: <HelpCircle className="h-4 w-4" /> },
   ];
 
   return (
