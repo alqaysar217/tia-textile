@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
@@ -9,31 +9,104 @@ import { useTranslation } from '@/components/LanguageProvider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Lock, Mail, Globe, AlertCircle, LogIn, ShieldCheck } from 'lucide-react';
+import { Lock, Mail, Globe, AlertCircle, LogIn, ShieldCheck, Timer } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function LoginPage() {
   const { lang, setLang, t, dir } = useTranslation();
   const router = useRouter();
   const auth = useAuth();
+  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  
+  // Lockout States
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [lockoutUntil, setLockoutUntil] = useState<number | null>(null);
+  const [timeLeft, setTimeLeft] = useState(0);
+
+  // Load failed attempts from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('prod_login_attempts');
+    if (saved) {
+      const { count, until } = JSON.parse(saved);
+      setFailedAttempts(count);
+      if (until && until > Date.now()) {
+        setLockoutUntil(until);
+      }
+    }
+  }, []);
+
+  // Countdown timer effect
+  useEffect(() => {
+    if (!lockoutUntil) return;
+    
+    const interval = setInterval(() => {
+      const remaining = Math.ceil((lockoutUntil - Date.now()) / 1000);
+      if (remaining <= 0) {
+        setLockoutUntil(null);
+        setTimeLeft(0);
+        clearInterval(interval);
+      } else {
+        setTimeLeft(remaining);
+      }
+    }, 1000);
+    
+    return () => clearInterval(interval);
+  }, [lockoutUntil]);
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!auth) return;
+
+    // Check if currently locked out
+    if (lockoutUntil && Date.now() < lockoutUntil) {
+      return;
+    }
+
     setLoading(true);
     setError('');
+    
     try {
       await signInWithEmailAndPassword(auth, email, password);
+      
+      // SUCCESS: Clear attempts
+      setFailedAttempts(0);
+      setLockoutUntil(null);
+      localStorage.removeItem('prod_login_attempts');
+      
       router.push('/production');
     } catch (err: any) {
+      // FAILURE: Increment attempts
+      const newCount = failedAttempts + 1;
+      setFailedAttempts(newCount);
+      
+      let newUntil = null;
+      if (newCount >= 5) {
+        // 5th fail = 1 min, 6th = 2 min, 7th = 3 min...
+        const minutes = newCount - 4;
+        newUntil = Date.now() + (minutes * 60 * 1000);
+        setLockoutUntil(newUntil);
+      }
+
+      // Save to localStorage
+      localStorage.setItem('prod_login_attempts', JSON.stringify({
+        count: newCount,
+        until: newUntil
+      }));
+
       setError(lang === 'ar' ? 'خطأ في البريد الإلكتروني أو كلمة المرور' : 'Invalid email or password');
     } finally {
       setLoading(false);
     }
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   return (
@@ -48,7 +121,7 @@ export default function LoginPage() {
           <div className="h-1.5 w-full bg-gradient-to-r from-primary via-[#0a7a44] to-secondary" />
           
           <div className="p-8 md:p-12 relative z-10">
-            {/* Branding Section - Now Inside the Card */}
+            {/* Branding Section Inside the Card */}
             <div className="flex flex-col items-center text-center space-y-4 mb-10">
               <div className="w-20 h-20 bg-white rounded-xl flex items-center justify-center shadow-lg border border-gray-50 p-2 group hover:scale-105 transition-transform duration-500">
                 <img src="/images/logo.png" alt="Logo" className="w-full h-full object-contain" />
@@ -72,6 +145,20 @@ export default function LoginPage() {
                 </Alert>
               )}
 
+              {timeLeft > 0 && (
+                <Alert className="rounded-xl border-amber-200 bg-amber-50 animate-pulse">
+                  <Timer className="h-4 w-4 text-amber-600" />
+                  <AlertTitle className="text-xs font-black text-amber-800">
+                    {lang === 'ar' ? 'تم الحظر مؤقتاً' : 'Temporarily Blocked'}
+                  </AlertTitle>
+                  <AlertDescription className="text-[11px] font-bold text-amber-700">
+                    {lang === 'ar' 
+                      ? `يرجى المحاولة مرة أخرى بعد ${formatTime(timeLeft)} دقيقة` 
+                      : `Please try again in ${formatTime(timeLeft)} minutes`}
+                  </AlertDescription>
+                </Alert>
+              )}
+
               {/* Email Field */}
               <div className="space-y-2.5">
                 <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2 ps-1">
@@ -85,7 +172,8 @@ export default function LoginPage() {
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="name@association.com" 
                     required
-                    className="h-12 rounded-xl bg-gray-50/50 border-gray-100 focus:bg-white focus:ring-primary/5 focus:border-primary/30 transition-all text-sm font-bold placeholder:text-gray-300"
+                    disabled={timeLeft > 0 || loading}
+                    className="h-12 rounded-xl bg-gray-50/50 border-gray-100 focus:bg-white focus:ring-primary/5 focus:border-primary/30 transition-all text-sm font-bold placeholder:text-gray-300 disabled:opacity-50"
                   />
                 </div>
               </div>
@@ -108,7 +196,8 @@ export default function LoginPage() {
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••" 
                     required
-                    className="h-12 rounded-xl bg-gray-50/50 border-gray-100 focus:bg-white focus:ring-primary/5 focus:border-primary/30 transition-all text-sm font-bold placeholder:text-gray-300"
+                    disabled={timeLeft > 0 || loading}
+                    className="h-12 rounded-xl bg-gray-50/50 border-gray-100 focus:bg-white focus:ring-primary/5 focus:border-primary/30 transition-all text-sm font-bold placeholder:text-gray-300 disabled:opacity-50"
                   />
                 </div>
               </div>
@@ -117,8 +206,8 @@ export default function LoginPage() {
               <div className="pt-2">
                 <Button 
                   type="submit" 
-                  disabled={loading}
-                  className="w-full h-14 rounded-xl text-sm font-black shadow-xl shadow-primary/10 gap-3 bg-gradient-to-br from-primary via-[#0a7a44] to-[#054d2a] hover:opacity-95 border-none transition-all active:scale-[0.98]"
+                  disabled={loading || timeLeft > 0}
+                  className="w-full h-14 rounded-xl text-sm font-black shadow-xl shadow-primary/10 gap-3 bg-gradient-to-br from-primary via-[#0a7a44] to-[#054d2a] hover:opacity-95 border-none transition-all active:scale-[0.98] disabled:from-gray-400 disabled:to-gray-500"
                 >
                   {loading ? (
                     <span className="flex items-center gap-2 animate-pulse">
