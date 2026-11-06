@@ -10,18 +10,10 @@
         "nameEn": { "type": "string", "description": "Product name in English" },
         "descriptionAr": { "type": "string", "description": "Full description in Arabic" },
         "descriptionEn": { "type": "string", "description": "Full description in English" },
-        "shortDescriptionAr": { "type": "string" },
-        "shortDescriptionEn": { "type": "string" },
         "category": { "type": "string", "enum": ["حليسي", "ملكي", "بيضاني", "حديدي", "سلاطيني", "أخرى"] },
         "price": { "type": "number" },
-        "originalPrice": { "type": "number" },
-        "discount": { "type": "number" },
-        "images": { "type": "array", "items": { "type": "string" } },
         "status": { "type": "string", "enum": ["available", "out_of_stock", "limited", "soon"] },
-        "isFeatured": { "type": "boolean" },
-        "isNew": { "type": "boolean" },
-        "sku": { "type": "string" },
-        "specifications": { "type": "object" }
+        "sku": { "type": "string" }
       },
       "required": ["nameAr", "nameEn", "price", "category", "status"]
     },
@@ -38,31 +30,34 @@
       },
       "required": ["fullName", "role", "email"]
     },
-    "Category": {
-      "title": "Category",
-      "description": "Maawiz categories",
+    "Department": {
+      "title": "Department",
+      "description": "Production department or stage (e.g., Sewing, Dyeing)",
       "type": "object",
       "properties": {
         "nameAr": { "type": "string" },
         "nameEn": { "type": "string" },
-        "image": { "type": "string" },
-        "slug": { "type": "string" }
-      }
+        "descriptionAr": { "type": "string" },
+        "active": { "type": "boolean" }
+      },
+      "required": ["nameAr", "nameEn"]
     },
-    "Stat": {
-      "title": "Association Statistic",
-      "description": "Historical and organizational figures",
+    "Worker": {
+      "title": "Worker Profile",
+      "description": "Factory worker information (Piece-rate workers)",
       "type": "object",
       "properties": {
-        "labelAr": { "type": "string" },
-        "labelEn": { "type": "string" },
-        "value": { "type": "string" },
-        "icon": { "type": "string" }
-      }
+        "fullName": { "type": "string" },
+        "departmentId": { "type": "string" },
+        "phoneNumber": { "type": "string" },
+        "active": { "type": "boolean" },
+        "joinDate": { "type": "string", "format": "date" }
+      },
+      "required": ["fullName", "departmentId"]
     }
   },
   "auth": {
-    "providers": ["google.com", "password"]
+    "providers": ["password"]
   },
   "firestore": {
     "/products": {
@@ -73,13 +68,13 @@
       "schema": "UserProfile",
       "description": "System users and their permissions"
     },
-    "/categories": {
-      "schema": "Category",
-      "description": "Maawiz categories"
+    "/departments": {
+      "schema": "Department",
+      "description": "Production departments and stages"
     },
-    "/stats": {
-      "schema": "Stat",
-      "description": "Association statistics for the homepage"
+    "/workers": {
+      "schema": "Worker",
+      "description": "Records of factory workers"
     }
   }
 }
