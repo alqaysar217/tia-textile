@@ -131,9 +131,9 @@ export function Footer() {
               </li>
             </ul>
             
-            {/* Mini Map Container - Height increased significantly to meet user request */}
+            {/* Mini Map Container - Height increased to meet user request */}
             <div 
-              className="mt-6 w-full h-52 md:h-64 rounded-2xl overflow-hidden border border-white/10 shadow-inner group relative"
+              className="mt-6 w-full h-64 md:h-80 rounded-2xl overflow-hidden border border-white/10 shadow-inner group relative"
               suppressHydrationWarning
             >
               {mounted ? (
