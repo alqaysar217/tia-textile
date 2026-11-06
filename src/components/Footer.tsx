@@ -4,7 +4,20 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useTranslation } from './LanguageProvider';
-import { Facebook, Instagram, Mail, Phone, MapPin, Package, Info, Image as ImageIcon, HelpCircle, Tag } from 'lucide-react';
+import { 
+  Facebook, 
+  Instagram, 
+  Mail, 
+  Phone, 
+  MapPin, 
+  Package, 
+  Info, 
+  Image as ImageIcon, 
+  HelpCircle, 
+  Tag,
+  Home,
+  MessageSquare
+} from 'lucide-react';
 
 export function Footer() {
   const { lang, t } = useTranslation();
@@ -15,10 +28,13 @@ export function Footer() {
   }, []);
 
   const usefulLinks = [
+    { name: t.nav.home, href: '/', icon: <Home className="h-4 w-4" /> },
     { name: t.nav.products, href: '/products', icon: <Package className="h-4 w-4" /> },
     { name: t.nav.about, href: '/about', icon: <Info className="h-4 w-4" /> },
     { name: t.nav.gallery, href: '/gallery', icon: <ImageIcon className="h-4 w-4" /> },
+    { name: t.nav.offers, href: '/offers', icon: <Tag className="h-4 w-4" /> },
     { name: t.nav.faq, href: '/faq', icon: <HelpCircle className="h-4 w-4" /> },
+    { name: t.nav.contact, href: '/contact', icon: <MessageSquare className="h-4 w-4" /> },
   ];
 
   const categoryLinks = [
@@ -131,7 +147,7 @@ export function Footer() {
               </li>
             </ul>
             
-            {/* Mini Map Container - Height increased to meet user request */}
+            {/* Mini Map Container */}
             <div 
               className="mt-6 w-full h-64 md:h-80 rounded-2xl overflow-hidden border border-white/10 shadow-inner group relative"
               suppressHydrationWarning
