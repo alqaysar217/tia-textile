@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -64,7 +63,7 @@ export default function ProductionLayout({
             <Sidebar />
           </aside>
 
-          <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+          <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative border-r border-gray-100/50">
             <Header />
             <main className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8">
               {children}
@@ -74,16 +73,19 @@ export default function ProductionLayout({
         
         <style jsx global>{`
           .production-card {
-            @apply bg-white border border-gray-100 rounded-[1.5rem] p-6 shadow-sm hover:shadow-md transition-all duration-300;
+            @apply bg-white border border-gray-200/60 rounded-xl p-6 shadow-sm hover:shadow-md transition-all duration-300;
           }
           .production-table-header {
-            @apply bg-gray-50/50 text-gray-500 font-black text-[10px] uppercase tracking-[0.1em] px-4 py-4 border-b border-gray-100;
+            @apply bg-gray-50/80 text-gray-500 font-black text-[10px] uppercase tracking-[0.1em] px-4 py-4 border-b border-gray-200/60;
           }
           .production-table-cell {
-            @apply px-4 py-4 border-b border-gray-50 text-sm font-medium;
+            @apply px-4 py-4 border-b border-gray-100 text-sm font-medium;
           }
           .status-badge {
-            @apply inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider;
+            @apply inline-flex items-center px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-wider;
+          }
+          .btn-production {
+            @apply h-11 px-6 rounded-lg font-black transition-all active:scale-95 shadow-sm;
           }
         `}</style>
       </div>
