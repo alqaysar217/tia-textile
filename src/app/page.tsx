@@ -123,10 +123,10 @@ export default function Home() {
         <CategoriesSection />
       </div>
 
-      <Testimonials />
+      <Testimonials showViewMore={true} limit={3} />
       
       <div className="bg-background">
-        <FAQ />
+        <FAQ showViewMore={true} />
       </div>
 
       <FloatingWhatsApp />

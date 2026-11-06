@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -9,9 +10,16 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
+import Link from 'next/link';
 
-export function FAQ() {
-  const { lang } = useTranslation();
+interface FAQProps {
+  showViewMore?: boolean;
+}
+
+export function FAQ({ showViewMore = false }: FAQProps) {
+  const { lang, t, dir } = useTranslation();
 
   const faqs = [
     {
@@ -23,8 +31,8 @@ export function FAQ() {
     {
       qAr: 'أين تقع الجمعية؟',
       qEn: 'Where is the association located?',
-      aAr: 'يقع المقر الرئيسي في مديرية الروضة، محافظة شبوة. ولدينا فرع مبيعات في مدينة عتق (شبوة مول).',
-      aEn: 'The HQ is in Al-Rawdah, Shabwa. We have a sales branch in Ataq City (Shabwa Mall).'
+      aAr: 'يقع المقر الرئيسي في مديرية الروضة، محافظة شبوة. ولدينا فرع مبيعات رئيسي في مدينة عتق (الشارع العام) وفرع آخر في شبوة مول.',
+      aEn: 'The HQ is in Al-Rawdah, Shabwa. We have main sales branches in Ataq City (Main St) and Shabwa Mall.'
     },
     {
       qAr: 'ما أنواع المعاوز التي توفرها الجمعية؟',
@@ -35,8 +43,8 @@ export function FAQ() {
     {
       qAr: 'كيف يمكنني الطلب؟',
       qEn: 'How can I order?',
-      aAr: 'يمكنك اختيار المنتجات وإضافتها للسلة ثم إتمام الطلب عبر واتساب للتواصل المباشر وتأكيد التفاصيل.',
-      aEn: 'You can choose products, add them to the cart, and complete the order via WhatsApp for direct communication.'
+      aAr: 'يمكنك اختيار المنتجات وإضافتها للسلة ثم إتمام الطلب عبر واتساب للتواصل المباشر مع فريق المبيعات وتأكيد التفاصيل.',
+      aEn: 'You can choose products, add them to the cart, and complete the order via WhatsApp for direct communication with the sales team.'
     }
   ];
 
@@ -44,8 +52,8 @@ export function FAQ() {
     <section className="py-24 bg-background">
       <div className="container mx-auto px-4">
         <div className="text-center max-w-2xl mx-auto mb-16 space-y-4">
-          <h2 className="text-3xl md:text-4xl font-bold">{lang === 'ar' ? 'الأسئلة الشائعة' : 'Frequently Asked Questions'}</h2>
-          <p className="text-muted-foreground">{lang === 'ar' ? 'إليك بعض الإجابات على التساؤلات الأكثر تكراراً.' : 'Here are answers to the most common questions.'}</p>
+          <h2 className="text-3xl md:text-4xl font-bold">{t.faq.title}</h2>
+          <p className="text-muted-foreground">{t.faq.subtitle}</p>
         </div>
         <div className="max-w-3xl mx-auto">
           <Accordion type="single" collapsible className="w-full">
@@ -66,6 +74,17 @@ export function FAQ() {
               </AccordionItem>
             ))}
           </Accordion>
+
+          {showViewMore && (
+            <div className="mt-12 text-center">
+              <Button variant="ghost" className="font-black text-primary hover:bg-primary/5 rounded-full px-8 group" asChild>
+                <Link href="/faq">
+                  {t.faq.viewMore}
+                  {dir === 'rtl' ? <ArrowLeft className="ms-2 h-4 w-4 transition-transform group-hover:-translate-x-1" /> : <ArrowRight className="ms-2 h-4 w-4 transition-transform group-hover:translate-x-1" />}
+                </Link>
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </section>

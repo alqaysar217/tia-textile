@@ -3,13 +3,20 @@
 
 import React from 'react';
 import { useTranslation } from './LanguageProvider';
-import { Quote, Star } from 'lucide-react';
+import { Quote, Star, ArrowLeft, ArrowRight } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 
-export function Testimonials() {
-  const { lang, t } = useTranslation();
+interface TestimonialsProps {
+  showViewMore?: boolean;
+  limit?: number;
+}
 
-  const reviews = [
+export function Testimonials({ showViewMore = false, limit }: TestimonialsProps) {
+  const { lang, t, dir } = useTranslation();
+
+  const allReviews = [
     {
       nameAr: 'أحمد صالح اليافعي',
       nameEn: 'Ahmed Saleh Al-Yafei',
@@ -39,12 +46,43 @@ export function Testimonials() {
       contentEn: 'I ordered via WhatsApp and received the Maawiz in Aden in record time. The packaging is great and the product in reality is much more beautiful than the photos. Thank you.',
       rating: 5,
       image: 'https://picsum.photos/seed/user3/100/100'
+    },
+    {
+      nameAr: 'عمر المفلحي',
+      nameEn: 'Omar Al-Muflihi',
+      roleAr: 'مغترب يمني',
+      roleEn: 'Yemeni Expat',
+      contentAr: 'اشتريت عدة معاوز لهدايا في الخارج. الجميع أعجب بجودة العمل ودقة النقوش. الجمعية تمثل اليمن خير تمثيل.',
+      contentEn: 'I bought several Maawiz for gifts abroad. Everyone admired the quality of work and precision of patterns. The association represents Yemen perfectly.',
+      rating: 5,
+      image: 'https://picsum.photos/seed/user4/100/100'
+    },
+    {
+      nameAr: 'علي باحاج',
+      nameEn: 'Ali Bahaj',
+      roleAr: 'مهتم بالتراث',
+      roleEn: 'Heritage Enthusiast',
+      contentAr: 'من الرائع رؤية الحفاظ على هذا التراث في الروضة. المعاوز التي تنتجها الجمعية لها روح خاصة لا تجدها في الصناعات الآلية.',
+      contentEn: 'It is wonderful to see this heritage preserved in Al-Rawdah. The Maawiz produced by the association have a special spirit not found in machine-made industries.',
+      rating: 5,
+      image: 'https://picsum.photos/seed/user5/100/100'
+    },
+    {
+      nameAr: 'محمد بن سالم',
+      nameEn: 'Mohammed Bin Salem',
+      roleAr: 'عميل جديد',
+      roleEn: 'New Customer',
+      contentAr: 'سرعة في التجاوب عبر واتساب ودقة في الوصف. وصلتني الطلبية كما تمنيت وأكثر. أنصح الجميع بالتعامل معهم.',
+      contentEn: 'Fast response via WhatsApp and accurate description. The order arrived exactly as I hoped and more. I recommend everyone to deal with them.',
+      rating: 5,
+      image: 'https://picsum.photos/seed/user6/100/100'
     }
   ];
 
+  const displayReviews = limit ? allReviews.slice(0, limit) : allReviews;
+
   return (
     <section className="py-20 bg-muted/20 relative overflow-hidden">
-      {/* Decorative background elements */}
       <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -z-10 -mr-32 -mt-32" />
       <div className="absolute bottom-0 left-0 w-64 h-64 bg-secondary/5 rounded-full blur-3xl -z-10 -ml-32 -mb-32" />
 
@@ -63,7 +101,7 @@ export function Testimonials() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {reviews.map((review, idx) => (
+          {displayReviews.map((review, idx) => (
             <div 
               key={idx} 
               className="group bg-background p-8 rounded-[2rem] border border-border/50 shadow-sm hover:shadow-xl hover:border-primary/20 transition-all duration-500 relative"
@@ -99,6 +137,17 @@ export function Testimonials() {
             </div>
           ))}
         </div>
+
+        {showViewMore && (
+          <div className="mt-16 text-center">
+            <Button size="lg" variant="outline" className="rounded-full px-10 h-14 text-base font-black border-primary text-primary hover:bg-primary hover:text-white transition-all shadow-xl group" asChild>
+              <Link href="/testimonials">
+                {t.testimonials.viewMore}
+                {dir === 'rtl' ? <ArrowLeft className="ms-2 h-5 w-5 transition-transform group-hover:-translate-x-1" /> : <ArrowRight className="ms-2 h-5 w-5 transition-transform group-hover:translate-x-1" />}
+              </Link>
+            </Button>
+          </div>
+        )}
       </div>
     </section>
   );

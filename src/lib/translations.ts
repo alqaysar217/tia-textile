@@ -57,7 +57,13 @@ export const translations = {
     },
     testimonials: {
       title: 'ماذا يقول عملاؤنا؟',
-      subtitle: 'نفتخر بثقة آلاف العملاء الذين اختاروا التميز والأصالة من جمعيتنا.'
+      subtitle: 'نفتخر بثقة آلاف العملاء الذين اختاروا التميز والأصالة من جمعيتنا.',
+      viewMore: 'عرض المزيد من الآراء'
+    },
+    faq: {
+      title: 'الأسئلة الشائعة',
+      subtitle: 'إليك بعض الإجابات على التساؤلات الأكثر تكراراً.',
+      viewMore: 'عرض كافة الأسئلة'
     },
     footer: {
       description: 'جمعية الصناعات النسيجية للمعاوز والغزل – الروضة، محافظة شبوة، اليمن. نحافظ على تراثنا وننسج مستقبلنا.',
@@ -119,7 +125,13 @@ export const translations = {
     },
     testimonials: {
       title: 'What Our Customers Say',
-      subtitle: 'We are proud of the trust of thousands of customers who chose excellence and authenticity.'
+      subtitle: 'We are proud of the trust of thousands of customers who chose excellence and authenticity.',
+      viewMore: 'View More Reviews'
+    },
+    faq: {
+      title: 'Frequently Asked Questions',
+      subtitle: 'Here are answers to the most common questions.',
+      viewMore: 'View All FAQs'
     },
     footer: {
       description: 'Textile Industries Cooperative Association – Al-Rawdah, Shabwa, Yemen. Preserving our heritage and weaving our future.',
