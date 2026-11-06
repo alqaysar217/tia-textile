@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useTranslation } from './LanguageProvider';
 import { useCart } from './CartProvider';
 import { Button } from '@/components/ui/button';
-import { ShoppingCart, Menu, Globe, Phone, Home, Package, Info, Image, MessageSquare, Tag, HelpCircle } from 'lucide-react';
+import { ShoppingCart, Menu, Globe, Phone, Home, Package, Info, Image, MessageSquare, Tag, HelpCircle, LayoutDashboard } from 'lucide-react';
 import {
   Sheet,
   SheetContent,
@@ -67,6 +67,12 @@ export function Navbar() {
 
         {/* Actions Menu */}
         <div className="flex items-center gap-2">
+          {/* ERP Entry Point - Discreet and Integrated */}
+          <Link href="/production" className="hidden xl:flex items-center gap-2 text-[10px] font-black text-muted-foreground hover:text-primary transition-colors border-r border-border/50 pe-4 me-2">
+            <LayoutDashboard className="w-3 h-3" />
+            {lang === 'ar' ? 'دخول نظام إدارة الإنتاج' : 'Production Management'}
+          </Link>
+
           <Button
             variant="ghost"
             size="icon"
@@ -128,6 +134,12 @@ export function Navbar() {
                     {link.name}
                   </Link>
                 ))}
+                
+                <Link href="/production" className="flex items-center gap-4 text-base font-bold p-4 rounded-2xl bg-primary/5 text-primary">
+                  <LayoutDashboard className="w-5 h-5" />
+                  {lang === 'ar' ? 'نظام إدارة الإنتاج' : 'Production System'}
+                </Link>
+
                 <Button className="mt-6 gap-3 h-14 rounded-2xl text-base font-bold shadow-lg" asChild>
                   <a href="https://wa.me/967771687041" target="_blank" rel="noopener noreferrer">
                     <Phone className="h-5 w-5" />
