@@ -24,12 +24,14 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useSidebar } from '@/components/ui/sidebar';
 import { useTranslation } from '@/components/LanguageProvider';
+import { useAuth } from '@/firebase';
 
 export function Header() {
   const [mounted, setMounted] = useState(false);
   const [today, setToday] = useState('');
   const { toggleSidebar } = useSidebar();
   const { lang, setLang, t } = useTranslation();
+  const auth = useAuth();
 
   useEffect(() => {
     setMounted(true);
@@ -40,6 +42,14 @@ export function Header() {
       day: 'numeric' 
     }));
   }, [lang]);
+
+  const handleLogout = async () => {
+    try {
+      await auth.signOut();
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
 
   return (
     <header className="h-20 bg-white border-b border-gray-100 flex items-center justify-between px-6 md:px-10 z-20">
@@ -115,7 +125,10 @@ export function Header() {
               {t.production.settings}
             </DropdownMenuItem>
             <DropdownMenuSeparator className="bg-gray-50" />
-            <DropdownMenuItem className="text-sm font-bold gap-4 text-red-500 focus:bg-red-50 focus:text-red-600 cursor-pointer p-3 rounded-xl">
+            <DropdownMenuItem 
+              className="text-sm font-bold gap-4 text-red-500 focus:bg-red-50 focus:text-red-600 cursor-pointer p-3 rounded-xl"
+              onClick={handleLogout}
+            >
               <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center"><LogOut className="w-4 h-4" /></div>
               {t.production.logout}
             </DropdownMenuItem>
