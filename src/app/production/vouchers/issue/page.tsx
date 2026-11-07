@@ -355,7 +355,7 @@ export default function MaterialIssuePage() {
 
           <form onSubmit={handleSaveVoucher} className="p-6 space-y-6 bg-white max-h-[85vh] overflow-y-auto no-scrollbar">
             
-            {/* 1. TOP ROW: DATE AND WORKER PICKER */}
+            {/* 1. TOP ROW: DATE AND PRODUCTION ORDER */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
@@ -364,9 +364,39 @@ export default function MaterialIssuePage() {
                 <Input type="date" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} className="h-12 font-bold text-xs bg-slate-50 border-slate-200" required />
               </div>
 
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
+                  <Workflow className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'أمر الإنتاج المستهدف' : 'PRODUCTION ORDER'}
+                </Label>
+                <select value={formData.orderId} onChange={(e) => setFormData({...formData, orderId: e.target.value})} className="w-full h-12 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none" required>
+                  <option value="">{lang === 'ar' ? '-- اختر أمر الإنتاج --' : '-- Select Order --'}</option>
+                  {activeOrders?.map(o => <option key={o.id} value={o.id}>{o.orderNumber} - {o.title}</option>)}
+                </select>
+              </div>
+            </div>
+
+            {/* 2. SECOND ROW: DEPT FILTER AND WORKER PICKER */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
+                  <Building2 className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'القسم (فلترة)' : 'FILTER BY DEPARTMENT'}
+                </Label>
+                <select 
+                  value={selectedDeptId} 
+                  onChange={(e) => {
+                    setSelectedDeptId(e.target.value);
+                    setFormData({...formData, workerId: ''}); // Clear worker when dept changes
+                  }} 
+                  className="w-full h-12 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none focus:ring-1 focus:ring-emerald-500"
+                >
+                  <option value="">{lang === 'ar' ? 'جميع الأقسام' : 'All Departments'}</option>
+                  {activeDepartments?.map(d => <option key={d.id} value={d.id}>{lang === 'ar' ? d.nameAr : d.nameEn}</option>)}
+                </select>
+              </div>
+
               <div className="space-y-1.5 flex flex-col">
                 <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
-                  <Users2 className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'العامل المستلم للمواد' : 'RECEIVING PERSONNEL'}
+                  <Users2 className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'العامل المستلم' : 'RECEIVING PERSONNEL'}
                 </Label>
                 
                 <Popover open={isWorkerPopoverOpen} onOpenChange={setIsWorkerPopoverOpen}>
@@ -384,7 +414,7 @@ export default function MaterialIssuePage() {
                             <AvatarImage src={selectedWorker.photoUrl} className="object-cover" />
                             <AvatarFallback className="text-[9px] font-black bg-slate-200 text-slate-600">{selectedWorker.fullName?.charAt(0)}</AvatarFallback>
                           </Avatar>
-                          <div className="flex flex-col items-start overflow-hidden">
+                          <div className="flex flex-col items-start overflow-hidden text-right">
                             <span className="text-[11px] font-black text-slate-900 truncate">{selectedWorker.fullName}</span>
                             <span className="text-[8px] font-bold text-slate-400 tabular-nums uppercase">{selectedWorker.workerId}</span>
                           </div>
@@ -407,11 +437,11 @@ export default function MaterialIssuePage() {
                         />
                       </div>
                     </div>
-                    <ScrollArea className="h-[250px]">
+                    <ScrollArea className="h-[280px]">
                       <div className="p-1">
                         {filteredWorkers.length === 0 ? (
                           <div className="text-center py-10">
-                            <p className="text-xs font-bold text-slate-400">{lang === 'ar' ? 'لا يوجد عمال يطابقون البحث' : 'No personnel found'}</p>
+                            <p className="text-xs font-bold text-slate-400">{lang === 'ar' ? 'لا يوجد عمال يطابقون الفلتر' : 'No personnel found'}</p>
                           </div>
                         ) : filteredWorkers.map(w => (
                           <button
@@ -430,7 +460,7 @@ export default function MaterialIssuePage() {
                               <AvatarImage src={w.photoUrl} className="object-cover" />
                               <AvatarFallback className="text-[10px] font-black bg-slate-100 text-slate-500">{w.fullName?.charAt(0)}</AvatarFallback>
                             </Avatar>
-                            <div className="flex-1 overflow-hidden">
+                            <div className="flex-1 overflow-hidden text-right">
                               <p className={cn("text-xs font-black leading-tight", formData.workerId === w.id ? "text-emerald-700" : "text-slate-800")}>{w.fullName}</p>
                               <p className="text-[9px] font-bold text-slate-400 mt-0.5 uppercase tracking-widest tabular-nums">{w.workerId}</p>
                             </div>
@@ -441,36 +471,6 @@ export default function MaterialIssuePage() {
                     </ScrollArea>
                   </PopoverContent>
                 </Popover>
-              </div>
-            </div>
-
-            {/* 2. SECOND ROW: ORDER AND DEPT FILTER */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
-                  <Workflow className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'أمر الإنتاج المستهدف' : 'PRODUCTION ORDER'}
-                </Label>
-                <select value={formData.orderId} onChange={(e) => setFormData({...formData, orderId: e.target.value})} className="w-full h-12 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none" required>
-                  <option value="">{lang === 'ar' ? '-- اختر أمر الإنتاج --' : '-- Select Order --'}</option>
-                  {activeOrders?.map(o => <option key={o.id} value={o.id}>{o.orderNumber} - {o.title}</option>)}
-                </select>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
-                  <Building2 className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'فلترة حسب القسم' : 'FILTER BY DEPARTMENT'}
-                </Label>
-                <select 
-                  value={selectedDeptId} 
-                  onChange={(e) => {
-                    setSelectedDeptId(e.target.value);
-                    setFormData({...formData, workerId: ''});
-                  }} 
-                  className="w-full h-12 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none"
-                >
-                  <option value="">{lang === 'ar' ? 'عرض جميع الأقسام' : 'All Departments'}</option>
-                  {activeDepartments?.map(d => <option key={d.id} value={d.id}>{lang === 'ar' ? d.nameAr : d.nameEn}</option>)}
-                </select>
               </div>
             </div>
 
@@ -528,10 +528,10 @@ export default function MaterialIssuePage() {
                         <TableCell className="px-4 py-2 text-center text-[10px] font-bold text-slate-400 uppercase">{item.unit}</TableCell>
                         <TableCell className="px-4 py-2">
                           <div className="flex justify-end gap-1">
-                            <Button type="button" variant="ghost" size="icon" onClick={() => editItem(item)} className="h-7 w-7 text-emerald-300 hover:text-emerald-600 hover:bg-emerald-50">
+                            <Button type="button" variant="ghost" size="icon" onClick={() => editItem(item)} className="h-7 w-7 text-emerald-300 hover:text-emerald-600 hover:bg-emerald-50" title={lang === 'ar' ? 'تعديل' : 'Edit'}>
                               <Edit2 className="w-3.5 h-3.5" />
                             </Button>
-                            <Button type="button" variant="ghost" size="icon" onClick={() => removeItem(item.id)} className="h-7 w-7 text-rose-300 hover:text-rose-600 hover:bg-rose-50">
+                            <Button type="button" variant="ghost" size="icon" onClick={() => removeItem(item.id)} className="h-7 w-7 text-rose-300 hover:text-rose-600 hover:bg-rose-50" title={lang === 'ar' ? 'حذف' : 'Remove'}>
                               <Trash2 className="w-3.5 h-3.5" />
                             </Button>
                           </div>
