@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import ReactDom from 'react-dom';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
@@ -106,11 +105,18 @@ export function Sidebar() {
 
   return (
     <div className={cn(
-      "flex flex-col h-full premium-gradient text-white/80 transition-all duration-300 border-l border-white/5 shadow-2xl",
+      "flex flex-col h-full premium-gradient text-white/80 transition-all duration-300 border-l border-white/5 shadow-2xl relative overflow-hidden",
       isCollapsed ? "w-20" : "w-72"
     )}>
+      {/* 1. Luxurious Foggy Corners (Glassmorphism Effect) */}
+      <div className="absolute -top-24 -right-24 w-64 h-64 bg-emerald-400/10 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-emerald-300/5 rounded-full blur-[100px] pointer-events-none" />
+      
+      {/* 2. Micro-Textile Pattern Overlay */}
+      <div className="absolute inset-0 opacity-[0.04] pointer-events-none textile-pattern mix-blend-overlay" />
+
       {/* Brand Section */}
-      <div className={cn("mb-10 pt-8", isCollapsed ? "px-4" : "px-8")}>
+      <div className={cn("mb-10 pt-8 relative z-10", isCollapsed ? "px-4" : "px-8")}>
         <div className="flex items-center gap-4 group">
           <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center border border-white/20 shrink-0 overflow-hidden p-1 shadow-xl group-hover:scale-105 transition-transform duration-300">
             <img 
@@ -129,7 +135,7 @@ export function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-2 px-4 overflow-y-auto overflow-x-hidden no-scrollbar">
+      <nav className="flex-1 space-y-2 px-4 overflow-y-auto overflow-x-hidden no-scrollbar relative z-10">
         {navigation.map((group) => (
           <Collapsible key={group.name} defaultOpen={!isCollapsed && (group.name === t.production.dashboard || group.name === t.production.production || group.name === t.production.management)}>
             <CollapsibleTrigger disabled={isCollapsed} className={cn(
@@ -171,8 +177,8 @@ export function Sidebar() {
       </nav>
 
       {/* Footer Info Area */}
-      <div className={cn("pt-6 mt-6 border-t border-white/10 pb-8", isCollapsed ? "px-4" : "px-6")}>
-        <div className="p-4 bg-black/10 rounded-[1.5rem] border border-white/5 space-y-4">
+      <div className={cn("pt-6 mt-6 border-t border-white/10 pb-8 relative z-10", isCollapsed ? "px-4" : "px-6")}>
+        <div className="p-4 bg-black/10 rounded-[1.5rem] border border-white/5 space-y-4 shadow-inner">
           {!isCollapsed && (
             <div className="flex items-center gap-3 animate-in fade-in duration-500">
               <div className="w-10 h-10 rounded-xl bg-emerald-400/20 flex items-center justify-center text-emerald-300 text-xs font-black border border-emerald-400/20 shadow-inner">
