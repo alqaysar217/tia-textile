@@ -490,31 +490,31 @@ export default function MaterialIssuePage() {
             </div>
 
             {/* 3. ITEM SELECTION BOX */}
-            <div className="p-4 bg-slate-900 rounded-xl border border-slate-800 shadow-xl space-y-4">
-              <h3 className="text-[10px] font-black text-emerald-400 uppercase tracking-widest flex items-center gap-2">
+            <div className="p-4 bg-emerald-50/30 rounded-xl border border-emerald-100 shadow-sm space-y-4">
+              <h3 className="text-[10px] font-black text-emerald-700 uppercase tracking-widest flex items-center gap-2">
                 <Package className="w-3.5 h-3.5" /> {lang === 'ar' ? 'إضافة أصناف الخيوط والمواد من المخزن' : 'ADD RAW MATERIALS FROM INVENTORY'}
               </h3>
               <div className="flex flex-col md:flex-row gap-3 items-end">
                 <div className="flex-1 space-y-1.5">
-                  <Label className="text-[9px] font-bold text-slate-400">{lang === 'ar' ? 'الصنف المتوفر' : 'ITEM'}</Label>
+                  <Label className="text-[9px] font-bold text-slate-500">{lang === 'ar' ? 'الصنف المتوفر' : 'ITEM'}</Label>
                   <select 
                     value={currentItem.id} 
                     onChange={(e) => setCurrentItem({ ...currentItem, id: e.target.value })}
-                    className="w-full h-10 px-3 bg-slate-800 text-white border border-slate-700 rounded-md text-xs font-bold outline-none focus:ring-1 focus:ring-emerald-500"
+                    className="w-full h-10 px-3 bg-white text-slate-900 border border-slate-200 rounded-md text-xs font-bold outline-none focus:ring-1 focus:ring-emerald-500"
                   >
                     <option value="">{lang === 'ar' ? '-- اختر مادة من المخزن --' : '-- Select Material --'}</option>
                     {materials?.filter(m => (m.currentQty || 0) > 0).map(m => (
-                      <option key={m.id} value={m.id} className="text-white">{m.nameAr} ({m.currentQty} {m.unit})</option>
+                      <option key={m.id} value={m.id} className="text-slate-900">{m.nameAr} ({m.currentQty} {m.unit})</option>
                     ))}
                   </select>
                 </div>
                 <div className="w-32 space-y-1.5">
-                  <Label className="text-[9px] font-bold text-slate-400">{lang === 'ar' ? 'الكمية' : 'QTY'}</Label>
+                  <Label className="text-[9px] font-bold text-slate-500">{lang === 'ar' ? 'الكمية' : 'QTY'}</Label>
                   <Input 
                     type="number" 
                     value={currentItem.qty} 
                     onChange={(e) => setCurrentItem({ ...currentItem, qty: Number(e.target.value) })}
-                    className="h-10 font-bold text-xs bg-slate-800 text-white border border-slate-700 tabular-nums" 
+                    className="h-10 font-bold text-xs bg-white text-slate-900 border border-slate-200 tabular-nums" 
                   />
                 </div>
                 <Button type="button" onClick={handleAddItem} className="h-10 px-6 bg-emerald-600 hover:bg-emerald-500 text-white rounded-md font-black text-xs gap-2 border-none shadow-lg">
