@@ -57,6 +57,21 @@
         "joinDate": { "type": "string", "format": "date" }
       },
       "required": ["fullName", "departmentId"]
+    },
+    "Material": {
+      "title": "Raw Material",
+      "description": "Raw materials and components used in production",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string" },
+        "nameAr": { "type": "string" },
+        "nameEn": { "type": "string" },
+        "category": { "type": "string", "enum": ["yarn", "dye", "packaging", "auxiliary", "other"] },
+        "unit": { "type": "string", "enum": ["kg", "yard", "piece", "roll", "liter"] },
+        "minQty": { "type": "number", "description": "Safety stock level" },
+        "status": { "type": "string" }
+      },
+      "required": ["code", "nameAr", "category", "unit"]
     }
   },
   "auth": {
@@ -78,6 +93,10 @@
     "/workers": {
       "schema": "Worker",
       "description": "Records of factory workers"
+    },
+    "/materials": {
+      "schema": "Material",
+      "description": "Master data for raw materials"
     }
   }
 }

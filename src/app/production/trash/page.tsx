@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -12,7 +13,8 @@ import {
   AlertTriangle,
   Factory,
   Users,
-  User
+  User,
+  Box
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,21 +63,28 @@ export default function TrashPage() {
     return query(collection(db, 'workers'), where('status', '==', 'deleted'));
   }, [db]);
 
+  const materialsTrashQuery = useMemo(() => {
+    if (!db) return null;
+    return query(collection(db, 'materials'), where('status', '==', 'deleted'));
+  }, [db]);
+
   const { data: archivedDepts, loading: deptsLoading } = useCollection<any>(deptsTrashQuery);
   const { data: archivedWorkers, loading: workersLoading } = useCollection<any>(workersTrashQuery);
+  const { data: archivedMaterials, loading: materialsLoading } = useCollection<any>(materialsTrashQuery);
 
-  const loading = deptsLoading || workersLoading;
+  const loading = deptsLoading || workersLoading || materialsLoading;
 
   // Unified list of archived items
   const allArchivedItems = useMemo(() => {
     const depts = (archivedDepts || []).map(d => ({ ...d, type: 'department' }));
     const workers = (archivedWorkers || []).map(w => ({ ...w, type: 'worker' }));
-    return [...depts, ...workers].sort((a, b) => {
+    const materials = (archivedMaterials || []).map(m => ({ ...m, type: 'material' }));
+    return [...depts, ...workers, ...materials].sort((a, b) => {
       const dateA = a.deletedAt?.seconds || 0;
       const dateB = b.deletedAt?.seconds || 0;
       return dateB - dateA;
     });
-  }, [archivedDepts, archivedWorkers]);
+  }, [archivedDepts, archivedWorkers, archivedMaterials]);
 
   const filtered = useMemo(() => {
     return allArchivedItems.filter(item => {
@@ -91,7 +100,10 @@ export default function TrashPage() {
 
     setIsSubmitting(true);
     const targetId = selectedItem.id;
-    const targetCollection = selectedItem.type === 'department' ? 'departments' : 'workers';
+    let targetCollection = 'departments';
+    if (selectedItem.type === 'worker') targetCollection = 'workers';
+    if (selectedItem.type === 'material') targetCollection = 'materials';
+    
     const currentAction = actionType;
 
     setSelectedItem(null);
@@ -180,7 +192,7 @@ export default function TrashPage() {
             <Input 
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder={lang === 'ar' ? 'بحث باسم العامل أو القسم...' : 'Search records...'}
+              placeholder={lang === 'ar' ? 'بحث باسم العامل أو القسم أو المادة...' : 'Search records...'}
               className={`${dir === 'rtl' ? 'pr-10' : 'pl-10'} h-9 bg-white border-slate-200 rounded-md text-xs font-bold focus:ring-emerald-500/10 focus:border-emerald-500`}
             />
           </div>
@@ -213,15 +225,17 @@ export default function TrashPage() {
                   <TableRow><TableCell colSpan={5} className="text-center py-20 font-bold text-slate-300">سلة المهملات فارغة حالياً</TableCell></TableRow>
                 ) : filtered.map((item) => {
                   const days = getDaysRemaining(item.deletedAt);
-                  const itemName = item.type === 'department' ? item.nameAr : item.fullName;
-                  const itemCode = item.type === 'department' ? item.code : item.workerId;
+                  const itemName = item.type === 'worker' ? item.fullName : item.nameAr;
+                  const itemCode = item.type === 'worker' ? item.workerId : item.code;
                   
                   return (
                     <TableRow key={item.id} className="group hover:bg-slate-50/50 border-b border-slate-100">
                       <TableCell className="px-6 py-3">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 bg-slate-100 rounded flex items-center justify-center text-slate-400">
-                            {item.type === 'department' ? <Factory className="w-4 h-4" /> : <User className="w-4 h-4" />}
+                            {item.type === 'department' ? <Factory className="w-4 h-4" /> : 
+                             item.type === 'worker' ? <User className="w-4 h-4" /> : 
+                             <Box className="w-4 h-4" />}
                           </div>
                           <div className="flex flex-col">
                             <span className="font-black text-slate-900 text-xs">{itemName}</span>
@@ -231,9 +245,13 @@ export default function TrashPage() {
                       </TableCell>
                       <TableCell className="px-6 py-3">
                         <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-black uppercase ${
-                          item.type === 'department' ? 'bg-blue-50 text-blue-700' : 'bg-purple-50 text-purple-700'
+                          item.type === 'department' ? 'bg-blue-50 text-blue-700' : 
+                          item.type === 'worker' ? 'bg-purple-50 text-purple-700' : 
+                          'bg-amber-50 text-amber-700'
                         }`}>
-                          {item.type === 'department' ? (lang === 'ar' ? 'قسم' : 'DEPT') : (lang === 'ar' ? 'عامل' : 'STAFF')}
+                          {item.type === 'department' ? (lang === 'ar' ? 'قسم' : 'DEPT') : 
+                           item.type === 'worker' ? (lang === 'ar' ? 'عامل' : 'STAFF') : 
+                           (lang === 'ar' ? 'مادة خام' : 'MATERIAL')}
                         </div>
                       </TableCell>
                       <TableCell className="px-6 py-3 text-slate-500 text-[11px] font-bold tabular-nums">
@@ -289,7 +307,7 @@ export default function TrashPage() {
             <AlertDialogTitle className="text-white text-xl font-black">{lang === 'ar' ? 'تأكيد استعادة عنصر' : 'Confirm Restoration'}</AlertDialogTitle>
             <AlertDialogDescription className="text-emerald-50/70 font-bold mt-2 text-xs leading-relaxed">
               {lang === 'ar' 
-                ? `سيتم إعادة "${selectedItem?.type === 'department' ? selectedItem?.nameAr : selectedItem?.fullName}" إلى قاعدة البيانات النشطة.` 
+                ? `سيتم إعادة العنصر المختارة إلى قاعدة البيانات النشطة.` 
                 : `Item will be moved back to the active production database.`}
             </AlertDialogDescription>
           </div>
@@ -318,7 +336,7 @@ export default function TrashPage() {
             </AlertDialogDescription>
           </div>
           <div className="bg-white p-6 flex gap-3">
-            <AlertDialogAction onClick={handleAction} className="flex-1 h-11 bg-rose-600 hover:bg-rose-700 text-white rounded-md font-black">
+            <AlertDialogAction onClick={handleAction} className="flex-1 h-11 bg-rose-600 hover:bg-red-700 text-white rounded-md font-black">
               {lang === 'ar' ? 'حذف نهائي الآن' : 'Purge Now'}
             </AlertDialogAction>
             <AlertDialogCancel onClick={() => setActionType(null)} className="flex-1 h-11 bg-slate-50 border-slate-200 text-slate-400 rounded-md font-black">
