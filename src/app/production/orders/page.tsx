@@ -21,7 +21,8 @@ import {
   ArrowUpRight,
   Calendar,
   Save,
-  Loader2
+  Loader2,
+  Workflow
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -69,7 +70,8 @@ export default function ProductionOrdersPage() {
     return orders.filter(o => {
       const product = products?.find(p => p.id === o.productId);
       const name = product?.nameAr || '';
-      return name.includes(search) || o.orderNumber?.includes(search);
+      const orderNo = o.orderNumber || '';
+      return name.includes(search) || orderNo.includes(search);
     });
   }, [orders, products, search]);
 
@@ -357,7 +359,7 @@ export default function ProductionOrdersPage() {
         <div className="w-8 h-8 rounded bg-white/5 flex items-center justify-center"><AlertCircle className="w-4 h-4" /></div>
         <p className="text-[10px] font-medium leading-tight">
           {lang === 'ar' 
-            ? 'تنبيه: يتم تحديث تكلفة القطعة آلياً عند إتمام كل مرحلة بناءً على المواد المصروفة وأجور العمال المسجلة في السندات.' 
+            ? 'تنبيه: يتم تحديث تكلفة القطعة آلياً عند إتمام كل مرحلة بناءً على المواد السالبة وأجور العمال المسجلة في السندات.' 
             : 'Note: Unit cost is recalculated automatically upon stage completion based on issued materials and labor wages.'}
         </p>
       </div>
