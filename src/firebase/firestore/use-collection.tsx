@@ -22,9 +22,12 @@ export function useCollection<T = DocumentData>(query: Query<T> | null) {
       return;
     }
 
+    let isMounted = true;
+
     const unsubscribe = onSnapshot(
       query,
       (snapshot: QuerySnapshot<T>) => {
+        if (!isMounted) return;
         const items = snapshot.docs.map(doc => ({
           ...doc.data(),
           id: doc.id,
@@ -33,6 +36,7 @@ export function useCollection<T = DocumentData>(query: Query<T> | null) {
         setLoading(false);
       },
       async (serverError: FirestoreError) => {
+        if (!isMounted) return;
         if (serverError.code === 'permission-denied') {
           const permissionError = new FirestorePermissionError({
             path: 'collection',
@@ -47,7 +51,10 @@ export function useCollection<T = DocumentData>(query: Query<T> | null) {
       }
     );
 
-    return () => unsubscribe();
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
   }, [query]);
 
   return { data, loading, error };

@@ -5,21 +5,28 @@ import { getAuth, Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
 import { firebaseConfig } from './config';
 
-let app: FirebaseApp;
-let auth: Auth;
-let db: Firestore;
+let cachedApp: FirebaseApp | undefined;
+let cachedAuth: Auth | undefined;
+let cachedDb: Firestore | undefined;
 
 export function initializeFirebase() {
-  if (getApps().length > 0) {
-    app = getApp();
-  } else {
-    app = initializeApp(firebaseConfig);
+  if (!cachedApp) {
+    if (getApps().length > 0) {
+      cachedApp = getApp();
+    } else {
+      cachedApp = initializeApp(firebaseConfig);
+    }
   }
 
-  auth = getAuth(app);
-  db = getFirestore(app);
+  if (!cachedAuth) {
+    cachedAuth = getAuth(cachedApp);
+  }
 
-  return { app, auth, db };
+  if (!cachedDb) {
+    cachedDb = getFirestore(cachedApp);
+  }
+
+  return { app: cachedApp, auth: cachedAuth, db: cachedDb };
 }
 
 export { FirebaseProvider, useFirebase, useFirebaseApp, useFirestore, useAuth } from './provider';
