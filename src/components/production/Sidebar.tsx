@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -129,7 +128,7 @@ export function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-2 px-4 overflow-y-auto overflow-x-hidden">
+      <nav className="flex-1 space-y-2 px-4 overflow-y-auto overflow-x-hidden no-scrollbar">
         {navigation.map((group) => (
           <Collapsible key={group.name} defaultOpen={!isCollapsed && (group.name === t.production.dashboard || group.name === t.production.production || group.name === t.production.management)}>
             <CollapsibleTrigger disabled={isCollapsed} className={cn(

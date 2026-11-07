@@ -120,10 +120,8 @@ export default function DepartmentsPage() {
       updatedAt: serverTimestamp(),
     };
 
-    // Close UI immediately to prevent freezing
     resetForm();
 
-    // Execute firestore logic in next tick
     setTimeout(() => {
       if (isEdit && currentId) {
         const docRef = doc(db, 'departments', currentId);
@@ -199,7 +197,7 @@ export default function DepartmentsPage() {
       <div className="flex-none bg-white border-b border-slate-200 z-30 px-6 py-4">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div className="flex items-center gap-4">
-            <div className="p-2 bg-primary rounded-lg text-white shadow-lg">
+            <div className="p-2.5 premium-gradient rounded-lg text-white shadow-lg shadow-emerald-900/20">
               <Database className="w-5 h-5" />
             </div>
             <div>
@@ -227,7 +225,7 @@ export default function DepartmentsPage() {
               </div>
             </div>
             
-            <Button onClick={() => setIsAddDialogOpen(true)} className="h-10 px-6 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg shadow-md font-black gap-2 transition-all">
+            <Button onClick={() => setIsAddDialogOpen(true)} className="h-10 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md shadow-emerald-900/10 font-black gap-2 transition-all border-none">
               <Plus className="w-4 h-4" />
               {lang === 'ar' ? 'إضافة قسم' : 'New Dept'}
             </Button>
@@ -350,11 +348,11 @@ export default function DepartmentsPage() {
         <DialogContent className="sm:max-w-[500px] rounded-lg border-slate-200 shadow-2xl p-0 overflow-hidden">
           <div className="premium-gradient p-6 text-white relative">
             <DialogHeader className="text-right rtl:text-right ltr:text-left">
-              <DialogTitle className="text-xl font-black flex items-center gap-3">
-                <Layers className="w-5 h-5 text-emerald-400" />
+              <DialogTitle className="text-xl font-black flex items-center gap-3 text-white">
+                <Layers className="w-5 h-5 text-emerald-300" />
                 {editingDeptId ? (lang === 'ar' ? 'تعديل القسم' : 'Edit Center') : (lang === 'ar' ? 'قسم إنتاج جديد' : 'New Work Center')}
               </DialogTitle>
-              <DialogDescription className="text-emerald-100/60 font-bold text-[10px] uppercase tracking-widest mt-1">
+              <DialogDescription className="text-emerald-100/70 font-bold text-[10px] uppercase tracking-widest mt-1">
                 {lang === 'ar' ? 'تهيئة مراكز التكلفة ومراحل سير العمل' : 'Configuration of cost centers and workflows'}
               </DialogDescription>
             </DialogHeader>
@@ -391,7 +389,7 @@ export default function DepartmentsPage() {
             </div>
 
             <div className="flex gap-3 pt-2">
-              <Button type="submit" disabled={isSubmitting} className="flex-1 h-11 bg-slate-900 hover:bg-slate-800 text-white rounded-md font-black text-sm">
+              <Button type="submit" disabled={isSubmitting} className="flex-1 h-11 premium-gradient hover:opacity-90 text-white rounded-md font-black text-sm border-none shadow-md shadow-emerald-900/10">
                 <Save className="w-4 h-4 me-2" />
                 {lang === 'ar' ? (isSubmitting ? 'جاري الحفظ...' : 'حفظ البيانات') : 'Commit Changes'}
               </Button>

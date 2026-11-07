@@ -7,7 +7,6 @@ import {
   Search, 
   ChevronRight, 
   Info, 
-  ShieldAlert, 
   Timer,
   Skull,
   AlertTriangle,
@@ -45,12 +44,10 @@ export default function TrashPage() {
   const db = useFirestore();
   const [search, setSearch] = useState('');
   
-  // UI States
   const [restoringItemId, setRestoringItemId] = useState<string | null>(null);
   const [deletingPermanentlyItemId, setDeletingPermanentlyItemId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Fetch all archived departments
   const trashQuery = useMemo(() => {
     if (!db) return null;
     return query(
@@ -133,11 +130,10 @@ export default function TrashPage() {
   return (
     <div className="flex flex-col h-full bg-[#F8F9FA] overflow-hidden">
       
-      {/* 1. Header Hub */}
       <div className="flex-none bg-white border-b border-slate-200 z-30 px-6 py-4">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div className="flex items-center gap-4">
-            <div className="p-2 bg-amber-600 rounded-lg text-white shadow-lg">
+            <div className="p-2.5 bg-amber-600 rounded-lg text-white shadow-lg shadow-amber-900/20">
               <Trash2 className="w-5 h-5" />
             </div>
             <div>
@@ -185,7 +181,6 @@ export default function TrashPage() {
         </div>
       </div>
 
-      {/* 2. MAIN DATA GRID */}
       <div className="flex-1 min-h-0 flex flex-col p-4">
         <div className="flex-1 bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden flex flex-col">
           <div className="flex-1 overflow-auto relative">
@@ -258,22 +253,21 @@ export default function TrashPage() {
         </div>
       </div>
 
-      {/* DIALOGS - ERP STYLE */}
       <AlertDialog open={!!restoringItemId} onOpenChange={(open) => !open && setRestoringItemId(null)}>
         <AlertDialogContent className="max-w-[400px] rounded-lg border-none shadow-2xl p-0 overflow-hidden">
-          <div className="bg-emerald-950 p-8 text-center">
-            <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-500/20 shadow-inner">
-              <RotateCcw className="w-8 h-8 text-emerald-500" />
+          <div className="premium-gradient p-8 text-center">
+            <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-white/20 shadow-inner">
+              <RotateCcw className="w-8 h-8 text-white" />
             </div>
             <AlertDialogTitle className="text-white text-xl font-black">{lang === 'ar' ? 'تأكيد استعادة عنصر' : 'Confirm Restoration'}</AlertDialogTitle>
-            <AlertDialogDescription className="text-emerald-100/60 font-bold mt-2 text-xs leading-relaxed">
+            <AlertDialogDescription className="text-emerald-50/70 font-bold mt-2 text-xs leading-relaxed">
               {lang === 'ar' 
                 ? `تنبيه: استعادة قسم "${selectedRestoringItem?.nameAr}" قد تؤثر على دقة التقارير المالية السابقة. هل تود المتابعة؟` 
                 : `Warning: Restoring "${selectedRestoringItem?.nameEn}" may impact historical reports. Continue?`}
             </AlertDialogDescription>
           </div>
           <div className="bg-white p-6 flex gap-3">
-            <AlertDialogAction onClick={handleRestore} className="flex-1 h-11 bg-emerald-700 hover:bg-emerald-800 text-white rounded-md font-black">
+            <AlertDialogAction onClick={handleRestore} className="flex-1 h-11 premium-gradient hover:opacity-95 text-white rounded-md font-black border-none">
               {lang === 'ar' ? 'تأكيد الاستعادة' : 'Confirm'}
             </AlertDialogAction>
             <AlertDialogCancel onClick={() => setRestoringItemId(null)} className="flex-1 h-11 bg-slate-50 border-slate-200 text-slate-400 rounded-md font-black">
