@@ -30,7 +30,8 @@ import {
   Briefcase,
   User as UserIcon,
   UploadCloud,
-  Loader2
+  Loader2,
+  FileDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -328,6 +329,61 @@ export default function WorkersPage() {
     }
   };
 
+  const handleExportExcel = () => {
+    const headers = [
+      lang === 'ar' ? 'الاسم الكامل' : 'Full Name',
+      lang === 'ar' ? 'المعرف' : 'ID',
+      lang === 'ar' ? 'القسم' : 'Department',
+      lang === 'ar' ? 'رقم الهاتف' : 'Phone',
+      lang === 'ar' ? 'تاريخ التعيين' : 'Hire Date',
+      lang === 'ar' ? 'الحالة' : 'Status'
+    ];
+
+    const rows = filtered.map(w => {
+      const dept = departments?.find(d => d.id === w.departmentId);
+      return [
+        w.fullName,
+        w.workerId,
+        dept ? (lang === 'ar' ? dept.nameAr : dept.nameEn) : '---',
+        w.phoneNumber || '---',
+        w.joinDate || '---',
+        w.active ? (lang === 'ar' ? 'نشط' : 'Active') : (lang === 'ar' ? 'مجاز' : 'Inactive')
+      ];
+    });
+
+    let html = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+      <head>
+        <meta charset="utf-8">
+        <style>
+          table { border-collapse: collapse; direction: rtl; font-family: sans-serif; }
+          th { background-color: #065F46; color: #ffffff; border: 1px solid #e2e8f0; padding: 12px; text-align: center; font-weight: bold; }
+          td { border: 1px solid #e2e8f0; padding: 10px; text-align: right; }
+        </style>
+      </head>
+      <body>
+        <table>
+          <thead>
+            <tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>
+          </thead>
+          <tbody>
+            ${rows.map(r => `<tr>${r.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}
+          </tbody>
+        </table>
+      </body>
+      </html>
+    `;
+
+    const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `workers_${new Date().toISOString().split('T')[0]}.xls`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: lang === 'ar' ? "تم بدء التصدير" : "Export Started" });
+  };
+
   return (
     <div className="flex flex-col h-full bg-[#f1f5f9] overflow-hidden">
       
@@ -380,62 +436,73 @@ export default function WorkersPage() {
             />
           </div>
           
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-9 px-4 rounded-md text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent hover:border-slate-200">
-                <Filter className="w-3.5 h-3.5" />
-                {lang === 'ar' ? 'تصفية' : 'Filter'}
-                {(statusFilter !== 'all' || deptFilter !== 'all' || sortBy !== 'fullName' || sortOrder !== 'asc') && (
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                )}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="w-64 rounded-lg border-slate-200 shadow-xl">
-              <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'ترتيب حسب' : 'SORT BY'}</DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => toggleSort('fullName')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
-                <div className="flex items-center gap-2">
-                  <Languages className="w-3.5 h-3.5 text-slate-400" />
-                  {lang === 'ar' ? 'الاسم' : 'Name'}
-                </div>
-                {sortBy === 'fullName' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => toggleSort('workerId')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
-                <div className="flex items-center gap-2">
-                  <Hash className="w-3.5 h-3.5 text-slate-400" />
-                  {lang === 'ar' ? 'المعرف' : 'ID'}
-                </div>
-                {sortBy === 'workerId' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
-              </DropdownMenuItem>
-              
-              <DropdownMenuSeparator />
-              <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'فلترة الأقسام' : 'DEPARTMENT'}</DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => setDeptFilter('all')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
-                {lang === 'ar' ? 'الكل' : 'All Departments'}
-                {deptFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
-              </DropdownMenuItem>
-              {departments?.map(d => (
-                <DropdownMenuItem key={d.id} onClick={() => setDeptFilter(d.id)} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
-                  {lang === 'ar' ? d.nameAr : d.nameEn}
-                  {deptFilter === d.id && <Check className="w-3.5 h-3.5 text-emerald-600" />}
-                </DropdownMenuItem>
-              ))}
+          <div className="flex items-center gap-1.5 px-1.5">
+            <Button 
+              onClick={handleExportExcel}
+              variant="ghost" 
+              className="h-9 px-4 rounded-md text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent hover:border-slate-200"
+            >
+              <FileDown className="w-3.5 h-3.5 text-emerald-600" />
+              {lang === 'ar' ? 'تصدير' : 'Export'}
+            </Button>
 
-              <DropdownMenuSeparator />
-              <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'الحالة' : 'STATUS'}</DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => setStatusFilter('all')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
-                {lang === 'ar' ? 'الكل' : 'All'}
-                {statusFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setStatusFilter('active')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
-                {lang === 'ar' ? 'نشط فقط' : 'Active Only'}
-                {statusFilter === 'active' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setStatusFilter('inactive')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
-                {lang === 'ar' ? 'مجاز' : 'Inactive'}
-                {statusFilter === 'inactive' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="h-9 px-4 rounded-md text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent hover:border-slate-200">
+                  <Filter className="w-3.5 h-3.5" />
+                  {lang === 'ar' ? 'تصفية' : 'Filter'}
+                  {(statusFilter !== 'all' || deptFilter !== 'all' || sortBy !== 'fullName' || sortOrder !== 'asc') && (
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="w-64 rounded-lg border-slate-200 shadow-xl">
+                <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'ترتيب حسب' : 'SORT BY'}</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => toggleSort('fullName')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
+                  <div className="flex items-center gap-2">
+                    <Languages className="w-3.5 h-3.5 text-slate-400" />
+                    {lang === 'ar' ? 'الاسم' : 'Name'}
+                  </div>
+                  {sortBy === 'fullName' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => toggleSort('workerId')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
+                  <div className="flex items-center gap-2">
+                    <Hash className="w-3.5 h-3.5 text-slate-400" />
+                    {lang === 'ar' ? 'المعرف' : 'ID'}
+                  </div>
+                  {sortBy === 'workerId' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
+                </DropdownMenuItem>
+                
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'فلترة الأقسام' : 'DEPARTMENT'}</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => setDeptFilter('all')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
+                  {lang === 'ar' ? 'الكل' : 'All Departments'}
+                  {deptFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                </DropdownMenuItem>
+                {departments?.map(d => (
+                  <DropdownMenuItem key={d.id} onClick={() => setDeptFilter(d.id)} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
+                    {lang === 'ar' ? d.nameAr : d.nameEn}
+                    {deptFilter === d.id && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                  </DropdownMenuItem>
+                ))}
+
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'الحالة' : 'STATUS'}</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => setStatusFilter('all')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
+                  {lang === 'ar' ? 'الكل' : 'All'}
+                  {statusFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setStatusFilter('active')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
+                  {lang === 'ar' ? 'نشط فقط' : 'Active Only'}
+                  {statusFilter === 'active' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setStatusFilter('inactive')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
+                  {lang === 'ar' ? 'مجاز' : 'Inactive'}
+                  {statusFilter === 'inactive' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
 
           <div className="w-px h-6 bg-slate-200" />
           <div className="flex items-center gap-2 px-3 text-[10px] font-bold text-slate-500">
