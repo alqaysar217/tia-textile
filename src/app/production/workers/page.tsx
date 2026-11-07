@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
 import { 
   Plus, 
   Search, 
@@ -30,10 +30,11 @@ import {
   Calendar,
   Briefcase,
   Camera,
-  User as UserIcon
+  User as UserIcon,
+  UploadCloud,
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { useTranslation } from '@/components/LanguageProvider';
 import { 
   Table, 
@@ -80,6 +81,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 export default function WorkersPage() {
   const { lang, dir } = useTranslation();
   const db = useFirestore();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [search, setSearch] = useState('');
   
   // Filtering & Sorting State
@@ -92,6 +94,7 @@ export default function WorkersPage() {
   const [editingWorkerId, setEditingWorkerId] = useState<string | null>(null);
   const [deletingWorkerId, setDeletingWorkerId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCompressing, setIsCompressing] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
@@ -120,10 +123,8 @@ export default function WorkersPage() {
   const filtered = useMemo(() => {
     let rawData = [...(workers || [])];
     
-    // 1. Basic cleaning
     rawData = rawData.filter(w => w.status !== 'deleted');
 
-    // 2. Search Filter
     if (search) {
       rawData = rawData.filter(w => 
         w.fullName?.toLowerCase().includes(search.toLowerCase()) || 
@@ -132,18 +133,15 @@ export default function WorkersPage() {
       );
     }
 
-    // 3. Status Filter
     if (statusFilter !== 'all') {
       const isActive = statusFilter === 'active';
       rawData = rawData.filter(w => w.active === isActive);
     }
 
-    // 4. Department Filter
     if (deptFilter !== 'all') {
       rawData = rawData.filter(w => w.departmentId === deptFilter);
     }
 
-    // 5. Sorting
     return rawData.sort((a, b) => {
       let valA = a[sortBy] ?? '';
       let valB = b[sortBy] ?? '';
@@ -156,6 +154,7 @@ export default function WorkersPage() {
     setIsAddDialogOpen(false);
     setEditingWorkerId(null);
     setIsSubmitting(false);
+    setIsCompressing(false);
     setValidationError(null);
     setFormData({ 
       fullName: '', 
@@ -167,11 +166,59 @@ export default function WorkersPage() {
     });
   }, []);
 
+  // Image Processing Logic
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate type
+    if (!file.type.startsWith('image/')) {
+      toast({ variant: "destructive", title: lang === 'ar' ? "خطأ في الملف" : "File Error", description: lang === 'ar' ? "يرجى اختيار صورة صالحة فقط" : "Please select a valid image" });
+      return;
+    }
+
+    setIsCompressing(true);
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        // Dynamic Canvas Compression
+        const canvas = document.createElement('canvas');
+        const MAX_SIZE = 200; // Small size for fast database performance
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_SIZE) {
+            height *= MAX_SIZE / width;
+            width = MAX_SIZE;
+          }
+        } else {
+          if (height > MAX_SIZE) {
+            width *= MAX_SIZE / height;
+            height = MAX_SIZE;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        // Convert to quality-reduced JPEG base64
+        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+        setFormData(prev => ({ ...prev, photoUrl: compressedBase64 }));
+        setIsCompressing(false);
+      };
+    };
+  };
+
   const handleSaveWorker = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!db || isSubmitting) return;
+    if (!db || isSubmitting || isCompressing) return;
 
-    // Validation: Check for duplicate Name or Phone
     const isDuplicateName = workers?.some(w => 
       w.fullName?.toLowerCase() === formData.fullName.toLowerCase() && 
       w.id !== editingWorkerId && 
@@ -291,7 +338,6 @@ export default function WorkersPage() {
   return (
     <div className="flex flex-col h-full bg-[#f1f5f9] overflow-hidden">
       
-      {/* COMPACT ERP HUB */}
       <div className="flex-none bg-white border-b border-slate-200 z-30 px-6 py-4">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div className="flex items-center gap-4">
@@ -406,7 +452,6 @@ export default function WorkersPage() {
         </div>
       </div>
 
-      {/* MAIN DATA GRID */}
       <div className="flex-1 min-h-0 flex flex-col p-4">
         <div className="flex-1 bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden flex flex-col">
           <div className="flex-1 overflow-auto relative no-scrollbar">
@@ -511,7 +556,6 @@ export default function WorkersPage() {
           </div>
         </div>
 
-        {/* SYSTEM NOTE - FOOTER */}
         <div className="mt-4 flex-none bg-slate-900 rounded-lg p-3 text-white flex items-center gap-4 border border-slate-800 shadow-inner">
           <div className="w-8 h-8 bg-emerald-500/20 rounded flex items-center justify-center text-emerald-400"><Info className="w-4 h-4" /></div>
           <div className="flex-1">
@@ -525,7 +569,6 @@ export default function WorkersPage() {
         </div>
       </div>
 
-      {/* DIALOGS */}
       <Dialog open={isAddDialogOpen} onOpenChange={(open) => !open && resetForm()}>
         <DialogContent className="sm:max-w-[500px] rounded-lg border-slate-200 shadow-2xl p-0 overflow-hidden">
           <div className="premium-gradient p-6 text-white relative">
@@ -541,30 +584,36 @@ export default function WorkersPage() {
           </div>
 
           <form onSubmit={handleSaveWorker} className="p-6 space-y-5 bg-white">
-            {/* PHOTO UPLOAD SECTION */}
+            {/* PHOTO UPLOAD SECTION - BASE64 CONVERSION */}
             <div className="flex flex-col items-center gap-3 pb-2 border-b border-slate-100">
-              <div className="relative group cursor-pointer">
-                <Avatar className="h-20 w-20 rounded-2xl border-4 border-slate-100 shadow-md group-hover:border-emerald-100 transition-all">
+              <div 
+                onClick={() => !isCompressing && fileInputRef.current?.click()}
+                className="relative group cursor-pointer"
+              >
+                <Avatar className="h-20 w-20 rounded-2xl border-4 border-slate-100 shadow-md group-hover:border-emerald-100 transition-all overflow-hidden bg-slate-50">
                   <AvatarImage src={formData.photoUrl} className="object-cover" />
                   <AvatarFallback className="bg-slate-50 text-slate-300">
-                    <UserIcon className="w-10 h-10" />
+                    {isCompressing ? <Loader2 className="w-8 h-8 animate-spin text-emerald-500" /> : <UserIcon className="w-10 h-10" />}
                   </AvatarFallback>
                 </Avatar>
                 <div className="absolute inset-0 bg-black/40 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Camera className="w-6 h-6 text-white" />
+                  <UploadCloud className="w-6 h-6 text-white" />
                 </div>
               </div>
-              <div className="w-full">
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                className="hidden" 
+                accept="image/*" 
+                onChange={handleImageUpload} 
+              />
+              <div className="text-center">
                 <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2 justify-center mb-1">
-                  <Camera className="w-3 h-3 text-emerald-600" />
-                  {lang === 'ar' ? 'رابط الصورة الشخصية' : 'PHOTO URL'}
+                  {lang === 'ar' ? 'الصورة الشخصية (رفع محلي)' : 'PERSONNEL PHOTO'}
                 </Label>
-                <Input 
-                  value={formData.photoUrl} 
-                  onChange={(e) => setFormData({...formData, photoUrl: e.target.value})} 
-                  placeholder="https://..." 
-                  className="h-9 text-[10px] font-bold bg-slate-50 text-center"
-                />
+                <p className="text-[8px] text-slate-400 font-bold">
+                  {lang === 'ar' ? 'سيتم ضغط الصورة وتخزينها كبيانات مشفرة' : 'Image will be compressed & stored as encoded data'}
+                </p>
               </div>
             </div>
 
@@ -641,9 +690,9 @@ export default function WorkersPage() {
             )}
 
             <div className="flex gap-3 pt-2">
-              <Button type="submit" disabled={isSubmitting} className="flex-1 h-11 premium-gradient hover:opacity-90 text-white rounded-md font-black text-sm border-none shadow-md shadow-emerald-900/10">
-                <Save className="w-4 h-4 me-2" />
-                {lang === 'ar' ? (isSubmitting ? 'جاري المعالجة...' : 'حفظ الملف') : 'Save Record'}
+              <Button type="submit" disabled={isSubmitting || isCompressing} className="flex-1 h-11 premium-gradient hover:opacity-90 text-white rounded-md font-black text-sm border-none shadow-md shadow-emerald-900/10">
+                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : <Save className="w-4 h-4 me-2" />}
+                {lang === 'ar' ? (isSubmitting ? 'جاري الحفظ...' : 'حفظ الملف') : 'Save Record'}
               </Button>
               <Button type="button" variant="outline" onClick={resetForm} className="px-6 h-11 font-black text-slate-400 rounded-md">
                 {lang === 'ar' ? 'إلغاء' : 'Cancel'}
