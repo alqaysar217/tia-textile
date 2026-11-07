@@ -24,7 +24,9 @@ import {
   Building2,
   Check,
   UserCheck,
-  ShieldCheck
+  ShieldCheck,
+  UserPlus,
+  ChevronDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,6 +41,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
 import {
   Table,
@@ -60,6 +67,7 @@ export default function MaterialIssuePage() {
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isWorkerPopoverOpen, setIsWorkerPopoverOpen] = useState(false);
   const [search, setSearch] = useState('');
   
   // Selection filtering state
@@ -121,6 +129,10 @@ export default function MaterialIssuePage() {
       return matchesDept && matchesSearch && (w.active !== false);
     });
   }, [allWorkers, selectedDeptId, workerSearch]);
+
+  const selectedWorker = useMemo(() => {
+    return allWorkers?.find(w => w.id === formData.workerId);
+  }, [allWorkers, formData.workerId]);
 
   const handleAddItem = () => {
     if (!currentItem.id || currentItem.qty <= 0) return;
@@ -343,67 +355,92 @@ export default function MaterialIssuePage() {
 
           <form onSubmit={handleSaveVoucher} className="p-6 space-y-6 bg-white max-h-[85vh] overflow-y-auto no-scrollbar">
             
-            {/* 1. TOP ROW: DATE AND WORKER */}
+            {/* 1. TOP ROW: DATE AND WORKER PICKER */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
                   <Calendar className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'تاريخ السند' : 'TRANSACTION DATE'}
                 </Label>
-                <Input type="date" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} className="h-10 font-bold text-xs bg-slate-50 border-slate-200" required />
+                <Input type="date" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} className="h-12 font-bold text-xs bg-slate-50 border-slate-200" required />
               </div>
 
-              <div className="space-y-2 flex flex-col">
+              <div className="space-y-1.5 flex flex-col">
                 <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
                   <Users2 className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'العامل المستلم للمواد' : 'RECEIVING PERSONNEL'}
                 </Label>
                 
-                <div className="relative">
-                  <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                  <Input 
-                    value={workerSearch}
-                    onChange={(e) => setWorkerSearch(e.target.value)}
-                    placeholder={lang === 'ar' ? 'بحث باسم العامل...' : 'Search worker...'}
-                    className="h-9 pr-9 bg-slate-50 border-slate-200 text-xs font-bold"
-                  />
-                </div>
-
-                <div className="h-[150px] border border-slate-100 rounded-xl bg-slate-50/50 p-1.5 overflow-hidden">
-                  <ScrollArea className="h-full pr-2">
-                    <div className="grid grid-cols-1 gap-1">
-                      {filteredWorkers.length === 0 ? (
-                        <div className="text-center py-6">
-                          <p className="text-[10px] font-bold text-slate-400">{lang === 'ar' ? 'لا يوجد عمال يطابقون البحث' : 'No personnel found'}</p>
-                        </div>
-                      ) : filteredWorkers.map(w => (
-                        <button
-                          key={w.id}
-                          type="button"
-                          onClick={() => setFormData({...formData, workerId: w.id})}
-                          className={cn(
-                            "flex items-center gap-3 p-2 rounded-lg transition-all border text-right",
-                            formData.workerId === w.id 
-                              ? "bg-white border-emerald-500 shadow-sm ring-1 ring-emerald-500/20" 
-                              : "bg-transparent border-transparent hover:bg-white hover:border-slate-200"
-                          )}
-                        >
-                          <Avatar className="h-8 w-8 border border-slate-100">
-                            <AvatarImage src={w.photoUrl} className="object-cover" />
-                            <AvatarFallback className="text-[10px] font-black bg-slate-100 text-slate-500">{w.fullName?.charAt(0)}</AvatarFallback>
+                <Popover open={isWorkerPopoverOpen} onOpenChange={setIsWorkerPopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      className={cn(
+                        "h-12 w-full justify-between bg-slate-50 border-slate-200 px-3",
+                        !formData.workerId && "text-slate-400 font-bold"
+                      )}
+                    >
+                      {selectedWorker ? (
+                        <div className="flex items-center gap-3 text-right">
+                          <Avatar className="h-7 w-7 border border-slate-200">
+                            <AvatarImage src={selectedWorker.photoUrl} className="object-cover" />
+                            <AvatarFallback className="text-[9px] font-black bg-slate-200 text-slate-600">{selectedWorker.fullName?.charAt(0)}</AvatarFallback>
                           </Avatar>
-                          <div className="flex-1">
-                            <p className={cn("text-[11px] font-black leading-none", formData.workerId === w.id ? "text-emerald-700" : "text-slate-800")}>{w.fullName}</p>
-                            <p className="text-[9px] font-bold text-slate-400 mt-1 uppercase tracking-widest">{w.workerId}</p>
+                          <div className="flex flex-col items-start overflow-hidden">
+                            <span className="text-[11px] font-black text-slate-900 truncate">{selectedWorker.fullName}</span>
+                            <span className="text-[8px] font-bold text-slate-400 tabular-nums uppercase">{selectedWorker.workerId}</span>
                           </div>
-                          {formData.workerId === w.id && (
-                            <div className="w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center shadow-sm">
-                              <Check className="w-3 h-3 text-white" />
-                            </div>
-                          )}
-                        </button>
-                      ))}
+                        </div>
+                      ) : (
+                        <span>{lang === 'ar' ? '-- اختر العامل --' : '-- Select Worker --'}</span>
+                      )}
+                      <ChevronDown className="h-4 w-4 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[350px] p-0 shadow-2xl border-slate-200 rounded-xl overflow-hidden" align="end">
+                    <div className="p-3 bg-slate-50 border-b border-slate-100 flex flex-col gap-2">
+                      <div className="relative">
+                        <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                        <Input 
+                          value={workerSearch}
+                          onChange={(e) => setWorkerSearch(e.target.value)}
+                          placeholder={lang === 'ar' ? 'بحث باسم العامل أو المعرف...' : 'Search worker...'}
+                          className="h-9 pr-9 bg-white border-slate-200 text-xs font-bold"
+                        />
+                      </div>
                     </div>
-                  </ScrollArea>
-                </div>
+                    <ScrollArea className="h-[250px]">
+                      <div className="p-1">
+                        {filteredWorkers.length === 0 ? (
+                          <div className="text-center py-10">
+                            <p className="text-xs font-bold text-slate-400">{lang === 'ar' ? 'لا يوجد عمال يطابقون البحث' : 'No personnel found'}</p>
+                          </div>
+                        ) : filteredWorkers.map(w => (
+                          <button
+                            key={w.id}
+                            type="button"
+                            onClick={() => {
+                              setFormData({...formData, workerId: w.id});
+                              setIsWorkerPopoverOpen(false);
+                            }}
+                            className={cn(
+                              "flex items-center gap-3 w-full p-2.5 rounded-lg transition-all border border-transparent text-right hover:bg-slate-50 mb-1",
+                              formData.workerId === w.id && "bg-emerald-50 border-emerald-100"
+                            )}
+                          >
+                            <Avatar className="h-9 w-9 border border-white shadow-sm shrink-0">
+                              <AvatarImage src={w.photoUrl} className="object-cover" />
+                              <AvatarFallback className="text-[10px] font-black bg-slate-100 text-slate-500">{w.fullName?.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 overflow-hidden">
+                              <p className={cn("text-xs font-black leading-tight", formData.workerId === w.id ? "text-emerald-700" : "text-slate-800")}>{w.fullName}</p>
+                              <p className="text-[9px] font-bold text-slate-400 mt-0.5 uppercase tracking-widest tabular-nums">{w.workerId}</p>
+                            </div>
+                            {formData.workerId === w.id && <Check className="w-4 h-4 text-emerald-600" />}
+                          </button>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
 
@@ -413,7 +450,7 @@ export default function MaterialIssuePage() {
                 <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
                   <Workflow className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'أمر الإنتاج المستهدف' : 'PRODUCTION ORDER'}
                 </Label>
-                <select value={formData.orderId} onChange={(e) => setFormData({...formData, orderId: e.target.value})} className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none" required>
+                <select value={formData.orderId} onChange={(e) => setFormData({...formData, orderId: e.target.value})} className="w-full h-12 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none" required>
                   <option value="">{lang === 'ar' ? '-- اختر أمر الإنتاج --' : '-- Select Order --'}</option>
                   {activeOrders?.map(o => <option key={o.id} value={o.id}>{o.orderNumber} - {o.title}</option>)}
                 </select>
@@ -429,7 +466,7 @@ export default function MaterialIssuePage() {
                     setSelectedDeptId(e.target.value);
                     setFormData({...formData, workerId: ''});
                   }} 
-                  className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none"
+                  className="w-full h-12 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none"
                 >
                   <option value="">{lang === 'ar' ? 'عرض جميع الأقسام' : 'All Departments'}</option>
                   {activeDepartments?.map(d => <option key={d.id} value={d.id}>{lang === 'ar' ? d.nameAr : d.nameEn}</option>)}
@@ -471,7 +508,7 @@ export default function MaterialIssuePage() {
               </div>
             </div>
 
-            {/* 4. VOUCHER ITEMS TABLE WITH EDIT */}
+            {/* 4. VOUCHER ITEMS TABLE */}
             {formData.items.length > 0 && (
               <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
                 <Table className="text-right">
