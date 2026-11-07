@@ -697,111 +697,128 @@ export default function MaterialIssuePage() {
 
       {/* PRINT PREVIEW DIALOG */}
       <Dialog open={!!printingVoucher} onOpenChange={(open) => !open && setPrintingVoucher(null)}>
-        <DialogContent className="sm:max-w-[700px] p-0 overflow-hidden border-none bg-white">
+        <DialogContent className="sm:max-w-[750px] p-0 overflow-hidden border-none bg-white">
           <DialogHeader className="sr-only">
             <DialogTitle>
               {lang === 'ar' ? 'معاينة طباعة سند الصرف' : 'Material Issue Voucher Print Preview'}
             </DialogTitle>
           </DialogHeader>
           
-          <ScrollArea className="max-h-[75vh]">
-            <div className="p-8 print:p-0 bg-white" id="printable-voucher">
+          <ScrollArea className="max-h-[80vh]">
+            <div className="p-10 print:p-0 bg-white" id="printable-voucher">
               {printingVoucher && (
-                <div className="flex flex-col h-full text-slate-900">
-                  {/* INVOICE HEADER */}
-                  <div className="flex justify-between items-start border-b-2 border-emerald-800 pb-6 mb-8">
-                    <div className="space-y-1 text-right rtl:text-right ltr:text-left">
-                      <h2 className="text-2xl font-black text-emerald-900">{lang === 'ar' ? 'جمعية الصناعات النسيجية' : 'Textile Industries Association'}</h2>
-                      <p className="text-sm font-bold text-slate-500">{lang === 'ar' ? 'الروضة - محافظة شبوة - اليمن' : 'Al-Rawdah - Shabwa - Yemen'}</p>
-                      <p className="text-xs font-bold text-slate-400 tabular-nums">0777 263 091 | nseeg202020@gmail.com</p>
+                <div className="flex flex-col h-full text-slate-900 font-sans" dir="rtl">
+                  {/* PROFESSIONAL BILINGUAL HEADER */}
+                  <div className="grid grid-cols-3 items-center border-b-4 border-emerald-800 pb-6 mb-6">
+                    {/* ENGLISH SIDE */}
+                    <div className="text-left space-y-0.5" dir="ltr">
+                      <h2 className="text-sm font-black text-emerald-900 uppercase">Textile Industries Association</h2>
+                      <p className="text-[10px] font-bold text-slate-500">Al-Rawdah - Shabwa - Yemen</p>
+                      <p className="text-[9px] font-bold text-slate-400 tabular-nums">0777 263 091 | nseeg202020@gmail.com</p>
                     </div>
-                    <div className="w-24 h-24 bg-white border border-slate-100 rounded-2xl flex items-center justify-center p-1 shadow-sm">
-                      <img src="/images/logo.png" alt="Logo" className="w-full h-full object-contain" />
-                    </div>
-                  </div>
 
-                  {/* VOUCHER INFO BAR */}
-                  <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 flex justify-between items-center mb-8">
-                    <div className="space-y-1">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{lang === 'ar' ? 'سند صرف مواد' : 'MATERIAL ISSUE VOUCHER'}</p>
-                      <h3 className="text-2xl font-black text-emerald-900 tabular-nums">{printingVoucher.voucherNumber}</h3>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-[10px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'تاريخ التحرير' : 'ISSUE DATE'}</p>
-                      <p className="text-sm font-black tabular-nums">{printingVoucher.date}</p>
-                    </div>
-                  </div>
-
-                  {/* DETAILS GRID */}
-                  <div className="grid grid-cols-2 gap-8 mb-10">
-                    <div className="space-y-3">
-                      <h4 className="text-[10px] font-black text-slate-400 uppercase border-b border-slate-100 pb-1">{lang === 'ar' ? 'بيانات المستلم' : 'RECIPIENT DETAILS'}</h4>
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-emerald-700 font-black text-lg">
-                          {allWorkers?.find(w => w.id === printingVoucher.workerId)?.fullName?.charAt(0)}
-                        </div>
-                        <div>
-                          <p className="font-black text-slate-900">{allWorkers?.find(w => w.id === printingVoucher.workerId)?.fullName}</p>
-                          <p className="text-xs font-bold text-slate-500 tabular-nums">{allWorkers?.find(w => w.id === printingVoucher.workerId)?.workerId}</p>
-                          <p className="text-[10px] font-black text-emerald-700 uppercase mt-1">
-                            {allDepartments?.find(d => d.id === allWorkers?.find(w => w.id === printingVoucher.workerId)?.departmentId)?.nameAr}
-                          </p>
-                        </div>
+                    {/* CENTER LOGO */}
+                    <div className="flex justify-center">
+                      <div className="w-20 h-20 bg-white border border-slate-100 rounded-full flex items-center justify-center p-1 shadow-md">
+                        <img src="/images/logo.png" alt="Logo" className="w-full h-full object-contain" />
                       </div>
                     </div>
+
+                    {/* ARABIC SIDE */}
+                    <div className="text-right space-y-0.5">
+                      <h2 className="text-base font-black text-emerald-900">جمعية الصناعات النسيجية</h2>
+                      <p className="text-xs font-bold text-slate-500">الروضة - محافظة شبوة - اليمن</p>
+                      <p className="text-[10px] font-bold text-slate-400 tabular-nums">0777 263 091 | nseeg202020@gmail.com</p>
+                    </div>
+                  </div>
+
+                  {/* VOUCHER TITLE BAR */}
+                  <div className="text-center mb-6">
+                    <div className="inline-block border-2 border-emerald-800 px-8 py-1 rounded-full">
+                      <h3 className="text-lg font-black text-emerald-900 uppercase tracking-widest">
+                        {lang === 'ar' ? 'سند صرف مواد خام' : 'Material Issue Voucher'}
+                      </h3>
+                    </div>
+                  </div>
+
+                  {/* COMPACT DATA GRID */}
+                  <div className="grid grid-cols-2 gap-x-12 gap-y-4 mb-8 bg-slate-50/50 p-4 rounded-xl border border-slate-100">
                     <div className="space-y-3">
-                      <h4 className="text-[10px] font-black text-slate-400 uppercase border-b border-slate-100 pb-1">{lang === 'ar' ? 'أمر التشغيل المعتمد' : 'PRODUCTION ORDER'}</h4>
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600"><Workflow className="w-5 h-5" /></div>
-                        <div>
-                          <p className="font-black text-slate-900">{allOrders?.find(o => o.id === printingVoucher.orderId)?.orderNumber}</p>
-                          <p className="text-xs font-bold text-slate-500 truncate max-w-[200px]">{allOrders?.find(o => o.id === printingVoucher.orderId)?.title}</p>
-                        </div>
+                      <div className="flex justify-between items-center border-b border-slate-200 pb-1">
+                        <span className="text-[10px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'رقم السند' : 'Voucher No.'}</span>
+                        <span className="text-sm font-black text-emerald-900 tabular-nums">{printingVoucher.voucherNumber}</span>
+                      </div>
+                      <div className="flex justify-between items-center border-b border-slate-200 pb-1">
+                        <span className="text-[10px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'تاريخ السند' : 'Issue Date'}</span>
+                        <span className="text-sm font-black text-slate-700 tabular-nums">{printingVoucher.date}</span>
+                      </div>
+                      <div className="flex justify-between items-center border-b border-slate-200 pb-1">
+                        <span className="text-[10px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'أمر الإنتاج' : 'Batch No.'}</span>
+                        <span className="text-sm font-black text-slate-700 tabular-nums">{allOrders?.find(o => o.id === printingVoucher.orderId)?.orderNumber}</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center border-b border-slate-200 pb-1">
+                        <span className="text-[10px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'اسم المستلم' : 'Recipient'}</span>
+                        <span className="text-sm font-black text-slate-700">{allWorkers?.find(w => w.id === printingVoucher.workerId)?.fullName}</span>
+                      </div>
+                      <div className="flex justify-between items-center border-b border-slate-200 pb-1">
+                        <span className="text-[10px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'القسم / المسار' : 'Department'}</span>
+                        <span className="text-sm font-black text-slate-700">
+                           {allDepartments?.find(d => d.id === allWorkers?.find(w => w.id === printingVoucher.workerId)?.departmentId)?.nameAr}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center border-b border-slate-200 pb-1">
+                        <span className="text-[10px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'الدفعة' : 'Batch Name'}</span>
+                        <span className="text-sm font-black text-slate-700 truncate max-w-[150px]">{allOrders?.find(o => o.id === printingVoucher.orderId)?.title}</span>
                       </div>
                     </div>
                   </div>
 
                   {/* ITEMS TABLE */}
                   <div className="flex-1 mb-10">
-                    <h4 className="text-[10px] font-black text-slate-400 uppercase mb-3 px-2">{lang === 'ar' ? 'قائمة المواد المصروفة' : 'ITEMS LIST'}</h4>
-                    <Table className="text-right border-2 border-slate-100">
-                      <TableHeader className="bg-slate-50">
+                    <Table className="text-right border-2 border-emerald-900/10">
+                      <TableHeader className="bg-emerald-900/5">
                         <TableRow>
-                          <TableHead className="text-right font-black text-xs py-4 text-emerald-900">{lang === 'ar' ? 'المادة' : 'ITEM'}</TableHead>
-                          <TableHead className="text-center font-black text-xs py-4 text-emerald-900">{lang === 'ar' ? 'الكمية' : 'QTY'}</TableHead>
-                          <TableHead className="text-center font-black text-xs py-4 text-emerald-900">{lang === 'ar' ? 'الوحدة' : 'UNIT'}</TableHead>
+                          <TableHead className="text-right font-black text-xs py-3 text-emerald-900 border-b-2 border-emerald-900/20">{lang === 'ar' ? 'المادة الخام' : 'Raw Material'}</TableHead>
+                          <TableHead className="text-center font-black text-xs py-3 text-emerald-900 border-b-2 border-emerald-900/20">{lang === 'ar' ? 'الكمية' : 'Quantity'}</TableHead>
+                          <TableHead className="text-center font-black text-xs py-3 text-emerald-900 border-b-2 border-emerald-900/20">{lang === 'ar' ? 'الوحدة' : 'Unit'}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {printingVoucher.items.map((item: any, i: number) => (
                           <TableRow key={i} className="border-b border-slate-100">
-                            <TableCell className="font-bold text-sm py-4">{item.nameAr}</TableCell>
-                            <TableCell className="text-center font-black text-sm tabular-nums py-4">{item.qty}</TableCell>
-                            <TableCell className="text-center text-xs font-bold text-slate-500 uppercase py-4">{item.unit}</TableCell>
+                            <TableCell className="font-bold text-sm py-3 text-slate-800">{item.nameAr}</TableCell>
+                            <TableCell className="text-center font-black text-sm tabular-nums py-3 text-emerald-700">{item.qty}</TableCell>
+                            <TableCell className="text-center text-xs font-bold text-slate-500 uppercase py-3">{item.unit}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
                     </Table>
                   </div>
 
-                  {/* SIGNATURES */}
-                  <div className="grid grid-cols-3 gap-10 border-t-2 border-slate-100 pt-10 text-center">
-                    <div className="space-y-6">
-                      <p className="text-[10px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'أمين المستودع' : 'STORE KEEPER'}</p>
-                      <div className="h-px bg-slate-200 w-3/4 mx-auto" />
+                  {/* SIGNATURES SECTION */}
+                  <div className="mt-auto grid grid-cols-3 gap-8 pt-10 border-t-2 border-slate-100 text-center">
+                    <div className="space-y-12">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{lang === 'ar' ? 'أمين المستودع' : 'Store Keeper'}</p>
+                      <div className="h-px bg-slate-300 w-3/4 mx-auto" />
+                      <p className="text-[8px] font-bold text-slate-400 uppercase">Signature / التاريخ</p>
                     </div>
-                    <div className="space-y-6">
-                      <p className="text-[10px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'توقيع المستلم' : 'RECIPIENT SIGN'}</p>
-                      <div className="h-px bg-slate-200 w-3/4 mx-auto" />
+                    <div className="space-y-12">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{lang === 'ar' ? 'توقيع المستلم' : 'Recipient Sign'}</p>
+                      <div className="h-px bg-slate-300 w-3/4 mx-auto" />
+                      <p className="text-[8px] font-bold text-slate-400 uppercase">Signature / التاريخ</p>
                     </div>
-                    <div className="space-y-6">
-                      <p className="text-[10px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'اعتماد المدير' : 'MANAGER APPROVAL'}</p>
-                      <div className="h-px bg-slate-200 w-3/4 mx-auto" />
+                    <div className="space-y-12">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{lang === 'ar' ? 'اعتماد المدير' : 'Manager Approval'}</p>
+                      <div className="h-px bg-slate-300 w-3/4 mx-auto" />
+                      <p className="text-[8px] font-bold text-slate-400 uppercase">Authorized Signature</p>
                     </div>
                   </div>
 
                   {/* PRINT FOOTER */}
-                  <div className="mt-auto pt-10 text-center text-[8px] font-black text-slate-300 uppercase tracking-[0.5em]">
+                  <div className="mt-16 text-center text-[7px] font-black text-slate-300 uppercase tracking-[0.4em]">
                     Generated by TIA Production System - {new Date().toLocaleString()}
                   </div>
                 </div>
