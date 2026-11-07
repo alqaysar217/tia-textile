@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { useTranslation } from '@/components/LanguageProvider';
 import { Progress } from '@/components/ui/progress';
 import {
@@ -218,7 +219,7 @@ export default function ProductionOrdersPage() {
               <Input 
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder={lang === 'ar' ? 'بحث سريح...' : 'Quick search...'}
+                placeholder={lang === 'ar' ? 'بحث سريع...' : 'Quick search...'}
                 className={`${dir === 'rtl' ? 'pr-10' : 'pl-10'} h-10 w-64 bg-slate-50 border-slate-200 text-xs font-bold`}
               />
             </div>
@@ -254,22 +255,22 @@ export default function ProductionOrdersPage() {
               <div className="flex flex-col lg:flex-row items-stretch">
                 
                 {/* 1. IDENTITY & STATUS BAR (RIGHT in RTL) - COMPACT */}
-                <div className="w-full lg:w-1/4 p-4 flex flex-col justify-between relative border-l border-slate-100">
-                  <div className="space-y-2">
+                <div className="w-full lg:w-1/4 p-3 flex flex-col justify-between relative border-l border-slate-100">
+                  <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] font-black rounded border border-slate-200 tabular-nums uppercase tracking-tight">
+                      <span className="px-1.5 py-0.5 bg-slate-100 text-slate-600 text-[9px] font-black rounded border border-slate-200 tabular-nums uppercase tracking-tight">
                         {order.orderNumber}
                       </span>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md hover:bg-slate-100"><MoreVertical className="w-3.5 h-3.5 text-slate-400" /></Button>
+                          <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md hover:bg-slate-100"><MoreVertical className="w-3 h-3 text-slate-400" /></Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-48 rounded-lg shadow-xl">
-                          <DropdownMenuItem onClick={() => handleEditClick(order)} className="gap-2 font-bold py-2 cursor-pointer text-xs">
+                        <DropdownMenuContent align="end" className="w-44 rounded-lg shadow-xl">
+                          <DropdownMenuItem onClick={() => handleEditClick(order)} className="gap-2 font-bold py-1.5 cursor-pointer text-xs">
                             <Edit2 className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'تعديل البيانات' : 'Edit Details'}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => setDeletingOrder(order)} className="gap-2 font-bold py-2 text-rose-600 cursor-pointer text-xs">
+                          <DropdownMenuItem onClick={() => setDeletingOrder(order)} className="gap-2 font-bold py-1.5 text-rose-600 cursor-pointer text-xs">
                             <Trash2 className="w-3 h-3" /> {lang === 'ar' ? 'أرشفة الأمر' : 'Archive Order'}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -277,18 +278,18 @@ export default function ProductionOrdersPage() {
                     </div>
 
                     <div className="space-y-0.5">
-                      <h3 className="text-sm font-black text-slate-900 group-hover:text-emerald-700 transition-colors truncate">
+                      <h3 className="text-xs font-black text-slate-900 group-hover:text-emerald-700 transition-colors truncate">
                         {order.title || (product?.nameAr || '---')}
                       </h3>
-                      <div className="inline-flex items-center gap-1.5 text-[8px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded uppercase">
+                      <div className="inline-flex items-center gap-1 text-[8px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded uppercase">
                         <Tag className="w-2 h-2" />
                         {product?.nameAr || '---'}
                       </div>
                     </div>
                   </div>
 
-                  <div className="mt-4 flex items-center justify-between border-t border-slate-50 pt-2">
-                    <div className="flex items-center gap-1.5 text-[8px] font-bold text-slate-400 uppercase tabular-nums">
+                  <div className="mt-2 flex items-center justify-between border-t border-slate-50 pt-1.5">
+                    <div className="flex items-center gap-1 text-[8px] font-bold text-slate-400 uppercase tabular-nums">
                       <Calendar className="w-2.5 h-2.5" />
                       {order.startDate}
                     </div>
@@ -300,57 +301,50 @@ export default function ProductionOrdersPage() {
                 </div>
 
                 {/* 2. PROGRESS & METRICS (CENTER) - COMPACT */}
-                <div className="flex-1 p-4 space-y-3 bg-slate-50/30">
+                <div className="flex-1 p-3 space-y-2 bg-slate-50/30">
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
                       <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
                         <Layers className="w-2.5 h-2.5 text-emerald-600" />
                         {lang === 'ar' ? 'المرحلة التشغيلية' : 'OPERATIONAL PHASE'}
                       </p>
-                      <p className="text-xs font-black text-slate-800">
+                      <p className="text-[11px] font-black text-slate-800">
                         {stage?.nameAr || (lang === 'ar' ? 'بانتظار البدء' : 'PENDING')}
                       </p>
                     </div>
                     <div className="text-right">
-                      <div className="flex items-center gap-1.5 justify-end">
-                        <span className="text-lg font-black text-slate-900 tabular-nums">{progress}%</span>
-                        <div className="p-1 bg-emerald-50 rounded text-emerald-600"><TrendingUp className="w-2.5 h-2.5" /></div>
+                      <div className="flex items-center gap-1 justify-end">
+                        <span className="text-base font-black text-slate-900 tabular-nums">{progress}%</span>
+                        <div className="p-0.5 bg-emerald-50 rounded text-emerald-600"><TrendingUp className="w-2.5 h-2.5" /></div>
                       </div>
-                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-tighter">{lang === 'ar' ? 'مؤشر الإنجاز' : 'INDEX'}</p>
                     </div>
                   </div>
 
                   <Progress value={progress} className="h-1 bg-slate-100" />
 
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-3 gap-2">
                     <div className="space-y-0.5">
-                      <p className="text-[8px] font-bold text-slate-400 uppercase flex items-center gap-1">
-                        <Target className="w-2.5 h-2.5 opacity-30" /> {lang === 'ar' ? 'المستهدف' : 'TARGET'}
-                      </p>
-                      <p className="text-xs font-black text-slate-700 tabular-nums">{order.targetQty}</p>
+                      <p className="text-[8px] font-bold text-slate-400 uppercase">{lang === 'ar' ? 'المستهدف' : 'TARGET'}</p>
+                      <p className="text-[11px] font-black text-slate-700 tabular-nums">{order.targetQty}</p>
                     </div>
                     <div className="space-y-0.5">
-                      <p className="text-[8px] font-bold text-slate-400 uppercase flex items-center gap-1">
-                        <Gauge className="w-2.5 h-2.5 text-amber-500 opacity-60" /> {lang === 'ar' ? 'المستلم' : 'ACTUAL'}
-                      </p>
-                      <p className="text-xs font-black text-amber-600 tabular-nums">{order.completedQty}</p>
+                      <p className="text-[8px] font-bold text-slate-400 uppercase">{lang === 'ar' ? 'المستلم' : 'ACTUAL'}</p>
+                      <p className="text-[11px] font-black text-amber-600 tabular-nums">{order.completedQty}</p>
                     </div>
                     <div className="space-y-0.5">
-                      <p className="text-[8px] font-bold text-slate-400 uppercase flex items-center gap-1">
-                        <Timer className="w-2.5 h-2.5 text-emerald-500 opacity-60" /> {lang === 'ar' ? 'المتبقي' : 'REMAIN'}
-                      </p>
-                      <p className="text-xs font-black text-emerald-700 tabular-nums">{order.targetQty - order.completedQty}</p>
+                      <p className="text-[8px] font-bold text-slate-400 uppercase">{lang === 'ar' ? 'المتبقي' : 'REMAIN'}</p>
+                      <p className="text-[11px] font-black text-emerald-700 tabular-nums">{order.targetQty - order.completedQty}</p>
                     </div>
                   </div>
                 </div>
 
                 {/* 3. QUICK ACTIONS HUB (LEFT in RTL) - COMPACT */}
-                <div className="w-full lg:w-40 p-3 flex flex-row lg:flex-col gap-2 border-r border-slate-100 bg-white items-center justify-center">
-                  <Button variant="outline" className="flex-1 lg:w-full h-9 rounded-lg text-[9px] font-black gap-1.5 border-slate-200 hover:bg-slate-50 transition-all uppercase tracking-tight">
+                <div className="w-full lg:w-32 p-2 flex flex-row lg:flex-col gap-1.5 border-r border-slate-100 bg-white items-center justify-center">
+                  <Button variant="outline" className="flex-1 lg:w-full h-8 rounded-lg text-[8px] font-black gap-1 border-slate-200 hover:bg-slate-50 transition-all uppercase">
                     <FileText className="w-3 h-3 text-emerald-600" />
                     {lang === 'ar' ? 'السندات' : 'Vouchers'}
                   </Button>
-                  <Button className="flex-1 lg:w-full h-9 premium-gradient rounded-lg text-[9px] font-black gap-1.5 border-none shadow-md hover:opacity-90 uppercase tracking-tight">
+                  <Button className="flex-1 lg:w-full h-8 premium-gradient rounded-lg text-[8px] font-black gap-1 border-none shadow-md hover:opacity-90 uppercase">
                     {lang === 'ar' ? 'المرحلة' : 'Process'}
                     <ChevronRight className={cn("w-3 h-3", dir === 'rtl' && "rotate-180")} />
                   </Button>
@@ -365,13 +359,13 @@ export default function ProductionOrdersPage() {
       {/* NEW/EDIT ORDER DIALOG */}
       <Dialog open={isAddDialogOpen} onOpenChange={(open) => !open && resetForm()}>
         <DialogContent className="sm:max-w-[500px] rounded-lg p-0 overflow-hidden border-none shadow-2xl">
-          <div className="bg-slate-900 p-6 text-white border-b border-emerald-500/20">
+          <div className="premium-gradient p-6 text-white">
             <DialogHeader className="text-right rtl:text-right ltr:text-left">
               <DialogTitle className="text-xl font-black flex items-center gap-3">
-                <Workflow className="w-5 h-5 text-emerald-400" />
+                <Workflow className="w-5 h-5 text-emerald-300" />
                 {editingOrderId ? (lang === 'ar' ? 'تعديل أمر الإنتاج' : 'Update Order') : (lang === 'ar' ? 'فتح أمر إنتاج جديد' : 'New Master Batch')}
               </DialogTitle>
-              <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest mt-1">
+              <p className="text-emerald-100/70 font-bold text-[10px] uppercase tracking-widest mt-1">
                 Initiating manufacturing cycle & target metrics
               </p>
             </DialogHeader>
@@ -407,11 +401,18 @@ export default function ProductionOrdersPage() {
                   <option key={p.id} value={p.id}>{p.nameAr}</option>
                 ))}
               </select>
+              {products?.length === 0 && !productsLoading && (
+                <p className="text-[10px] text-amber-600 font-bold mt-1 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
+                  {lang === 'ar' ? 'الكتالوج فارغ. يرجى إضافة منتجات أولاً.' : 'Catalog is empty. Please add products first.'}
+                  <Link href="/production/products" className="underline ms-1">{lang === 'ar' ? 'اذهب للكتالوج' : 'Go to Catalog'}</Link>
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-slate-400">{lang === 'ar' ? 'العدد المطلوب' : 'TARGET QTY'}</Label>
+                <Label className="text-[10px] font-black uppercase text-slate-400">{lang === 'ar' ? 'الكمية المستهدفة' : 'TARGET QTY'}</Label>
                 <Input 
                   type="number" 
                   value={formData.targetQty} 
@@ -432,6 +433,19 @@ export default function ProductionOrdersPage() {
                   <option value="high">{lang === 'ar' ? 'عاجلة' : 'Urgent'}</option>
                 </select>
               </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
+                <FileText className="w-3 h-3 text-emerald-600" />
+                {lang === 'ar' ? 'ملاحظات إضافية' : 'ADDITIONAL NOTES'}
+              </Label>
+              <Textarea 
+                value={formData.notes} 
+                onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                placeholder={lang === 'ar' ? 'أدخل أي تعليمات خاصة هنا...' : 'Enter any special instructions...'}
+                className="min-h-[80px] rounded-lg bg-slate-50 font-medium border-slate-200 resize-none text-xs"
+              />
             </div>
 
             <div className="flex gap-3 pt-4 border-t border-slate-100">
