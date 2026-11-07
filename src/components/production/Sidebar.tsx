@@ -21,7 +21,9 @@ import {
   Users2,
   ClipboardCheck,
   TrendingUp,
-  PackageCheck
+  PackageCheck,
+  Calculator,
+  Workflow
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -41,7 +43,7 @@ type NavItem = {
 export function Sidebar() {
   const pathname = usePathname();
   const { lang, t, dir } = useTranslation();
-  const { open, state } = useSidebar();
+  const { state } = useSidebar();
 
   const navigation: NavItem[] = [
     {
@@ -53,12 +55,19 @@ export function Sidebar() {
       name: t.production.production,
       icon: <Factory className="w-5 h-5" />,
       children: [
+        { name: lang === 'ar' ? 'أوامر الإنتاج' : 'Production Orders', href: '/production/orders' },
+        { name: lang === 'ar' ? 'متابعة مراحل العمل' : 'WIP Monitoring', href: '/production/monitoring' },
+        { name: lang === 'ar' ? 'توزيع العمل' : 'Assignments', href: '/production/assignments' },
         { name: lang === 'ar' ? 'دليل المنتجات' : 'Products Catalog', href: '/production/products' },
-        { name: t.production.orders, href: '/production/orders' },
-        { name: t.production.stages, href: '/production/stages' },
-        { name: t.production.assignments, href: '/production/assignments' },
-        { name: t.production.monitoring, href: '/production/monitoring' },
-        { name: t.production.wip, href: '/production/wip' },
+      ]
+    },
+    {
+      name: t.production.vouchers,
+      icon: <FileText className="w-5 h-5" />,
+      children: [
+        { name: lang === 'ar' ? 'سندات صرف مواد' : 'Material Issue', href: '/production/vouchers/issue' },
+        { name: lang === 'ar' ? 'سندات استلام إنتاج' : 'Production Receipt', href: '/production/vouchers/receipt' },
+        { name: lang === 'ar' ? 'مرتجعات وتوالف' : 'Returns & Waste', href: '/production/vouchers/returns' },
       ]
     },
     {
@@ -66,9 +75,7 @@ export function Sidebar() {
       icon: <Box className="w-5 h-5" />,
       children: [
         { name: t.production.rawMaterials, href: '/production/materials' },
-        { name: t.production.warehouses, href: '/production/warehouses' },
-        { name: t.production.issueVouchers, href: '/production/issue-vouchers' },
-        { name: t.production.inventoryMoves, href: '/production/inventory-moves' },
+        { name: lang === 'ar' ? 'المستودعات' : 'Warehouses', href: '/production/warehouses' },
       ]
     },
     {
@@ -77,31 +84,21 @@ export function Sidebar() {
       children: [
         { name: t.production.workersList, href: '/production/workers' },
         { name: t.production.departments, href: '/production/departments' },
-        { name: t.production.wageEntitlements, href: '/production/wage-entitlements' },
+        { name: lang === 'ar' ? 'كشوف الأجور' : 'Payroll', href: '/production/wages' },
       ]
     },
     {
-      name: t.production.vouchers,
-      icon: <FileText className="w-5 h-5" />,
+      name: lang === 'ar' ? 'التكاليف والتقارير' : 'Costs & Reports',
+      icon: <Calculator className="w-5 h-5" />,
       children: [
-        { name: t.production.allVouchers, href: '/production/vouchers' },
-        { name: t.production.receiptVouchers, href: '/production/receipt-vouchers' },
-        { name: t.production.transfers, href: '/production/transfers' },
-      ]
-    },
-    {
-      name: t.production.reports,
-      icon: <BarChart3 className="w-5 h-5" />,
-      children: [
+        { name: lang === 'ar' ? 'تحليل التكاليف' : 'Cost Analysis', href: '/production/reports/costs' },
         { name: t.production.productionReports, href: '/production/reports/production' },
-        { name: t.production.costReports, href: '/production/reports/costs' },
       ]
     },
     {
       name: t.production.management,
       icon: <Settings className="w-5 h-5" />,
       children: [
-        { name: t.production.roles, href: '/production/roles' },
         { name: t.production.settings, href: '/production/settings' },
         { name: t.production.trash, href: '/production/trash' },
       ]
@@ -115,22 +112,14 @@ export function Sidebar() {
       "flex flex-col h-full premium-gradient text-white/80 transition-all duration-300 border-l border-white/5 shadow-2xl relative overflow-hidden",
       isCollapsed ? "w-20" : "w-72"
     )}>
-      {/* 1. Luxurious Foggy Corners (Glassmorphism Effect) */}
       <div className="absolute -top-24 -right-24 w-64 h-64 bg-emerald-400/10 rounded-full blur-[100px] pointer-events-none" />
       <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-emerald-300/5 rounded-full blur-[100px] pointer-events-none" />
-      
-      {/* 2. Micro-Textile Pattern Overlay */}
       <div className="absolute inset-0 opacity-[0.04] pointer-events-none textile-pattern mix-blend-overlay" />
 
-      {/* Brand Section */}
       <div className={cn("mb-10 pt-8 relative z-10", isCollapsed ? "px-4" : "px-8")}>
         <div className="flex items-center gap-4 group">
           <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center border border-white/20 shrink-0 overflow-hidden p-1 shadow-xl group-hover:scale-105 transition-transform duration-300">
-            <img 
-              src="/images/logo.png" 
-              alt="Association Logo" 
-              className="w-full h-full object-contain rounded-xl"
-            />
+            <img src="/images/logo.png" alt="Logo" className="w-full h-full object-contain rounded-xl" />
           </div>
           {!isCollapsed && (
             <div className="animate-in fade-in duration-500">
@@ -141,10 +130,9 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* Navigation */}
       <nav className="flex-1 space-y-2 px-4 overflow-y-auto overflow-x-hidden no-scrollbar relative z-10">
         {navigation.map((group) => (
-          <Collapsible key={group.name} defaultOpen={!isCollapsed && (group.name === t.production.dashboard || group.name === t.production.production || group.name === t.production.management)}>
+          <Collapsible key={group.name} defaultOpen={!isCollapsed && (group.name === t.production.dashboard || group.name === t.production.production)}>
             <CollapsibleTrigger disabled={isCollapsed} className={cn(
               "flex items-center justify-between w-full p-3 rounded-xl hover:bg-white/10 hover:text-white transition-all group",
               isCollapsed && "justify-center"
@@ -183,7 +171,6 @@ export function Sidebar() {
         ))}
       </nav>
 
-      {/* Footer Info Area */}
       <div className={cn("pt-6 mt-6 border-t border-white/10 pb-8 relative z-10", isCollapsed ? "px-4" : "px-6")}>
         <div className="p-4 bg-black/10 rounded-[1.5rem] border border-white/5 space-y-4 shadow-inner">
           {!isCollapsed && (
