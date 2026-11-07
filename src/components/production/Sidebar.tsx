@@ -14,6 +14,7 @@ import {
   Settings, 
   ChevronDown,
   History,
+  Trash2,
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
@@ -96,6 +97,7 @@ export function Sidebar() {
       children: [
         { name: t.production.roles, href: '/production/roles' },
         { name: t.production.settings, href: '/production/settings' },
+        { name: t.production.trash, href: '/production/trash' },
       ]
     },
   ];
@@ -129,7 +131,7 @@ export function Sidebar() {
       {/* Navigation */}
       <nav className="flex-1 space-y-2 px-4 overflow-y-auto overflow-x-hidden">
         {navigation.map((group) => (
-          <Collapsible key={group.name} defaultOpen={!isCollapsed && (group.name === t.production.dashboard || group.name === t.production.production)}>
+          <Collapsible key={group.name} defaultOpen={!isCollapsed && (group.name === t.production.dashboard || group.name === t.production.production || group.name === t.production.management)}>
             <CollapsibleTrigger disabled={isCollapsed} className={cn(
               "flex items-center justify-between w-full p-3 rounded-xl hover:bg-white/5 hover:text-white transition-all group",
               isCollapsed && "justify-center"
