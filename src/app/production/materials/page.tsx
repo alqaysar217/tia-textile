@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useCallback, useRef } from 'react';
@@ -284,40 +283,54 @@ export default function MaterialsPage() {
     setIsAddDialogOpen(true);
   };
 
-  const handleExportExcel = () => {
+  const handleExportCSV = () => {
     const headers = [
       lang === 'ar' ? 'كود المادة' : 'SKU',
-      lang === 'ar' ? 'الاسم' : 'Name',
+      lang === 'ar' ? 'الاسم (عربي)' : 'Name (AR)',
+      lang === 'ar' ? 'الاسم (إنجليزي)' : 'Name (EN)',
       lang === 'ar' ? 'الفئة' : 'Category',
       lang === 'ar' ? 'الوحدة' : 'Unit',
-      lang === 'ar' ? 'الكمية' : 'Qty',
+      lang === 'ar' ? 'الكمية الحالية' : 'Qty',
+      lang === 'ar' ? 'حد الأمان' : 'Min Level',
       lang === 'ar' ? 'السعر' : 'Price'
     ];
+
+    const escapeCSV = (val: any) => {
+      const str = String(val || '');
+      if (str.includes(',') || str.includes('\n') || str.includes('"')) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
 
     const rows = filtered.map(m => {
       const cat = categories.find(c => c.value === m.category);
       return [
-        m.code,
-        lang === 'ar' ? m.nameAr : m.nameEn,
-        cat ? (lang === 'ar' ? cat.labelAr : cat.labelEn) : m.category,
-        m.unit,
-        m.currentQty,
-        m.price
+        escapeCSV(m.code),
+        escapeCSV(m.nameAr),
+        escapeCSV(m.nameEn),
+        cat ? escapeCSV(lang === 'ar' ? cat.labelAr : cat.labelEn) : escapeCSV(m.category),
+        escapeCSV(m.unit),
+        m.currentQty || 0,
+        m.minQty || 0,
+        m.price || 0
       ];
     });
 
-    let html = `
-      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-      <head><meta charset="utf-8"><style>table { border-collapse: collapse; direction: rtl; } th { background: #065F46; color: #fff; padding: 10px; } td { border: 1px solid #eee; padding: 8px; }</style></head>
-      <body><table><thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table></body></html>
-    `;
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.join(','))
+    ].join('\n');
 
-    const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `materials_${new Date().toISOString().split('T')[0]}.xls`;
-    a.click();
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `materials_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast({ title: lang === 'ar' ? "تم تحميل ملف CSV" : "CSV Downloaded" });
   };
 
   const getCategoryIcon = (catValue: string) => {
@@ -380,9 +393,9 @@ export default function MaterialsPage() {
           </div>
           
           <div className="flex items-center gap-1.5 px-1.5">
-            <Button onClick={handleExportExcel} variant="ghost" className="h-9 px-4 rounded-md text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent hover:border-slate-200">
+            <Button onClick={handleExportCSV} variant="ghost" className="h-9 px-4 rounded-md text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent hover:border-slate-200">
               <FileDown className="w-3.5 h-3.5 text-emerald-600" />
-              {lang === 'ar' ? 'تصدير' : 'Export'}
+              {lang === 'ar' ? 'تصدير CSV' : 'Export CSV'}
             </Button>
 
             <DropdownMenu>

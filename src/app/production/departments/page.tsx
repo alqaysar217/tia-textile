@@ -268,7 +268,7 @@ export default function DepartmentsPage() {
     }
   };
 
-  const handleExportExcel = () => {
+  const handleExportCSV = () => {
     const headers = [
       lang === 'ar' ? 'كود القسم' : 'Code',
       lang === 'ar' ? 'اسم القسم (عربي)' : 'Name (AR)',
@@ -277,45 +277,36 @@ export default function DepartmentsPage() {
       lang === 'ar' ? 'الحالة' : 'Status'
     ];
 
+    const escapeCSV = (val: any) => {
+      const str = String(val || '');
+      if (str.includes(',') || str.includes('\n') || str.includes('"')) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
     const rows = filtered.map(d => [
-      d.code,
-      d.nameAr,
-      d.nameEn,
+      escapeCSV(d.code),
+      escapeCSV(d.nameAr),
+      escapeCSV(d.nameEn),
       d.actualWorkerCount || 0,
       d.status === 'active' ? (lang === 'ar' ? 'نشط' : 'Active') : (lang === 'ar' ? 'متوقف' : 'Inactive')
     ]);
 
-    let html = `
-      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-      <head>
-        <meta charset="utf-8">
-        <style>
-          table { border-collapse: collapse; direction: rtl; font-family: sans-serif; }
-          th { background-color: #065F46; color: #ffffff; border: 1px solid #e2e8f0; padding: 12px; text-align: center; font-weight: bold; }
-          td { border: 1px solid #e2e8f0; padding: 10px; text-align: right; }
-        </style>
-      </head>
-      <body>
-        <table>
-          <thead>
-            <tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>
-          </thead>
-          <tbody>
-            ${rows.map(r => `<tr>${r.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}
-          </tbody>
-        </table>
-      </body>
-      </html>
-    `;
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.join(','))
+    ].join('\n');
 
-    const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `departments_${new Date().toISOString().split('T')[0]}.xls`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast({ title: lang === 'ar' ? "تم بدء التصدير" : "Export Started" });
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `departments_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast({ title: lang === 'ar' ? "تم تحميل ملف CSV" : "CSV Downloaded" });
   };
 
   return (
@@ -374,12 +365,12 @@ export default function DepartmentsPage() {
           
           <div className="flex items-center gap-1.5 px-1.5">
             <Button 
-              onClick={handleExportExcel}
+              onClick={handleExportCSV}
               variant="ghost" 
               className="h-9 px-4 rounded-md text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent hover:border-slate-200"
             >
               <FileDown className="w-3.5 h-3.5 text-emerald-600" />
-              {lang === 'ar' ? 'تصدير' : 'Export'}
+              {lang === 'ar' ? 'تصدير CSV' : 'Export CSV'}
             </Button>
 
             <DropdownMenu>
