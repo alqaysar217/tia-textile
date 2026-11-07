@@ -16,7 +16,7 @@ import {
   Power, 
   PowerOff, 
   History, 
-  Info,
+  Info, 
   Hash,
   Languages,
   Type,
@@ -100,7 +100,8 @@ export default function DepartmentsPage() {
         (d.nameAr?.includes(search) || 
         d.nameEn?.toLowerCase().includes(search.toLowerCase()) || 
         d.code?.includes(search))
-      );
+      )
+      .sort((a, b) => (a.code || '').localeCompare(b.code || '', undefined, { numeric: true, sensitivity: 'base' }));
   }, [departments, search]);
 
   const resetForm = useCallback(() => {
