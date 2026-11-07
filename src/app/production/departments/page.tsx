@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Factory, 
   Plus, 
@@ -11,7 +11,6 @@ import {
   CheckCircle2,
   Filter,
   ChevronRight,
-  ArrowLeftRight,
   Info,
   Save,
   Activity,
@@ -21,7 +20,11 @@ import {
   Globe,
   FileText,
   Layout,
-  AlertTriangle
+  AlertTriangle,
+  Power,
+  PowerOff,
+  X,
+  ShieldAlert
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,7 +64,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, addDoc, updateDoc, doc, serverTimestamp, query, where } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc, serverTimestamp, query, where, orderBy } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { toast } from '@/hooks/use-toast';
@@ -73,18 +76,24 @@ export default function DepartmentsPage() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingDept, setEditingDept] = useState<any>(null);
   const [deletingDept, setDeletingDept] = useState<any>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [formData, setFormData] = useState({
     code: '',
     nameAr: '',
     nameEn: '',
-    descAr: ''
+    descAr: '',
+    status: 'active'
   });
 
   // Real-time collection fetch (excluding soft-deleted items)
   const departmentsQuery = useMemo(() => {
     if (!db) return null;
-    return query(collection(db, 'departments'), where('status', '!=', 'deleted'));
+    return query(
+      collection(db, 'departments'), 
+      where('status', 'in', ['active', 'inactive']),
+      orderBy('createdAt', 'desc')
+    );
   }, [db]);
 
   const { data: departments, loading } = useCollection<any>(departmentsQuery);
@@ -95,85 +104,99 @@ export default function DepartmentsPage() {
     d.code?.includes(search)
   );
 
-  const handleSaveDepartment = (e: React.FormEvent) => {
+  const handleSaveDepartment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!db) return;
+    if (!db || isSubmitting) return;
 
+    setIsSubmitting(true);
     const deptData = {
       ...formData,
       updatedAt: serverTimestamp(),
-      status: 'active',
-      workerCount: editingDept ? editingDept.workerCount : 0,
+      workerCount: editingDept ? (editingDept.workerCount || 0) : 0,
     };
 
-    if (editingDept) {
-      const docRef = doc(db, 'departments', editingDept.id);
-      updateDoc(docRef, deptData).catch(async (err) => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: docRef.path,
-          operation: 'update',
-          requestResourceData: deptData
-        }));
-      });
-    } else {
-      const colRef = collection(db, 'departments');
-      addDoc(colRef, {
-        ...deptData,
-        createdAt: serverTimestamp(),
-      }).catch(async (err) => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: colRef.path,
-          operation: 'create',
-          requestResourceData: deptData
-        }));
-      });
-    }
+    try {
+      if (editingDept) {
+        const docRef = doc(db, 'departments', editingDept.id);
+        await updateDoc(docRef, deptData);
+      } else {
+        const colRef = collection(db, 'departments');
+        await addDoc(colRef, {
+          ...deptData,
+          createdAt: serverTimestamp(),
+        });
+      }
 
-    setIsAddDialogOpen(false);
-    setEditingDept(null);
-    setFormData({ code: '', nameAr: '', nameEn: '', descAr: '' });
-    
-    toast({
-      title: lang === 'ar' ? "تم الحفظ بنجاح" : "Saved Successfully",
-      description: lang === 'ar' ? `تم تحديث بيانات القسم في قاعدة البيانات.` : `Department data updated in database.`,
-    });
+      toast({
+        title: lang === 'ar' ? "تم تحديث البيانات" : "Data Updated",
+        description: lang === 'ar' ? "تمت مزامنة التغييرات مع قاعدة البيانات المركزية." : "Changes synced with central database.",
+      });
+      
+      resetForm();
+    } catch (err: any) {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: 'departments',
+        operation: editingDept ? 'update' : 'create',
+        requestResourceData: deptData
+      }));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleTrashDepartment = () => {
+  const resetForm = () => {
+    setIsAddDialogOpen(false);
+    setEditingDept(null);
+    setFormData({ code: '', nameAr: '', nameEn: '', descAr: '', status: 'active' });
+  };
+
+  const handleStatusToggle = async (dept: any) => {
+    if (!db) return;
+    const newStatus = dept.status === 'active' ? 'inactive' : 'active';
+    const docRef = doc(db, 'departments', dept.id);
+    
+    try {
+      await updateDoc(docRef, { status: newStatus, updatedAt: serverTimestamp() });
+      toast({
+        title: lang === 'ar' ? "تحديث الحالة" : "Status Updated",
+        description: lang === 'ar' ? `تم تغيير حالة القسم إلى ${newStatus === 'active' ? 'نشط' : 'متوقف'}` : `Department status changed to ${newStatus}`,
+      });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleArchiveDepartment = async () => {
     if (!db || !deletingDept) return;
 
-    // BUSINESS RULE: Prevent deletion if workers are assigned
-    if (deletingDept.workerCount > 0) {
+    // Integrity Check
+    if ((deletingDept.workerCount || 0) > 0) {
       toast({
         variant: "destructive",
-        title: lang === 'ar' ? "فشل الحذف" : "Deletion Failed",
+        title: lang === 'ar' ? "إجراء غير مسموح" : "Action Prohibited",
         description: lang === 'ar' 
-          ? "لا يمكن حذف هذا القسم لأنه يحتوي على عمال نشطين. يرجى نقل العمال أولاً." 
-          : "Cannot delete this department because it has active workers. Transfer workers first.",
+          ? "لا يمكن أرشفة قسم يحتوي على عمال. يرجى نقلهم أولاً." 
+          : "Cannot archive department with workers. Transfer them first.",
       });
       setDeletingDept(null);
       return;
     }
 
-    // SOFT DELETE: Move to trash status
     const docRef = doc(db, 'departments', deletingDept.id);
-    updateDoc(docRef, {
-      status: 'deleted',
-      deletedAt: serverTimestamp(),
-    }).catch(async (err) => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: docRef.path,
-        operation: 'delete'
-      }));
-    });
-
-    toast({
-      title: lang === 'ar' ? "تم النقل لسلة المحذوفات" : "Moved to Trash",
-      description: lang === 'ar' 
-        ? "سيتم حذف هذا القسم نهائياً بعد 30 يوماً." 
-        : "This department will be permanently deleted after 30 days.",
-    });
-    setDeletingDept(null);
+    try {
+      await updateDoc(docRef, {
+        status: 'deleted',
+        deletedAt: serverTimestamp(),
+      });
+      toast({
+        title: lang === 'ar' ? "تمت الأرشفة" : "Archived",
+        description: lang === 'ar' ? "انتقل القسم إلى سجل المحذوفات الذكي." : "Department moved to smart trash.",
+      });
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setDeletingDept(null);
+    }
   };
 
   const handleEditClick = (dept: any) => {
@@ -182,7 +205,8 @@ export default function DepartmentsPage() {
       code: dept.code,
       nameAr: dept.nameAr,
       nameEn: dept.nameEn,
-      descAr: dept.descAr || ''
+      descAr: dept.descAr || '',
+      status: dept.status || 'active'
     });
     setIsAddDialogOpen(true);
   };
@@ -212,11 +236,8 @@ export default function DepartmentsPage() {
         </div>
 
         <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
-          setIsAddDialogOpen(open);
-          if (!open) {
-            setEditingDept(null);
-            setFormData({ code: '', nameAr: '', nameEn: '', descAr: '' });
-          }
+          if (!open && !isSubmitting) resetForm();
+          else if (open) setIsAddDialogOpen(true);
         }}>
           <DialogTrigger asChild>
             <Button className="h-12 px-8 bg-primary hover:bg-primary/95 text-white gap-3 rounded-xl shadow-xl shadow-primary/10 font-black transition-all active:scale-95">
@@ -226,18 +247,18 @@ export default function DepartmentsPage() {
           </DialogTrigger>
           <DialogContent className="sm:max-w-[550px] rounded-2xl border-none shadow-2xl overflow-hidden p-0">
             <div className="bg-gradient-to-br from-primary via-[#0a7a44] to-[#054d2a] p-8 text-white relative">
-              <div className="absolute top-0 left-0 p-6 opacity-10 rotate-12">
+              <div className="absolute top-0 right-0 p-6 opacity-10 rotate-12">
                 <Factory className="w-32 h-32" />
               </div>
               <DialogHeader className="relative z-10 text-right rtl:text-right ltr:text-left">
                 <DialogTitle className="text-2xl font-black flex items-center gap-3">
                   <Layout className="w-6 h-6 text-secondary" />
-                  {editingDept ? (lang === 'ar' ? 'تعديل القسم' : 'Edit Department') : (lang === 'ar' ? 'إضافة قسم جديد' : 'New Department')}
+                  {editingDept ? (lang === 'ar' ? 'تعديل بيانات القسم' : 'Edit Department') : (lang === 'ar' ? 'إضافة قسم جديد' : 'New Department')}
                 </DialogTitle>
                 <DialogDescription className="text-white/70 font-bold mt-2 text-sm leading-relaxed">
                   {lang === 'ar' 
-                    ? 'أدخل بيانات القسم بدقة لضمان صحة توزيع التكاليف الصناعية.' 
-                    : 'Enter department details accurately to ensure correct cost allocation.'}
+                    ? 'يرجى إدخال البيانات بدقة، حيث تُستخدم هذه المعلومات في توزيع التكاليف الصناعية.' 
+                    : 'Please enter data accurately, as this info is used for cost allocation.'}
                 </DialogDescription>
               </DialogHeader>
             </div>
@@ -255,6 +276,7 @@ export default function DepartmentsPage() {
                     placeholder="DEPT-XXX" 
                     className="h-12 rounded-xl border-gray-100 bg-gray-50/50 font-bold focus:bg-white focus:ring-primary/5 focus:border-primary/30 transition-all ps-4" 
                     required 
+                    disabled={isSubmitting}
                   />
                 </div>
                 <div className="space-y-2">
@@ -262,13 +284,15 @@ export default function DepartmentsPage() {
                     <Activity className="w-3 h-3 text-primary/60" />
                     {lang === 'ar' ? 'الحالة التشغيلية' : 'Status'}
                   </Label>
-                  <div className="flex items-center h-12 px-4 bg-emerald-50/50 border border-emerald-100/50 rounded-xl text-[11px] font-black text-emerald-700 gap-3">
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                    </span>
-                    {lang === 'ar' ? 'نشط' : 'Active'}
-                  </div>
+                  <select 
+                    value={formData.status}
+                    onChange={(e) => setFormData({...formData, status: e.target.value})}
+                    className="w-full h-12 px-4 bg-emerald-50/50 border border-emerald-100/50 rounded-xl text-[11px] font-black text-emerald-700 focus:outline-none"
+                    disabled={isSubmitting}
+                  >
+                    <option value="active">{lang === 'ar' ? 'نشط تشغيلياً' : 'Active'}</option>
+                    <option value="inactive">{lang === 'ar' ? 'متوقف مؤقتاً' : 'Inactive'}</option>
+                  </select>
                 </div>
               </div>
 
@@ -283,6 +307,7 @@ export default function DepartmentsPage() {
                   placeholder={lang === 'ar' ? 'مثال: قسم التطريز' : 'Arabic Name'} 
                   className="h-12 rounded-xl border-gray-100 bg-gray-50/50 font-bold focus:bg-white focus:ring-primary/5 focus:border-primary/30 transition-all" 
                   required 
+                  disabled={isSubmitting}
                 />
               </div>
 
@@ -297,6 +322,7 @@ export default function DepartmentsPage() {
                   placeholder="English Name" 
                   className="h-12 rounded-xl border-gray-100 bg-gray-50/50 font-bold focus:bg-white focus:ring-primary/5 focus:border-primary/30 transition-all" 
                   required 
+                  disabled={isSubmitting}
                 />
               </div>
 
@@ -310,21 +336,26 @@ export default function DepartmentsPage() {
                   onChange={(e) => setFormData({...formData, descAr: e.target.value})}
                   placeholder={lang === 'ar' ? 'شرح للمهام التي تتم في هذا القسم...' : 'Operations details...'} 
                   className="rounded-xl border-gray-100 bg-gray-50/50 resize-none h-24 font-medium focus:bg-white focus:ring-primary/5 focus:border-primary/30 transition-all p-4 text-sm" 
+                  disabled={isSubmitting}
                 />
               </div>
 
               <div className="pt-4 flex gap-4">
                 <Button 
                   type="submit" 
+                  disabled={isSubmitting}
                   className="flex-1 h-14 bg-gradient-to-r from-primary to-[#0a7a44] hover:opacity-90 rounded-xl font-black gap-3 shadow-lg shadow-primary/10 text-base"
                 >
-                  <Save className="w-5 h-5" />
+                  {isSubmitting ? (
+                    <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                  ) : <Save className="w-5 h-5" />}
                   {lang === 'ar' ? 'حفظ البيانات' : 'Save Changes'}
                 </Button>
                 <Button 
                   type="button" 
                   variant="ghost" 
-                  onClick={() => setIsAddDialogOpen(false)} 
+                  onClick={resetForm} 
+                  disabled={isSubmitting}
                   className="h-14 px-8 rounded-xl font-black text-gray-400 hover:text-gray-600"
                 >
                   {lang === 'ar' ? 'إلغاء' : 'Cancel'}
@@ -403,7 +434,9 @@ export default function DepartmentsPage() {
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow><TableCell colSpan={6} className="text-center py-20 animate-pulse font-black text-gray-400">جاري تحميل البيانات...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={6} className="text-center py-20 animate-pulse font-black text-gray-400">جاري تحميل البيانات الحقيقية...</TableCell></TableRow>
+            ) : filtered.length === 0 ? (
+              <TableRow><TableCell colSpan={6} className="text-center py-20 font-black text-gray-300">لا توجد سجلات مطابقة للبحث</TableCell></TableRow>
             ) : filtered.map((dept) => (
               <TableRow key={dept.id} className="group hover:bg-gray-50/30 transition-all border-b border-gray-100/60">
                 <TableCell className="px-6 py-5 font-black text-primary/60 text-[10px] tabular-nums tracking-widest">{dept.code}</TableCell>
@@ -438,12 +471,16 @@ export default function DepartmentsPage() {
                         <MoreVertical className="w-4 h-4 text-gray-400" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="rounded-xl border-gray-200 shadow-xl min-w-[180px] p-1">
-                      <DropdownMenuItem onClick={() => handleEditClick(dept)} className="gap-3 font-bold text-xs py-2.5 cursor-pointer rounded-lg">
-                        <Edit2 className="w-3.5 h-3.5 text-blue-500" /> {lang === 'ar' ? 'تعديل البيانات' : 'Edit Unit'}
+                    <DropdownMenuContent align="end" className="rounded-xl border-gray-200 shadow-xl min-w-[200px] p-1">
+                      <DropdownMenuItem onClick={() => handleEditClick(dept)} className="gap-3 font-bold text-xs py-3 cursor-pointer rounded-lg">
+                        <Edit2 className="w-3.5 h-3.5 text-blue-500" /> {lang === 'ar' ? 'تعديل البيانات' : 'Edit Details'}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleStatusToggle(dept)} className="gap-3 font-bold text-xs py-3 cursor-pointer rounded-lg">
+                        {dept.status === 'active' ? <PowerOff className="w-3.5 h-3.5 text-amber-500" /> : <Power className="w-3.5 h-3.5 text-emerald-500" />}
+                        {dept.status === 'active' ? (lang === 'ar' ? 'تعطيل القسم' : 'Deactivate') : (lang === 'ar' ? 'تفعيل القسم' : 'Activate')}
                       </DropdownMenuItem>
                       <div className="h-px bg-gray-100 my-1 mx-2" />
-                      <DropdownMenuItem onClick={() => setDeletingDept(dept)} className="gap-3 font-bold text-xs py-2.5 cursor-pointer text-rose-600 focus:text-rose-700 rounded-lg">
+                      <DropdownMenuItem onClick={() => setDeletingDept(dept)} className="gap-3 font-bold text-xs py-3 cursor-pointer text-rose-600 focus:text-rose-700 rounded-lg">
                         <Trash2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'نقل للأرشيف' : 'Move to Archive'}
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -455,28 +492,51 @@ export default function DepartmentsPage() {
         </Table>
       </div>
 
-      {/* Confirmation Alerts */}
+      {/* CUSTOM LUXURY ALERT DIALOG */}
       <AlertDialog open={!!deletingDept} onOpenChange={(open) => !open && setDeletingDept(null)}>
-        <AlertDialogContent className="rounded-2xl border-none shadow-2xl">
-          <AlertDialogHeader className="text-right">
-            <div className="w-14 h-14 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mb-4">
-              <AlertTriangle className="w-8 h-8" />
+        <AlertDialogContent className="max-w-md rounded-[2rem] border-none shadow-[0_40px_100px_rgba(0,0,0,0.15)] overflow-hidden p-0">
+          <div className="bg-gradient-to-br from-[#1A1C1E] to-[#2D3136] p-10 text-center relative overflow-hidden">
+            {/* Background luxury decor */}
+            <div className="absolute inset-0 opacity-[0.03] textile-pattern pointer-events-none" />
+            <div className="absolute -top-10 -right-10 w-40 h-40 bg-primary/10 rounded-full blur-3xl" />
+            
+            <div className="relative z-10 flex flex-col items-center">
+              <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mb-6 border border-primary/20 shadow-inner">
+                <ShieldAlert className="w-10 h-10 text-primary" />
+              </div>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="text-2xl font-black text-white text-center leading-tight">
+                  {lang === 'ar' ? 'إجراء أرشفة ذكي' : 'Smart Archiving Action'}
+                </AlertDialogTitle>
+                <AlertDialogDescription className="text-gray-400 font-bold mt-4 text-sm leading-relaxed text-center">
+                  {lang === 'ar' 
+                    ? `هل أنت متأكد من نقل قسم "${deletingDept?.nameAr}" إلى الأرشيف؟ سيتم الاحتفاظ به لمدة 30 يوماً قبل الحذف النهائي.` 
+                    : `Move "${deletingDept?.nameEn}" to archive? It will be held for 30 days before final deletion.`}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
             </div>
-            <AlertDialogTitle className="text-xl font-black">{lang === 'ar' ? 'هل أنت متأكد من الحذف؟' : 'Are you sure?'}</AlertDialogTitle>
-            <AlertDialogDescription className="font-bold text-gray-500 mt-2">
-              {lang === 'ar' 
-                ? `سيتم نقل قسم "${deletingDept?.nameAr}" إلى سلة المحذوفات. لا يمكنك حذف الأقسام التي تحتوي على عمال نشطين.` 
-                : `Section "${deletingDept?.nameEn}" will be moved to trash. You cannot delete sections with active workers.`}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="flex-row-reverse gap-3 mt-6">
-            <AlertDialogAction onClick={handleTrashDepartment} className="bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-black px-6 h-12 flex-1">
-              {lang === 'ar' ? 'تأكيد النقل للأرشيف' : 'Confirm Archive'}
+          </div>
+          
+          <div className="bg-white p-8 flex gap-4">
+            <AlertDialogAction 
+              onClick={handleArchiveDepartment} 
+              className="flex-1 h-14 bg-primary hover:bg-primary/95 text-white rounded-2xl font-black shadow-xl shadow-primary/10 border-none transition-all active:scale-95"
+            >
+              {lang === 'ar' ? 'تأكيد الأرشفة' : 'Confirm Archive'}
             </AlertDialogAction>
-            <AlertDialogCancel className="rounded-xl border-gray-200 font-black h-12 flex-1">
+            <AlertDialogCancel 
+              className="flex-1 h-14 bg-gray-50 border-gray-100 hover:bg-gray-100 text-gray-500 rounded-2xl font-black transition-all"
+            >
               {lang === 'ar' ? 'تراجع' : 'Cancel'}
             </AlertDialogCancel>
-          </AlertDialogFooter>
+          </div>
+          
+          <button 
+            onClick={() => setDeletingDept(null)}
+            className="absolute top-4 left-4 p-2 text-gray-500 hover:text-white transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </AlertDialogContent>
       </AlertDialog>
 
