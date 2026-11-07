@@ -63,7 +63,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, addDoc, updateDoc, doc, serverTimestamp, query, where } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { toast } from '@/hooks/use-toast';
@@ -89,7 +89,6 @@ export default function DepartmentsPage() {
 
   const departmentsQuery = useMemo(() => {
     if (!db) return null;
-    // Simple query to avoid index errors for now, filtering handled in useMemo
     return collection(db, 'departments');
   }, [db]);
 
@@ -98,7 +97,7 @@ export default function DepartmentsPage() {
   const filtered = useMemo(() => {
     const rawData = departments || [];
     return rawData
-      .filter(d => d.status !== 'deleted') // Soft filter
+      .filter(d => d.status !== 'deleted')
       .filter(d => 
         (d.nameAr?.includes(search) || 
         d.nameEn?.toLowerCase().includes(search.toLowerCase()) || 
@@ -130,10 +129,8 @@ export default function DepartmentsPage() {
       updatedAt: serverTimestamp(),
     };
 
-    // UI RECOVERY FIRST
     resetForm(); 
 
-    // Execute Firestore call in next tick
     setTimeout(() => {
       if (isEdit && currentId) {
         const docRef = doc(db, 'departments', currentId);
@@ -222,33 +219,35 @@ export default function DepartmentsPage() {
   const totalWorkers = useMemo(() => (departments || []).reduce((acc, curr) => acc + (curr.workerCount || 0), 0), [departments]);
 
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 max-w-7xl mx-auto pb-12 relative">
+    <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 max-w-7xl mx-auto pb-12">
       
-      {/* Premium Sticky Header Section */}
-      <div className="sticky top-0 z-30 -mt-8 pt-8 pb-6 bg-[#F8F9FA]/95 backdrop-blur-md border-b border-gray-200/50 mb-8 px-1 transition-all">
-        <div className="flex items-center gap-2 text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-4">
-          <span>{lang === 'ar' ? 'نظام الإنتاج' : 'Production'}</span>
-          <ChevronRight className={`w-3 h-3 ${dir === 'rtl' ? '' : 'rotate-180'}`} />
-          <span className="text-primary">{lang === 'ar' ? 'إدارة الأقسام' : 'Departments'}</span>
-        </div>
-
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-          <div className="space-y-1">
-            <h1 className="text-3xl font-black text-gray-900 tracking-tight flex items-center gap-3">
-              <div className="w-1.5 h-8 bg-primary rounded-full" />
-              {lang === 'ar' ? 'أقسام ومراحل الإنتاج' : 'Production Departments'}
-            </h1>
-            <p className="text-sm text-gray-400 font-medium ps-4">
-              {lang === 'ar' ? 'إدارة حقيقية لمراكز التكلفة ومراحل سير العمل' : 'Real management of cost centers and workflow stages'}
-            </p>
+      {/* 
+          Sleek Sticky Header: 
+          Now uses -mx and compensates padding to feel integrated 
+          and less "detached" or "blocking".
+      */}
+      <div className="sticky top-0 z-30 -mx-4 md:-mx-8 px-4 md:px-8 py-4 bg-[#F8F9FA]/95 backdrop-blur-md border-b border-gray-200/60 mb-8 shadow-sm">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+          <div className="flex items-center gap-4 w-full md:w-auto">
+            <div className="w-1.5 h-10 bg-primary rounded-full hidden md:block" />
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2 text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+                <span>{lang === 'ar' ? 'نظام الإنتاج' : 'Production'}</span>
+                <ChevronRight className={`w-3 h-3 ${dir === 'rtl' ? '' : 'rotate-180'}`} />
+                <span className="text-primary">{lang === 'ar' ? 'الأقسام' : 'Departments'}</span>
+              </div>
+              <h1 className="text-xl md:text-2xl font-black text-gray-900 tracking-tight">
+                {lang === 'ar' ? 'أقسام ومراحل الإنتاج' : 'Production Departments'}
+              </h1>
+            </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 w-full md:w-auto justify-end">
             <Dialog open={isAddDialogOpen} onOpenChange={(open) => !open && resetForm()}>
               <DialogTrigger asChild>
-                <Button onClick={() => setIsAddDialogOpen(true)} className="h-12 px-8 bg-primary hover:bg-primary/95 text-white gap-3 rounded-xl shadow-xl shadow-primary/10 font-black transition-all active:scale-95 group">
-                  <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" />
-                  {lang === 'ar' ? 'إضافة قسم جديد' : 'New Department'}
+                <Button onClick={() => setIsAddDialogOpen(true)} className="h-11 px-6 bg-primary hover:bg-primary/95 text-white gap-2.5 rounded-xl shadow-lg shadow-primary/10 font-black transition-all active:scale-95 group">
+                  <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform" />
+                  {lang === 'ar' ? 'قسم جديد' : 'New Dept'}
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[550px] rounded-2xl border-none shadow-2xl overflow-hidden p-0">
@@ -435,7 +434,7 @@ export default function DepartmentsPage() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-20 animate-pulse font-black text-gray-400">جاري تحميل البيانات الحقيقية...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center py-20 animate-pulse font-black text-gray-400">جاري تحميل البيانات...</TableCell></TableRow>
               ) : filtered.length === 0 ? (
                 <TableRow><TableCell colSpan={6} className="text-center py-20 font-black text-gray-300">لا توجد سجلات مطابقة للبحث</TableCell></TableRow>
               ) : filtered.map((dept) => (
