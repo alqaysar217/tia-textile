@@ -16,7 +16,13 @@ import {
   Power, 
   PowerOff, 
   History, 
-  Info 
+  Info,
+  Hash,
+  Languages,
+  Type,
+  Activity,
+  FileText,
+  AlertCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -69,6 +75,7 @@ export default function DepartmentsPage() {
   const [editingDeptId, setEditingDeptId] = useState<string | null>(null);
   const [deletingDeptId, setDeletingDeptId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [codeError, setCodeError] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
     code: '',
@@ -100,6 +107,7 @@ export default function DepartmentsPage() {
     setIsAddDialogOpen(false);
     setEditingDeptId(null);
     setIsSubmitting(false);
+    setCodeError(null);
     setFormData({ code: '', nameAr: '', nameEn: '', descAr: '', status: 'active' });
   }, []);
 
@@ -107,12 +115,24 @@ export default function DepartmentsPage() {
     e.preventDefault();
     if (!db || isSubmitting) return;
 
+    // 1. Validation: Prevent Duplicate Code
+    const isDuplicate = departments?.some(d => 
+      d.code?.toLowerCase() === formData.code.toLowerCase() && 
+      d.id !== editingDeptId && 
+      d.status !== 'deleted'
+    );
+
+    if (isDuplicate) {
+      setCodeError(lang === 'ar' ? `هذا الكود مستخدم بالفعل (مثال: ${formData.code})` : `This code is already in use (e.g., ${formData.code})`);
+      return;
+    }
+
     setIsSubmitting(true);
     const currentId = editingDeptId;
     const isEdit = !!currentId;
     
     const deptData = {
-      code: formData.code,
+      code: formData.code.toUpperCase(),
       nameAr: formData.nameAr,
       nameEn: formData.nameEn,
       descAr: formData.descAr,
@@ -361,11 +381,32 @@ export default function DepartmentsPage() {
           <form onSubmit={handleSaveDepartment} className="p-6 space-y-5 bg-white">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-slate-400">{lang === 'ar' ? 'كود القسم' : 'DEPT CODE'}</Label>
-                <Input value={formData.code} onChange={(e) => setFormData({...formData, code: e.target.value})} placeholder="D-100" className="h-10 font-bold text-xs bg-slate-50 border-slate-200" required />
+                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
+                  <Hash className="w-3 h-3 text-emerald-600" />
+                  {lang === 'ar' ? 'كود القسم' : 'DEPT CODE'}
+                </Label>
+                <Input 
+                  value={formData.code} 
+                  onChange={(e) => {
+                    setFormData({...formData, code: e.target.value});
+                    setCodeError(null);
+                  }} 
+                  placeholder="DEPT-100" 
+                  className={`h-10 font-bold text-xs bg-slate-50 border-slate-200 ${codeError ? 'border-red-500 focus:ring-red-500/10' : ''}`} 
+                  required 
+                />
+                {codeError && (
+                  <p className="text-[9px] font-bold text-red-600 flex items-center gap-1.5 mt-1 animate-in fade-in slide-in-from-top-1">
+                    <AlertCircle className="w-2.5 h-2.5" />
+                    {codeError}
+                  </p>
+                )}
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-slate-400">{lang === 'ar' ? 'الحالة' : 'STATUS'}</Label>
+                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
+                  <Activity className="w-3 h-3 text-emerald-600" />
+                  {lang === 'ar' ? 'الحالة' : 'STATUS'}
+                </Label>
                 <select value={formData.status} onChange={(e) => setFormData({...formData, status: e.target.value})} className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold focus:outline-none">
                   <option value="active">{lang === 'ar' ? 'نشط' : 'Active'}</option>
                   <option value="inactive">{lang === 'ar' ? 'متوقف' : 'Inactive'}</option>
@@ -374,17 +415,26 @@ export default function DepartmentsPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase text-slate-400">{lang === 'ar' ? 'الاسم بالعربي' : 'ARABIC NAME'}</Label>
+              <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
+                <Languages className="w-3 h-3 text-emerald-600" />
+                {lang === 'ar' ? 'الاسم بالعربي' : 'ARABIC NAME'}
+              </Label>
               <Input value={formData.nameAr} onChange={(e) => setFormData({...formData, nameAr: e.target.value})} className="h-10 font-bold text-xs bg-slate-50 border-slate-200" required />
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase text-slate-400">{lang === 'ar' ? 'الاسم بالإنجليزي' : 'ENGLISH NAME'}</Label>
+              <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
+                <Type className="w-3 h-3 text-emerald-600" />
+                {lang === 'ar' ? 'الاسم بالإنجليزي' : 'ENGLISH NAME'}
+              </Label>
               <Input value={formData.nameEn} onChange={(e) => setFormData({...formData, nameEn: e.target.value})} className="h-10 font-bold text-xs bg-slate-50 border-slate-200" required />
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase text-slate-400">{lang === 'ar' ? 'وصف العمليات' : 'DESCRIPTION'}</Label>
+              <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
+                <FileText className="w-3 h-3 text-emerald-600" />
+                {lang === 'ar' ? 'وصف العمليات' : 'DESCRIPTION'}
+              </Label>
               <Textarea value={formData.descAr} onChange={(e) => setFormData({...formData, descAr: e.target.value})} className="min-h-[80px] text-xs font-medium bg-slate-50 border-slate-200 resize-none" />
             </div>
 
