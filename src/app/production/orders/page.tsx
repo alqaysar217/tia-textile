@@ -17,7 +17,8 @@ import {
   Boxes,
   Users,
   Layers,
-  ArrowUpRight
+  ArrowUpRight,
+  Calendar
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -108,7 +109,7 @@ export default function ProductionOrdersPage() {
             </div>
           </div>
           <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-            <p className="text-[9px] font-black text-slate-400 uppercase mb-1">{lang === 'ar' ? 'تم استلامه اليوم' : 'Daily Output'}</p>
+            <p className="text-[9px) font-black text-slate-400 uppercase mb-1">{lang === 'ar' ? 'تم استلامه اليوم' : 'Daily Output'}</p>
             <div className="flex items-end justify-between">
               <span className="text-xl font-black text-emerald-600 tabular-nums">85</span>
               <CheckCircle2 className="w-4 h-4 text-emerald-500 mb-1" />
