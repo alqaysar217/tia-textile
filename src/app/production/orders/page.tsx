@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useCallback } from 'react';
@@ -29,7 +30,8 @@ import {
   Gauge,
   Target,
   Layers,
-  ArrowUpRight
+  ArrowUpRight,
+  FileInput
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -66,10 +68,12 @@ import { collection, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/fi
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export default function ProductionOrdersPage() {
   const { lang, dir } = useTranslation();
   const db = useFirestore();
+  const router = useRouter();
   const [search, setSearch] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
@@ -269,6 +273,9 @@ export default function ProductionOrdersPage() {
                           <DropdownMenuItem onClick={() => handleEditClick(order)} className="gap-2 font-bold py-1.5 cursor-pointer text-xs">
                             <Edit2 className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'تعديل البيانات' : 'Edit Details'}
                           </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => router.push(`/production/vouchers/issue?orderId=${order.id}`)} className="gap-2 font-bold py-1.5 cursor-pointer text-xs">
+                            <FileInput className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'صرف مواد' : 'Issue Material'}
+                          </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem onClick={() => setDeletingOrder(order)} className="gap-2 font-bold py-1.5 text-rose-600 cursor-pointer text-xs">
                             <Trash2 className="w-3 h-3" /> {lang === 'ar' ? 'أرشفة الأمر' : 'Archive Order'}
@@ -340,7 +347,11 @@ export default function ProductionOrdersPage() {
 
                 {/* 3. QUICK ACTIONS HUB */}
                 <div className="w-full lg:w-32 p-2 flex flex-row lg:flex-col gap-1.5 border-r border-slate-100 bg-white items-center justify-center">
-                  <Button variant="outline" className="flex-1 lg:w-full h-8 rounded-lg text-[8px] font-black gap-1 border-slate-200 hover:bg-slate-50 transition-all uppercase">
+                  <Button 
+                    onClick={() => router.push(`/production/vouchers/issue?orderId=${order.id}`)}
+                    variant="outline" 
+                    className="flex-1 lg:w-full h-8 rounded-lg text-[8px] font-black gap-1 border-slate-200 hover:bg-slate-50 transition-all uppercase"
+                  >
                     <FileText className="w-3 h-3 text-emerald-600" />
                     {lang === 'ar' ? 'سندات الأمر' : 'Vouchers'}
                   </Button>

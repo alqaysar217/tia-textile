@@ -29,13 +29,43 @@
         "productId": { "type": "string" },
         "targetQty": { "type": "number" },
         "completedQty": { "type": "number" },
-        "status": { "type": "string", "enum": ["draft", "active", "completed", "cancelled"] },
+        "status": { "type": "string", "enum": ["draft", "active", "completed", "cancelled", "deleted"] },
         "priority": { "type": "string", "enum": ["low", "normal", "high"] },
         "startDate": { "type": "string", "format": "date" },
         "currentStageId": { "type": "string" },
         "notes": { "type": "string" }
       },
       "required": ["productId", "targetQty", "status"]
+    },
+    "Voucher": {
+      "title": "Voucher",
+      "description": "Inventory or financial movement document",
+      "type": "object",
+      "properties": {
+        "voucherNumber": { "type": "string" },
+        "type": { "type": "string", "enum": ["material_issue", "production_receipt", "settlement", "wage"] },
+        "orderId": { "type": "string" },
+        "workerId": { "type": "string" },
+        "departmentId": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "items": { 
+          "type": "array", 
+          "items": { 
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "nameAr": { "type": "string" },
+              "qty": { "type": "number" },
+              "unit": { "type": "string" },
+              "price": { "type": "number" }
+            }
+          }
+        },
+        "totalAmount": { "type": "number" },
+        "status": { "type": "string", "enum": ["posted", "cancelled"] },
+        "notes": { "type": "string" }
+      },
+      "required": ["voucherNumber", "type", "date", "status"]
     },
     "UserProfile": {
       "title": "User Profile",
@@ -102,6 +132,7 @@
   "firestore": {
     "/products": { "schema": "Product", "description": "Finished goods" },
     "/productionOrders": { "schema": "ProductionOrder", "description": "WIP Orders" },
+    "/vouchers": { "schema": "Voucher", "description": "Inventory & Wage Documents" },
     "/users": { "schema": "UserProfile", "description": "System users" },
     "/departments": { "schema": "Department", "description": "Production stages" },
     "/workers": { "schema": "Worker", "description": "Personnel" },
