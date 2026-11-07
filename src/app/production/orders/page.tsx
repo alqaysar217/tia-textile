@@ -254,7 +254,7 @@ export default function ProductionOrdersPage() {
             <div key={order.id} className="bg-white rounded-xl border border-slate-200 shadow-sm hover:border-emerald-200 hover:shadow-md transition-all duration-300 overflow-hidden group">
               <div className="flex flex-col lg:flex-row items-stretch">
                 
-                {/* 1. IDENTITY & STATUS BAR (RIGHT in RTL) - COMPACT */}
+                {/* 1. IDENTITY & STATUS BAR */}
                 <div className="w-full lg:w-1/4 p-3 flex flex-col justify-between relative border-l border-slate-100">
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
@@ -300,7 +300,7 @@ export default function ProductionOrdersPage() {
                   </div>
                 </div>
 
-                {/* 2. PROGRESS & METRICS (CENTER) - COMPACT */}
+                {/* 2. PROGRESS & METRICS */}
                 <div className="flex-1 p-3 space-y-2 bg-slate-50/30">
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
@@ -338,14 +338,14 @@ export default function ProductionOrdersPage() {
                   </div>
                 </div>
 
-                {/* 3. QUICK ACTIONS HUB (LEFT in RTL) - COMPACT */}
+                {/* 3. QUICK ACTIONS HUB */}
                 <div className="w-full lg:w-32 p-2 flex flex-row lg:flex-col gap-1.5 border-r border-slate-100 bg-white items-center justify-center">
                   <Button variant="outline" className="flex-1 lg:w-full h-8 rounded-lg text-[8px] font-black gap-1 border-slate-200 hover:bg-slate-50 transition-all uppercase">
                     <FileText className="w-3 h-3 text-emerald-600" />
-                    {lang === 'ar' ? 'السندات' : 'Vouchers'}
+                    {lang === 'ar' ? 'سندات الأمر' : 'Vouchers'}
                   </Button>
                   <Button className="flex-1 lg:w-full h-8 premium-gradient rounded-lg text-[8px] font-black gap-1 border-none shadow-md hover:opacity-90 uppercase">
-                    {lang === 'ar' ? 'المرحلة' : 'Process'}
+                    {lang === 'ar' ? 'إدارة المرحلة' : 'Manage Stage'}
                     <ChevronRight className={cn("w-3 h-3", dir === 'rtl' && "rotate-180")} />
                   </Button>
                 </div>
