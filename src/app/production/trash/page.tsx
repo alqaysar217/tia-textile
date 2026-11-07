@@ -16,7 +16,8 @@ import {
   AlertTriangle,
   Factory,
   Users,
-  Timer
+  Timer,
+  Skull
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -52,6 +53,7 @@ export default function TrashPage() {
   
   // UI States
   const [restoringItem, setRestoringItem] = useState<any>(null);
+  const [deletingPermanentlyItem, setDeletingPermanentlyItem] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Fetch all archived departments
@@ -101,6 +103,35 @@ export default function TrashPage() {
       toast({ 
         title: lang === 'ar' ? "تمت الاستعادة بنجاح" : "Restored Successfully",
         description: lang === 'ar' ? `تمت إعادة تنشيط القسم: ${itemToRestore.nameAr}` : `Department ${itemToRestore.nameEn} is active again.`
+      });
+      setIsSubmitting(false);
+    }, 0);
+  };
+
+  const handlePermanentDelete = () => {
+    if (!db || !deletingPermanentlyItem || isSubmitting) return;
+
+    setIsSubmitting(true);
+    const itemId = deletingPermanentlyItem.id;
+    const itemName = deletingPermanentlyItem.nameAr;
+    
+    // UI RECOVERY FIRST
+    setDeletingPermanentlyItem(null);
+
+    // Next tick execute
+    setTimeout(() => {
+      const docRef = doc(db, 'departments', itemId);
+      deleteDoc(docRef).catch((err) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: 'departments',
+          operation: 'delete',
+        }));
+      });
+      
+      toast({ 
+        variant: "destructive",
+        title: lang === 'ar' ? "تم الحذف النهائي" : "Permanently Deleted",
+        description: lang === 'ar' ? `تم مسح القسم "${itemName}" نهائياً من النظام.` : `Department "${itemName}" has been purged from the system.`
       });
       setIsSubmitting(false);
     }, 0);
@@ -183,7 +214,7 @@ export default function TrashPage() {
               <TableHead className="h-14 font-black text-[10px] uppercase tracking-wider text-gray-400 px-6 text-right">{lang === 'ar' ? 'العنصر' : 'Item'}</TableHead>
               <TableHead className="h-14 font-black text-[10px] uppercase tracking-wider text-gray-400 px-6 text-right">{lang === 'ar' ? 'تاريخ الحذف' : 'Deleted Date'}</TableHead>
               <TableHead className="h-14 font-black text-[10px] uppercase tracking-wider text-gray-400 px-6 text-center">{lang === 'ar' ? 'متبقي للحذف النهائي' : 'Days Remaining'}</TableHead>
-              <TableHead className="h-14 w-[150px]"></TableHead>
+              <TableHead className="h-14 w-[280px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -216,14 +247,24 @@ export default function TrashPage() {
                     </div>
                   </TableCell>
                   <TableCell className="px-6 py-5">
-                    <Button 
-                      onClick={() => setRestoringItem(item)}
-                      variant="ghost" 
-                      className="h-9 px-4 rounded-lg font-black text-[10px] gap-2 text-primary hover:bg-primary/5 hover:text-primary transition-all border border-transparent hover:border-primary/20"
-                    >
-                      <RotateCcw className="w-3.5 h-3.5" />
-                      {lang === 'ar' ? 'استعادة الآن' : 'Restore'}
-                    </Button>
+                    <div className="flex items-center justify-end gap-2">
+                      <Button 
+                        onClick={() => setRestoringItem(item)}
+                        variant="ghost" 
+                        className="h-9 px-4 rounded-lg font-black text-[10px] gap-2 text-primary hover:bg-primary/5 hover:text-primary transition-all border border-transparent hover:border-primary/20"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        {lang === 'ar' ? 'استعادة الآن' : 'Restore'}
+                      </Button>
+                      <Button 
+                        onClick={() => setDeletingPermanentlyItem(item)}
+                        variant="ghost" 
+                        className="h-9 px-4 rounded-lg font-black text-[10px] gap-2 text-rose-500 hover:bg-rose-50 hover:text-rose-600 transition-all border border-transparent hover:border-rose-100"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        {lang === 'ar' ? 'حذف نهائي' : 'Final Delete'}
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               );
@@ -232,6 +273,7 @@ export default function TrashPage() {
         </Table>
       </div>
 
+      {/* Restore Dialog */}
       <AlertDialog open={!!restoringItem} onOpenChange={(open) => !open && setRestoringItem(null)}>
         <AlertDialogContent className="max-w-md rounded-[2rem] border-none shadow-[0_40px_100px_rgba(0,0,0,0.15)] overflow-hidden p-0">
           <div className="bg-gradient-to-br from-[#1A1C1E] to-[#2D3136] p-10 text-center relative overflow-hidden">
@@ -257,7 +299,7 @@ export default function TrashPage() {
           <div className="bg-white p-8 flex gap-4">
             <AlertDialogAction 
               onClick={handleRestore} 
-              className="flex-1 h-14 bg-primary hover:bg-primary/95 text-white rounded-2xl font-black shadow-xl shadow-primary/10 border-none transition-all"
+              className="flex-1 h-14 bg-primary hover:bg-primary/95 text-white rounded-2xl font-black shadow-xl shadow-primary/10 border-none transition-all active:scale-95"
             >
               {lang === 'ar' ? 'تأكيد الاستعادة' : 'Confirm Restore'}
             </AlertDialogAction>
@@ -272,6 +314,54 @@ export default function TrashPage() {
           <button 
             onClick={() => setRestoringItem(null)}
             className="absolute top-4 left-4 p-2 text-gray-500 hover:text-white transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Final Purge Dialog (Red Alert) */}
+      <AlertDialog open={!!deletingPermanentlyItem} onOpenChange={(open) => !open && setDeletingPermanentlyItem(null)}>
+        <AlertDialogContent className="max-w-md rounded-[2rem] border-none shadow-[0_40px_100px_rgba(0,0,0,0.15)] overflow-hidden p-0">
+          <div className="bg-gradient-to-br from-rose-900 to-rose-950 p-10 text-center relative overflow-hidden">
+            <div className="absolute inset-0 opacity-[0.05] textile-pattern pointer-events-none" />
+            <div className="absolute -top-10 -right-10 w-40 h-40 bg-rose-500/10 rounded-full blur-3xl" />
+            
+            <div className="relative z-10 flex flex-col items-center">
+              <div className="w-20 h-20 bg-rose-500/10 rounded-3xl flex items-center justify-center mb-6 border border-rose-500/20 shadow-inner animate-pulse">
+                <Skull className="w-10 h-10 text-rose-500" />
+              </div>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="text-2xl font-black text-white text-center leading-tight">
+                  {lang === 'ar' ? 'إجراء حذف نهائي لا رجعة فيه' : 'Irreversible Final Purge'}
+                </AlertDialogTitle>
+                <AlertDialogDescription className="text-rose-200/60 font-bold mt-4 text-sm leading-relaxed text-center">
+                  {lang === 'ar' 
+                    ? `تحذير شديد: أنت على وشك مسح قسم "${deletingPermanentlyItem?.nameAr}" نهائياً من خوادم الجمعية. لا يمكن استعادة البيانات بعد هذا الإجراء أبداً.` 
+                    : `Extreme Warning: You are about to purge "${deletingPermanentlyItem?.nameEn}" forever from association servers. This action is absolutely permanent.`}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+            </div>
+          </div>
+          
+          <div className="bg-white p-8 flex gap-4">
+            <AlertDialogAction 
+              onClick={handlePermanentDelete} 
+              className="flex-1 h-14 bg-rose-600 hover:bg-rose-700 text-white rounded-2xl font-black shadow-xl shadow-rose-900/20 border-none transition-all active:scale-95"
+            >
+              {lang === 'ar' ? 'حذف نهائي الآن' : 'Purge Permanently'}
+            </AlertDialogAction>
+            <AlertDialogCancel 
+              onClick={() => setDeletingPermanentlyItem(null)}
+              className="flex-1 h-14 bg-gray-50 border-gray-100 hover:bg-gray-100 text-gray-500 rounded-2xl font-black transition-all"
+            >
+              {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+            </AlertDialogCancel>
+          </div>
+          
+          <button 
+            onClick={() => setDeletingPermanentlyItem(null)}
+            className="absolute top-4 left-4 p-2 text-rose-200/40 hover:text-white transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
