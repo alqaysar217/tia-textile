@@ -698,6 +698,11 @@ export default function MaterialIssuePage() {
       {/* PRINT PREVIEW DIALOG */}
       <Dialog open={!!printingVoucher} onOpenChange={(open) => !open && setPrintingVoucher(null)}>
         <DialogContent className="sm:max-w-[800px] p-0 overflow-hidden border-none bg-white">
+          <DialogHeader className="sr-only">
+            <DialogTitle>
+              {lang === 'ar' ? 'معاينة طباعة سند الصرف' : 'Material Issue Voucher Print Preview'}
+            </DialogTitle>
+          </DialogHeader>
           <div className="p-8 print:p-0 bg-white min-h-[500px]" id="printable-voucher">
             {printingVoucher && (
               <div className="flex flex-col h-full text-slate-900">
