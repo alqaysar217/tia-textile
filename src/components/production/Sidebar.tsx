@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import ReactDom from 'react-dom';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
@@ -105,13 +106,13 @@ export function Sidebar() {
 
   return (
     <div className={cn(
-      "flex flex-col h-full bg-primary text-white/80 transition-all duration-300",
+      "flex flex-col h-full premium-gradient text-white/80 transition-all duration-300 border-l border-white/5 shadow-2xl",
       isCollapsed ? "w-20" : "w-72"
     )}>
       {/* Brand Section */}
       <div className={cn("mb-10 pt-8", isCollapsed ? "px-4" : "px-8")}>
         <div className="flex items-center gap-4 group">
-          <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center border border-white/10 shrink-0 overflow-hidden p-1 shadow-xl">
+          <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center border border-white/20 shrink-0 overflow-hidden p-1 shadow-xl group-hover:scale-105 transition-transform duration-300">
             <img 
               src="/images/logo.png" 
               alt="Association Logo" 
@@ -121,7 +122,7 @@ export function Sidebar() {
           {!isCollapsed && (
             <div className="animate-in fade-in duration-500">
               <h2 className="text-sm font-black text-white leading-tight uppercase tracking-tight">{t.production.systemTitle}</h2>
-              <p className="text-[10px] text-white/50 font-bold uppercase tracking-widest mt-0.5">{t.production.cooperative}</p>
+              <p className="text-[10px] text-emerald-200/50 font-bold uppercase tracking-widest mt-0.5">{t.production.cooperative}</p>
             </div>
           )}
         </div>
@@ -132,14 +133,14 @@ export function Sidebar() {
         {navigation.map((group) => (
           <Collapsible key={group.name} defaultOpen={!isCollapsed && (group.name === t.production.dashboard || group.name === t.production.production || group.name === t.production.management)}>
             <CollapsibleTrigger disabled={isCollapsed} className={cn(
-              "flex items-center justify-between w-full p-3 rounded-xl hover:bg-white/5 hover:text-white transition-all group",
+              "flex items-center justify-between w-full p-3 rounded-xl hover:bg-white/10 hover:text-white transition-all group",
               isCollapsed && "justify-center"
             )}>
               <div className="flex items-center gap-3">
-                <span className="text-white/40 group-hover:text-white transition-colors">{group.icon}</span>
+                <span className="text-emerald-100/40 group-hover:text-white transition-colors">{group.icon}</span>
                 {!isCollapsed && <span className="text-xs font-black animate-in fade-in duration-500">{group.name}</span>}
               </div>
-              {!isCollapsed && <ChevronDown className="w-3 h-3 text-white/30 transition-transform duration-200" />}
+              {!isCollapsed && <ChevronDown className="w-3 h-3 text-emerald-100/30 transition-transform duration-200" />}
             </CollapsibleTrigger>
             {!isCollapsed && (
               <CollapsibleContent className="space-y-1 mt-1 pr-10 rtl:pr-10 ltr:pl-10">
@@ -150,13 +151,13 @@ export function Sidebar() {
                     className={cn(
                       "flex items-center p-2 rounded-lg text-[11px] font-bold transition-all relative",
                       pathname === item.href 
-                        ? "text-white bg-white/10" 
-                        : "text-white/40 hover:text-white/70"
+                        ? "text-white bg-white/10 shadow-inner" 
+                        : "text-emerald-100/40 hover:text-white hover:bg-white/5"
                     )}
                   >
                     {pathname === item.href && (
                       <span className={cn(
-                        "absolute top-1/2 -translate-y-1/2 w-1 h-4 bg-secondary rounded-full",
+                        "absolute top-1/2 -translate-y-1/2 w-1 h-4 bg-emerald-400 rounded-full shadow-[0_0_8px_rgba(52,211,153,0.5)]",
                         dir === 'rtl' ? "right-0" : "left-0"
                       )} />
                     )}
@@ -170,21 +171,21 @@ export function Sidebar() {
       </nav>
 
       {/* Footer Info Area */}
-      <div className={cn("pt-6 mt-6 border-t border-white/5 pb-8", isCollapsed ? "px-4" : "px-6")}>
-        <div className="p-4 bg-white/5 rounded-[1.5rem] border border-white/5 space-y-4">
+      <div className={cn("pt-6 mt-6 border-t border-white/10 pb-8", isCollapsed ? "px-4" : "px-6")}>
+        <div className="p-4 bg-black/10 rounded-[1.5rem] border border-white/5 space-y-4">
           {!isCollapsed && (
             <div className="flex items-center gap-3 animate-in fade-in duration-500">
-              <div className="w-10 h-10 rounded-xl bg-secondary/20 flex items-center justify-center text-secondary text-xs font-black border border-secondary/20">
+              <div className="w-10 h-10 rounded-xl bg-emerald-400/20 flex items-center justify-center text-emerald-300 text-xs font-black border border-emerald-400/20 shadow-inner">
                 {lang === 'ar' ? 'ع' : 'A'}
               </div>
               <div>
                 <p className="text-xs font-black text-white">{lang === 'ar' ? 'علي باحاج' : 'Ali Bahaj'}</p>
-                <p className="text-[9px] text-white/40 font-bold uppercase tracking-widest mt-0.5">{lang === 'ar' ? 'مدير الإنتاج' : 'Manager'}</p>
+                <p className="text-[9px] text-emerald-200/40 font-bold uppercase tracking-widest mt-0.5">{lang === 'ar' ? 'مدير الإنتاج' : 'Manager'}</p>
               </div>
             </div>
           )}
           <Link href="/" className={cn(
-            "flex items-center justify-center gap-2 py-2 text-[10px] font-black text-white/60 hover:text-white bg-white/5 rounded-xl transition-all",
+            "flex items-center justify-center gap-2 py-2 text-[10px] font-black text-white/60 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition-all border border-white/5",
             isCollapsed && "p-2"
           )}>
             <History className="w-3 h-3" />
