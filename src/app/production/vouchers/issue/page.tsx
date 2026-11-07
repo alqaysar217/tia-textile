@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useCallback } from 'react';
@@ -82,24 +81,27 @@ export default function MaterialIssuePage() {
     qty: 1
   });
 
-  // Fetch Data
-  const ordersQuery = useMemo(() => !db ? null : query(collection(db, 'productionOrders'), where('status', '==', 'active')), [db]);
-  const workersQuery = useMemo(() => !db ? null : query(collection(db, 'workers'), where('status', '!=', 'deleted')), [db]);
-  const deptsQuery = useMemo(() => !db ? null : query(collection(db, 'departments'), where('status', '==', 'active')), [db]);
+  // Fetch Data - Simplified query to avoid empty results on missing fields
+  const ordersQuery = useMemo(() => !db ? null : collection(db, 'productionOrders'), [db]);
+  const workersQuery = useMemo(() => !db ? null : collection(db, 'workers'), [db]);
+  const deptsQuery = useMemo(() => !db ? null : collection(db, 'departments'), [db]);
   const materialsQuery = useMemo(() => !db ? null : collection(db, 'materials'), [db]);
   const vouchersQuery = useMemo(() => !db ? null : query(collection(db, 'vouchers'), where('type', '==', 'material_issue')), [db]);
 
-  const { data: orders } = useCollection<any>(ordersQuery);
-  const { data: workers } = useCollection<any>(workersQuery);
-  const { data: departments } = useCollection<any>(deptsQuery);
+  const { data: allOrders } = useCollection<any>(ordersQuery);
+  const { data: allWorkers } = useCollection<any>(workersQuery);
+  const { data: allDepartments } = useCollection<any>(deptsQuery);
   const { data: materials } = useCollection<any>(materialsQuery);
   const { data: vouchers, loading: vouchersLoading } = useCollection<any>(vouchersQuery);
+
+  const activeOrders = useMemo(() => (allOrders || []).filter(o => o.status === 'active'), [allOrders]);
+  const activeDepartments = useMemo(() => (allDepartments || []).filter(d => d.status === 'active'), [allDepartments]);
 
   const filteredVouchers = useMemo(() => {
     if (!vouchers) return [];
     return vouchers.filter(v => {
-      const order = orders?.find(o => o.id === v.orderId);
-      const worker = workers?.find(w => w.id === v.workerId);
+      const order = allOrders?.find(o => o.id === v.orderId);
+      const worker = allWorkers?.find(w => w.id === v.workerId);
       const s = search.toLowerCase();
       return (
         v.voucherNumber?.toLowerCase().includes(s) ||
@@ -107,18 +109,23 @@ export default function MaterialIssuePage() {
         worker?.fullName?.toLowerCase().includes(s)
       );
     }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [vouchers, orders, workers, search]);
+  }, [vouchers, allOrders, allWorkers, search]);
 
-  // Filter workers based on department and search
+  // Filter workers based on department, status and search
   const filteredWorkers = useMemo(() => {
-    if (!workers) return [];
-    return workers.filter(w => {
+    if (!allWorkers) return [];
+    return allWorkers.filter(w => {
+      // Basic check: must not be deleted
+      if (w.status === 'deleted') return false;
+      
       const matchesDept = selectedDeptId ? w.departmentId === selectedDeptId : true;
-      const matchesSearch = w.fullName?.toLowerCase().includes(workerSearch.toLowerCase()) || 
-                           w.workerId?.toLowerCase().includes(workerSearch.toLowerCase());
-      return matchesDept && matchesSearch && w.active;
+      const matchesSearch = (w.fullName || '').toLowerCase().includes(workerSearch.toLowerCase()) || 
+                           (w.workerId || '').toLowerCase().includes(workerSearch.toLowerCase());
+      
+      // Show if matches search/dept AND worker is marked active (default to true if field missing)
+      return matchesDept && matchesSearch && (w.active !== false);
     });
-  }, [workers, selectedDeptId, workerSearch]);
+  }, [allWorkers, selectedDeptId, workerSearch]);
 
   const handleAddItem = () => {
     if (!currentItem.id || currentItem.qty <= 0) return;
@@ -279,8 +286,8 @@ export default function MaterialIssuePage() {
               ) : filteredVouchers.length === 0 ? (
                 <TableRow><TableCell colSpan={6} className="text-center py-20 font-bold text-slate-300">لا توجد سندات مسجلة</TableCell></TableRow>
               ) : filteredVouchers.map((v) => {
-                const order = orders?.find(o => o.id === v.orderId);
-                const worker = workers?.find(w => w.id === v.workerId);
+                const order = allOrders?.find(o => o.id === v.orderId);
+                const worker = allWorkers?.find(w => w.id === v.workerId);
                 return (
                   <TableRow key={v.id} className="hover:bg-slate-50/50 border-b border-slate-100 transition-colors group">
                     <TableCell className="px-6 py-3 text-right">
@@ -353,7 +360,7 @@ export default function MaterialIssuePage() {
                   </Label>
                   <select value={formData.orderId} onChange={(e) => setFormData({...formData, orderId: e.target.value})} className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none" required>
                     <option value="">{lang === 'ar' ? '-- اختر أمر الإنتاج --' : '-- Select Order --'}</option>
-                    {orders?.map(o => <option key={o.id} value={o.id}>{o.orderNumber} - {o.title}</option>)}
+                    {activeOrders?.map(o => <option key={o.id} value={o.id}>{o.orderNumber} - {o.title}</option>)}
                   </select>
                 </div>
 
@@ -370,7 +377,7 @@ export default function MaterialIssuePage() {
                     className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none"
                   >
                     <option value="">{lang === 'ar' ? 'عرض جميع الأقسام' : 'All Departments'}</option>
-                    {departments?.map(d => <option key={d.id} value={d.id}>{lang === 'ar' ? d.nameAr : d.nameEn}</option>)}
+                    {activeDepartments?.map(d => <option key={d.id} value={d.id}>{lang === 'ar' ? d.nameAr : d.nameEn}</option>)}
                   </select>
                 </div>
               </div>
@@ -461,7 +468,7 @@ export default function MaterialIssuePage() {
                     type="number" 
                     value={currentItem.qty} 
                     onChange={(e) => setCurrentItem({ ...currentItem, qty: Number(e.target.value) })}
-                    className="h-10 font-bold text-xs bg-slate-800 text-white border-slate-700 tabular-nums" 
+                    className="h-10 font-bold text-xs bg-slate-800 text-white border border-slate-700 tabular-nums" 
                   />
                 </div>
                 <Button type="button" onClick={handleAddItem} className="h-10 px-6 bg-emerald-600 hover:bg-emerald-500 text-white rounded-md font-black text-xs gap-2 border-none shadow-lg">
