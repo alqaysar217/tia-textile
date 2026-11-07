@@ -9,12 +9,12 @@ export function CategoriesSection() {
   const { lang, dir } = useTranslation();
 
   const categories = [
-    { nameAr: 'المعاوز الحليسـي', nameEn: 'Al-Halisi Maawiz', image: 'textile-1' },
-    { nameAr: 'المعاوز الملكي', nameEn: 'Al-Maliki Maawiz', image: 'textile-2' },
-    { nameAr: 'المعاوز البيضاني', nameEn: 'Al-Baidani Maawiz', image: 'textile-3' },
-    { nameAr: 'المعاوز السلاطيني', nameEn: 'Al-Salateeni Maawiz', image: 'textile-4' },
-    { nameAr: 'المعاوز الحديدي', nameEn: 'Al-Hadidi Maawiz', image: 'textile-5' },
-    { nameAr: 'أنواع أخرى', nameEn: 'Other Types', image: 'textile-6' }
+    { nameAr: 'المعاوز الملكي', nameEn: 'Royal Maawiz', image: 'textile-1' },
+    { nameAr: 'المعاوز الحليسي', nameEn: 'Halisi Maawiz', image: 'textile-2' },
+    { nameAr: 'المعاوز الشحري', nameEn: 'Shihri Maawiz', image: 'textile-3' },
+    { nameAr: 'المعاوز اللحجي', nameEn: 'Lahji Maawiz', image: 'textile-4' },
+    { nameAr: 'المعاوز الحضرمي', nameEn: 'Hadhrami Maawiz', image: 'textile-5' },
+    { nameAr: 'المعاوز السادة', nameEn: 'Plain Maawiz', image: 'textile-6' }
   ];
 
   return (

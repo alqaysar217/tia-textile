@@ -13,32 +13,35 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useCollection, useFirestore } from '@/firebase';
+import { collection } from 'firebase/firestore';
 
 export default function ProductsPage() {
   const { lang, t } = useTranslation();
+  const db = useFirestore();
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('all');
 
-  // Updated demo data focusing only on Maawiz
-  const allProducts = [
-    { id: '1', nameAr: 'معوز ملكي فاخر - نقشة خاصة', nameEn: 'Premium Royal Maawiz - Special Pattern', price: 15000, categoryAr: 'ملكي', categoryEn: 'Royal', image: 'https://picsum.photos/seed/m1/600/800', status: 'available', isNew: true },
-    { id: '2', nameAr: 'معوز حليسي كلاسيك - يدوي', nameEn: 'Classic Halisi Maawiz - Handmade', price: 12000, categoryAr: 'حليسي', categoryEn: 'Halisi', image: 'https://picsum.photos/seed/m2/600/800', status: 'available' },
-    { id: '3', nameAr: 'معوز بيضاني - شغل ممتاز', nameEn: 'Baidani Maawiz - Excellent Work', price: 14000, categoryAr: 'بيضاني', categoryEn: 'Baidani', image: 'https://picsum.photos/seed/m3/600/800', status: 'available' },
-    { id: '4', nameAr: 'معوز حديدي - خامة ثقيلة', nameEn: 'Hadidi Maawiz - Heavy Fabric', price: 11000, categoryAr: 'حديدي', categoryEn: 'Hadidi', image: 'https://picsum.photos/seed/m4/600/800', status: 'limited' },
-    { id: '5', nameAr: 'معوز سلاطيني - نخب أول', nameEn: 'Salateeni Maawiz - Grade A', price: 18000, categoryAr: 'سلاطيني', categoryEn: 'Salateeni', image: 'https://picsum.photos/seed/m5/600/800', status: 'available', isNew: true },
-    { id: '6', nameAr: 'معوز ملكي مطرز - ذهبي', nameEn: 'Embroidered Royal Maawiz - Golden', price: 16500, categoryAr: 'ملكي', categoryEn: 'Royal', image: 'https://picsum.photos/seed/m6/600/800', status: 'available' },
-    { id: '7', nameAr: 'معوز حليسي أبيض - تقليدي', nameEn: 'White Halisi Maawiz - Traditional', price: 12500, categoryAr: 'حليسي', categoryEn: 'Halisi', image: 'https://picsum.photos/seed/m7/600/800', status: 'available' },
-    { id: '8', nameAr: 'معوز بيضاني - نقشة عريقة', nameEn: 'Ancient Pattern Baidani Maawiz', price: 13500, categoryAr: 'بيضاني', categoryEn: 'Baidani', image: 'https://picsum.photos/seed/m8/600/800', status: 'out_of_stock' }
+  // Fetch real products from Firestore
+  const productsQuery = useMemo(() => !db ? null : collection(db, 'products'), [db]);
+  const { data: firestoreProducts, loading } = useCollection<any>(productsQuery);
+
+  const categories = [
+    "ملكي", "حليسي", "بيضاني", "حديدي", "شحري", "سلاطيني", 
+    "اللحجي", "الحضرمي", "الوصابي", "التهامي", "العدني", 
+    "الصنعاني", "السادة", "الشموخ", "أخرى"
   ];
 
   const filteredProducts = useMemo(() => {
-    return allProducts.filter(p => {
-      const name = lang === 'ar' ? p.nameAr : p.nameEn;
+    const list = firestoreProducts?.length > 0 ? firestoreProducts : [];
+    return list.filter(p => {
+      if (p.status === 'deleted') return false;
+      const name = p.nameAr || '';
       const matchesSearch = name.toLowerCase().includes(search.toLowerCase());
-      const matchesCategory = category === 'all' || p.categoryAr === category;
+      const matchesCategory = category === 'all' || p.category === category;
       return matchesSearch && matchesCategory;
     });
-  }, [search, category, lang]);
+  }, [search, category, firestoreProducts]);
 
   return (
     <div className="py-6 md:py-12 min-h-screen bg-muted/5">
@@ -82,18 +85,16 @@ export default function ProductsPage() {
                     <SelectValue placeholder="Category" className="truncate" />
                   </div>
                 </SelectTrigger>
-                <SelectContent className="rounded-xl border-border shadow-xl">
+                <SelectContent className="rounded-xl border-border shadow-xl max-h-[300px]">
                   <SelectItem value="all" className="font-bold">{lang === 'ar' ? 'الكل' : 'All'}</SelectItem>
-                  <SelectItem value="ملكي" className="font-bold">معاوز ملكي</SelectItem>
-                  <SelectItem value="حليسي" className="font-bold">معاوز حليسي</SelectItem>
-                  <SelectItem value="بيضاني" className="font-bold">معاوز بيضاني</SelectItem>
-                  <SelectItem value="حديدي" className="font-bold">معاوز حديدي</SelectItem>
-                  <SelectItem value="سلاطيني" className="font-bold">معاوز سلاطيني</SelectItem>
+                  {categories.map(c => (
+                    <SelectItem key={c} value={c} className="font-bold">{c}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
 
-            {/* Reset Button - Visible only on Desktop to save space on mobile */}
+            {/* Reset Button */}
             {(search || category !== 'all') && (
               <Button 
                 variant="ghost" 
@@ -117,13 +118,15 @@ export default function ProductsPage() {
 
         {/* Products Grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-8">
-          {filteredProducts.map((product) => (
+          {loading ? (
+             <div className="col-span-full py-20 text-center font-bold text-muted-foreground animate-pulse">جاري تحميل الكتالوج...</div>
+          ) : filteredProducts.map((product) => (
             <ProductCard key={product.id} product={product} />
           ))}
         </div>
 
         {/* Enhanced Empty State */}
-        {filteredProducts.length === 0 && (
+        {!loading && filteredProducts.length === 0 && (
           <div className="py-20 text-center bg-background rounded-3xl border border-border/40 shadow-sm space-y-4">
             <div className="w-16 h-16 bg-primary/5 rounded-full flex items-center justify-center mx-auto text-primary">
               <Search className="h-8 w-8" />

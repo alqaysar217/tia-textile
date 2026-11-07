@@ -100,7 +100,7 @@ export default function ProductsManagementPage() {
     nameEn: '',
     descriptionAr: '',
     descriptionEn: '',
-    category: 'حليسي',
+    category: 'ملكي',
     price: 0,
     status: 'available',
     image: '',
@@ -113,7 +113,12 @@ export default function ProductsManagementPage() {
 
   const { data: products, loading } = useCollection<any>(productsQuery);
 
-  const categories = ["حليسي", "ملكي", "بيضاني", "حديدي", "سلاطيني", "أخرى"];
+  const categories = [
+    "ملكي", "حليسي", "بيضاني", "حديدي", "شحري", "سلاطيني", 
+    "اللحجي", "الحضرمي", "الوصابي", "التهامي", "العدني", 
+    "الصنعاني", "السادة", "الشموخ", "أخرى"
+  ];
+
   const statuses = [
     { value: 'available', labelAr: 'متوفر', labelEn: 'Available' },
     { value: 'out_of_stock', labelAr: 'نفذت', labelEn: 'Out of Stock' },
@@ -166,7 +171,7 @@ export default function ProductsManagementPage() {
       nameEn: '', 
       descriptionAr: '',
       descriptionEn: '',
-      category: 'حليسي', 
+      category: 'ملكي', 
       price: 0, 
       status: 'available',
       image: '' 
@@ -254,7 +259,7 @@ export default function ProductsManagementPage() {
       nameEn: prod.nameEn || '',
       descriptionAr: prod.descriptionAr || '',
       descriptionEn: prod.descriptionEn || '',
-      category: prod.category || 'حليسي',
+      category: prod.category || 'ملكي',
       price: prod.price || 0,
       status: prod.status || 'available',
       image: prod.image || '',
