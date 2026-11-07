@@ -27,13 +27,16 @@ import {
   ShieldCheck,
   UserPlus,
   ChevronDown,
-  X
+  X,
+  MoreVertical,
+  History,
+  ArrowRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useTranslation } from '@/components/LanguageProvider';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, addDoc, updateDoc, doc, serverTimestamp, query, where, writeBatch } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc, serverTimestamp, query, where, writeBatch, deleteDoc, getDoc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import {
@@ -41,7 +44,18 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import {
   Table,
@@ -51,6 +65,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
 import { useSearchParams } from 'next/navigation';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -62,6 +83,9 @@ export default function MaterialIssuePage() {
   const filterOrderId = searchParams.get('orderId');
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [editingVoucherId, setEditingVoucherId] = useState<string | null>(null);
+  const [deletingVoucher, setDeletingVoucher] = useState<any | null>(null);
+  const [printingVoucher, setPrintingVoucher] = useState<any | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showWorkerDropdown, setShowWorkerDropdown] = useState(false);
   const [search, setSearch] = useState('');
@@ -105,6 +129,7 @@ export default function MaterialIssuePage() {
   const filteredVouchers = useMemo(() => {
     if (!vouchers) return [];
     return vouchers.filter(v => {
+      if (v.status === 'deleted') return false;
       const order = allOrders?.find(o => o.id === v.orderId);
       const worker = allWorkers?.find(w => w.id === v.workerId);
       const s = search.toLowerCase();
@@ -180,10 +205,26 @@ export default function MaterialIssuePage() {
     setFormData({ ...formData, items: formData.items.filter(i => i.id !== id) });
   };
 
-  const editItem = (item: any) => {
+  const editItemInForm = (item: any) => {
     setCurrentItem({ id: item.id, qty: item.qty });
     removeItem(item.id);
     toast({ title: lang === 'ar' ? "تم نقل المادة للتعديل" : "Material moved to edit" });
+  };
+
+  const handleEditVoucher = (voucher: any) => {
+    setEditingVoucherId(voucher.id);
+    setFormData({
+      date: voucher.date,
+      orderId: voucher.orderId,
+      workerId: voucher.workerId,
+      notes: voucher.notes || '',
+      items: [...voucher.items]
+    });
+    
+    const worker = allWorkers?.find(w => w.id === voucher.workerId);
+    if (worker) setSelectedDeptId(worker.departmentId);
+    
+    setIsAddDialogOpen(true);
   };
 
   const handleSaveVoucher = async (e: React.FormEvent) => {
@@ -192,31 +233,47 @@ export default function MaterialIssuePage() {
 
     setIsSubmitting(true);
     const batch = writeBatch(db);
-    const voucherNumber = `MIV-${Date.now().toString().slice(-6)}`;
     
     const totalAmount = formData.items.reduce((acc, item) => acc + (item.qty * item.price), 0);
-
     const voucherData = {
-      voucherNumber,
+      ...formData,
       type: 'material_issue',
-      orderId: formData.orderId,
-      workerId: formData.workerId,
-      date: formData.date,
-      items: formData.items,
       totalAmount,
       status: 'posted',
-      notes: formData.notes,
-      createdAt: serverTimestamp()
+      updatedAt: serverTimestamp()
     };
 
     try {
-      const voucherRef = doc(collection(db, 'vouchers'));
-      batch.set(voucherRef, voucherData);
+      if (editingVoucherId) {
+        // Handle Edit: Need to reconcile stock
+        const oldVoucherSnap = await getDoc(doc(db, 'vouchers', editingVoucherId));
+        const oldVoucher = oldVoucherSnap.data();
+        
+        // 1. Return old quantities to stock
+        oldVoucher?.items.forEach((oldItem: any) => {
+          const material = materials?.find(m => m.id === oldItem.id);
+          if (material) {
+            batch.update(doc(db, 'materials', oldItem.id), {
+              currentQty: (material.currentQty || 0) + oldItem.qty
+            });
+          }
+        });
 
+        // 2. Subtract new quantities from stock (we'll do this below together with the add logic)
+        batch.update(doc(db, 'vouchers', editingVoucherId), voucherData);
+      } else {
+        // Handle New
+        const voucherNumber = `MIV-${Date.now().toString().slice(-6)}`;
+        const voucherRef = doc(collection(db, 'vouchers'));
+        batch.set(voucherRef, { ...voucherData, voucherNumber, createdAt: serverTimestamp() });
+      }
+
+      // Re-apply stock deductions for current items
       formData.items.forEach(item => {
         const material = materials?.find(m => m.id === item.id);
         if (material) {
           const matRef = doc(db, 'materials', item.id);
+          // If editing, we already added back the old qty, so subtracting current qty is correct
           batch.update(matRef, {
             currentQty: (material.currentQty || 0) - item.qty,
             updatedAt: serverTimestamp()
@@ -225,11 +282,8 @@ export default function MaterialIssuePage() {
       });
 
       await batch.commit();
-      toast({ title: lang === 'ar' ? "تم إصدار السند بنجاح" : "Voucher Issued Successfully" });
-      setIsAddDialogOpen(false);
-      setFormData({ date: new Date().toISOString().split('T')[0], orderId: '', workerId: '', notes: '', items: [] });
-      setSelectedDeptId('');
-      setWorkerSearch('');
+      toast({ title: lang === 'ar' ? "تم حفظ السند بنجاح" : "Voucher Saved Successfully" });
+      resetDialog();
     } catch (error) {
       console.error(error);
       toast({ variant: "destructive", title: "Error saving voucher" });
@@ -238,19 +292,58 @@ export default function MaterialIssuePage() {
     }
   };
 
+  const handleDeleteVoucher = async () => {
+    if (!db || !deletingVoucher) return;
+    
+    setIsSubmitting(true);
+    const batch = writeBatch(db);
+
+    try {
+      // 1. Return items to stock
+      deletingVoucher.items.forEach((item: any) => {
+        const material = materials?.find(m => m.id === item.id);
+        if (material) {
+          batch.update(doc(db, 'materials', item.id), {
+            currentQty: (material.currentQty || 0) + item.qty,
+            updatedAt: serverTimestamp()
+          });
+        }
+      });
+
+      // 2. Mark voucher as deleted
+      batch.update(doc(db, 'vouchers', deletingVoucher.id), {
+        status: 'deleted',
+        deletedAt: serverTimestamp()
+      });
+
+      await batch.commit();
+      toast({ title: lang === 'ar' ? "تم حذف السند وإرجاع المخزون" : "Voucher deleted and stock returned" });
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsSubmitting(false);
+      setDeletingVoucher(null);
+    }
+  };
+
   const resetDialog = () => {
     setIsAddDialogOpen(false);
+    setEditingVoucherId(null);
     setSelectedDeptId('');
     setWorkerSearch('');
     setShowWorkerDropdown(false);
     setFormData({ date: new Date().toISOString().split('T')[0], orderId: '', workerId: '', notes: '', items: [] });
   };
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   return (
     <div className="flex flex-col h-full bg-[#f8fafc] overflow-hidden">
       
       {/* ERP HEADER */}
-      <div className="flex-none bg-white border-b border-slate-200 z-30 px-6 py-4 shadow-sm">
+      <div className="flex-none bg-white border-b border-slate-200 z-30 px-6 py-4 shadow-sm print:hidden">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div className="flex items-center gap-4">
             <div className="p-2.5 bg-slate-900 rounded-lg text-white shadow-lg">
@@ -287,17 +380,17 @@ export default function MaterialIssuePage() {
       </div>
 
       {/* LIST OF VOUCHERS */}
-      <div className="flex-1 min-h-0 overflow-auto p-4 md:p-6 no-scrollbar">
+      <div className="flex-1 min-h-0 overflow-auto p-4 md:p-6 no-scrollbar print:hidden">
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <Table className="text-right">
-            <TableHeader className="bg-slate-50/50">
+          <Table className="text-right border-separate border-spacing-0">
+            <TableHeader className="bg-slate-50 sticky top-0 z-10">
               <TableRow>
-                <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'رقم السند' : 'REF #'}</TableHead>
-                <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'التاريخ' : 'DATE'}</TableHead>
-                <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'أمر الإنتاج' : 'ORDER'}</TableHead>
-                <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'العامل' : 'WORKER'}</TableHead>
-                <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center">{lang === 'ar' ? 'الأصناف' : 'ITEMS'}</TableHead>
-                <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center">{lang === 'ar' ? 'العمليات' : 'ACTIONS'}</TableHead>
+                <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-right border-b border-slate-200">{lang === 'ar' ? 'رقم السند' : 'REF #'}</TableHead>
+                <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-right border-b border-slate-200">{lang === 'ar' ? 'التاريخ' : 'DATE'}</TableHead>
+                <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-right border-b border-slate-200">{lang === 'ar' ? 'أمر الإنتاج' : 'ORDER'}</TableHead>
+                <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-right border-b border-slate-200">{lang === 'ar' ? 'العامل' : 'WORKER'}</TableHead>
+                <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">{lang === 'ar' ? 'الأصناف' : 'ITEMS'}</TableHead>
+                <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">{lang === 'ar' ? 'العمليات' : 'ACTIONS'}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -326,7 +419,7 @@ export default function MaterialIssuePage() {
                     <TableCell className="px-6 py-3 text-right">
                       <div className="flex items-center gap-2 justify-end">
                         <span className="font-bold text-slate-700 text-xs">{worker?.fullName || '---'}</span>
-                        <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-black text-slate-500">{worker?.fullName?.charAt(0)}</div>
+                        <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-black text-slate-500 uppercase">{worker?.fullName?.charAt(0)}</div>
                       </div>
                     </TableCell>
                     <TableCell className="px-6 py-3 text-center">
@@ -335,9 +428,30 @@ export default function MaterialIssuePage() {
                       </span>
                     </TableCell>
                     <TableCell className="px-6 py-3 text-center">
-                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-md text-slate-400 hover:text-emerald-600 hover:bg-emerald-50">
-                        <Printer className="w-4 h-4" />
-                      </Button>
+                      <div className="flex items-center justify-center gap-1">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8 rounded-md text-slate-400 hover:text-emerald-600 hover:bg-emerald-50"
+                          onClick={() => setPrintingVoucher(v)}
+                        >
+                          <Printer className="w-4 h-4" />
+                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-md hover:bg-slate-100"><MoreVertical className="w-4 h-4 text-slate-400" /></Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-44 rounded-lg shadow-xl">
+                            <DropdownMenuItem onClick={() => handleEditVoucher(v)} className="gap-2 font-bold py-1.5 cursor-pointer text-xs">
+                              <Edit2 className="w-3.5 h-3.5 text-emerald-600" /> {lang === 'ar' ? 'تعديل السند' : 'Edit Voucher'}
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => setDeletingVoucher(v)} className="gap-2 font-bold py-1.5 text-rose-600 cursor-pointer text-xs">
+                              <Trash2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'حذف السند' : 'Delete Voucher'}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
@@ -347,14 +461,14 @@ export default function MaterialIssuePage() {
         </div>
       </div>
 
-      {/* NEW VOUCHER DIALOG */}
+      {/* NEW/EDIT VOUCHER DIALOG */}
       <Dialog open={isAddDialogOpen} onOpenChange={(open) => !open && resetDialog()}>
         <DialogContent className="sm:max-w-[850px] rounded-lg p-0 overflow-hidden border-none shadow-2xl">
           <div className="premium-gradient p-6 text-white">
             <DialogHeader className="text-right rtl:text-right ltr:text-left">
               <DialogTitle className="text-xl font-black flex items-center gap-3">
                 <FileInput className="w-5 h-5 text-emerald-300" />
-                {lang === 'ar' ? 'إنشاء سند صرف مواد للإنتاج' : 'New Material Issue'}
+                {editingVoucherId ? (lang === 'ar' ? 'تعديل سند صرف مواد' : 'Update Material Issue') : (lang === 'ar' ? 'إنشاء سند صرف مواد للإنتاج' : 'New Material Issue')}
               </DialogTitle>
               <p className="text-emerald-100/70 font-bold text-[10px] uppercase tracking-widest mt-1">
                 Allocating raw materials to specific workers & work centers
@@ -403,7 +517,6 @@ export default function MaterialIssuePage() {
                   <ChevronDown className={cn("h-4 w-4 opacity-50 transition-transform", showWorkerDropdown && "rotate-180")} />
                 </button>
 
-                {/* CUSTOM INTERNAL DROPDOWN */}
                 {showWorkerDropdown && (
                   <div className={cn(
                     "absolute top-full left-0 right-0 z-50 mt-1 bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200",
@@ -432,7 +545,6 @@ export default function MaterialIssuePage() {
                             key={w.id}
                             type="button"
                             onClick={() => {
-                              // MODIFIED: Auto-set department when worker is selected
                               setFormData({...formData, workerId: w.id});
                               setSelectedDeptId(w.departmentId); 
                               setShowWorkerDropdown(false);
@@ -505,7 +617,7 @@ export default function MaterialIssuePage() {
                     className="w-full h-10 px-3 bg-white text-slate-900 border border-slate-200 rounded-md text-xs font-bold outline-none focus:ring-1 focus:ring-emerald-500"
                   >
                     <option value="">{lang === 'ar' ? '-- اختر مادة من المخزن --' : '-- Select Material --'}</option>
-                    {materials?.filter(m => (m.currentQty || 0) > 0).map(m => (
+                    {materials?.filter(m => (m.currentQty || 0) > 0 || m.id === currentItem.id).map(m => (
                       <option key={m.id} value={m.id} className="text-slate-900">{m.nameAr} ({m.currentQty} {m.unit})</option>
                     ))}
                   </select>
@@ -545,7 +657,7 @@ export default function MaterialIssuePage() {
                         <TableCell className="px-4 py-2 text-center text-[10px] font-bold text-slate-400 uppercase">{item.unit}</TableCell>
                         <TableCell className="px-4 py-2">
                           <div className="flex justify-end gap-1">
-                            <Button type="button" variant="ghost" size="icon" onClick={() => editItem(item)} className="h-7 w-7 text-emerald-300 hover:text-emerald-600 hover:bg-emerald-50" title={lang === 'ar' ? 'تعديل' : 'Edit'}>
+                            <Button type="button" variant="ghost" size="icon" onClick={() => editItemInForm(item)} className="h-7 w-7 text-emerald-300 hover:text-emerald-600 hover:bg-emerald-50" title={lang === 'ar' ? 'تعديل' : 'Edit'}>
                               <Edit2 className="w-3.5 h-3.5" />
                             </Button>
                             <Button type="button" variant="ghost" size="icon" onClick={() => removeItem(item.id)} className="h-7 w-7 text-rose-300 hover:text-rose-600 hover:bg-rose-50" title={lang === 'ar' ? 'حذف' : 'Remove'}>
@@ -573,7 +685,7 @@ export default function MaterialIssuePage() {
             <div className="flex gap-3 pt-6 border-t border-slate-100">
               <Button type="submit" disabled={isSubmitting || formData.items.length === 0 || !formData.workerId} className="flex-1 h-14 premium-gradient hover:opacity-90 text-white rounded-xl font-black text-base border-none shadow-xl shadow-emerald-900/10">
                 {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin me-2" /> : <UserCheck className="w-5 h-5 me-2" />}
-                {lang === 'ar' ? 'ترحيل السند وتحديث المخزون' : 'Post Voucher & Update WMS'}
+                {lang === 'ar' ? (editingVoucherId ? 'تحديث السند والمخزون' : 'ترحيل السند وتحديث المخزون') : (editingVoucherId ? 'Update Voucher & WMS' : 'Post Voucher & Update WMS')}
               </Button>
               <Button type="button" variant="outline" onClick={resetDialog} className="px-8 h-14 font-black text-slate-400 rounded-xl border-slate-200">
                 {lang === 'ar' ? 'إلغاء' : 'Cancel'}
@@ -583,8 +695,150 @@ export default function MaterialIssuePage() {
         </DialogContent>
       </Dialog>
 
+      {/* PRINT PREVIEW DIALOG */}
+      <Dialog open={!!printingVoucher} onOpenChange={(open) => !open && setPrintingVoucher(null)}>
+        <DialogContent className="sm:max-w-[800px] p-0 overflow-hidden border-none bg-white">
+          <div className="p-8 print:p-0 bg-white min-h-[500px]" id="printable-voucher">
+            {printingVoucher && (
+              <div className="flex flex-col h-full text-slate-900">
+                {/* INVOICE HEADER */}
+                <div className="flex justify-between items-start border-b-2 border-emerald-800 pb-6 mb-8">
+                  <div className="space-y-1 text-right rtl:text-right ltr:text-left">
+                    <h2 className="text-2xl font-black text-emerald-900">{lang === 'ar' ? 'جمعية الصناعات النسيجية' : 'Textile Industries Association'}</h2>
+                    <p className="text-sm font-bold text-slate-500">{lang === 'ar' ? 'الروضة - محافظة شبوة - اليمن' : 'Al-Rawdah - Shabwa - Yemen'}</p>
+                    <p className="text-xs font-bold text-slate-400 tabular-nums">0777 263 091 | nseeg202020@gmail.com</p>
+                  </div>
+                  <div className="w-24 h-24 bg-white border border-slate-100 rounded-2xl flex items-center justify-center p-1 shadow-sm">
+                    <img src="/images/logo.png" alt="Logo" className="w-full h-full object-contain" />
+                  </div>
+                </div>
+
+                {/* VOUCHER INFO BAR */}
+                <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 flex justify-between items-center mb-8">
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{lang === 'ar' ? 'سند صرف مواد' : 'MATERIAL ISSUE VOUCHER'}</p>
+                    <h3 className="text-2xl font-black text-emerald-900 tabular-nums">{printingVoucher.voucherNumber}</h3>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'تاريخ التحرير' : 'ISSUE DATE'}</p>
+                    <p className="text-sm font-black tabular-nums">{printingVoucher.date}</p>
+                  </div>
+                </div>
+
+                {/* DETAILS GRID */}
+                <div className="grid grid-cols-2 gap-8 mb-10">
+                  <div className="space-y-3">
+                    <h4 className="text-[10px] font-black text-slate-400 uppercase border-b border-slate-100 pb-1">{lang === 'ar' ? 'بيانات المستلم' : 'RECIPIENT DETAILS'}</h4>
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-emerald-700 font-black text-lg">
+                        {allWorkers?.find(w => w.id === printingVoucher.workerId)?.fullName?.charAt(0)}
+                      </div>
+                      <div>
+                        <p className="font-black text-slate-900">{allWorkers?.find(w => w.id === printingVoucher.workerId)?.fullName}</p>
+                        <p className="text-xs font-bold text-slate-500 tabular-nums">{allWorkers?.find(w => w.id === printingVoucher.workerId)?.workerId}</p>
+                        <p className="text-[10px] font-black text-emerald-700 uppercase mt-1">
+                          {allDepartments?.find(d => d.id === allWorkers?.find(w => w.id === printingVoucher.workerId)?.departmentId)?.nameAr}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <h4 className="text-[10px] font-black text-slate-400 uppercase border-b border-slate-100 pb-1">{lang === 'ar' ? 'أمر التشغيل المعتمد' : 'PRODUCTION ORDER'}</h4>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600"><Workflow className="w-5 h-5" /></div>
+                      <div>
+                        <p className="font-black text-slate-900">{allOrders?.find(o => o.id === printingVoucher.orderId)?.orderNumber}</p>
+                        <p className="text-xs font-bold text-slate-500 truncate max-w-[200px]">{allOrders?.find(o => o.id === printingVoucher.orderId)?.title}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ITEMS TABLE */}
+                <div className="flex-1 mb-10">
+                  <h4 className="text-[10px] font-black text-slate-400 uppercase mb-3 px-2">{lang === 'ar' ? 'قائمة المواد المصروفة' : 'ITEMS LIST'}</h4>
+                  <Table className="text-right border-2 border-slate-100">
+                    <TableHeader className="bg-slate-50">
+                      <TableRow>
+                        <TableHead className="text-right font-black text-xs py-4 text-emerald-900">{lang === 'ar' ? 'المادة' : 'ITEM'}</TableHead>
+                        <TableHead className="text-center font-black text-xs py-4 text-emerald-900">{lang === 'ar' ? 'الكمية' : 'QTY'}</TableHead>
+                        <TableHead className="text-center font-black text-xs py-4 text-emerald-900">{lang === 'ar' ? 'الوحدة' : 'UNIT'}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {printingVoucher.items.map((item: any, i: number) => (
+                        <TableRow key={i} className="border-b border-slate-100">
+                          <TableCell className="font-bold text-sm py-4">{item.nameAr}</TableCell>
+                          <TableCell className="text-center font-black text-sm tabular-nums py-4">{item.qty}</TableCell>
+                          <TableCell className="text-center text-xs font-bold text-slate-500 uppercase py-4">{item.unit}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* SIGNATURES */}
+                <div className="grid grid-cols-3 gap-10 border-t-2 border-slate-100 pt-10 text-center">
+                  <div className="space-y-6">
+                    <p className="text-[10px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'أمين المستودع' : 'STORE KEEPER'}</p>
+                    <div className="h-px bg-slate-200 w-3/4 mx-auto" />
+                  </div>
+                  <div className="space-y-6">
+                    <p className="text-[10px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'توقيع المستلم' : 'RECIPIENT SIGN'}</p>
+                    <div className="h-px bg-slate-200 w-3/4 mx-auto" />
+                  </div>
+                  <div className="space-y-6">
+                    <p className="text-[10px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'اعتماد المدير' : 'MANAGER APPROVAL'}</p>
+                    <div className="h-px bg-slate-200 w-3/4 mx-auto" />
+                  </div>
+                </div>
+
+                {/* PRINT FOOTER */}
+                <div className="mt-auto pt-10 text-center text-[8px] font-black text-slate-300 uppercase tracking-[0.5em]">
+                  Generated by TIA Production System - {new Date().toLocaleString()}
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter className="p-6 bg-slate-50 border-t border-slate-100 print:hidden">
+            <Button onClick={handlePrint} className="premium-gradient font-black gap-2 h-12 px-8 rounded-xl shadow-lg">
+              <Printer className="w-5 h-5" />
+              {lang === 'ar' ? 'تأكيد الطباعة الآن' : 'Print Invoice Now'}
+            </Button>
+            <Button variant="outline" onClick={() => setPrintingVoucher(null)} className="font-black h-12 px-6 rounded-xl border-slate-200">
+              {lang === 'ar' ? 'إغلاق' : 'Close'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* DELETE CONFIRMATION */}
+      <AlertDialog open={!!deletingVoucher} onOpenChange={(open) => !open && setDeletingVoucher(null)}>
+        <AlertDialogContent className="max-w-[400px] rounded-lg border-none shadow-2xl p-0 overflow-hidden">
+          <div className="bg-slate-950 p-8 text-center">
+            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20 shadow-inner">
+              <History className="w-8 h-8 text-red-500" />
+            </div>
+            <AlertDialogTitle className="text-white text-xl font-black">{lang === 'ar' ? 'إلغاء سند الصرف' : 'Cancel Voucher'}</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400 font-bold mt-2 text-xs leading-relaxed">
+              {lang === 'ar' 
+                ? 'تحذير: حذف السند سيؤدي لإلغاء الحركة المالية وإرجاع كافة الكميات المصروفة إلى مخازن الجمعية تلقائياً.' 
+                : 'Warning: Deleting will reverse the financial entry and return all items to inventory.'}
+            </AlertDialogDescription>
+          </div>
+          <div className="bg-white p-6 flex gap-3">
+            <AlertDialogAction onClick={handleDeleteVoucher} disabled={isSubmitting} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-md font-black">
+              {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : (lang === 'ar' ? 'تأكيد الحذف' : 'Confirm')}
+            </AlertDialogAction>
+            <AlertDialogCancel onClick={() => setDeletingVoucher(null)} className="flex-1 h-11 bg-slate-50 border-slate-200 text-slate-400 rounded-md font-black">
+              {lang === 'ar' ? 'تراجع' : 'Cancel'}
+            </AlertDialogCancel>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* SYSTEM NOTE */}
-      <div className="flex-none p-2.5 bg-slate-900 text-white/50 flex items-center justify-center gap-3">
+      <div className="flex-none p-2.5 bg-slate-900 text-white/50 flex items-center justify-center gap-3 print:hidden">
         <div className="w-6 h-6 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500"><ShieldCheck className="w-3.5 h-3.5" /></div>
         <p className="text-[10px] font-bold tracking-tight">
           {lang === 'ar' 
@@ -592,6 +846,29 @@ export default function MaterialIssuePage() {
             : 'Security Protocol: Posting instantly assigns materials as worker liability and applies costs to the manufacturing order.'}
         </p>
       </div>
+
+      {/* PRINT STYLES */}
+      <style jsx global>{`
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          #printable-voucher, #printable-voucher * {
+            visibility: visible;
+          }
+          #printable-voucher {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            padding: 0;
+            margin: 0;
+          }
+          .print\:hidden {
+            display: none !important;
+          }
+        }
+      `}</style>
 
     </div>
   );
