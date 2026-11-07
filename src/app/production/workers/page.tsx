@@ -28,7 +28,6 @@ import {
   Phone,
   Calendar,
   Briefcase,
-  Camera,
   User as UserIcon,
   UploadCloud,
   Loader2
@@ -84,7 +83,6 @@ export default function WorkersPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [search, setSearch] = useState('');
   
-  // Filtering & Sorting State
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [deptFilter, setDeptFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'fullName' | 'joinDate' | 'workerId'>('fullName');
@@ -106,7 +104,6 @@ export default function WorkersPage() {
     active: true
   });
 
-  // Queries
   const workersQuery = useMemo(() => {
     if (!db) return null;
     return collection(db, 'workers');
@@ -166,12 +163,10 @@ export default function WorkersPage() {
     });
   }, []);
 
-  // Image Processing Logic
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate type
     if (!file.type.startsWith('image/')) {
       toast({ variant: "destructive", title: lang === 'ar' ? "خطأ في الملف" : "File Error", description: lang === 'ar' ? "يرجى اختيار صورة صالحة فقط" : "Please select a valid image" });
       return;
@@ -184,9 +179,8 @@ export default function WorkersPage() {
       const img = new Image();
       img.src = event.target?.result as string;
       img.onload = () => {
-        // Dynamic Canvas Compression
         const canvas = document.createElement('canvas');
-        const MAX_SIZE = 200; // Small size for fast database performance
+        const MAX_SIZE = 200;
         let width = img.width;
         let height = img.height;
 
@@ -207,7 +201,6 @@ export default function WorkersPage() {
         const ctx = canvas.getContext('2d');
         ctx?.drawImage(img, 0, 0, width, height);
 
-        // Convert to quality-reduced JPEG base64
         const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
         setFormData(prev => ({ ...prev, photoUrl: compressedBase64 }));
         setIsCompressing(false);
@@ -488,7 +481,7 @@ export default function WorkersPage() {
                       <TableCell className="px-6 py-3">
                         <div className="flex items-center gap-3">
                           <Avatar className="h-9 w-9 rounded-lg border border-slate-200 bg-slate-50">
-                            <AvatarImage src={worker.photoUrl} alt={worker.fullName} className="object-cover" />
+                            <AvatarImage src={worker.photoUrl || undefined} alt={worker.fullName} className="object-cover" />
                             <AvatarFallback className="premium-gradient text-white text-[10px] font-black uppercase">
                               {worker.fullName?.charAt(0)}
                             </AvatarFallback>
@@ -584,14 +577,13 @@ export default function WorkersPage() {
           </div>
 
           <form onSubmit={handleSaveWorker} className="p-6 space-y-5 bg-white">
-            {/* PHOTO UPLOAD SECTION - BASE64 CONVERSION */}
             <div className="flex flex-col items-center gap-3 pb-2 border-b border-slate-100">
               <div 
                 onClick={() => !isCompressing && fileInputRef.current?.click()}
                 className="relative group cursor-pointer"
               >
                 <Avatar className="h-20 w-20 rounded-2xl border-4 border-slate-100 shadow-md group-hover:border-emerald-100 transition-all overflow-hidden bg-slate-50">
-                  <AvatarImage src={formData.photoUrl} className="object-cover" />
+                  <AvatarImage src={formData.photoUrl || undefined} className="object-cover" />
                   <AvatarFallback className="bg-slate-50 text-slate-300">
                     {isCompressing ? <Loader2 className="w-8 h-8 animate-spin text-emerald-500" /> : <UserIcon className="w-10 h-10" />}
                   </AvatarFallback>
