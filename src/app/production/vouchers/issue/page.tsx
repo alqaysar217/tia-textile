@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { 
   Plus, 
   Search, 
@@ -69,6 +69,7 @@ export default function MaterialIssuePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isWorkerPopoverOpen, setIsWorkerPopoverOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const workerSearchRef = useRef<HTMLInputElement>(null);
   
   // Selection filtering state
   const [selectedDeptId, setSelectedDeptId] = useState<string>('');
@@ -133,6 +134,13 @@ export default function MaterialIssuePage() {
   const selectedWorker = useMemo(() => {
     return allWorkers?.find(w => w.id === formData.workerId);
   }, [allWorkers, formData.workerId]);
+
+  // Maintain focus on search input when popover opens
+  useEffect(() => {
+    if (isWorkerPopoverOpen) {
+      setTimeout(() => workerSearchRef.current?.focus(), 100);
+    }
+  }, [isWorkerPopoverOpen]);
 
   const handleAddItem = () => {
     if (!currentItem.id || currentItem.qty <= 0) return;
@@ -355,7 +363,7 @@ export default function MaterialIssuePage() {
 
           <form onSubmit={handleSaveVoucher} className="p-6 space-y-6 bg-white max-h-[85vh] overflow-y-auto no-scrollbar">
             
-            {/* 1. TOP ROW: DATE AND PRODUCTION ORDER */}
+            {/* 1. TOP ROW: DATE AND WORKER SELECTION (Logic: General Info) */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
@@ -364,39 +372,9 @@ export default function MaterialIssuePage() {
                 <Input type="date" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} className="h-12 font-bold text-xs bg-slate-50 border-slate-200" required />
               </div>
 
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
-                  <Workflow className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'أمر الإنتاج المستهدف' : 'PRODUCTION ORDER'}
-                </Label>
-                <select value={formData.orderId} onChange={(e) => setFormData({...formData, orderId: e.target.value})} className="w-full h-12 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none" required>
-                  <option value="">{lang === 'ar' ? '-- اختر أمر الإنتاج --' : '-- Select Order --'}</option>
-                  {activeOrders?.map(o => <option key={o.id} value={o.id}>{o.orderNumber} - {o.title}</option>)}
-                </select>
-              </div>
-            </div>
-
-            {/* 2. SECOND ROW: DEPT FILTER AND WORKER PICKER */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
-                  <Building2 className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'القسم (فلترة)' : 'FILTER BY DEPARTMENT'}
-                </Label>
-                <select 
-                  value={selectedDeptId} 
-                  onChange={(e) => {
-                    setSelectedDeptId(e.target.value);
-                    setFormData({...formData, workerId: ''}); // Clear worker when dept changes
-                  }} 
-                  className="w-full h-12 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none focus:ring-1 focus:ring-emerald-500"
-                >
-                  <option value="">{lang === 'ar' ? 'جميع الأقسام' : 'All Departments'}</option>
-                  {activeDepartments?.map(d => <option key={d.id} value={d.id}>{lang === 'ar' ? d.nameAr : d.nameEn}</option>)}
-                </select>
-              </div>
-
               <div className="space-y-1.5 flex flex-col">
                 <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
-                  <Users2 className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'العامل المستلم' : 'RECEIVING PERSONNEL'}
+                  <Users2 className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'العامل المستلم للمواد' : 'RECEIVING PERSONNEL'}
                 </Label>
                 
                 <Popover open={isWorkerPopoverOpen} onOpenChange={setIsWorkerPopoverOpen}>
@@ -425,15 +403,25 @@ export default function MaterialIssuePage() {
                       <ChevronDown className="h-4 w-4 opacity-50" />
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-[350px] p-0 shadow-2xl border-slate-200 rounded-xl overflow-hidden" align="end">
+                  <PopoverContent 
+                    className="w-[350px] p-0 shadow-2xl border-slate-200 rounded-xl overflow-hidden z-[100]" 
+                    align="end"
+                    onInteractOutside={(e) => {
+                      const target = e.target as HTMLElement;
+                      if (target.closest('[data-radix-popover-content]')) {
+                        e.preventDefault();
+                      }
+                    }}
+                  >
                     <div className="p-3 bg-slate-50 border-b border-slate-100 flex flex-col gap-2">
                       <div className="relative">
-                        <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                        <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400`} />
                         <Input 
+                          ref={workerSearchRef}
                           value={workerSearch}
                           onChange={(e) => setWorkerSearch(e.target.value)}
                           placeholder={lang === 'ar' ? 'بحث باسم العامل أو المعرف...' : 'Search worker...'}
-                          className="h-9 pr-9 bg-white border-slate-200 text-xs font-bold"
+                          className={`${dir === 'rtl' ? 'pr-9 pl-3' : 'pl-9 pr-3'} h-9 bg-white border-slate-200 text-xs font-bold`}
                         />
                       </div>
                     </div>
@@ -441,7 +429,7 @@ export default function MaterialIssuePage() {
                       <div className="p-1">
                         {filteredWorkers.length === 0 ? (
                           <div className="text-center py-10">
-                            <p className="text-xs font-bold text-slate-400">{lang === 'ar' ? 'لا يوجد عمال يطابقون الفلتر' : 'No personnel found'}</p>
+                            <p className="text-xs font-bold text-slate-400">{lang === 'ar' ? 'لا يوجد عمال يطابقون البحث' : 'No personnel found'}</p>
                           </div>
                         ) : filteredWorkers.map(w => (
                           <button
@@ -452,7 +440,7 @@ export default function MaterialIssuePage() {
                               setIsWorkerPopoverOpen(false);
                             }}
                             className={cn(
-                              "flex items-center gap-3 w-full p-2.5 rounded-lg transition-all border border-transparent text-right hover:bg-slate-50 mb-1",
+                              "flex items-center gap-3 w-full p-2.5 rounded-lg transition-all border border-transparent text-right hover:bg-slate-100 mb-1",
                               formData.workerId === w.id && "bg-emerald-50 border-emerald-100"
                             )}
                           >
@@ -469,8 +457,42 @@ export default function MaterialIssuePage() {
                         ))}
                       </div>
                     </ScrollArea>
+                    <div className="p-2 bg-slate-50 border-t border-slate-100 text-center">
+                      <p className="text-[9px] font-bold text-slate-400 uppercase">{lang === 'ar' ? 'يرجى اختيار العامل لتكملة السند' : 'Select worker to continue'}</p>
+                    </div>
                   </PopoverContent>
                 </Popover>
+              </div>
+            </div>
+
+            {/* 2. SECOND ROW: ORDER AND DEPT FILTER (Logic: Scope) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
+                  <Workflow className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'أمر الإنتاج المستهدف' : 'PRODUCTION ORDER'}
+                </Label>
+                <select value={formData.orderId} onChange={(e) => setFormData({...formData, orderId: e.target.value})} className="w-full h-12 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none focus:ring-1 focus:ring-emerald-500" required>
+                  <option value="">{lang === 'ar' ? '-- اختر أمر الإنتاج --' : '-- Select Order --'}</option>
+                  {activeOrders?.map(o => <option key={o.id} value={o.id}>{o.orderNumber} - {o.title}</option>)}
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
+                  <Building2 className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'فلترة حسب القسم' : 'FILTER BY DEPARTMENT'}
+                </Label>
+                <select 
+                  value={selectedDeptId} 
+                  onChange={(e) => {
+                    setSelectedDeptId(e.target.value);
+                    setFormData({...formData, workerId: ''}); // Reset worker selection on dept change
+                    setWorkerSearch('');
+                  }} 
+                  className="w-full h-12 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none focus:ring-1 focus:ring-emerald-500"
+                >
+                  <option value="">{lang === 'ar' ? 'عرض جميع الأقسام' : 'All Departments'}</option>
+                  {activeDepartments?.map(d => <option key={d.id} value={d.id}>{lang === 'ar' ? d.nameAr : d.nameEn}</option>)}
+                </select>
               </div>
             </div>
 
