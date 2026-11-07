@@ -6,21 +6,17 @@ import {
   Search, 
   Edit2, 
   Trash2, 
-  MoreVertical,
-  CheckCircle2,
-  Filter,
-  ChevronRight,
-  Save,
-  Activity,
-  Users,
-  Layout,
-  Power,
-  PowerOff,
-  Database,
-  Layers,
-  ArrowUpDown,
-  History,
-  Info
+  MoreVertical, 
+  CheckCircle2, 
+  Filter, 
+  ChevronRight, 
+  Save, 
+  Database, 
+  Layers, 
+  Power, 
+  PowerOff, 
+  History, 
+  Info 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -124,8 +120,10 @@ export default function DepartmentsPage() {
       updatedAt: serverTimestamp(),
     };
 
+    // Close UI immediately to prevent freezing
     resetForm();
 
+    // Execute firestore logic in next tick
     setTimeout(() => {
       if (isEdit && currentId) {
         const docRef = doc(db, 'departments', currentId);
@@ -201,7 +199,7 @@ export default function DepartmentsPage() {
       <div className="flex-none bg-white border-b border-slate-200 z-30 px-6 py-4">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div className="flex items-center gap-4">
-            <div className="p-2 bg-slate-900 rounded-lg text-white shadow-lg">
+            <div className="p-2 bg-primary rounded-lg text-white shadow-lg">
               <Database className="w-5 h-5" />
             </div>
             <div>
@@ -220,7 +218,7 @@ export default function DepartmentsPage() {
             <div className="flex gap-2 bg-slate-50 p-1 rounded-lg border border-slate-100">
               <div className="px-3 py-1 text-center">
                 <p className="text-[9px] font-bold text-slate-400 uppercase">{lang === 'ar' ? 'نشط' : 'Active'}</p>
-                <p className="text-sm font-black text-blue-600 tabular-nums">{loading ? '..' : stats.active}</p>
+                <p className="text-sm font-black text-emerald-600 tabular-nums">{loading ? '..' : stats.active}</p>
               </div>
               <div className="w-px h-6 bg-slate-200 self-center" />
               <div className="px-3 py-1 text-center">
@@ -229,7 +227,7 @@ export default function DepartmentsPage() {
               </div>
             </div>
             
-            <Button onClick={() => setIsAddDialogOpen(true)} className="h-10 px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-md font-black gap-2 transition-all">
+            <Button onClick={() => setIsAddDialogOpen(true)} className="h-10 px-6 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg shadow-md font-black gap-2 transition-all">
               <Plus className="w-4 h-4" />
               {lang === 'ar' ? 'إضافة قسم' : 'New Dept'}
             </Button>
@@ -244,7 +242,7 @@ export default function DepartmentsPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={lang === 'ar' ? 'بحث بالكود أو الاسم...' : 'Quick search...'}
-              className={`${dir === 'rtl' ? 'pr-10' : 'pl-10'} h-9 bg-white border-slate-200 rounded-md text-xs font-bold focus:ring-blue-500/10 focus:border-blue-500`}
+              className={`${dir === 'rtl' ? 'pr-10' : 'pl-10'} h-9 bg-white border-slate-200 rounded-md text-xs font-bold focus:ring-emerald-500/10 focus:border-emerald-500`}
             />
           </div>
           <Button variant="ghost" className="h-9 px-4 rounded-md text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent hover:border-slate-200">
@@ -281,7 +279,7 @@ export default function DepartmentsPage() {
                   <TableRow><TableCell colSpan={6} className="text-center py-20 font-bold text-slate-300">لا توجد سجلات مطابقة</TableCell></TableRow>
                 ) : filtered.map((dept) => (
                   <TableRow key={dept.id} className="group hover:bg-slate-50/50 border-b border-slate-100">
-                    <TableCell className="px-6 py-3 font-bold text-blue-600 text-[11px] tabular-nums tracking-wider">{dept.code}</TableCell>
+                    <TableCell className="px-6 py-3 font-bold text-emerald-700 text-[11px] tabular-nums tracking-wider">{dept.code}</TableCell>
                     <TableCell className="px-6 py-3">
                       <div className="flex flex-col">
                         <span className="font-black text-slate-900 text-xs">{lang === 'ar' ? dept.nameAr : dept.nameEn}</span>
@@ -298,9 +296,9 @@ export default function DepartmentsPage() {
                     </TableCell>
                     <TableCell className="px-6 py-3 text-center">
                       <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-black uppercase ${
-                        dept.status === 'active' ? 'bg-blue-50 text-blue-700 border border-blue-100' : 'bg-slate-100 text-slate-500 border border-slate-200'
+                        dept.status === 'active' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-slate-100 text-slate-500 border border-slate-200'
                       }`}>
-                        <div className={`w-1.5 h-1.5 rounded-full ${dept.status === 'active' ? 'bg-blue-600' : 'bg-slate-400'}`} />
+                        <div className={`w-1.5 h-1.5 rounded-full ${dept.status === 'active' ? 'bg-emerald-600' : 'bg-slate-400'}`} />
                         {dept.status === 'active' ? (lang === 'ar' ? 'نشط' : 'Active') : (lang === 'ar' ? 'متوقف' : 'Inactive')}
                       </div>
                     </TableCell>
@@ -313,7 +311,7 @@ export default function DepartmentsPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="rounded-lg border-slate-200 shadow-xl min-w-[180px]">
                           <DropdownMenuItem onClick={() => handleEditClick(dept)} className="gap-3 font-bold text-xs cursor-pointer py-2.5">
-                            <Edit2 className="w-3.5 h-3.5 text-blue-500" /> {lang === 'ar' ? 'تعديل' : 'Edit'}
+                            <Edit2 className="w-3.5 h-3.5 text-emerald-600" /> {lang === 'ar' ? 'تعديل' : 'Edit'}
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleStatusToggle(dept)} className="gap-3 font-bold text-xs cursor-pointer py-2.5">
                             {dept.status === 'active' ? <PowerOff className="w-3.5 h-3.5 text-amber-600" /> : <Power className="w-3.5 h-3.5 text-emerald-600" />}
@@ -335,7 +333,7 @@ export default function DepartmentsPage() {
 
         {/* SYSTEM NOTE - FOOTER */}
         <div className="mt-4 flex-none bg-slate-900 rounded-lg p-3 text-white flex items-center gap-4 border border-slate-800 shadow-inner">
-          <div className="w-8 h-8 bg-blue-500/20 rounded flex items-center justify-center text-blue-400"><Info className="w-4 h-4" /></div>
+          <div className="w-8 h-8 bg-emerald-500/20 rounded flex items-center justify-center text-emerald-400"><Info className="w-4 h-4" /></div>
           <div className="flex-1">
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 leading-none mb-1">
               {lang === 'ar' ? 'بروتوكول إدارة البيانات' : 'Data Management Protocol'}
@@ -349,14 +347,14 @@ export default function DepartmentsPage() {
 
       {/* DIALOGS - ERP STYLE */}
       <Dialog open={isAddDialogOpen} onOpenChange={(open) => !open && resetForm()}>
-        <DialogContent className="sm:max-w-[500px] rounded-xl border-slate-200 shadow-2xl p-0 overflow-hidden">
+        <DialogContent className="sm:max-w-[500px] rounded-lg border-slate-200 shadow-2xl p-0 overflow-hidden">
           <div className="premium-gradient p-6 text-white relative">
             <DialogHeader className="text-right rtl:text-right ltr:text-left">
               <DialogTitle className="text-xl font-black flex items-center gap-3">
-                <Layers className="w-5 h-5 text-blue-400" />
+                <Layers className="w-5 h-5 text-emerald-400" />
                 {editingDeptId ? (lang === 'ar' ? 'تعديل القسم' : 'Edit Center') : (lang === 'ar' ? 'قسم إنتاج جديد' : 'New Work Center')}
               </DialogTitle>
-              <DialogDescription className="text-blue-100/60 font-bold text-[10px] uppercase tracking-widest mt-1">
+              <DialogDescription className="text-emerald-100/60 font-bold text-[10px] uppercase tracking-widest mt-1">
                 {lang === 'ar' ? 'تهيئة مراكز التكلفة ومراحل سير العمل' : 'Configuration of cost centers and workflows'}
               </DialogDescription>
             </DialogHeader>
@@ -393,11 +391,11 @@ export default function DepartmentsPage() {
             </div>
 
             <div className="flex gap-3 pt-2">
-              <Button type="submit" disabled={isSubmitting} className="flex-1 h-11 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-black text-sm">
+              <Button type="submit" disabled={isSubmitting} className="flex-1 h-11 bg-slate-900 hover:bg-slate-800 text-white rounded-md font-black text-sm">
                 <Save className="w-4 h-4 me-2" />
                 {lang === 'ar' ? (isSubmitting ? 'جاري الحفظ...' : 'حفظ البيانات') : 'Commit Changes'}
               </Button>
-              <Button type="button" variant="outline" onClick={resetForm} className="px-6 h-11 font-black text-slate-400">
+              <Button type="button" variant="outline" onClick={resetForm} className="px-6 h-11 font-black text-slate-400 rounded-md">
                 {lang === 'ar' ? 'إلغاء' : 'Cancel'}
               </Button>
             </div>
@@ -406,7 +404,7 @@ export default function DepartmentsPage() {
       </Dialog>
 
       <AlertDialog open={!!deletingDeptId} onOpenChange={(open) => !open && setDeletingDeptId(null)}>
-        <AlertDialogContent className="max-w-[400px] rounded-xl border-none shadow-2xl p-0 overflow-hidden">
+        <AlertDialogContent className="max-w-[400px] rounded-lg border-none shadow-2xl p-0 overflow-hidden">
           <div className="bg-slate-950 p-8 text-center">
             <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20 shadow-inner">
               <History className="w-8 h-8 text-red-500" />
@@ -419,10 +417,10 @@ export default function DepartmentsPage() {
             </AlertDialogDescription>
           </div>
           <div className="bg-white p-6 flex gap-3">
-            <AlertDialogAction onClick={handleArchiveDepartment} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-lg font-black">
+            <AlertDialogAction onClick={handleArchiveDepartment} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-md font-black">
               {lang === 'ar' ? 'تأكيد الأرشفة' : 'Confirm'}
             </AlertDialogAction>
-            <AlertDialogCancel onClick={() => setDeletingDeptId(null)} className="flex-1 h-11 bg-slate-50 border-slate-200 text-slate-400 rounded-lg font-black">
+            <AlertDialogCancel onClick={() => setDeletingDeptId(null)} className="flex-1 h-11 bg-slate-50 border-slate-200 text-slate-400 rounded-md font-black">
               {lang === 'ar' ? 'تراجع' : 'Cancel'}
             </AlertDialogCancel>
           </div>
