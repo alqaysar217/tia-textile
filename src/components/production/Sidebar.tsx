@@ -15,7 +15,13 @@ import {
   History,
   Trash2,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  ShoppingBag,
+  Layers,
+  Users2,
+  ClipboardCheck,
+  TrendingUp,
+  PackageCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -47,6 +53,7 @@ export function Sidebar() {
       name: t.production.production,
       icon: <Factory className="w-5 h-5" />,
       children: [
+        { name: lang === 'ar' ? 'دليل المنتجات' : 'Products Catalog', href: '/production/products' },
         { name: t.production.orders, href: '/production/orders' },
         { name: t.production.stages, href: '/production/stages' },
         { name: t.production.assignments, href: '/production/assignments' },
