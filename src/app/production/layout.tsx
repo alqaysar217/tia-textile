@@ -54,24 +54,40 @@ export default function ProductionLayout({
 
   return (
     <SidebarProvider>
+      {/* Root Container: h-screen prevents overall body scroll */}
       <div 
-        className={`min-h-screen w-full bg-[#F8F9FA] text-[#1A1C1E] flex flex-col ${lang === 'ar' ? 'arabic-font' : 'english-font'}`} 
+        className={`h-screen w-full bg-[#F8F9FA] text-[#1A1C1E] flex flex-col overflow-hidden ${lang === 'ar' ? 'arabic-font' : 'english-font'}`} 
         dir={dir}
       >
-        <div className="flex flex-1 overflow-hidden">
-          <aside className="z-30">
+        <div className="flex flex-1 overflow-hidden h-full">
+          {/* Fixed Sidebar */}
+          <aside className="z-30 h-full">
             <Sidebar />
           </aside>
 
-          <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative border-r border-gray-100/50">
+          {/* Main Content Area */}
+          <div className="flex-1 flex flex-col min-w-0 h-full relative border-r border-gray-100/50 overflow-hidden">
+            {/* Fixed Header */}
             <Header />
-            <main className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8">
+            
+            {/* Scrollable Main Part */}
+            <main className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8 scroll-smooth">
               {children}
             </main>
           </div>
         </div>
         
         <style jsx global>{`
+          /* Hide scrollbar for Chrome, Safari and Opera */
+          .no-scrollbar::-webkit-scrollbar {
+            display: none;
+          }
+          /* Hide scrollbar for IE, Edge and Firefox */
+          .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+          }
+          
           .production-card {
             @apply bg-white border border-gray-200/60 rounded-xl p-6 shadow-sm hover:shadow-md transition-all duration-300;
           }

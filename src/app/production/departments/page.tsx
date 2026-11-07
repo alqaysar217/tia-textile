@@ -23,8 +23,7 @@ import {
   Power,
   PowerOff,
   X,
-  ShieldAlert,
-  ArrowRight
+  ShieldAlert
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -90,21 +89,21 @@ export default function DepartmentsPage() {
 
   const departmentsQuery = useMemo(() => {
     if (!db) return null;
-    return query(
-      collection(db, 'departments'), 
-      where('status', '!=', 'deleted')
-    );
+    // Simple query to avoid index errors for now, filtering handled in useMemo
+    return collection(db, 'departments');
   }, [db]);
 
   const { data: departments, loading } = useCollection<any>(departmentsQuery);
 
   const filtered = useMemo(() => {
     const rawData = departments || [];
-    return rawData.filter(d => 
-      (d.nameAr?.includes(search) || 
-      d.nameEn?.toLowerCase().includes(search.toLowerCase()) || 
-      d.code?.includes(search))
-    );
+    return rawData
+      .filter(d => d.status !== 'deleted') // Soft filter
+      .filter(d => 
+        (d.nameAr?.includes(search) || 
+        d.nameEn?.toLowerCase().includes(search.toLowerCase()) || 
+        d.code?.includes(search))
+      );
   }, [departments, search]);
 
   const resetForm = useCallback(() => {
@@ -180,7 +179,6 @@ export default function DepartmentsPage() {
     const deptToArchiveId = deletingDept.id;
     const deptWorkerCount = deletingDept.workerCount || 0;
     
-    // Safety check for workers
     if (deptWorkerCount > 0) {
       setDeletingDept(null);
       toast({
@@ -191,10 +189,8 @@ export default function DepartmentsPage() {
       return;
     }
 
-    // UI RECOVERY FIRST
     setDeletingDept(null);
 
-    // Next tick execute
     setTimeout(() => {
       const docRef = doc(db, 'departments', deptToArchiveId);
       updateDoc(docRef, {
@@ -226,10 +222,10 @@ export default function DepartmentsPage() {
   const totalWorkers = useMemo(() => (departments || []).reduce((acc, curr) => acc + (curr.workerCount || 0), 0), [departments]);
 
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 max-w-7xl mx-auto pb-12">
+    <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 max-w-7xl mx-auto pb-12 relative">
       
-      {/* Sticky Header Section */}
-      <div className="sticky top-0 z-30 -mt-8 pt-8 pb-6 bg-[#F8F9FA]/80 backdrop-blur-xl border-b border-gray-200/50 mb-8 px-1">
+      {/* Premium Sticky Header Section */}
+      <div className="sticky top-0 z-30 -mt-8 pt-8 pb-6 bg-[#F8F9FA]/95 backdrop-blur-md border-b border-gray-200/50 mb-8 px-1 transition-all">
         <div className="flex items-center gap-2 text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-4">
           <span>{lang === 'ar' ? 'نظام الإنتاج' : 'Production'}</span>
           <ChevronRight className={`w-3 h-3 ${dir === 'rtl' ? '' : 'rotate-180'}`} />
@@ -247,124 +243,126 @@ export default function DepartmentsPage() {
             </p>
           </div>
 
-          <Dialog open={isAddDialogOpen} onOpenChange={(open) => !open && resetForm()}>
-            <DialogTrigger asChild>
-              <Button onClick={() => setIsAddDialogOpen(true)} className="h-12 px-8 bg-primary hover:bg-primary/95 text-white gap-3 rounded-xl shadow-xl shadow-primary/10 font-black transition-all active:scale-95 group">
-                <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" />
-                {lang === 'ar' ? 'إضافة قسم جديد' : 'New Department'}
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[550px] rounded-2xl border-none shadow-2xl overflow-hidden p-0">
-              <div className="bg-gradient-to-br from-primary via-[#0a7a44] to-[#054d2a] p-8 text-white relative">
-                <div className="absolute top-0 right-0 p-6 opacity-10 rotate-12">
-                  <Factory className="w-32 h-32" />
+          <div className="flex items-center gap-3">
+            <Dialog open={isAddDialogOpen} onOpenChange={(open) => !open && resetForm()}>
+              <DialogTrigger asChild>
+                <Button onClick={() => setIsAddDialogOpen(true)} className="h-12 px-8 bg-primary hover:bg-primary/95 text-white gap-3 rounded-xl shadow-xl shadow-primary/10 font-black transition-all active:scale-95 group">
+                  <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" />
+                  {lang === 'ar' ? 'إضافة قسم جديد' : 'New Department'}
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[550px] rounded-2xl border-none shadow-2xl overflow-hidden p-0">
+                <div className="bg-gradient-to-br from-primary via-[#0a7a44] to-[#054d2a] p-8 text-white relative">
+                  <div className="absolute top-0 right-0 p-6 opacity-10 rotate-12">
+                    <Factory className="w-32 h-32" />
+                  </div>
+                  <DialogHeader className="relative z-10 text-right rtl:text-right ltr:text-left">
+                    <DialogTitle className="text-2xl font-black flex items-center gap-3">
+                      <Layout className="w-6 h-6 text-secondary" />
+                      {editingDeptId ? (lang === 'ar' ? 'تعديل بيانات القسم' : 'Edit Department') : (lang === 'ar' ? 'إضافة قسم جديد' : 'New Department')}
+                    </DialogTitle>
+                    <DialogDescription className="text-white/70 font-bold mt-2 text-sm leading-relaxed">
+                      {lang === 'ar' 
+                        ? 'يرجى إدخال البيانات بدقة، حيث تُستخدم هذه المعلومات في توزيع التكاليف الصناعية.' 
+                        : 'Please enter data accurately, as this info is used for cost allocation.'}
+                    </DialogDescription>
+                  </DialogHeader>
                 </div>
-                <DialogHeader className="relative z-10 text-right rtl:text-right ltr:text-left">
-                  <DialogTitle className="text-2xl font-black flex items-center gap-3">
-                    <Layout className="w-6 h-6 text-secondary" />
-                    {editingDeptId ? (lang === 'ar' ? 'تعديل بيانات القسم' : 'Edit Department') : (lang === 'ar' ? 'إضافة قسم جديد' : 'New Department')}
-                  </DialogTitle>
-                  <DialogDescription className="text-white/70 font-bold mt-2 text-sm leading-relaxed">
-                    {lang === 'ar' 
-                      ? 'يرجى إدخال البيانات بدقة، حيث تُستخدم هذه المعلومات في توزيع التكاليف الصناعية.' 
-                      : 'Please enter data accurately, as this info is used for cost allocation.'}
-                  </DialogDescription>
-                </DialogHeader>
-              </div>
 
-              <form onSubmit={handleSaveDepartment} className="p-8 space-y-6 bg-white">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <form onSubmit={handleSaveDepartment} className="p-8 space-y-6 bg-white">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
+                        <Hash className="w-3 h-3 text-primary/60" />
+                        {lang === 'ar' ? 'كود القسم' : 'Dept Code'}
+                      </Label>
+                      <Input 
+                        value={formData.code}
+                        onChange={(e) => setFormData({...formData, code: e.target.value})}
+                        placeholder="DEPT-XXX" 
+                        className="h-12 rounded-xl border-gray-100 bg-gray-50/50 font-bold focus:bg-white focus:ring-primary/5 focus:border-primary/30 transition-all ps-4" 
+                        required 
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
+                        <Activity className="w-3 h-3 text-primary/60" />
+                        {lang === 'ar' ? 'الحالة التشغيلية' : 'Status'}
+                      </Label>
+                      <select 
+                        value={formData.status}
+                        onChange={(e) => setFormData({...formData, status: e.target.value})}
+                        className="w-full h-12 px-4 bg-emerald-50/50 border border-emerald-100/50 rounded-xl text-[11px] font-black text-emerald-700 focus:outline-none"
+                      >
+                        <option value="active">{lang === 'ar' ? 'نشط تشغيلياً' : 'Active'}</option>
+                        <option value="inactive">{lang === 'ar' ? 'متوقف مؤقتاً' : 'Inactive'}</option>
+                      </select>
+                    </div>
+                  </div>
+
                   <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
-                      <Hash className="w-3 h-3 text-primary/60" />
-                      {lang === 'ar' ? 'كود القسم' : 'Dept Code'}
+                      <Type className="w-3 h-3 text-primary/60" />
+                      {lang === 'ar' ? 'اسم القسم (بالعربية)' : 'Name (Arabic)'}
                     </Label>
                     <Input 
-                      value={formData.code}
-                      onChange={(e) => setFormData({...formData, code: e.target.value})}
-                      placeholder="DEPT-XXX" 
-                      className="h-12 rounded-xl border-gray-100 bg-gray-50/50 font-bold focus:bg-white focus:ring-primary/5 focus:border-primary/30 transition-all ps-4" 
+                      value={formData.nameAr}
+                      onChange={(e) => setFormData({...formData, nameAr: e.target.value})}
+                      placeholder={lang === 'ar' ? 'مثال: قسم الخياطة' : 'Arabic Name'} 
+                      className="h-12 rounded-xl border-gray-100 bg-gray-50/50 font-bold focus:bg-white focus:ring-primary/5 focus:border-primary/30 transition-all" 
                       required 
                     />
                   </div>
+
                   <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
-                      <Activity className="w-3 h-3 text-primary/60" />
-                      {lang === 'ar' ? 'الحالة التشغيلية' : 'Status'}
+                      <Globe className="w-3 h-3 text-primary/60" />
+                      {lang === 'ar' ? 'الاسم بالإنجليزية' : 'Name (English)'}
                     </Label>
-                    <select 
-                      value={formData.status}
-                      onChange={(e) => setFormData({...formData, status: e.target.value})}
-                      className="w-full h-12 px-4 bg-emerald-50/50 border border-emerald-100/50 rounded-xl text-[11px] font-black text-emerald-700 focus:outline-none"
-                    >
-                      <option value="active">{lang === 'ar' ? 'نشط تشغيلياً' : 'Active'}</option>
-                      <option value="inactive">{lang === 'ar' ? 'متوقف مؤقتاً' : 'Inactive'}</option>
-                    </select>
+                    <Input 
+                      value={formData.nameEn}
+                      onChange={(e) => setFormData({...formData, nameEn: e.target.value})}
+                      placeholder="English Name" 
+                      className="h-12 rounded-xl border-gray-100 bg-gray-50/50 font-bold focus:bg-white focus:ring-primary/5 focus:border-primary/30 transition-all" 
+                      required 
+                    />
                   </div>
-                </div>
 
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
-                    <Type className="w-3 h-3 text-primary/60" />
-                    {lang === 'ar' ? 'اسم القسم (بالعربية)' : 'Name (Arabic)'}
-                  </Label>
-                  <Input 
-                    value={formData.nameAr}
-                    onChange={(e) => setFormData({...formData, nameAr: e.target.value})}
-                    placeholder={lang === 'ar' ? 'مثال: قسم الخياطة' : 'Arabic Name'} 
-                    className="h-12 rounded-xl border-gray-100 bg-gray-50/50 font-bold focus:bg-white focus:ring-primary/5 focus:border-primary/30 transition-all" 
-                    required 
-                  />
-                </div>
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
+                      <FileText className="w-3 h-3 text-primary/60" />
+                      {lang === 'ar' ? 'وصف العمليات' : 'Process Description'}
+                    </Label>
+                    <Textarea 
+                      value={formData.descAr}
+                      onChange={(e) => setFormData({...formData, descAr: e.target.value})}
+                      placeholder={lang === 'ar' ? 'شرح للمهام التي تتم في هذا القسم...' : 'Operations details...'} 
+                      className="rounded-xl border-gray-100 bg-gray-50/50 resize-none h-24 font-medium focus:bg-white focus:ring-primary/5 focus:border-primary/30 transition-all p-4 text-sm" 
+                    />
+                  </div>
 
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
-                    <Globe className="w-3 h-3 text-primary/60" />
-                    {lang === 'ar' ? 'الاسم بالإنجليزية' : 'Name (English)'}
-                  </Label>
-                  <Input 
-                    value={formData.nameEn}
-                    onChange={(e) => setFormData({...formData, nameEn: e.target.value})}
-                    placeholder="English Name" 
-                    className="h-12 rounded-xl border-gray-100 bg-gray-50/50 font-bold focus:bg-white focus:ring-primary/5 focus:border-primary/30 transition-all" 
-                    required 
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
-                    <FileText className="w-3 h-3 text-primary/60" />
-                    {lang === 'ar' ? 'وصف العمليات' : 'Process Description'}
-                  </Label>
-                  <Textarea 
-                    value={formData.descAr}
-                    onChange={(e) => setFormData({...formData, descAr: e.target.value})}
-                    placeholder={lang === 'ar' ? 'شرح للمهام التي تتم في هذا القسم...' : 'Operations details...'} 
-                    className="rounded-xl border-gray-100 bg-gray-50/50 resize-none h-24 font-medium focus:bg-white focus:ring-primary/5 focus:border-primary/30 transition-all p-4 text-sm" 
-                  />
-                </div>
-
-                <div className="pt-4 flex gap-4">
-                  <Button 
-                    type="submit" 
-                    disabled={isSubmitting}
-                    className="flex-1 h-14 bg-gradient-to-r from-primary to-[#0a7a44] hover:opacity-90 rounded-xl font-black gap-3 shadow-lg shadow-primary/10 text-base"
-                  >
-                    <Save className="w-5 h-5" />
-                    {lang === 'ar' ? (isSubmitting ? 'جاري الحفظ...' : 'حفظ البيانات') : (isSubmitting ? 'Saving...' : 'Save Changes')}
-                  </Button>
-                  <Button 
-                    type="button" 
-                    variant="ghost" 
-                    onClick={resetForm} 
-                    className="h-14 px-8 rounded-xl font-black text-gray-400 hover:text-gray-600"
-                  >
-                    {lang === 'ar' ? 'إلغاء' : 'Cancel'}
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
+                  <div className="pt-4 flex gap-4">
+                    <Button 
+                      type="submit" 
+                      disabled={isSubmitting}
+                      className="flex-1 h-14 bg-gradient-to-r from-primary to-[#0a7a44] hover:opacity-90 rounded-xl font-black gap-3 shadow-lg shadow-primary/10 text-base"
+                    >
+                      <Save className="w-5 h-5" />
+                      {lang === 'ar' ? (isSubmitting ? 'جاري الحفظ...' : 'حفظ البيانات') : (isSubmitting ? 'Saving...' : 'Save Changes')}
+                    </Button>
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      onClick={resetForm} 
+                      className="h-14 px-8 rounded-xl font-black text-gray-400 hover:text-gray-600"
+                    >
+                      {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
       </div>
 
