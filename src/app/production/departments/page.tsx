@@ -23,8 +23,7 @@ import {
   Power,
   PowerOff,
   X,
-  ShieldAlert,
-  TrendingUp
+  ShieldAlert
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -130,7 +129,7 @@ export default function DepartmentsPage() {
       updatedAt: serverTimestamp(),
     };
 
-    // Release UI immediately to prevent freezing
+    // Release UI immediately
     resetForm(); 
 
     // Background Execution
@@ -189,10 +188,8 @@ export default function DepartmentsPage() {
       return;
     }
 
-    // Release UI First
     setDeletingDept(null);
 
-    // Run Firestore task in next tick
     setTimeout(() => {
       const docRef = doc(db, 'departments', deptToArchiveId);
       updateDoc(docRef, {
@@ -228,12 +225,10 @@ export default function DepartmentsPage() {
       
       {/* 
           Master Sticky Hub: 
-          Now combines Header and Stats into one unified, compact area 
-          that stays pinned to the top.
+          Removed stupid space by using negative top margins to offset layout padding.
       */}
-      <div className="sticky top-0 z-30 -mx-4 md:-mx-8 px-4 md:px-8 pt-4 pb-4 bg-[#F8F9FA]/95 backdrop-blur-xl border-b border-gray-200/60 mb-8 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.05)] transition-all">
+      <div className="sticky top-0 z-30 -mx-4 md:-mx-8 -mt-4 md:-mt-8 px-4 md:px-8 pt-6 pb-4 bg-[#F8F9FA]/95 backdrop-blur-xl border-b border-gray-200/60 mb-8 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.05)] transition-all">
         <div className="flex flex-col gap-6">
-          {/* Top Row: Navigation and Main Actions */}
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <div className="flex items-center gap-4 w-full md:w-auto">
               <div className="w-1.5 h-10 bg-primary rounded-full hidden md:block" />
@@ -371,7 +366,6 @@ export default function DepartmentsPage() {
             </div>
           </div>
 
-          {/* Bottom Row: Inline Stats (Compact Version) */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-gray-100 pt-4">
             <div className="flex items-center gap-3 bg-white/50 px-4 py-2.5 rounded-lg border border-gray-100 group hover:border-primary/20 transition-all">
               <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary shrink-0"><Activity className="w-4 h-4" /></div>
@@ -399,7 +393,6 @@ export default function DepartmentsPage() {
       </div>
 
       <div className="space-y-8 px-1">
-        {/* Toolbar */}
         <div className="flex flex-wrap items-center justify-between gap-4 bg-white border border-gray-200/60 p-4 rounded-xl shadow-sm">
           <div className="flex items-center gap-4 flex-1">
             <div className="relative w-full max-w-md">
@@ -418,7 +411,6 @@ export default function DepartmentsPage() {
           </div>
         </div>
 
-        {/* Table Content */}
         <div className="bg-white border border-gray-200/60 rounded-xl shadow-sm overflow-hidden">
           <Table className="text-right">
             <TableHeader>
