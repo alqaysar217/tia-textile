@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
@@ -696,18 +697,18 @@ export default function MaterialIssuePage() {
 
       {/* PRINT PREVIEW DIALOG */}
       <Dialog open={!!printingVoucher} onOpenChange={(open) => !open && setPrintingVoucher(null)}>
-        <DialogContent className="sm:max-w-[750px] p-0 overflow-hidden border-none bg-white">
+        <DialogContent className="sm:max-w-[700px] p-0 overflow-hidden border-none bg-white">
           <DialogHeader className="sr-only">
             <DialogTitle>
               {lang === 'ar' ? 'معاينة طباعة سند الصرف' : 'Material Issue Voucher Print Preview'}
             </DialogTitle>
           </DialogHeader>
           
-          <ScrollArea className="max-h-[80vh]">
+          <ScrollArea className="max-h-[75vh]">
             <div className="p-10 print:p-0 bg-white" id="printable-voucher">
               {printingVoucher && (
                 <div className="flex flex-col h-full text-slate-900 font-sans" dir="rtl">
-                  {/* PROFESSIONAL BILINGUAL HEADER - UPDATED POSITIONS & ALIGNMENT */}
+                  {/* PROFESSIONAL BILINGUAL HEADER - SWAPPED POSITIONS */}
                   <div className="grid grid-cols-3 items-center border-b-4 border-emerald-800 pb-6 mb-6">
                     {/* ARABIC SIDE (NOW ON LEFT) */}
                     <div className="text-center space-y-0.5">
@@ -725,7 +726,7 @@ export default function MaterialIssuePage() {
 
                     {/* ENGLISH SIDE (NOW ON RIGHT) */}
                     <div className="text-center space-y-0.5" dir="ltr">
-                      <h2 className="text-sm font-black text-emerald-900 uppercase">Textile Industries Association</h2>
+                      <h2 className="text-[11px] font-black text-emerald-900 uppercase">Textile Industries Association</h2>
                       <p className="text-[10px] font-bold text-slate-500">Al-Rawdah - Shabwa - Yemen</p>
                       <p className="text-[9px] font-bold text-slate-400 tabular-nums">0777 263 091 | nseeg202020@gmail.com</p>
                     </div>
