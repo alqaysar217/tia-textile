@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { 
   Factory, 
   Plus, 
@@ -104,61 +104,62 @@ export default function DepartmentsPage() {
     );
   }, [departments, search]);
 
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setIsAddDialogOpen(false);
     setEditingDept(null);
     setIsSubmitting(false);
     setFormData({ code: '', nameAr: '', nameEn: '', descAr: '', status: 'active' });
-  };
+  }, []);
 
   const handleSaveDepartment = (e: React.FormEvent) => {
     e.preventDefault();
     if (!db || isSubmitting) return;
 
     setIsSubmitting(true);
+    const currentEditingDept = editingDept;
     const deptData = {
       ...formData,
       updatedAt: serverTimestamp(),
-      workerCount: editingDept ? (editingDept.workerCount || 0) : 0,
+      workerCount: currentEditingDept ? (currentEditingDept.workerCount || 0) : 0,
     };
 
-    if (editingDept) {
-      const docRef = doc(db, 'departments', editingDept.id);
+    // Close UI immediately to prevent freezing during re-render
+    const isEdit = !!currentEditingDept;
+    resetForm(); 
+
+    if (isEdit) {
+      const docRef = doc(db, 'departments', currentEditingDept.id);
       updateDoc(docRef, deptData)
-        .catch(async () => {
+        .catch((err) => {
           errorEmitter.emit('permission-error', new FirestorePermissionError({
             path: 'departments',
             operation: 'update',
             requestResourceData: deptData
           }));
         });
-      // إغلاق فوري للواجهة لضمان عدم التجمد
-      toast({ title: lang === 'ar' ? "تم تحديث البيانات" : "Data Updated" });
-      resetForm();
+      toast({ title: lang === 'ar' ? "تم تحديث البيانات بنجاح" : "Data Updated Successfully" });
     } else {
       const colRef = collection(db, 'departments');
       const newDoc = { ...deptData, createdAt: serverTimestamp() };
       addDoc(colRef, newDoc)
-        .catch(async () => {
+        .catch((err) => {
           errorEmitter.emit('permission-error', new FirestorePermissionError({
             path: 'departments',
             operation: 'create',
             requestResourceData: newDoc
           }));
         });
-      // إضافة فورية في الواجهة
-      toast({ title: lang === 'ar' ? "تمت إضافة القسم" : "Department Added" });
-      resetForm();
+      toast({ title: lang === 'ar' ? "تمت إضافة القسم بنجاح" : "Department Added Successfully" });
     }
   };
 
   const handleStatusToggle = (dept: any) => {
-    if (!db) return;
+    if (!db || isSubmitting) return;
     const newStatus = dept.status === 'active' ? 'inactive' : 'active';
     const docRef = doc(db, 'departments', dept.id);
     
     updateDoc(docRef, { status: newStatus, updatedAt: serverTimestamp() })
-      .catch(async () => {
+      .catch((err) => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
           path: docRef.path,
           operation: 'update',
@@ -169,9 +170,10 @@ export default function DepartmentsPage() {
   const handleArchiveDepartment = () => {
     if (!db || !deletingDept) return;
     const deptToArchive = deletingDept;
-    setDeletingDept(null); // إغلاق فوري
-
+    
+    // Safety check for workers
     if ((deptToArchive.workerCount || 0) > 0) {
+      setDeletingDept(null);
       toast({
         variant: "destructive",
         title: lang === 'ar' ? "إجراء غير مسموح" : "Action Prohibited",
@@ -180,20 +182,22 @@ export default function DepartmentsPage() {
       return;
     }
 
+    // Close modal first
+    setDeletingDept(null);
+
     const docRef = doc(db, 'departments', deptToArchive.id);
     updateDoc(docRef, {
       status: 'deleted',
       deletedAt: serverTimestamp(),
     })
-    .then(() => {
-      toast({ title: lang === 'ar' ? "تم النقل للأرشيف" : "Archived" });
-    })
-    .catch(async () => {
+    .catch((err) => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: docRef.path,
         operation: 'update',
       }));
     });
+    
+    toast({ title: lang === 'ar' ? "تم النقل للأرشيف بنجاح" : "Moved to Archive Successfully" });
   };
 
   const handleEditClick = (dept: any) => {
@@ -232,10 +236,9 @@ export default function DepartmentsPage() {
 
         <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
           if (!open) resetForm();
-          else setIsAddDialogOpen(true);
         }}>
           <DialogTrigger asChild>
-            <Button className="h-12 px-8 bg-primary hover:bg-primary/95 text-white gap-3 rounded-xl shadow-xl shadow-primary/10 font-black transition-all active:scale-95">
+            <Button onClick={() => setIsAddDialogOpen(true)} className="h-12 px-8 bg-primary hover:bg-primary/95 text-white gap-3 rounded-xl shadow-xl shadow-primary/10 font-black transition-all active:scale-95">
               <Plus className="w-5 h-5" />
               {lang === 'ar' ? 'إضافة قسم جديد' : 'New Department'}
             </Button>
@@ -333,10 +336,11 @@ export default function DepartmentsPage() {
               <div className="pt-4 flex gap-4">
                 <Button 
                   type="submit" 
+                  disabled={isSubmitting}
                   className="flex-1 h-14 bg-gradient-to-r from-primary to-[#0a7a44] hover:opacity-90 rounded-xl font-black gap-3 shadow-lg shadow-primary/10 text-base"
                 >
                   <Save className="w-5 h-5" />
-                  {lang === 'ar' ? 'حفظ البيانات' : 'Save Changes'}
+                  {lang === 'ar' ? (isSubmitting ? 'جاري الحفظ...' : 'حفظ البيانات') : (isSubmitting ? 'Saving...' : 'Save Changes')}
                 </Button>
                 <Button 
                   type="button" 
