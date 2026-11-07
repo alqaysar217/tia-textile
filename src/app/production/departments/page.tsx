@@ -2,7 +2,6 @@
 
 import React, { useState, useMemo, useCallback } from 'react';
 import { 
-  Factory, 
   Plus, 
   Search, 
   Edit2, 
@@ -11,19 +10,17 @@ import {
   CheckCircle2,
   Filter,
   ChevronRight,
-  Info,
   Save,
   Activity,
   Users,
-  Hash,
-  Type,
-  Globe,
-  FileText,
   Layout,
   Power,
   PowerOff,
-  X,
-  ShieldAlert
+  Database,
+  Layers,
+  ArrowUpDown,
+  History,
+  Info
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -48,7 +45,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -73,7 +69,6 @@ export default function DepartmentsPage() {
   const db = useFirestore();
   const [search, setSearch] = useState('');
   
-  // UI States
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingDeptId, setEditingDeptId] = useState<string | null>(null);
   const [deletingDeptId, setDeletingDeptId] = useState<string | null>(null);
@@ -129,10 +124,8 @@ export default function DepartmentsPage() {
       updatedAt: serverTimestamp(),
     };
 
-    // RELEASE UI IMMEDIATELY to prevent freezing
     resetForm();
 
-    // Execute in next tick
     setTimeout(() => {
       if (isEdit && currentId) {
         const docRef = doc(db, 'departments', currentId);
@@ -143,7 +136,7 @@ export default function DepartmentsPage() {
             requestResourceData: deptData
           }));
         });
-        toast({ title: lang === 'ar' ? "تم التحديث بنجاح" : "Updated Successfully" });
+        toast({ title: lang === 'ar' ? "تم التحديث" : "Updated" });
       } else {
         const colRef = collection(db, 'departments');
         const newDoc = { ...deptData, workerCount: 0, createdAt: serverTimestamp() };
@@ -154,7 +147,7 @@ export default function DepartmentsPage() {
             requestResourceData: newDoc
           }));
         });
-        toast({ title: lang === 'ar' ? "تمت الإضافة بنجاح" : "Added Successfully" });
+        toast({ title: lang === 'ar' ? "تمت الإضافة" : "Added" });
       }
     }, 0);
   };
@@ -163,33 +156,11 @@ export default function DepartmentsPage() {
     if (!db) return;
     const newStatus = dept.status === 'active' ? 'inactive' : 'active';
     const docRef = doc(db, 'departments', dept.id);
-    
-    updateDoc(docRef, { status: newStatus, updatedAt: serverTimestamp() })
-      .catch((err) => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: docRef.path,
-          operation: 'update',
-        }));
-      });
+    updateDoc(docRef, { status: newStatus, updatedAt: serverTimestamp() });
   };
 
   const handleArchiveDepartment = () => {
     if (!db || !deletingDeptId) return;
-    
-    const deptToArchive = (departments || []).find(d => d.id === deletingDeptId);
-    if (!deptToArchive) return;
-
-    if ((deptToArchive.workerCount || 0) > 0) {
-      setDeletingDeptId(null);
-      toast({
-        variant: "destructive",
-        title: lang === 'ar' ? "إجراء غير مسموح" : "Action Prohibited",
-        description: lang === 'ar' ? "لا يمكن أرشفة قسم يحتوي على عمال." : "Cannot archive department with workers.",
-      });
-      return;
-    }
-
-    // Release UI
     const targetId = deletingDeptId;
     setDeletingDeptId(null);
 
@@ -198,13 +169,8 @@ export default function DepartmentsPage() {
       updateDoc(docRef, {
         status: 'deleted',
         deletedAt: serverTimestamp(),
-      }).catch((err) => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: 'departments',
-          operation: 'update',
-        }));
       });
-      toast({ title: lang === 'ar' ? "تم النقل للأرشيف" : "Archived" });
+      toast({ title: lang === 'ar' ? "تمت الأرشفة" : "Archived" });
     }, 0);
   };
 
@@ -220,270 +186,142 @@ export default function DepartmentsPage() {
     setIsAddDialogOpen(true);
   };
 
-  const activeCount = useMemo(() => (departments || []).filter(d => d.status === 'active').length, [departments]);
-  const totalWorkers = useMemo(() => (departments || []).reduce((acc, curr) => acc + (curr.workerCount || 0), 0), [departments]);
-  const selectedDeletingDept = useMemo(() => (departments || []).find(d => d.id === deletingDeptId), [departments, deletingDeptId]);
+  const stats = useMemo(() => {
+    const list = departments || [];
+    return {
+      active: list.filter(d => d.status === 'active').length,
+      totalWorkers: list.reduce((acc, curr) => acc + (curr.workerCount || 0), 0)
+    };
+  }, [departments]);
 
   return (
-    <div className="flex flex-col h-full bg-[#F8F9FA] overflow-hidden">
+    <div className="flex flex-col h-full bg-[#f1f5f9] overflow-hidden">
       
-      {/* 
-          1. Static Hub: 
-          Fixed Header Info, Stats, and Filters.
-          Does not scroll.
-      */}
-      <div className="flex-none px-4 md:px-8 pt-6 pb-4 bg-white border-b border-gray-200/60 shadow-sm z-30">
-        <div className="flex flex-col gap-6">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <div className="flex items-center gap-4 w-full md:w-auto">
-              <div className="w-1.5 h-10 bg-primary rounded-full hidden md:block" />
-              <div className="space-y-0.5">
-                <div className="flex items-center gap-2 text-[9px] font-black text-muted-foreground uppercase tracking-[0.15em]">
-                  <span>{lang === 'ar' ? 'نظام الإنتاج' : 'Production'}</span>
-                  <ChevronRight className={`w-2.5 h-2.5 ${dir === 'rtl' ? '' : 'rotate-180'}`} />
-                  <span className="text-primary">{lang === 'ar' ? 'الأقسام' : 'Departments'}</span>
-                </div>
-                <h1 className="text-lg md:text-xl font-black text-gray-900 tracking-tight">
-                  {lang === 'ar' ? 'أقسام ومراحل الإنتاج' : 'Production Departments'}
-                </h1>
-              </div>
+      {/* COMPACT ERP HUB - FIXED HEIGHT */}
+      <div className="flex-none bg-white border-b border-slate-200 z-30 px-6 py-4">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+          <div className="flex items-center gap-4">
+            <div className="p-2 bg-slate-900 rounded-lg text-white shadow-lg">
+              <Database className="w-5 h-5" />
             </div>
-
-            <div className="flex items-center gap-3 w-full md:w-auto justify-end">
-              <Dialog open={isAddDialogOpen} onOpenChange={(open) => !open && resetForm()}>
-                <DialogTrigger asChild>
-                  <Button onClick={() => setIsAddDialogOpen(true)} className="h-10 px-6 bg-primary hover:bg-primary/95 text-white gap-2.5 rounded-xl shadow-lg shadow-primary/10 font-black transition-all active:scale-95 group">
-                    <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform" />
-                    {lang === 'ar' ? 'إضافة قسم جديد' : 'New Dept'}
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[550px] rounded-2xl border-none shadow-2xl overflow-hidden p-0">
-                  <div className="bg-gradient-to-br from-primary via-[#0a7a44] to-[#054d2a] p-8 text-white relative">
-                    <div className="absolute top-0 right-0 p-6 opacity-10 rotate-12">
-                      <Factory className="w-32 h-32" />
-                    </div>
-                    <DialogHeader className="relative z-10 text-right rtl:text-right ltr:text-left">
-                      <DialogTitle className="text-2xl font-black flex items-center gap-3">
-                        <Layout className="w-6 h-6 text-secondary" />
-                        {editingDeptId ? (lang === 'ar' ? 'تعديل بيانات القسم' : 'Edit Department') : (lang === 'ar' ? 'إضافة قسم جديد' : 'New Department')}
-                      </DialogTitle>
-                      <DialogDescription className="text-white/70 font-bold mt-2 text-sm leading-relaxed">
-                        {lang === 'ar' 
-                          ? 'يرجى إدخال البيانات بدقة، حيث تُستخدم هذه المعلومات في توزيع التكاليف الصناعية.' 
-                          : 'Please enter data accurately, as this info is used for cost allocation.'}
-                      </DialogDescription>
-                    </DialogHeader>
-                  </div>
-
-                  <form onSubmit={handleSaveDepartment} className="p-8 space-y-6 bg-white">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
-                          <Hash className="w-3 h-3 text-primary/60" />
-                          {lang === 'ar' ? 'كود القسم' : 'Dept Code'}
-                        </Label>
-                        <Input 
-                          value={formData.code}
-                          onChange={(e) => setFormData({...formData, code: e.target.value})}
-                          placeholder="DEPT-XXX" 
-                          className="h-12 rounded-xl border-gray-100 bg-gray-50/50 font-bold focus:bg-white focus:ring-primary/5 focus:border-primary/30 transition-all ps-4" 
-                          required 
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
-                          <Activity className="w-3 h-3 text-primary/60" />
-                          {lang === 'ar' ? 'الحالة التشغيلية' : 'Status'}
-                        </Label>
-                        <select 
-                          value={formData.status}
-                          onChange={(e) => setFormData({...formData, status: e.target.value})}
-                          className="w-full h-12 px-4 bg-emerald-50/50 border border-emerald-100/50 rounded-xl text-[11px] font-black text-emerald-700 focus:outline-none"
-                        >
-                          <option value="active">{lang === 'ar' ? 'نشط تشغيلياً' : 'Active'}</option>
-                          <option value="inactive">{lang === 'ar' ? 'متوقف مؤقتاً' : 'Inactive'}</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
-                        <Type className="w-3 h-3 text-primary/60" />
-                        {lang === 'ar' ? 'اسم القسم (بالعربية)' : 'Name (Arabic)'}
-                      </Label>
-                      <Input 
-                        value={formData.nameAr}
-                        onChange={(e) => setFormData({...formData, nameAr: e.target.value})}
-                        placeholder={lang === 'ar' ? 'مثال: قسم الخياطة' : 'Arabic Name'} 
-                        className="h-12 rounded-xl border-gray-100 bg-gray-50/50 font-bold focus:bg-white focus:ring-primary/5 focus:border-primary/30 transition-all" 
-                        required 
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
-                        <Globe className="w-3 h-3 text-primary/60" />
-                        {lang === 'ar' ? 'الاسم بالإنجليزية' : 'Name (English)'}
-                      </Label>
-                      <Input 
-                        value={formData.nameEn}
-                        onChange={(e) => setFormData({...formData, nameEn: e.target.value})}
-                        placeholder="English Name" 
-                        className="h-12 rounded-xl border-gray-100 bg-gray-50/50 font-bold focus:bg-white focus:ring-primary/5 focus:border-primary/30 transition-all" 
-                        required 
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
-                        <FileText className="w-3 h-3 text-primary/60" />
-                        {lang === 'ar' ? 'وصف العمليات' : 'Process Description'}
-                      </Label>
-                      <Textarea 
-                        value={formData.descAr}
-                        onChange={(e) => setFormData({...formData, descAr: e.target.value})}
-                        placeholder={lang === 'ar' ? 'شرح للمهام التي تتم في هذا القسم...' : 'Operations details...'} 
-                        className="rounded-xl border-gray-100 bg-gray-50/50 resize-none h-24 font-medium focus:bg-white focus:ring-primary/5 focus:border-primary/30 transition-all p-4 text-sm" 
-                      />
-                    </div>
-
-                    <div className="pt-4 flex gap-4">
-                      <Button 
-                        type="submit" 
-                        disabled={isSubmitting}
-                        className="flex-1 h-14 bg-gradient-to-r from-primary to-[#0a7a44] hover:opacity-90 rounded-xl font-black gap-3 shadow-lg shadow-primary/10 text-base"
-                      >
-                        <Save className="w-5 h-5" />
-                        {lang === 'ar' ? (isSubmitting ? 'جاري الحفظ...' : 'حفظ البيانات') : (isSubmitting ? 'Saving...' : 'Save Changes')}
-                      </Button>
-                      <Button 
-                        type="button" 
-                        variant="ghost" 
-                        onClick={resetForm} 
-                        className="h-14 px-8 rounded-xl font-black text-gray-400 hover:text-gray-600"
-                      >
-                        {lang === 'ar' ? 'إلغاء' : 'Cancel'}
-                      </Button>
-                    </div>
-                  </form>
-                </DialogContent>
-              </Dialog>
+            <div>
+              <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                <span>{lang === 'ar' ? 'الإنتاج' : 'Production'}</span>
+                <ChevronRight className={`w-3 h-3 ${dir === 'rtl' ? 'rotate-180' : ''}`} />
+                <span className="text-slate-600">{lang === 'ar' ? 'إدارة الأقسام' : 'Departments'}</span>
+              </div>
+              <h1 className="text-xl font-black text-slate-900 leading-tight">
+                {lang === 'ar' ? 'أقسام ومراحل العمل' : 'Work Centers & Departments'}
+              </h1>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-gray-100 pt-4">
-            <div className="flex items-center gap-3 bg-white/50 px-4 py-2.5 rounded-lg border border-gray-100 group hover:border-primary/20 transition-all">
-              <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary shrink-0"><Activity className="w-4 h-4" /></div>
-              <div>
-                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">{lang === 'ar' ? 'الأقسام النشطة' : 'Active Units'}</p>
-                <h3 className="text-sm font-black tabular-nums leading-none">{loading ? '...' : activeCount}</h3>
+          <div className="flex items-center gap-3">
+            <div className="flex gap-2 bg-slate-50 p-1 rounded-lg border border-slate-100">
+              <div className="px-3 py-1 text-center">
+                <p className="text-[9px] font-bold text-slate-400 uppercase">{lang === 'ar' ? 'نشط' : 'Active'}</p>
+                <p className="text-sm font-black text-blue-600 tabular-nums">{loading ? '..' : stats.active}</p>
+              </div>
+              <div className="w-px h-6 bg-slate-200 self-center" />
+              <div className="px-3 py-1 text-center">
+                <p className="text-[9px] font-bold text-slate-400 uppercase">{lang === 'ar' ? 'العمال' : 'Labor'}</p>
+                <p className="text-sm font-black text-slate-700 tabular-nums">{loading ? '..' : stats.totalWorkers}</p>
               </div>
             </div>
-            <div className="flex items-center gap-3 bg-white/50 px-4 py-2.5 rounded-lg border border-gray-100 group hover:border-secondary/20 transition-all">
-              <div className="w-8 h-8 bg-secondary/10 rounded-lg flex items-center justify-center text-secondary shrink-0"><Users className="w-4 h-4" /></div>
-              <div>
-                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">{lang === 'ar' ? 'إجمالي الحرفيين' : 'Total Artisans'}</p>
-                <h3 className="text-sm font-black tabular-nums leading-none">{loading ? '...' : totalWorkers}</h3>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 bg-primary/10 px-4 py-2.5 rounded-lg border border-primary/10 group">
-              <div className="w-8 h-8 bg-primary/20 rounded-lg flex items-center justify-center text-primary shrink-0"><CheckCircle2 className="w-4 h-4" /></div>
-              <div>
-                <p className="text-[9px] font-black text-primary/60 uppercase tracking-widest leading-none mb-1">{lang === 'ar' ? 'حالة المزامنة' : 'Sync Status'}</p>
-                <h3 className="text-sm font-black leading-none">{lang === 'ar' ? 'متصل لحظياً' : 'Live Sync'}</h3>
-              </div>
-            </div>
+            
+            <Button onClick={() => setIsAddDialogOpen(true)} className="h-10 px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-md font-black gap-2 transition-all">
+              <Plus className="w-4 h-4" />
+              {lang === 'ar' ? 'إضافة قسم' : 'New Dept'}
+            </Button>
           </div>
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-4 bg-gray-50 border border-gray-200/60 p-2 rounded-xl">
-          <div className="flex items-center gap-4 flex-1">
-            <div className="relative w-full max-w-md">
-              <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-300`} />
-              <Input 
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={lang === 'ar' ? 'بحث عن قسم...' : 'Search...'}
-                className={`${dir === 'rtl' ? 'pr-10' : 'pl-10'} h-10 bg-white border-gray-200 rounded-lg text-xs font-bold focus:bg-white focus:ring-primary/10`}
-              />
-            </div>
-            <Button variant="ghost" className="h-10 px-4 rounded-lg font-black text-xs gap-2 border border-dashed border-gray-200 text-gray-500 hover:text-primary hover:bg-primary/5">
-              <Filter className="w-3.5 h-3.5" />
-              {lang === 'ar' ? 'تصفية' : 'Filter'}
-            </Button>
+        {/* SEARCH BAR - HIGH DENSITY */}
+        <div className="mt-4 flex items-center gap-2 bg-slate-50 p-1.5 rounded-lg border border-slate-200">
+          <div className="relative flex-1">
+            <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400`} />
+            <Input 
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={lang === 'ar' ? 'بحث بالكود أو الاسم...' : 'Quick search...'}
+              className={`${dir === 'rtl' ? 'pr-10' : 'pl-10'} h-9 bg-white border-slate-200 rounded-md text-xs font-bold focus:ring-blue-500/10 focus:border-blue-500`}
+            />
+          </div>
+          <Button variant="ghost" className="h-9 px-4 rounded-md text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent hover:border-slate-200">
+            <Filter className="w-3.5 h-3.5" />
+            {lang === 'ar' ? 'تصفية' : 'Filter'}
+          </Button>
+          <div className="w-px h-6 bg-slate-200" />
+          <div className="flex items-center gap-2 px-3 text-[10px] font-bold text-slate-500">
+            <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+            {lang === 'ar' ? 'قاعدة البيانات متصلة' : 'System Ready'}
           </div>
         </div>
       </div>
 
-      {/* 
-          2. Data Scroll Area: 
-          Only the table content scrolls.
-          TableHeader is sticky to stay at the top of THIS container.
-      */}
-      <div className="flex-1 min-h-0 px-4 md:px-8 py-6 overflow-hidden flex flex-col">
-        <div className="flex-1 bg-white border border-gray-200/60 rounded-xl shadow-sm overflow-hidden flex flex-col">
+      {/* MAIN DATA GRID - MAXIMUM SPACE */}
+      <div className="flex-1 min-h-0 flex flex-col p-4">
+        <div className="flex-1 bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden flex flex-col">
           <div className="flex-1 overflow-auto relative">
-            <Table className="text-right border-separate border-spacing-0">
-              <TableHeader className="sticky top-0 z-20 bg-gray-50/95 backdrop-blur-md">
-                <TableRow className="hover:bg-gray-50/50 border-b border-gray-200/60">
-                  <TableHead className="h-12 font-black text-[10px] uppercase tracking-wider text-gray-400 px-6 text-right whitespace-nowrap">{lang === 'ar' ? 'المعرف' : 'UID'}</TableHead>
-                  <TableHead className="h-12 font-black text-[10px] uppercase tracking-wider text-gray-400 px-6 text-right whitespace-nowrap">{lang === 'ar' ? 'القسم' : 'Dept Name'}</TableHead>
-                  <TableHead className="h-12 font-black text-[10px] uppercase tracking-wider text-gray-400 px-6 text-right whitespace-nowrap">{lang === 'ar' ? 'وصف المسار' : 'Process'}</TableHead>
-                  <TableHead className="h-12 font-black text-[10px] uppercase tracking-wider text-gray-400 px-6 text-center whitespace-nowrap">{lang === 'ar' ? 'القوى العاملة' : 'Workforce'}</TableHead>
-                  <TableHead className="h-12 font-black text-[10px] uppercase tracking-wider text-gray-400 px-6 text-center whitespace-nowrap">{lang === 'ar' ? 'الحالة' : 'Status'}</TableHead>
-                  <TableHead className="h-12 w-[80px] sticky right-0 bg-gray-50/95"></TableHead>
+            <Table className="text-right">
+              <TableHeader className="sticky top-0 z-20 bg-slate-100/95 backdrop-blur-sm shadow-sm">
+                <TableRow className="border-b border-slate-200">
+                  <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 px-6 text-right whitespace-nowrap">{lang === 'ar' ? 'الكود' : 'CODE'}</TableHead>
+                  <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 px-6 text-right whitespace-nowrap">{lang === 'ar' ? 'الاسم' : 'NAME'}</TableHead>
+                  <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 px-6 text-right whitespace-nowrap">{lang === 'ar' ? 'العمليات' : 'OPERATIONS'}</TableHead>
+                  <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 px-6 text-center whitespace-nowrap">{lang === 'ar' ? 'العمال' : 'STAFF'}</TableHead>
+                  <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 px-6 text-center whitespace-nowrap">{lang === 'ar' ? 'الحالة' : 'STATUS'}</TableHead>
+                  <TableHead className="h-10 w-[60px] sticky right-0 bg-slate-100/95"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-20 animate-pulse font-black text-gray-400">جاري تحميل البيانات...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={6} className="text-center py-20 font-bold text-slate-400 animate-pulse">جاري سحب البيانات...</TableCell></TableRow>
                 ) : filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-20 font-black text-gray-300">لا توجد سجلات مطابقة للبحث</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={6} className="text-center py-20 font-bold text-slate-300">لا توجد سجلات مطابقة</TableCell></TableRow>
                 ) : filtered.map((dept) => (
-                  <TableRow key={dept.id} className="group hover:bg-gray-50/30 transition-all border-b border-gray-100/60">
-                    <TableCell className="px-6 py-4 font-black text-primary/60 text-[10px] tabular-nums tracking-widest">{dept.code}</TableCell>
-                    <TableCell className="px-6 py-4">
+                  <TableRow key={dept.id} className="group hover:bg-slate-50/50 border-b border-slate-100">
+                    <TableCell className="px-6 py-3 font-bold text-blue-600 text-[11px] tabular-nums tracking-wider">{dept.code}</TableCell>
+                    <TableCell className="px-6 py-3">
                       <div className="flex flex-col">
-                        <span className="font-black text-gray-900 group-hover:text-primary transition-colors">{lang === 'ar' ? dept.nameAr : dept.nameEn}</span>
-                        <span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">{lang === 'ar' ? dept.nameEn : dept.nameAr}</span>
+                        <span className="font-black text-slate-900 text-xs">{lang === 'ar' ? dept.nameAr : dept.nameEn}</span>
+                        <span className="text-[10px] text-slate-400 font-bold uppercase">{lang === 'ar' ? dept.nameEn : dept.nameAr}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="px-6 py-4 text-gray-500 max-w-[280px] truncate text-[11px] font-bold">
-                      {lang === 'ar' ? (dept.descAr || 'بدون وصف') : 'No description'}
+                    <TableCell className="px-6 py-3 text-slate-500 max-w-[300px] truncate text-[11px] font-medium">
+                      {lang === 'ar' ? (dept.descAr || '---') : 'No details'}
                     </TableCell>
-                    <TableCell className="px-6 py-4 text-center">
-                      <div className="inline-flex items-center justify-center w-10 h-7 bg-gray-100 rounded-md text-[11px] font-black tabular-nums border border-gray-200/50">
+                    <TableCell className="px-6 py-3 text-center">
+                      <span className="inline-block px-2 py-0.5 bg-slate-100 border border-slate-200 rounded text-[11px] font-black text-slate-700 tabular-nums">
                         {dept.workerCount || 0}
-                      </div>
-                    </TableCell>
-                    <TableCell className="px-6 py-4 text-center">
-                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider ${
-                        dept.status === 'active' 
-                        ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' 
-                        : 'bg-rose-50 text-rose-600 border border-rose-100'
-                      }`}>
-                        <span className={`w-1.5 h-1.5 rounded-full me-2 ${dept.status === 'active' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                        {dept.status === 'active' ? (lang === 'ar' ? 'نشط' : 'Active') : (lang === 'ar' ? 'متوقف' : 'Inactive')}
                       </span>
                     </TableCell>
-                    <TableCell className="px-6 py-4 sticky right-0 bg-white group-hover:bg-gray-50/30">
+                    <TableCell className="px-6 py-3 text-center">
+                      <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-black uppercase ${
+                        dept.status === 'active' ? 'bg-blue-50 text-blue-700 border border-blue-100' : 'bg-slate-100 text-slate-500 border border-slate-200'
+                      }`}>
+                        <div className={`w-1.5 h-1.5 rounded-full ${dept.status === 'active' ? 'bg-blue-600' : 'bg-slate-400'}`} />
+                        {dept.status === 'active' ? (lang === 'ar' ? 'نشط' : 'Active') : (lang === 'ar' ? 'متوقف' : 'Inactive')}
+                      </div>
+                    </TableCell>
+                    <TableCell className="px-6 py-3 sticky right-0 bg-white group-hover:bg-slate-50/50 shadow-[-10px_0_10px_-5px_rgba(0,0,0,0.05)]">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-gray-100 border border-transparent hover:border-gray-200 transition-all">
-                            <MoreVertical className="w-3.5 h-3.5 text-gray-400" />
+                          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-slate-200 border border-transparent">
+                            <MoreVertical className="w-4 h-4 text-slate-400" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="rounded-xl border-gray-200 shadow-xl min-w-[200px] p-1">
-                          <DropdownMenuItem onClick={() => handleEditClick(dept)} className="gap-3 font-bold text-xs py-3 cursor-pointer rounded-lg">
-                            <Edit2 className="w-3.5 h-3.5 text-blue-500" /> {lang === 'ar' ? 'تعديل البيانات' : 'Edit Details'}
+                        <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="rounded-lg border-slate-200 shadow-xl min-w-[180px]">
+                          <DropdownMenuItem onClick={() => handleEditClick(dept)} className="gap-3 font-bold text-xs cursor-pointer py-2.5">
+                            <Edit2 className="w-3.5 h-3.5 text-blue-500" /> {lang === 'ar' ? 'تعديل' : 'Edit'}
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleStatusToggle(dept)} className="gap-3 font-bold text-xs py-3 cursor-pointer rounded-lg">
-                            {dept.status === 'active' ? <PowerOff className="w-3.5 h-3.5 text-amber-500" /> : <Power className="w-3.5 h-3.5 text-emerald-500" />}
-                            {dept.status === 'active' ? (lang === 'ar' ? 'تعطيل القسم' : 'Deactivate') : (lang === 'ar' ? 'تفعيل القسم' : 'Activate')}
+                          <DropdownMenuItem onClick={() => handleStatusToggle(dept)} className="gap-3 font-bold text-xs cursor-pointer py-2.5">
+                            {dept.status === 'active' ? <PowerOff className="w-3.5 h-3.5 text-amber-600" /> : <Power className="w-3.5 h-3.5 text-emerald-600" />}
+                            {dept.status === 'active' ? (lang === 'ar' ? 'تعطيل' : 'Deactivate') : (lang === 'ar' ? 'تفعيل' : 'Activate')}
                           </DropdownMenuItem>
-                          <div className="h-px bg-gray-100 my-1 mx-2" />
-                          <DropdownMenuItem onClick={() => setDeletingDeptId(dept.id)} className="gap-3 font-bold text-xs py-3 cursor-pointer text-rose-600 focus:text-rose-700 rounded-lg">
-                            <Trash2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'نقل للأرشيف' : 'Move to Archive'}
+                          <div className="h-px bg-slate-100 my-1" />
+                          <DropdownMenuItem onClick={() => setDeletingDeptId(dept.id)} className="gap-3 font-bold text-xs cursor-pointer text-red-600 focus:text-red-700 py-2.5">
+                            <Trash2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'نقل للأرشيف' : 'Archive'}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -495,67 +333,99 @@ export default function DepartmentsPage() {
           </div>
         </div>
 
-        {/* Fixed Footer Note */}
-        <div className="flex-none mt-4 bg-muted/30 border border-border/50 rounded-xl p-4 flex items-start gap-4">
-          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-primary shadow-sm shrink-0">
-            <Info className="w-5 h-5" />
-          </div>
-          <div className="space-y-0.5">
-            <p className="text-[10px] font-black text-gray-700 uppercase tracking-widest">{lang === 'ar' ? 'إدارة النزاهة والبيانات' : 'Data Integrity'}</p>
-            <p className="text-[10px] text-gray-500 font-medium leading-relaxed max-w-4xl">
-              {lang === 'ar' 
-                ? 'النظام يطبق سياسة "الأرشفة الذكية". أي عنصر يتم حذفه ينتقل فوراً إلى سلة المحذوفات ويمكن استعادته خلال 30 يوماً قبل الحذف النهائي التلقائي.' 
-                : 'The system applies "Smart Archiving". Deleted items move to trash and can be recovered within 30 days.'}
+        {/* SYSTEM NOTE - FOOTER */}
+        <div className="mt-4 flex-none bg-slate-900 rounded-lg p-3 text-white flex items-center gap-4 border border-slate-800 shadow-inner">
+          <div className="w-8 h-8 bg-blue-500/20 rounded flex items-center justify-center text-blue-400"><Info className="w-4 h-4" /></div>
+          <div className="flex-1">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 leading-none mb-1">
+              {lang === 'ar' ? 'بروتوكول إدارة البيانات' : 'Data Management Protocol'}
+            </p>
+            <p className="text-[10px] text-slate-300 font-bold opacity-80">
+              {lang === 'ar' ? 'يتم حفظ كافة الحركات في سجل التدقيق المالي. العناصر المحذوفة تخضع لفترة سماح مدتها 30 يوماً.' : 'All transactions are logged for auditing. Deleted items have a 30-day grace period.'}
             </p>
           </div>
         </div>
       </div>
 
-      {/* Confirmation Dialogs */}
-      <AlertDialog open={!!deletingDeptId} onOpenChange={(open) => !open && setDeletingDeptId(null)}>
-        <AlertDialogContent className="max-w-md rounded-[2rem] border-none shadow-[0_40px_100px_rgba(0,0,0,0.15)] overflow-hidden p-0">
-          <div className="bg-gradient-to-br from-[#1A1C1E] to-[#2D3136] p-10 text-center relative overflow-hidden">
-            <div className="absolute inset-0 opacity-[0.03] textile-pattern pointer-events-none" />
-            <div className="absolute -top-10 -right-10 w-40 h-40 bg-primary/10 rounded-full blur-3xl" />
-            
-            <div className="relative z-10 flex flex-col items-center">
-              <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mb-6 border border-primary/20 shadow-inner">
-                <ShieldAlert className="w-10 h-10 text-primary" />
-              </div>
-              <AlertDialogHeader>
-                <AlertDialogTitle className="text-2xl font-black text-white text-center leading-tight">
-                  {lang === 'ar' ? 'إجراء أرشفة ذكي' : 'Smart Archiving Action'}
-                </AlertDialogTitle>
-                <AlertDialogDescription className="text-gray-400 font-bold mt-4 text-sm leading-relaxed text-center">
-                  {lang === 'ar' 
-                    ? `هل أنت متأكد من نقل قسم "${selectedDeletingDept?.nameAr}" إلى الأرشيف؟ سيتم الاحتفاظ به لمدة 30 يوماً قبل الحذف النهائي.` 
-                    : `Move "${selectedDeletingDept?.nameEn}" to archive? It will be held for 30 days before final deletion.`}
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-            </div>
+      {/* DIALOGS - ERP STYLE */}
+      <Dialog open={isAddDialogOpen} onOpenChange={(open) => !open && resetForm()}>
+        <DialogContent className="sm:max-w-[500px] rounded-xl border-slate-200 shadow-2xl p-0 overflow-hidden">
+          <div className="premium-gradient p-6 text-white relative">
+            <DialogHeader className="text-right rtl:text-right ltr:text-left">
+              <DialogTitle className="text-xl font-black flex items-center gap-3">
+                <Layers className="w-5 h-5 text-blue-400" />
+                {editingDeptId ? (lang === 'ar' ? 'تعديل القسم' : 'Edit Center') : (lang === 'ar' ? 'قسم إنتاج جديد' : 'New Work Center')}
+              </DialogTitle>
+              <DialogDescription className="text-blue-100/60 font-bold text-[10px] uppercase tracking-widest mt-1">
+                {lang === 'ar' ? 'تهيئة مراكز التكلفة ومراحل سير العمل' : 'Configuration of cost centers and workflows'}
+              </DialogDescription>
+            </DialogHeader>
           </div>
-          
-          <div className="bg-white p-8 flex gap-4">
-            <AlertDialogAction 
-              onClick={handleArchiveDepartment} 
-              className="flex-1 h-14 bg-primary hover:bg-primary/95 text-white rounded-2xl font-black shadow-xl shadow-primary/10 border-none transition-all active:scale-95"
-            >
-              {lang === 'ar' ? 'تأكيد الأرشفة' : 'Confirm Archive'}
+
+          <form onSubmit={handleSaveDepartment} className="p-6 space-y-5 bg-white">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-black uppercase text-slate-400">{lang === 'ar' ? 'كود القسم' : 'DEPT CODE'}</Label>
+                <Input value={formData.code} onChange={(e) => setFormData({...formData, code: e.target.value})} placeholder="D-100" className="h-10 font-bold text-xs bg-slate-50 border-slate-200" required />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-black uppercase text-slate-400">{lang === 'ar' ? 'الحالة' : 'STATUS'}</Label>
+                <select value={formData.status} onChange={(e) => setFormData({...formData, status: e.target.value})} className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold focus:outline-none">
+                  <option value="active">{lang === 'ar' ? 'نشط' : 'Active'}</option>
+                  <option value="inactive">{lang === 'ar' ? 'متوقف' : 'Inactive'}</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-[10px] font-black uppercase text-slate-400">{lang === 'ar' ? 'الاسم بالعربي' : 'ARABIC NAME'}</Label>
+              <Input value={formData.nameAr} onChange={(e) => setFormData({...formData, nameAr: e.target.value})} className="h-10 font-bold text-xs bg-slate-50 border-slate-200" required />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-[10px] font-black uppercase text-slate-400">{lang === 'ar' ? 'الاسم بالإنجليزي' : 'ENGLISH NAME'}</Label>
+              <Input value={formData.nameEn} onChange={(e) => setFormData({...formData, nameEn: e.target.value})} className="h-10 font-bold text-xs bg-slate-50 border-slate-200" required />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-[10px] font-black uppercase text-slate-400">{lang === 'ar' ? 'وصف العمليات' : 'DESCRIPTION'}</Label>
+              <Textarea value={formData.descAr} onChange={(e) => setFormData({...formData, descAr: e.target.value})} className="min-h-[80px] text-xs font-medium bg-slate-50 border-slate-200 resize-none" />
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <Button type="submit" disabled={isSubmitting} className="flex-1 h-11 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-black text-sm">
+                <Save className="w-4 h-4 me-2" />
+                {lang === 'ar' ? (isSubmitting ? 'جاري الحفظ...' : 'حفظ البيانات') : 'Commit Changes'}
+              </Button>
+              <Button type="button" variant="outline" onClick={resetForm} className="px-6 h-11 font-black text-slate-400">
+                {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!deletingDeptId} onOpenChange={(open) => !open && setDeletingDeptId(null)}>
+        <AlertDialogContent className="max-w-[400px] rounded-xl border-none shadow-2xl p-0 overflow-hidden">
+          <div className="bg-slate-950 p-8 text-center">
+            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20 shadow-inner">
+              <History className="w-8 h-8 text-red-500" />
+            </div>
+            <AlertDialogTitle className="text-white text-xl font-black">{lang === 'ar' ? 'أرشفة القسم' : 'Confirm Archive'}</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400 font-bold mt-2 text-xs leading-relaxed">
+              {lang === 'ar' 
+                ? 'سيتم نقل هذا القسم للأرشيف. يمكنك استعادته خلال 30 يوماً قبل الحذف النهائي.' 
+                : 'Item will be moved to archive. Recoverable for 30 days before purge.'}
+            </AlertDialogDescription>
+          </div>
+          <div className="bg-white p-6 flex gap-3">
+            <AlertDialogAction onClick={handleArchiveDepartment} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-lg font-black">
+              {lang === 'ar' ? 'تأكيد الأرشفة' : 'Confirm'}
             </AlertDialogAction>
-            <AlertDialogCancel 
-              onClick={() => setDeletingDeptId(null)}
-              className="flex-1 h-14 bg-gray-50 border-gray-100 hover:bg-gray-100 text-gray-500 rounded-2xl font-black transition-all"
-            >
+            <AlertDialogCancel onClick={() => setDeletingDeptId(null)} className="flex-1 h-11 bg-slate-50 border-slate-200 text-slate-400 rounded-lg font-black">
               {lang === 'ar' ? 'تراجع' : 'Cancel'}
             </AlertDialogCancel>
           </div>
-          
-          <button 
-            onClick={() => setDeletingDeptId(null)}
-            className="absolute top-4 left-4 p-2 text-gray-500 hover:text-white transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
         </AlertDialogContent>
       </AlertDialog>
 

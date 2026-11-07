@@ -4,33 +4,32 @@
 
 @layer base {
   :root {
-    --background: 45 40% 98%; /* Natural Ecru #F8F6EF */
-    --foreground: 120 10% 15%; /* Deep Forest Charcoal #242824 */
+    --background: 210 20% 98%; /* Light Slate */
+    --foreground: 222 47% 11%;
     --card: 0 0% 100%;
-    --card-foreground: 120 10% 15%;
+    --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
-    --popover-foreground: 120 10% 15%;
-    --primary: 151 88% 22%; /* Deep Artisan Forest Green #065F34 */
-    --primary-foreground: 45 40% 98%;
-    --secondary: 41 42% 53%; /* Refined Gold/Amber #B99A55 */
-    --secondary-foreground: 45 40% 98%;
-    --muted: 45 30% 94%; /* Soft Sand #F1EFE7 */
-    --muted-foreground: 120 5% 45%;
-    --accent: 151 40% 92%; /* Soft Mint #E8F3E8 */
-    --accent-foreground: 151 88% 22%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 221 83% 53%; /* Premium Blue #3b82f6 */
+    --primary-foreground: 210 40% 98%;
+    --secondary: 215 25% 27%; /* Slate Navy */
+    --secondary-foreground: 210 40% 98%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.1% 11.2%;
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 45 20% 88%;
-    --input: 45 20% 88%;
-    --ring: 151 88% 22%;
-    --radius: 1rem; /* Reduced softness (16px) */
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221 83% 53%;
+    --radius: 0.5rem; /* Sharper corners for ERP look (8px) */
   }
 
   .dark {
-    --background: 120 10% 10%;
-    --foreground: 45 40% 98%;
-    --primary: 151 88% 26%;
-    --accent: 120 10% 15%;
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
   }
 }
 
@@ -41,28 +40,28 @@
   body {
     @apply bg-background text-foreground antialiased;
   }
-  h1, h2, h3, h4, h5, h6 {
-    @apply tracking-tight font-bold;
-  }
 }
 
 .arabic-font {
   font-family: 'IBM Plex Sans Arabic', sans-serif;
-  line-height: 1.6;
+  line-height: 1.5;
 }
 
 .english-font {
   font-family: 'Inter', sans-serif;
-  line-height: 1.6;
+  line-height: 1.5;
 }
 
-/* Tabular numbers for clear English-style digits */
 .tabular-nums {
   font-variant-numeric: tabular-nums;
 }
 
-.textile-pattern {
-  background-image: radial-gradient(var(--secondary) 0.5px, transparent 0.5px);
-  background-size: 30px 30px;
-  opacity: 0.03;
+/* ERP Pattern */
+.erp-grid {
+  background-image: radial-gradient(#e2e8f0 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.premium-gradient {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
 }
