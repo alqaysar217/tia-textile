@@ -72,8 +72,10 @@ export default function DepartmentsPage() {
   const { lang } = useTranslation();
   const db = useFirestore();
   const [search, setSearch] = useState('');
+  
+  // UI States
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [editingDept, setEditingDept] = useState<any>(null);
+  const [editingDeptId, setEditingDeptId] = useState<string | null>(null);
   const [deletingDept, setDeletingDept] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -106,7 +108,7 @@ export default function DepartmentsPage() {
 
   const resetForm = useCallback(() => {
     setIsAddDialogOpen(false);
-    setEditingDept(null);
+    setEditingDeptId(null);
     setIsSubmitting(false);
     setFormData({ code: '', nameAr: '', nameEn: '', descAr: '', status: 'active' });
   }, []);
@@ -116,45 +118,50 @@ export default function DepartmentsPage() {
     if (!db || isSubmitting) return;
 
     setIsSubmitting(true);
-    const currentEditingDept = editingDept;
+    const currentId = editingDeptId;
+    const isEdit = !!currentId;
+    
     const deptData = {
-      ...formData,
+      code: formData.code,
+      nameAr: formData.nameAr,
+      nameEn: formData.nameEn,
+      descAr: formData.descAr,
+      status: formData.status,
       updatedAt: serverTimestamp(),
-      workerCount: currentEditingDept ? (currentEditingDept.workerCount || 0) : 0,
     };
 
-    // Close UI immediately to prevent freezing during re-render
-    const isEdit = !!currentEditingDept;
+    // UI RECOVERY FIRST: Close UI immediately to prevent freezing
     resetForm(); 
 
-    if (isEdit) {
-      const docRef = doc(db, 'departments', currentEditingDept.id);
-      updateDoc(docRef, deptData)
-        .catch((err) => {
+    // Execute Firestore call in next tick
+    setTimeout(() => {
+      if (isEdit && currentId) {
+        const docRef = doc(db, 'departments', currentId);
+        updateDoc(docRef, deptData).catch((err) => {
           errorEmitter.emit('permission-error', new FirestorePermissionError({
             path: 'departments',
             operation: 'update',
             requestResourceData: deptData
           }));
         });
-      toast({ title: lang === 'ar' ? "تم تحديث البيانات بنجاح" : "Data Updated Successfully" });
-    } else {
-      const colRef = collection(db, 'departments');
-      const newDoc = { ...deptData, createdAt: serverTimestamp() };
-      addDoc(colRef, newDoc)
-        .catch((err) => {
+        toast({ title: lang === 'ar' ? "تم التحديث بنجاح" : "Updated Successfully" });
+      } else {
+        const colRef = collection(db, 'departments');
+        const newDoc = { ...deptData, workerCount: 0, createdAt: serverTimestamp() };
+        addDoc(colRef, newDoc).catch((err) => {
           errorEmitter.emit('permission-error', new FirestorePermissionError({
             path: 'departments',
             operation: 'create',
             requestResourceData: newDoc
           }));
         });
-      toast({ title: lang === 'ar' ? "تمت إضافة القسم بنجاح" : "Department Added Successfully" });
-    }
+        toast({ title: lang === 'ar' ? "تمت الإضافة بنجاح" : "Added Successfully" });
+      }
+    }, 0);
   };
 
   const handleStatusToggle = (dept: any) => {
-    if (!db || isSubmitting) return;
+    if (!db) return;
     const newStatus = dept.status === 'active' ? 'inactive' : 'active';
     const docRef = doc(db, 'departments', dept.id);
     
@@ -169,10 +176,11 @@ export default function DepartmentsPage() {
 
   const handleArchiveDepartment = () => {
     if (!db || !deletingDept) return;
-    const deptToArchive = deletingDept;
+    const deptToArchiveId = deletingDept.id;
+    const deptWorkerCount = deletingDept.workerCount || 0;
     
     // Safety check for workers
-    if ((deptToArchive.workerCount || 0) > 0) {
+    if (deptWorkerCount > 0) {
       setDeletingDept(null);
       toast({
         variant: "destructive",
@@ -182,26 +190,27 @@ export default function DepartmentsPage() {
       return;
     }
 
-    // Close modal first
+    // UI RECOVERY FIRST
     setDeletingDept(null);
 
-    const docRef = doc(db, 'departments', deptToArchive.id);
-    updateDoc(docRef, {
-      status: 'deleted',
-      deletedAt: serverTimestamp(),
-    })
-    .catch((err) => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: docRef.path,
-        operation: 'update',
-      }));
-    });
-    
-    toast({ title: lang === 'ar' ? "تم النقل للأرشيف بنجاح" : "Moved to Archive Successfully" });
+    // Next tick execute
+    setTimeout(() => {
+      const docRef = doc(db, 'departments', deptToArchiveId);
+      updateDoc(docRef, {
+        status: 'deleted',
+        deletedAt: serverTimestamp(),
+      }).catch((err) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: 'departments',
+          operation: 'update',
+        }));
+      });
+      toast({ title: lang === 'ar' ? "تم النقل للأرشيف" : "Archived" });
+    }, 0);
   };
 
   const handleEditClick = (dept: any) => {
-    setEditingDept(dept);
+    setEditingDeptId(dept.id);
     setFormData({
       code: dept.code || '',
       nameAr: dept.nameAr || '',
@@ -212,8 +221,8 @@ export default function DepartmentsPage() {
     setIsAddDialogOpen(true);
   };
 
-  const activeCount = (departments || []).filter(d => d.status === 'active').length;
-  const totalWorkers = (departments || []).reduce((acc, curr) => acc + (curr.workerCount || 0), 0);
+  const activeCount = useMemo(() => (departments || []).filter(d => d.status === 'active').length, [departments]);
+  const totalWorkers = useMemo(() => (departments || []).reduce((acc, curr) => acc + (curr.workerCount || 0), 0), [departments]);
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 max-w-7xl mx-auto pb-12">
@@ -234,9 +243,7 @@ export default function DepartmentsPage() {
           </p>
         </div>
 
-        <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
-          if (!open) resetForm();
-        }}>
+        <Dialog open={isAddDialogOpen} onOpenChange={(open) => !open && resetForm()}>
           <DialogTrigger asChild>
             <Button onClick={() => setIsAddDialogOpen(true)} className="h-12 px-8 bg-primary hover:bg-primary/95 text-white gap-3 rounded-xl shadow-xl shadow-primary/10 font-black transition-all active:scale-95">
               <Plus className="w-5 h-5" />
@@ -251,7 +258,7 @@ export default function DepartmentsPage() {
               <DialogHeader className="relative z-10 text-right rtl:text-right ltr:text-left">
                 <DialogTitle className="text-2xl font-black flex items-center gap-3">
                   <Layout className="w-6 h-6 text-secondary" />
-                  {editingDept ? (lang === 'ar' ? 'تعديل بيانات القسم' : 'Edit Department') : (lang === 'ar' ? 'إضافة قسم جديد' : 'New Department')}
+                  {editingDeptId ? (lang === 'ar' ? 'تعديل بيانات القسم' : 'Edit Department') : (lang === 'ar' ? 'إضافة قسم جديد' : 'New Department')}
                 </DialogTitle>
                 <DialogDescription className="text-white/70 font-bold mt-2 text-sm leading-relaxed">
                   {lang === 'ar' 
@@ -300,7 +307,7 @@ export default function DepartmentsPage() {
                 <Input 
                   value={formData.nameAr}
                   onChange={(e) => setFormData({...formData, nameAr: e.target.value})}
-                  placeholder={lang === 'ar' ? 'مثال: قسم التطريز' : 'Arabic Name'} 
+                  placeholder={lang === 'ar' ? 'مثال: قسم الخياطة' : 'Arabic Name'} 
                   className="h-12 rounded-xl border-gray-100 bg-gray-50/50 font-bold focus:bg-white focus:ring-primary/5 focus:border-primary/30 transition-all" 
                   required 
                 />
@@ -411,9 +418,9 @@ export default function DepartmentsPage() {
         <Table className="text-right">
           <TableHeader>
             <TableRow className="bg-gray-50/50 hover:bg-gray-50/50 border-b border-gray-200/60">
-              <TableHead className="h-14 font-black text-[10px] uppercase tracking-wider text-gray-400 px-6">{lang === 'ar' ? 'المعرف' : 'UID'}</TableHead>
-              <TableHead className="h-14 font-black text-[10px] uppercase tracking-wider text-gray-400 px-6">{lang === 'ar' ? 'القسم' : 'Dept Name'}</TableHead>
-              <TableHead className="h-14 font-black text-[10px] uppercase tracking-wider text-gray-400 px-6">{lang === 'ar' ? 'وصف المسار' : 'Process'}</TableHead>
+              <TableHead className="h-14 font-black text-[10px] uppercase tracking-wider text-gray-400 px-6 text-right">{lang === 'ar' ? 'المعرف' : 'UID'}</TableHead>
+              <TableHead className="h-14 font-black text-[10px] uppercase tracking-wider text-gray-400 px-6 text-right">{lang === 'ar' ? 'القسم' : 'Dept Name'}</TableHead>
+              <TableHead className="h-14 font-black text-[10px] uppercase tracking-wider text-gray-400 px-6 text-right">{lang === 'ar' ? 'وصف المسار' : 'Process'}</TableHead>
               <TableHead className="h-14 font-black text-[10px] uppercase tracking-wider text-gray-400 px-6 text-center">{lang === 'ar' ? 'القوى العاملة' : 'Workforce'}</TableHead>
               <TableHead className="h-14 font-black text-[10px] uppercase tracking-wider text-gray-400 px-6 text-center">{lang === 'ar' ? 'الحالة' : 'Status'}</TableHead>
               <TableHead className="h-14 w-[80px]"></TableHead>
@@ -510,6 +517,7 @@ export default function DepartmentsPage() {
               {lang === 'ar' ? 'تأكيد الأرشفة' : 'Confirm Archive'}
             </AlertDialogAction>
             <AlertDialogCancel 
+              onClick={() => setDeletingDept(null)}
               className="flex-1 h-14 bg-gray-50 border-gray-100 hover:bg-gray-100 text-gray-500 rounded-2xl font-black transition-all"
             >
               {lang === 'ar' ? 'تراجع' : 'Cancel'}
