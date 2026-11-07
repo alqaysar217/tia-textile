@@ -24,7 +24,8 @@ import {
   Users2,
   Building2,
   Check,
-  UserCheck
+  UserCheck,
+  ShieldCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
