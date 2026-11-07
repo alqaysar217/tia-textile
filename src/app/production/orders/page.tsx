@@ -29,7 +29,10 @@ import {
   Lock,
   History,
   Type,
-  Tag
+  Tag,
+  Activity,
+  Gauge,
+  Target
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -167,7 +170,6 @@ export default function ProductionOrdersPage() {
   const handleDeleteOrder = async () => {
     if (!db || !deletingOrder) return;
     
-    // Deletion Rule: Cannot delete if work has started (completedQty > 0)
     if (deletingOrder.completedQty > 0) {
       toast({ 
         variant: "destructive", 
@@ -288,132 +290,124 @@ export default function ProductionOrdersPage() {
           const product = products?.find(p => p.id === order.productId);
           const stage = departments?.find(d => d.id === order.currentStageId);
           const progress = Math.round((order.completedQty / order.targetQty) * 100) || 0;
+          const priorityColor = order.priority === 'high' ? 'bg-rose-500' : order.priority === 'normal' ? 'bg-emerald-500' : 'bg-slate-400';
 
           return (
-            <div key={order.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all overflow-hidden group">
-              <div className="p-6">
-                <div className="flex flex-col lg:flex-row gap-8">
-                  
-                  {/* Order Identity */}
-                  <div className="flex-none w-full lg:w-64 space-y-3 relative">
+            <div key={order.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden group">
+              <div className="flex flex-col md:flex-row">
+                
+                {/* 1. Header Identity Area (Technical Slate) */}
+                <div className="w-full md:w-80 p-6 bg-slate-50 border-r border-slate-100 flex flex-col justify-between">
+                  <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 bg-slate-900 text-white text-[10px] font-black rounded tabular-nums tracking-wider uppercase">
+                        <span className="px-2.5 py-1 bg-slate-900 text-white text-[10px] font-black rounded-lg tabular-nums tracking-[0.1em] shadow-md">
                           {order.orderNumber}
                         </span>
-                        <div className={cn("h-1.5 w-1.5 rounded-full animate-pulse", order.priority === 'high' ? "bg-rose-500" : "bg-emerald-500")} />
+                        <div className={cn("h-2 w-2 rounded-full animate-pulse", priorityColor)} />
                       </div>
-                      
-                      <div className="lg:hidden">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full"><MoreVertical className="w-4 h-4 text-slate-400" /></Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleEditClick(order)} className="gap-2 font-bold"><Edit2 className="w-3.5 h-3.5" /> تعديل</DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => setDeletingOrder(order)} className="gap-2 font-bold text-red-600"><Trash2 className="w-3.5 h-3.5" /> أرشفة</DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </div>
-                    
-                    <h3 className="text-lg font-black text-slate-900 leading-tight">
-                      {order.title || (product?.nameAr || '---')}
-                    </h3>
-                    {order.title && product && (
-                      <p className="text-[10px] font-bold text-primary flex items-center gap-1">
-                        <Tag className="w-3 h-3" />
-                        {product.nameAr}
-                      </p>
-                    )}
-                    
-                    <div className="flex items-center gap-4 text-[10px] font-bold text-slate-400 uppercase">
-                      <div className="flex items-center gap-1.5">
-                        <Calendar className="w-3 h-3" />
-                        <span className="tabular-nums">{order.startDate}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <AlertCircle className="w-3 h-3" />
-                        <span>{order.priority}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Progress Visualizer */}
-                  <div className="flex-1 space-y-4">
-                    <div className="flex justify-between items-end">
-                      <div className="space-y-1">
-                        <p className="text-[10px] font-black text-slate-400 uppercase flex items-center gap-2">
-                          <Layers className="w-3 h-3 text-emerald-600" />
-                          {lang === 'ar' ? 'المرحلة النشطة حالياً' : 'Active Stage'}
-                        </p>
-                        <span className="inline-block px-3 py-1 bg-emerald-50 text-emerald-700 rounded-lg text-xs font-black border border-emerald-100 shadow-sm">
-                          {stage?.nameAr || (lang === 'ar' ? 'بانتظار البدء' : 'Pending Start')}
-                        </span>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-[10px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'الإنجاز النهائي' : 'Final Completion'}</p>
-                        <div className="flex items-center gap-2 justify-end">
-                          <span className="text-xl font-black text-slate-900 tabular-nums">{progress}%</span>
-                          <ArrowUpRight className="w-4 h-4 text-emerald-500" />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="relative pt-2">
-                      <Progress value={progress} className="h-2.5 bg-slate-100" />
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-4 pt-2">
-                      <div className="text-center p-2 rounded-xl bg-slate-50 border border-slate-100">
-                        <p className="text-[9px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'المستهدف' : 'Target'}</p>
-                        <p className="text-sm font-black text-slate-700 tabular-nums">{order.targetQty}</p>
-                      </div>
-                      <div className="text-center p-2 rounded-xl bg-amber-50 border border-amber-100">
-                        <p className="text-[9px] font-black text-amber-700/60 uppercase">{lang === 'ar' ? 'تم استلامه' : 'Received'}</p>
-                        <p className="text-sm font-black text-amber-700 tabular-nums">{order.completedQty}</p>
-                      </div>
-                      <div className="text-center p-2 rounded-xl bg-emerald-50 border border-emerald-100">
-                        <p className="text-[9px] font-black text-emerald-700/60 uppercase">{lang === 'ar' ? 'المتبقي' : 'Remaining'}</p>
-                        <p className="text-sm font-black text-emerald-700 tabular-nums">{order.targetQty - order.completedQty}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Quick Actions */}
-                  <div className="flex-none flex flex-row lg:flex-col gap-2 justify-center items-center">
-                    <div className="hidden lg:block mb-2">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl hover:bg-slate-100"><MoreVertical className="w-5 h-5 text-slate-400" /></Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-slate-200"><MoreVertical className="w-4 h-4 text-slate-400" /></Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-48 rounded-xl shadow-xl">
+                        <DropdownMenuContent align="end" className="w-48 rounded-xl shadow-xl border-slate-200">
                           <DropdownMenuItem onClick={() => handleEditClick(order)} className="gap-3 font-bold py-2.5 cursor-pointer">
                             <Edit2 className="w-4 h-4 text-emerald-600" /> {lang === 'ar' ? 'تعديل الأمر' : 'Edit Order'}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem 
-                            onClick={() => setDeletingOrder(order)} 
-                            className={cn("gap-3 font-bold py-2.5 cursor-pointer text-red-600 focus:text-red-700")}
-                          >
-                            <Trash2 className="w-4 h-4" /> {lang === 'ar' ? 'حذف / أرشفة' : 'Delete Order'}
+                          <DropdownMenuItem onClick={() => setDeletingOrder(order)} className="gap-3 font-bold py-2.5 cursor-pointer text-rose-600 focus:text-rose-700">
+                            <Trash2 className="w-4 h-4" /> {lang === 'ar' ? 'حذف / أرشفة' : 'Archive Order'}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
 
-                    <Button variant="outline" className="flex-1 lg:w-40 h-10 rounded-xl font-black text-xs gap-2 border-slate-200">
-                      <FileText className="w-3.5 h-3.5 text-emerald-600" />
-                      {lang === 'ar' ? 'سندات الأمر' : 'Vouchers'}
-                    </Button>
-                    <Button className="flex-1 lg:w-40 h-10 premium-gradient rounded-xl font-black text-xs gap-2 border-none shadow-md">
-                      {lang === 'ar' ? 'إدارة المرحلة' : 'Process'}
-                      <ArrowRight className={cn("w-3.5 h-3.5", dir === 'rtl' && "rotate-180")} />
-                    </Button>
+                    <div className="space-y-1">
+                      <h3 className="text-lg font-black text-slate-900 leading-tight group-hover:text-emerald-700 transition-colors">
+                        {order.title || (product?.nameAr || '---')}
+                      </h3>
+                      {order.title && product && (
+                        <div className="inline-flex items-center gap-1.5 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
+                          <Tag className="w-3 h-3" />
+                          {product.nameAr}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
+                  <div className="mt-6 pt-4 border-t border-slate-200/60 flex items-center justify-between text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-3.5 h-3.5" />
+                      <span className="tabular-nums">{order.startDate}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Activity className="w-3.5 h-3.5" />
+                      <span>{order.priority}</span>
+                    </div>
+                  </div>
                 </div>
+
+                {/* 2. Operations & Progress Area */}
+                <div className="flex-1 p-6 space-y-6">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-black text-slate-400 uppercase flex items-center gap-2 tracking-[0.2em]">
+                        <Layers className="w-3.5 h-3.5 text-emerald-600" />
+                        {lang === 'ar' ? 'الحالة التشغيلية' : 'OPERATIONAL STAGE'}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <span className="text-base font-black text-slate-800">
+                          {stage?.nameAr || (lang === 'ar' ? 'بانتظار الإطلاق' : 'PENDING LAUNCH')}
+                        </span>
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                      </div>
+                    </div>
+                    
+                    <div className="text-right space-y-1">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{lang === 'ar' ? 'مؤشر الإنجاز' : 'COMPLETION INDEX'}</p>
+                      <div className="flex items-center gap-2 justify-end">
+                        <span className="text-2xl font-black text-slate-900 tabular-nums leading-none">{progress}%</span>
+                        <div className="p-1 bg-emerald-50 rounded text-emerald-600"><TrendingUp className="w-3 h-3" /></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="relative group/progress">
+                    <Progress value={progress} className="h-3 bg-slate-100 border border-slate-200/50 shadow-inner" />
+                    <div className="absolute -top-1 left-[progress%] w-0.5 h-5 bg-emerald-500/50 blur-[1px] hidden group-hover/progress:block" />
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="bg-slate-50/50 border border-slate-100 rounded-xl p-3 flex flex-col items-center">
+                      <Target className="w-3.5 h-3.5 text-slate-400 mb-2" />
+                      <span className="text-[9px] font-black text-slate-400 uppercase mb-0.5">{lang === 'ar' ? 'المستهدف' : 'TARGET'}</span>
+                      <span className="text-sm font-black text-slate-700 tabular-nums">{order.targetQty}</span>
+                    </div>
+                    <div className="bg-amber-50/30 border border-amber-100/50 rounded-xl p-3 flex flex-col items-center">
+                      <Gauge className="w-3.5 h-3.5 text-amber-500 mb-2" />
+                      <span className="text-[9px] font-black text-amber-700/60 uppercase mb-0.5">{lang === 'ar' ? 'المستلم' : 'ACTUAL'}</span>
+                      <span className="text-sm font-black text-amber-700 tabular-nums">{order.completedQty}</span>
+                    </div>
+                    <div className="bg-emerald-50/30 border border-emerald-100/50 rounded-xl p-3 flex flex-col items-center">
+                      <Timer className="w-3.5 h-3.5 text-emerald-500 mb-2" />
+                      <span className="text-[9px] font-black text-emerald-700/60 uppercase mb-0.5">{lang === 'ar' ? 'المتبقي' : 'REM'}</span>
+                      <span className="text-sm font-black text-emerald-700 tabular-nums">{order.targetQty - order.completedQty}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Action Hub Area */}
+                <div className="w-full md:w-48 p-6 bg-slate-900 flex flex-row md:flex-col gap-3 items-center justify-center">
+                  <Button variant="outline" className="flex-1 md:w-full h-11 rounded-xl font-black text-[10px] gap-2 border-white/10 bg-white/5 text-white hover:bg-white/20 transition-all uppercase tracking-widest">
+                    <FileText className="w-3.5 h-3.5 text-emerald-400" />
+                    {lang === 'ar' ? 'السندات' : 'Vouchers'}
+                  </Button>
+                  <Button className="flex-1 md:w-full h-11 premium-gradient rounded-xl font-black text-[10px] gap-2 border-none shadow-xl shadow-black/20 uppercase tracking-widest">
+                    {lang === 'ar' ? 'إدارة المرحلة' : 'Process'}
+                    <ChevronRight className={cn("w-3.5 h-3.5", dir === 'rtl' && "rotate-180")} />
+                  </Button>
+                </div>
+
               </div>
             </div>
           );
