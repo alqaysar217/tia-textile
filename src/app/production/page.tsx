@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -38,7 +37,7 @@ export default function ProductionDashboard() {
   ];
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className="h-full overflow-y-auto p-4 md:p-8 space-y-8 scroll-smooth no-scrollbar">
       {/* Welcome & Info */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div className="space-y-1 text-right rtl:text-right ltr:text-left w-full">
