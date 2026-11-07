@@ -35,12 +35,13 @@
       "description": "Production department or stage (e.g., Sewing, Dyeing)",
       "type": "object",
       "properties": {
+        "code": { "type": "string" },
         "nameAr": { "type": "string" },
         "nameEn": { "type": "string" },
         "descriptionAr": { "type": "string" },
-        "active": { "type": "boolean" }
+        "status": { "type": "string" }
       },
-      "required": ["nameAr", "nameEn"]
+      "required": ["code", "nameAr", "nameEn"]
     },
     "Worker": {
       "title": "Worker Profile",
@@ -48,8 +49,10 @@
       "type": "object",
       "properties": {
         "fullName": { "type": "string" },
+        "workerId": { "type": "string" },
         "departmentId": { "type": "string" },
         "phoneNumber": { "type": "string" },
+        "photoUrl": { "type": "string" },
         "active": { "type": "boolean" },
         "joinDate": { "type": "string", "format": "date" }
       },

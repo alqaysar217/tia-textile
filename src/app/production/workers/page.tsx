@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useCallback } from 'react';
@@ -20,7 +21,6 @@ import {
   Hash,
   Languages,
   Activity,
-  FileText,
   AlertCircle,
   SortAsc,
   SortDesc,
@@ -28,7 +28,9 @@ import {
   Check,
   Phone,
   Calendar,
-  Briefcase
+  Briefcase,
+  Camera,
+  User as UserIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -73,7 +75,7 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 export default function WorkersPage() {
   const { lang, dir } = useTranslation();
@@ -90,11 +92,13 @@ export default function WorkersPage() {
   const [editingWorkerId, setEditingWorkerId] = useState<string | null>(null);
   const [deletingWorkerId, setDeletingWorkerId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
     fullName: '',
     departmentId: '',
     phoneNumber: '',
+    photoUrl: '',
     joinDate: new Date().toISOString().split('T')[0],
     active: true
   });
@@ -116,7 +120,7 @@ export default function WorkersPage() {
   const filtered = useMemo(() => {
     let rawData = [...(workers || [])];
     
-    // 1. Basic cleaning (Exclude soft-deleted if applicable)
+    // 1. Basic cleaning
     rawData = rawData.filter(w => w.status !== 'deleted');
 
     // 2. Search Filter
@@ -152,10 +156,12 @@ export default function WorkersPage() {
     setIsAddDialogOpen(false);
     setEditingWorkerId(null);
     setIsSubmitting(false);
+    setValidationError(null);
     setFormData({ 
       fullName: '', 
       departmentId: '', 
       phoneNumber: '', 
+      photoUrl: '',
       joinDate: new Date().toISOString().split('T')[0], 
       active: true 
     });
@@ -165,6 +171,29 @@ export default function WorkersPage() {
     e.preventDefault();
     if (!db || isSubmitting) return;
 
+    // Validation: Check for duplicate Name or Phone
+    const isDuplicateName = workers?.some(w => 
+      w.fullName?.toLowerCase() === formData.fullName.toLowerCase() && 
+      w.id !== editingWorkerId && 
+      w.status !== 'deleted'
+    );
+
+    const isDuplicatePhone = formData.phoneNumber && workers?.some(w => 
+      w.phoneNumber === formData.phoneNumber && 
+      w.id !== editingWorkerId && 
+      w.status !== 'deleted'
+    );
+
+    if (isDuplicateName) {
+      setValidationError(lang === 'ar' ? "هذا الاسم مسجل مسبقاً في النظام" : "This name is already registered");
+      return;
+    }
+
+    if (isDuplicatePhone) {
+      setValidationError(lang === 'ar' ? "رقم الهاتف هذا مستخدم من قبل عامل آخر" : "This phone number is already in use");
+      return;
+    }
+
     setIsSubmitting(true);
     const currentId = editingWorkerId;
     const isEdit = !!currentId;
@@ -173,6 +202,7 @@ export default function WorkersPage() {
       fullName: formData.fullName,
       departmentId: formData.departmentId,
       phoneNumber: formData.phoneNumber,
+      photoUrl: formData.photoUrl,
       joinDate: formData.joinDate,
       active: formData.active,
       updatedAt: serverTimestamp(),
@@ -190,10 +220,9 @@ export default function WorkersPage() {
             requestResourceData: workerData
           }));
         });
-        toast({ title: lang === 'ar' ? "تم تحديث بيانات العامل" : "Worker data updated" });
+        toast({ title: lang === 'ar' ? "تم تحديث البيانات" : "Updated" });
       } else {
         const colRef = collection(db, 'workers');
-        // Generate a random worker ID for demo
         const workerId = `WRK-${Math.floor(1000 + Math.random() * 9000)}`;
         const newDoc = { ...workerData, workerId, createdAt: serverTimestamp() };
         addDoc(colRef, newDoc).catch((err) => {
@@ -203,7 +232,7 @@ export default function WorkersPage() {
             requestResourceData: newDoc
           }));
         });
-        toast({ title: lang === 'ar' ? "تم تسجيل العامل بنجاح" : "Worker registered successfully" });
+        toast({ title: lang === 'ar' ? "تم التسجيل بنجاح" : "Registered Successfully" });
       }
     }, 0);
   };
@@ -225,7 +254,7 @@ export default function WorkersPage() {
         status: 'deleted',
         deletedAt: serverTimestamp(),
       });
-      toast({ title: lang === 'ar' ? "تم نقل العامل للأرشيف" : "Worker moved to archive" });
+      toast({ title: lang === 'ar' ? "تم النقل للأرشيف" : "Archived" });
     }, 0);
   };
 
@@ -235,6 +264,7 @@ export default function WorkersPage() {
       fullName: worker.fullName || '',
       departmentId: worker.departmentId || '',
       phoneNumber: worker.phoneNumber || '',
+      photoUrl: worker.photoUrl || '',
       joinDate: worker.joinDate || '',
       active: worker.active ?? true
     });
@@ -261,7 +291,7 @@ export default function WorkersPage() {
   return (
     <div className="flex flex-col h-full bg-[#f1f5f9] overflow-hidden">
       
-      {/* COMPACT ERP HUB - FIXED HEIGHT */}
+      {/* COMPACT ERP HUB */}
       <div className="flex-none bg-white border-b border-slate-200 z-30 px-6 py-4">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div className="flex items-center gap-4">
@@ -272,10 +302,10 @@ export default function WorkersPage() {
               <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                 <span>{lang === 'ar' ? 'الموارد البشرية' : 'HR'}</span>
                 <ChevronRight className={`w-3 h-3 ${dir === 'rtl' ? 'rotate-180' : ''}`} />
-                <span className="text-slate-600">{lang === 'ar' ? 'سجل الحرفيين' : 'Workers Registry'}</span>
+                <span className="text-slate-600">{lang === 'ar' ? 'سجل الحرفيين' : 'Personnel'}</span>
               </div>
               <h1 className="text-xl font-black text-slate-900 leading-tight">
-                {lang === 'ar' ? 'قاعدة بيانات العمال' : 'Personnel Database'}
+                {lang === 'ar' ? 'قاعدة بيانات العمال' : 'Workforce Master Data'}
               </h1>
             </div>
           </div>
@@ -295,20 +325,19 @@ export default function WorkersPage() {
             
             <Button onClick={() => setIsAddDialogOpen(true)} className="h-10 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md shadow-emerald-900/10 font-black gap-2 transition-all border-none">
               <UserPlus className="w-4 h-4" />
-              {lang === 'ar' ? 'إضافة عامل' : 'New Hire'}
+              {lang === 'ar' ? 'إضافة عامل' : 'Enroll Worker'}
             </Button>
           </div>
         </div>
 
-        {/* SEARCH & FILTER BAR */}
         <div className="mt-4 flex items-center gap-2 bg-slate-50 p-1.5 rounded-lg border border-slate-200">
           <div className="relative flex-1">
             <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400`} />
             <input 
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder={lang === 'ar' ? 'بحث باسم العامل، رقم الهاتف، أو المعرف...' : 'Search personnel...'}
-              className={`w-full ${dir === 'rtl' ? 'pr-10 pl-4' : 'pl-10 pr-4'} h-9 bg-white border border-slate-200 rounded-md text-xs font-bold focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all`}
+              placeholder={lang === 'ar' ? 'بحث باسم العامل، رقم الهاتف، أو المعرف...' : 'Quick search...'}
+              className={`w-full ${dir === 'rtl' ? 'pr-10 pl-4' : 'pl-10 pr-4'} h-9 bg-white border border-slate-200 rounded-md text-xs font-bold focus:ring-emerald-500/10 focus:border-emerald-500 outline-none`}
             />
           </div>
           
@@ -338,18 +367,11 @@ export default function WorkersPage() {
                 </div>
                 {sortBy === 'workerId' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => toggleSort('joinDate')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                  {lang === 'ar' ? 'تاريخ التعيين' : 'Hire Date'}
-                </div>
-                {sortBy === 'joinDate' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
-              </DropdownMenuItem>
               
               <DropdownMenuSeparator />
               <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'فلترة الأقسام' : 'DEPARTMENT'}</DropdownMenuLabel>
               <DropdownMenuItem onClick={() => setDeptFilter('all')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
-                {lang === 'ar' ? 'كافة الأقسام' : 'All Departments'}
+                {lang === 'ar' ? 'الكل' : 'All Departments'}
                 {deptFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
               </DropdownMenuItem>
               {departments?.map(d => (
@@ -370,7 +392,7 @@ export default function WorkersPage() {
                 {statusFilter === 'active' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setStatusFilter('inactive')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
-                {lang === 'ar' ? 'مجاز/متوقف' : 'Inactive Only'}
+                {lang === 'ar' ? 'مجاز' : 'Inactive'}
                 {statusFilter === 'inactive' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -379,12 +401,12 @@ export default function WorkersPage() {
           <div className="w-px h-6 bg-slate-200" />
           <div className="flex items-center gap-2 px-3 text-[10px] font-bold text-slate-500">
             <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-            {lang === 'ar' ? 'مزامنة السحابة نشطة' : 'Live Sync Active'}
+            {lang === 'ar' ? 'بيانات مؤمنة' : 'Secure Data'}
           </div>
         </div>
       </div>
 
-      {/* MAIN DATA GRID - FIXED HEADER */}
+      {/* MAIN DATA GRID */}
       <div className="flex-1 min-h-0 flex flex-col p-4">
         <div className="flex-1 bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden flex flex-col">
           <div className="flex-1 overflow-auto relative no-scrollbar">
@@ -411,7 +433,7 @@ export default function WorkersPage() {
               </TableHeader>
               <TableBody>
                 {workersLoading ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-20 font-bold text-slate-400 animate-pulse">جاري سحب سجلات الموظفين...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={6} className="text-center py-20 font-bold text-slate-400 animate-pulse">جاري تحميل السجلات...</TableCell></TableRow>
                 ) : filtered.length === 0 ? (
                   <TableRow><TableCell colSpan={6} className="text-center py-20 font-bold text-slate-300">لا توجد بيانات تطابق معايير البحث</TableCell></TableRow>
                 ) : filtered.map((worker) => {
@@ -420,8 +442,11 @@ export default function WorkersPage() {
                     <TableRow key={worker.id} className="group hover:bg-slate-50/50 border-b border-slate-100">
                       <TableCell className="px-6 py-3">
                         <div className="flex items-center gap-3">
-                          <Avatar className="h-8 w-8 rounded-lg premium-gradient text-white flex items-center justify-center font-black text-[10px] shadow-sm">
-                            <AvatarFallback>{worker.fullName?.charAt(0)}</AvatarFallback>
+                          <Avatar className="h-9 w-9 rounded-lg border border-slate-200 bg-slate-50">
+                            <AvatarImage src={worker.photoUrl} alt={worker.fullName} className="object-cover" />
+                            <AvatarFallback className="premium-gradient text-white text-[10px] font-black uppercase">
+                              {worker.fullName?.charAt(0)}
+                            </AvatarFallback>
                           </Avatar>
                           <div className="flex flex-col">
                             <span className="font-black text-slate-900 text-xs">{worker.fullName}</span>
@@ -453,7 +478,7 @@ export default function WorkersPage() {
                           worker.active ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-amber-50 text-amber-700 border border-amber-100'
                         }`}>
                           <div className={`w-1.5 h-1.5 rounded-full ${worker.active ? 'bg-emerald-600' : 'bg-amber-600'}`} />
-                          {worker.active ? (lang === 'ar' ? 'نشط' : 'Active') : (lang === 'ar' ? 'مجاز' : 'On Leave')}
+                          {worker.active ? (lang === 'ar' ? 'نشط' : 'Active') : (lang === 'ar' ? 'مجاز' : 'Inactive')}
                         </div>
                       </TableCell>
                       <TableCell className="px-6 py-3 sticky right-0 bg-white group-hover:bg-slate-50/50 shadow-[-10px_0_10px_-5px_rgba(0,0,0,0.05)] border-l border-slate-100">
@@ -465,11 +490,11 @@ export default function WorkersPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="rounded-lg border-slate-200 shadow-xl min-w-[180px]">
                             <DropdownMenuItem onClick={() => handleEditClick(worker)} className="gap-3 font-bold text-xs cursor-pointer py-2.5">
-                              <Edit2 className="w-3.5 h-3.5 text-emerald-600" /> {lang === 'ar' ? 'تعديل الملف' : 'Edit Profile'}
+                              <Edit2 className="w-3.5 h-3.5 text-emerald-600" /> {lang === 'ar' ? 'تعديل الملف' : 'Edit Info'}
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleStatusToggle(worker)} className="gap-3 font-bold text-xs cursor-pointer py-2.5">
                               {worker.active ? <PowerOff className="w-3.5 h-3.5 text-amber-600" /> : <Power className="w-3.5 h-3.5 text-emerald-600" />}
-                              {worker.active ? (lang === 'ar' ? 'منح إجازة' : 'Set Active') : (lang === 'ar' ? 'تفعيل' : 'Activate')}
+                              {worker.active ? (lang === 'ar' ? 'منح إجازة' : 'Activate') : (lang === 'ar' ? 'تفعيل' : 'Deactivate')}
                             </DropdownMenuItem>
                             <div className="h-px bg-slate-100 my-1" />
                             <DropdownMenuItem onClick={() => setDeletingWorkerId(worker.id)} className="gap-3 font-bold text-xs cursor-pointer text-red-600 focus:text-red-700 py-2.5">
@@ -491,10 +516,10 @@ export default function WorkersPage() {
           <div className="w-8 h-8 bg-emerald-500/20 rounded flex items-center justify-center text-emerald-400"><Info className="w-4 h-4" /></div>
           <div className="flex-1">
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 leading-none mb-1">
-              {lang === 'ar' ? 'بروتوكول حماية بيانات الموظفين' : 'Employee Data Protection Protocol'}
+              {lang === 'ar' ? 'بروتوكول إدارة القوى العاملة' : 'Personnel Management Protocol'}
             </p>
             <p className="text-[10px] text-slate-300 font-bold opacity-80">
-              {lang === 'ar' ? 'يتم توثيق كافة تغييرات الحالة في سجل الأداء. لا يمكن حذف عامل لديه مستحقات مالية معلقة.' : 'All status changes are logged. Personnel with pending financial entitlements cannot be deleted.'}
+              {lang === 'ar' ? 'يتم توثيق كافة التغييرات لأغراض التدقيق. تكرار الاسم أو رقم الهاتف يمنع عملية التسجيل لضمان دقة السجلات.' : 'All changes are logged. Duplicate names or phone numbers are blocked to ensure data integrity.'}
             </p>
           </div>
         </div>
@@ -507,28 +532,60 @@ export default function WorkersPage() {
             <DialogHeader className="text-right rtl:text-right ltr:text-left">
               <DialogTitle className="text-xl font-black flex items-center gap-3 text-white">
                 <UserPlus className="w-5 h-5 text-emerald-300" />
-                {editingWorkerId ? (lang === 'ar' ? 'تعديل بيانات الحرفي' : 'Update Profile') : (lang === 'ar' ? 'تسجيل حرفي جديد' : 'New Artisan Enrollment')}
+                {editingWorkerId ? (lang === 'ar' ? 'تعديل بيانات العامل' : 'Update Worker') : (lang === 'ar' ? 'تسجيل عامل جديد' : 'New Enrollment')}
               </DialogTitle>
               <DialogDescription className="text-emerald-100/70 font-bold text-[10px] uppercase tracking-widest mt-1">
-                {lang === 'ar' ? 'إدخال البيانات الأساسية وتعيين قسم العمل' : 'Personnel information and unit assignment'}
+                {lang === 'ar' ? 'إدخال البيانات والتحقق من التكرار' : 'Information entry and validation'}
               </DialogDescription>
             </DialogHeader>
           </div>
 
           <form onSubmit={handleSaveWorker} className="p-6 space-y-5 bg-white">
+            {/* PHOTO UPLOAD SECTION */}
+            <div className="flex flex-col items-center gap-3 pb-2 border-b border-slate-100">
+              <div className="relative group cursor-pointer">
+                <Avatar className="h-20 w-20 rounded-2xl border-4 border-slate-100 shadow-md group-hover:border-emerald-100 transition-all">
+                  <AvatarImage src={formData.photoUrl} className="object-cover" />
+                  <AvatarFallback className="bg-slate-50 text-slate-300">
+                    <UserIcon className="w-10 h-10" />
+                  </AvatarFallback>
+                </Avatar>
+                <div className="absolute inset-0 bg-black/40 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Camera className="w-6 h-6 text-white" />
+                </div>
+              </div>
+              <div className="w-full">
+                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2 justify-center mb-1">
+                  <Camera className="w-3 h-3 text-emerald-600" />
+                  {lang === 'ar' ? 'رابط الصورة الشخصية' : 'PHOTO URL'}
+                </Label>
+                <Input 
+                  value={formData.photoUrl} 
+                  onChange={(e) => setFormData({...formData, photoUrl: e.target.value})} 
+                  placeholder="https://..." 
+                  className="h-9 text-[10px] font-bold bg-slate-50 text-center"
+                />
+              </div>
+            </div>
+
             <div className="space-y-1.5">
               <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
                 <Languages className="w-3 h-3 text-emerald-600" />
-                {lang === 'ar' ? 'الاسم الكامل' : 'FULL NAME'}
+                {lang === 'ar' ? 'الاسم الكامل للعامل' : 'FULL NAME'}
               </Label>
-              <Input value={formData.fullName} onChange={(e) => setFormData({...formData, fullName: e.target.value})} className="h-10 font-bold text-xs bg-slate-50 border-slate-200" required />
+              <Input 
+                value={formData.fullName} 
+                onChange={(e) => { setFormData({...formData, fullName: e.target.value}); setValidationError(null); }} 
+                className={cn("h-10 font-bold text-xs bg-slate-50", validationError?.includes('الاسم') && "border-red-500 ring-red-500/10")} 
+                required 
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
                   <Briefcase className="w-3 h-3 text-emerald-600" />
-                  {lang === 'ar' ? 'القسم / المرحلة' : 'DEPARTMENT'}
+                  {lang === 'ar' ? 'القسم / المسار' : 'DEPARTMENT'}
                 </Label>
                 <select 
                   value={formData.departmentId} 
@@ -545,11 +602,11 @@ export default function WorkersPage() {
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
                   <Activity className="w-3 h-3 text-emerald-600" />
-                  {lang === 'ar' ? 'الحالة التشغيلية' : 'STATUS'}
+                  {lang === 'ar' ? 'الحالة' : 'STATUS'}
                 </Label>
                 <select value={formData.active ? 'active' : 'inactive'} onChange={(e) => setFormData({...formData, active: e.target.value === 'active'})} className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold focus:outline-none">
-                  <option value="active">{lang === 'ar' ? 'نشط (على رأس العمل)' : 'Active'}</option>
-                  <option value="inactive">{lang === 'ar' ? 'مجاز (متوقف مؤقتاً)' : 'On Leave'}</option>
+                  <option value="active">{lang === 'ar' ? 'نشط' : 'Active'}</option>
+                  <option value="inactive">{lang === 'ar' ? 'مجاز' : 'Inactive'}</option>
                 </select>
               </div>
             </div>
@@ -560,16 +617,28 @@ export default function WorkersPage() {
                   <Phone className="w-3 h-3 text-emerald-600" />
                   {lang === 'ar' ? 'رقم الهاتف' : 'PHONE'}
                 </Label>
-                <Input value={formData.phoneNumber} onChange={(e) => setFormData({...formData, phoneNumber: e.target.value})} placeholder="7XXXXXXXX" className="h-10 font-bold text-xs bg-slate-50 border-slate-200 tabular-nums" />
+                <Input 
+                  value={formData.phoneNumber} 
+                  onChange={(e) => { setFormData({...formData, phoneNumber: e.target.value}); setValidationError(null); }} 
+                  placeholder="7XXXXXXXX" 
+                  className={cn("h-10 font-bold text-xs bg-slate-50 tabular-nums", validationError?.includes('الهاتف') && "border-red-500 ring-red-500/10")} 
+                />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
                   <Calendar className="w-3 h-3 text-emerald-600" />
-                  {lang === 'ar' ? 'تاريخ المباشرة' : 'HIRE DATE'}
+                  {lang === 'ar' ? 'تاريخ التعيين' : 'HIRE DATE'}
                 </Label>
-                <Input type="date" value={formData.joinDate} onChange={(e) => setFormData({...formData, joinDate: e.target.value})} className="h-10 font-bold text-xs bg-slate-50 border-slate-200 tabular-nums" required />
+                <Input type="date" value={formData.joinDate} onChange={(e) => setFormData({...formData, joinDate: e.target.value})} className="h-10 font-bold text-xs bg-slate-50 tabular-nums" required />
               </div>
             </div>
+
+            {validationError && (
+              <div className="p-3 bg-red-50 border border-red-100 rounded-md flex items-center gap-2 animate-in fade-in slide-in-from-top-1">
+                <AlertCircle className="w-4 h-4 text-red-600" />
+                <p className="text-[10px] font-black text-red-600 uppercase tracking-tighter">{validationError}</p>
+              </div>
+            )}
 
             <div className="flex gap-3 pt-2">
               <Button type="submit" disabled={isSubmitting} className="flex-1 h-11 premium-gradient hover:opacity-90 text-white rounded-md font-black text-sm border-none shadow-md shadow-emerald-900/10">
@@ -590,11 +659,11 @@ export default function WorkersPage() {
             <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20 shadow-inner">
               <History className="w-8 h-8 text-red-500" />
             </div>
-            <AlertDialogTitle className="text-white text-xl font-black">{lang === 'ar' ? 'أرشفة ملف العامل' : 'Confirm Archive'}</AlertDialogTitle>
+            <AlertDialogTitle className="text-white text-xl font-black">{lang === 'ar' ? 'أرشفة السجل' : 'Archive Record'}</AlertDialogTitle>
             <AlertDialogDescription className="text-slate-400 font-bold mt-2 text-xs leading-relaxed">
               {lang === 'ar' 
-                ? 'سيتم نقل هذا السجل للأرشيف. ستبقى كافة بيانات الرواتب والإنتاج التاريخية محفوظة للتدقيق.' 
-                : 'Personnel record will be archived. All historical payroll and production logs remain for auditing.'}
+                ? 'سيتم نقل ملف العامل إلى الأرشيف. ستبقى كافة سجلات الإنتاج السابقة محفوظة للتدقيق.' 
+                : 'Worker file will be moved to archive. All historical production logs remain for audit.'}
             </AlertDialogDescription>
           </div>
           <div className="bg-white p-6 flex gap-3">
