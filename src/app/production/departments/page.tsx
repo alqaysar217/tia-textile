@@ -7,16 +7,15 @@ import {
   Search, 
   Edit2, 
   Trash2, 
-  Layers,
   MoreVertical,
   CheckCircle2,
   Filter,
   ChevronRight,
   ArrowLeftRight,
   Info,
-  X,
   Save,
-  Activity
+  Activity,
+  Users
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -42,15 +41,24 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from '@/hooks/use-toast';
 
 export default function DepartmentsPage() {
   const { lang } = useTranslation();
   const [search, setSearch] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  
+  // Form State for "Work correctly" requirement
+  const [formData, setFormData] = useState({
+    code: '',
+    nameAr: '',
+    nameEn: '',
+    descAr: ''
+  });
+
   const [departments, setDepartments] = useState([
     { id: '1', nameAr: 'قسم الخياطة', nameEn: 'Sewing Department', descAr: 'خياطة المعاوز وتجهيز الأطراف', workers: 25, active: true, code: 'DEPT-SEW' },
     { id: '2', nameAr: 'قسم التطريز', nameEn: 'Embroidery Department', descAr: 'إضافة النقوش الملكية واليدوية', workers: 15, active: true, code: 'DEPT-EMB' },
@@ -65,20 +73,37 @@ export default function DepartmentsPage() {
 
   const handleAddDepartment = (e: React.FormEvent) => {
     e.preventDefault();
-    // Logic to add department (UI simulation)
+    
+    const newDept = {
+      id: Math.random().toString(36).substr(2, 9),
+      ...formData,
+      workers: 0,
+      active: true
+    };
+
+    setDepartments([...departments, newDept]);
     setIsAddDialogOpen(false);
+    setFormData({ code: '', nameAr: '', nameEn: '', descAr: '' });
+    
+    toast({
+      title: lang === 'ar' ? "تم الإضافة بنجاح" : "Department Added",
+      description: lang === 'ar' ? `تم تسجيل ${formData.nameAr} في النظام.` : `Registered ${formData.nameEn} successfully.`,
+    });
   };
+
+  const activeCount = departments.filter(d => d.active).length;
+  const totalWorkers = departments.reduce((acc, curr) => acc + curr.workers, 0);
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 max-w-7xl mx-auto pb-12">
-      {/* System Breadcrumbs - Integrated Look */}
+      {/* System Breadcrumbs */}
       <div className="flex items-center gap-2 text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">
         <span>{lang === 'ar' ? 'نظام الإنتاج' : 'Production'}</span>
         <ChevronRight className="w-3 h-3 rotate-180 rtl:rotate-0" />
         <span className="text-primary">{lang === 'ar' ? 'إدارة الأقسام' : 'Departments'}</span>
       </div>
 
-      {/* Main Header with Modern Actions */}
+      {/* Main Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div className="space-y-1">
           <h1 className="text-3xl font-black text-gray-900 tracking-tight flex items-center gap-3">
@@ -100,16 +125,24 @@ export default function DepartmentsPage() {
           <DialogContent className="sm:max-w-[500px] rounded-2xl border-gray-100 shadow-2xl overflow-hidden p-0">
             <div className="bg-primary p-6 text-white relative">
               <div className="absolute top-0 right-0 p-8 opacity-10"><Factory className="w-24 h-24" /></div>
-              <DialogTitle className="text-xl font-black">{lang === 'ar' ? 'إضافة قسم جديد' : 'New Department'}</DialogTitle>
-              <DialogDescription className="text-white/70 font-bold mt-1">
-                {lang === 'ar' ? 'قم بإدخال بيانات القسم الأساسية لتعريفه في النظام' : 'Enter department details to register in system'}
-              </DialogDescription>
+              <DialogHeader>
+                <DialogTitle className="text-xl font-black">{lang === 'ar' ? 'إضافة قسم جديد' : 'New Department'}</DialogTitle>
+                <DialogDescription className="text-white/70 font-bold mt-1">
+                  {lang === 'ar' ? 'قم بإدخال بيانات القسم الأساسية لتعريفه في النظام' : 'Enter department details to register in system'}
+                </DialogDescription>
+              </DialogHeader>
             </div>
             <form onSubmit={handleAddDepartment} className="p-6 space-y-5">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">{lang === 'ar' ? 'كود القسم' : 'Dept Code'}</Label>
-                  <Input placeholder="DEPT-XXX" className="h-11 rounded-lg border-gray-200" required />
+                  <Input 
+                    value={formData.code}
+                    onChange={(e) => setFormData({...formData, code: e.target.value})}
+                    placeholder="DEPT-XXX" 
+                    className="h-11 rounded-lg border-gray-200 font-bold" 
+                    required 
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">{lang === 'ar' ? 'الحالة' : 'Status'}</Label>
@@ -121,11 +154,32 @@ export default function DepartmentsPage() {
               </div>
               <div className="space-y-2">
                 <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">{lang === 'ar' ? 'اسم القسم (عربي)' : 'Name (Arabic)'}</Label>
-                <Input placeholder={lang === 'ar' ? 'أدخل اسم القسم' : 'Enter name'} className="h-11 rounded-lg border-gray-200" required />
+                <Input 
+                  value={formData.nameAr}
+                  onChange={(e) => setFormData({...formData, nameAr: e.target.value})}
+                  placeholder={lang === 'ar' ? 'أدخل اسم القسم' : 'Enter name'} 
+                  className="h-11 rounded-lg border-gray-200 font-bold" 
+                  required 
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">{lang === 'ar' ? 'الاسم بالإنجليزية' : 'Name (English)'}</Label>
+                <Input 
+                  value={formData.nameEn}
+                  onChange={(e) => setFormData({...formData, nameEn: e.target.value})}
+                  placeholder="Department Name" 
+                  className="h-11 rounded-lg border-gray-200 font-bold" 
+                  required 
+                />
               </div>
               <div className="space-y-2">
                 <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">{lang === 'ar' ? 'الوصف الوظيفي' : 'Process Description'}</Label>
-                <Textarea placeholder={lang === 'ar' ? 'شرح مختصر لعمل القسم...' : 'Short description...'} className="rounded-lg border-gray-200 resize-none h-24" />
+                <Textarea 
+                  value={formData.descAr}
+                  onChange={(e) => setFormData({...formData, descAr: e.target.value})}
+                  placeholder={lang === 'ar' ? 'شرح مختصر لعمل القسم...' : 'Short description...'} 
+                  className="rounded-lg border-gray-200 resize-none h-24 font-medium" 
+                />
               </div>
               <div className="pt-4 flex gap-3">
                 <Button type="submit" className="flex-1 h-12 bg-primary rounded-xl font-black gap-2">
@@ -149,7 +203,7 @@ export default function DepartmentsPage() {
             <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary border border-primary/10"><Activity className="w-6 h-6" /></div>
             <div>
               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{lang === 'ar' ? 'الأقسام النشطة' : 'Active Units'}</p>
-              <h3 className="text-2xl font-black tabular-nums">04 / 05</h3>
+              <h3 className="text-2xl font-black tabular-nums">{activeCount} / {departments.length}</h3>
             </div>
           </div>
         </div>
@@ -159,7 +213,7 @@ export default function DepartmentsPage() {
             <div className="w-12 h-12 bg-secondary/10 rounded-xl flex items-center justify-center text-secondary border border-secondary/10"><Users className="w-6 h-6" /></div>
             <div>
               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{lang === 'ar' ? 'إجمالي الحرفيين' : 'Total Artisans'}</p>
-              <h3 className="text-2xl font-black tabular-nums">63</h3>
+              <h3 className="text-2xl font-black tabular-nums">{totalWorkers}</h3>
             </div>
           </div>
         </div>
@@ -169,13 +223,13 @@ export default function DepartmentsPage() {
             <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center text-white border border-white/10"><CheckCircle2 className="w-6 h-6" /></div>
             <div>
               <p className="text-[10px] font-black text-white/60 uppercase tracking-widest">{lang === 'ar' ? 'حالة النظام' : 'System Health'}</p>
-              <h3 className="text-lg font-black">{lang === 'ar' ? 'مستقر تقنياً' : 'Stable'}</h3>
+              <h3 className="text-lg font-black">{lang === 'ar' ? 'مستقر تشغيلياً' : 'Stable'}</h3>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Advanced Toolbar - System Style */}
+      {/* Advanced Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-4 bg-white border border-gray-200/60 p-4 rounded-xl shadow-sm">
         <div className="flex items-center gap-4 flex-1">
           <div className="relative w-full max-w-md">
@@ -198,7 +252,7 @@ export default function DepartmentsPage() {
         </div>
       </div>
 
-      {/* Main Data Grid - ERP Style */}
+      {/* Main Data Grid */}
       <div className="bg-white border border-gray-200/60 rounded-xl shadow-sm overflow-hidden">
         <Table className="text-right">
           <TableHeader>
@@ -268,7 +322,7 @@ export default function DepartmentsPage() {
         </Table>
       </div>
 
-      {/* Footer System Info - High Tech Look */}
+      {/* Footer System Info */}
       <div className="bg-muted/30 border border-border/50 rounded-xl p-5 flex items-start gap-4">
         <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-primary shadow-sm shrink-0">
           <Info className="w-6 h-6" />
