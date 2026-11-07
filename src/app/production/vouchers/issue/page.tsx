@@ -26,7 +26,8 @@ import {
   UserCheck,
   ShieldCheck,
   UserPlus,
-  ChevronDown
+  ChevronDown,
+  X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,11 +42,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
 import {
   Table,
@@ -67,9 +63,9 @@ export default function MaterialIssuePage() {
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isWorkerPopoverOpen, setIsWorkerPopoverOpen] = useState(false);
+  const [showWorkerDropdown, setShowWorkerDropdown] = useState(false);
   const [search, setSearch] = useState('');
-  const workerSearchRef = useRef<HTMLInputElement>(null);
+  const workerDropdownRef = useRef<HTMLDivElement>(null);
   
   // Selection filtering state
   const [selectedDeptId, setSelectedDeptId] = useState<string>('');
@@ -135,12 +131,16 @@ export default function MaterialIssuePage() {
     return allWorkers?.find(w => w.id === formData.workerId);
   }, [allWorkers, formData.workerId]);
 
-  // Maintain focus on search input when popover opens
+  // Click outside listener for the custom dropdown
   useEffect(() => {
-    if (isWorkerPopoverOpen) {
-      setTimeout(() => workerSearchRef.current?.focus(), 100);
+    function handleClickOutside(event: MouseEvent) {
+      if (workerDropdownRef.current && !workerDropdownRef.current.contains(event.target as Node)) {
+        setShowWorkerDropdown(false);
+      }
     }
-  }, [isWorkerPopoverOpen]);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const handleAddItem = () => {
     if (!currentItem.id || currentItem.qty <= 0) return;
@@ -242,6 +242,7 @@ export default function MaterialIssuePage() {
     setIsAddDialogOpen(false);
     setSelectedDeptId('');
     setWorkerSearch('');
+    setShowWorkerDropdown(false);
     setFormData({ date: new Date().toISOString().split('T')[0], orderId: '', workerId: '', notes: '', items: [] });
   };
 
@@ -363,7 +364,7 @@ export default function MaterialIssuePage() {
 
           <form onSubmit={handleSaveVoucher} className="p-6 space-y-6 bg-white max-h-[85vh] overflow-y-auto no-scrollbar">
             
-            {/* 1. TOP ROW: DATE AND WORKER SELECTION (Logic: General Info) */}
+            {/* ROW 1: Date and Worker Selection (Custom Dropdown to avoid Portal issues) */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
@@ -372,64 +373,59 @@ export default function MaterialIssuePage() {
                 <Input type="date" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} className="h-12 font-bold text-xs bg-slate-50 border-slate-200" required />
               </div>
 
-              <div className="space-y-1.5 flex flex-col">
+              <div className="space-y-1.5 relative" ref={workerDropdownRef}>
                 <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
                   <Users2 className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'العامل المستلم للمواد' : 'RECEIVING PERSONNEL'}
                 </Label>
                 
-                <Popover open={isWorkerPopoverOpen} onOpenChange={setIsWorkerPopoverOpen}>
-                  <PopoverTrigger asChild>
-                    <Button 
-                      variant="outline" 
-                      className={cn(
-                        "h-12 w-full justify-between bg-slate-50 border-slate-200 px-3",
-                        !formData.workerId && "text-slate-400 font-bold"
-                      )}
-                    >
-                      {selectedWorker ? (
-                        <div className="flex items-center gap-3 text-right">
-                          <Avatar className="h-7 w-7 border border-slate-200">
-                            <AvatarImage src={selectedWorker.photoUrl} className="object-cover" />
-                            <AvatarFallback className="text-[9px] font-black bg-slate-200 text-slate-600">{selectedWorker.fullName?.charAt(0)}</AvatarFallback>
-                          </Avatar>
-                          <div className="flex flex-col items-start overflow-hidden text-right">
-                            <span className="text-[11px] font-black text-slate-900 truncate">{selectedWorker.fullName}</span>
-                            <span className="text-[8px] font-bold text-slate-400 tabular-nums uppercase">{selectedWorker.workerId}</span>
-                          </div>
-                        </div>
-                      ) : (
-                        <span>{lang === 'ar' ? '-- اختر العامل --' : '-- Select Worker --'}</span>
-                      )}
-                      <ChevronDown className="h-4 w-4 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent 
-                    className="w-[350px] p-0 shadow-2xl border-slate-200 rounded-xl overflow-hidden z-[100]" 
-                    align="end"
-                    onInteractOutside={(e) => {
-                      const target = e.target as HTMLElement;
-                      if (target.closest('[data-radix-popover-content]')) {
-                        e.preventDefault();
-                      }
-                    }}
-                  >
-                    <div className="p-3 bg-slate-50 border-b border-slate-100 flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowWorkerDropdown(!showWorkerDropdown)}
+                  className={cn(
+                    "flex h-12 w-full items-center justify-between rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm transition-all focus:outline-none focus:ring-1 focus:ring-emerald-500",
+                    !formData.workerId && "text-slate-400 font-bold"
+                  )}
+                >
+                  {selectedWorker ? (
+                    <div className="flex items-center gap-3 text-right">
+                      <Avatar className="h-7 w-7 border border-slate-200">
+                        <AvatarImage src={selectedWorker.photoUrl} className="object-cover" />
+                        <AvatarFallback className="text-[9px] font-black bg-slate-200 text-slate-600">{selectedWorker.fullName?.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex flex-col items-start overflow-hidden text-right">
+                        <span className="text-[11px] font-black text-slate-900 truncate">{selectedWorker.fullName}</span>
+                        <span className="text-[8px] font-bold text-slate-400 tabular-nums uppercase">{selectedWorker.workerId}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <span>{lang === 'ar' ? '-- اختر العامل --' : '-- Select Worker --'}</span>
+                  )}
+                  <ChevronDown className={cn("h-4 w-4 opacity-50 transition-transform", showWorkerDropdown && "rotate-180")} />
+                </button>
+
+                {/* CUSTOM INTERNAL DROPDOWN - Avoids Dialog closure issues */}
+                {showWorkerDropdown && (
+                  <div className={cn(
+                    "absolute top-full left-0 right-0 z-50 mt-1 bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200",
+                    dir === 'rtl' ? "text-right" : "text-left"
+                  )}>
+                    <div className="p-2 bg-slate-50 border-b border-slate-100 flex flex-col gap-2">
                       <div className="relative">
                         <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400`} />
                         <Input 
-                          ref={workerSearchRef}
+                          autoFocus
                           value={workerSearch}
                           onChange={(e) => setWorkerSearch(e.target.value)}
-                          placeholder={lang === 'ar' ? 'بحث باسم العامل أو المعرف...' : 'Search worker...'}
+                          placeholder={lang === 'ar' ? 'بحث باسم العامل...' : 'Search personnel...'}
                           className={`${dir === 'rtl' ? 'pr-9 pl-3' : 'pl-9 pr-3'} h-9 bg-white border-slate-200 text-xs font-bold`}
                         />
                       </div>
                     </div>
-                    <ScrollArea className="h-[280px]">
+                    <ScrollArea className="h-[240px]">
                       <div className="p-1">
                         {filteredWorkers.length === 0 ? (
                           <div className="text-center py-10">
-                            <p className="text-xs font-bold text-slate-400">{lang === 'ar' ? 'لا يوجد عمال يطابقون البحث' : 'No personnel found'}</p>
+                            <p className="text-xs font-bold text-slate-400">{lang === 'ar' ? 'لا يوجد عمال' : 'No personnel'}</p>
                           </div>
                         ) : filteredWorkers.map(w => (
                           <button
@@ -437,35 +433,32 @@ export default function MaterialIssuePage() {
                             type="button"
                             onClick={() => {
                               setFormData({...formData, workerId: w.id});
-                              setIsWorkerPopoverOpen(false);
+                              setShowWorkerDropdown(false);
                             }}
                             className={cn(
-                              "flex items-center gap-3 w-full p-2.5 rounded-lg transition-all border border-transparent text-right hover:bg-slate-100 mb-1",
-                              formData.workerId === w.id && "bg-emerald-50 border-emerald-100"
+                              "flex items-center gap-3 w-full p-2 rounded-lg transition-all text-right hover:bg-slate-50 mb-0.5",
+                              formData.workerId === w.id && "bg-emerald-50"
                             )}
                           >
-                            <Avatar className="h-9 w-9 border border-white shadow-sm shrink-0">
+                            <Avatar className="h-8 w-8 border border-white shadow-sm shrink-0">
                               <AvatarImage src={w.photoUrl} className="object-cover" />
-                              <AvatarFallback className="text-[10px] font-black bg-slate-100 text-slate-500">{w.fullName?.charAt(0)}</AvatarFallback>
+                              <AvatarFallback className="text-[9px] font-black bg-slate-100 text-slate-500">{w.fullName?.charAt(0)}</AvatarFallback>
                             </Avatar>
                             <div className="flex-1 overflow-hidden text-right">
-                              <p className={cn("text-xs font-black leading-tight", formData.workerId === w.id ? "text-emerald-700" : "text-slate-800")}>{w.fullName}</p>
-                              <p className="text-[9px] font-bold text-slate-400 mt-0.5 uppercase tracking-widest tabular-nums">{w.workerId}</p>
+                              <p className={cn("text-[11px] font-black leading-tight", formData.workerId === w.id ? "text-emerald-700" : "text-slate-800")}>{w.fullName}</p>
+                              <p className="text-[8px] font-bold text-slate-400 mt-0.5 tabular-nums uppercase">{w.workerId}</p>
                             </div>
-                            {formData.workerId === w.id && <Check className="w-4 h-4 text-emerald-600" />}
+                            {formData.workerId === w.id && <Check className="w-3.5 h-3.5 text-emerald-600" />}
                           </button>
                         ))}
                       </div>
                     </ScrollArea>
-                    <div className="p-2 bg-slate-50 border-t border-slate-100 text-center">
-                      <p className="text-[9px] font-bold text-slate-400 uppercase">{lang === 'ar' ? 'يرجى اختيار العامل لتكملة السند' : 'Select worker to continue'}</p>
-                    </div>
-                  </PopoverContent>
-                </Popover>
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* 2. SECOND ROW: ORDER AND DEPT FILTER (Logic: Scope) */}
+            {/* ROW 2: Production Order and Dept Filter */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
@@ -485,7 +478,7 @@ export default function MaterialIssuePage() {
                   value={selectedDeptId} 
                   onChange={(e) => {
                     setSelectedDeptId(e.target.value);
-                    setFormData({...formData, workerId: ''}); // Reset worker selection on dept change
+                    setFormData({...formData, workerId: ''});
                     setWorkerSearch('');
                   }} 
                   className="w-full h-12 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none focus:ring-1 focus:ring-emerald-500"
