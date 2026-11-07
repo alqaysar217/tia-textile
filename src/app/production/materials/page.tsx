@@ -35,7 +35,9 @@ import {
   BoxSelect,
   UploadCloud,
   Loader2,
-  Image as ImageIcon
+  Image as ImageIcon,
+  ArrowUp01,
+  ArrowDown10
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -90,7 +92,8 @@ export default function MaterialsPage() {
   
   // Filtering & Sorting State
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<'code' | 'nameAr' | 'currentQty'>('code');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'available' | 'low'>('all');
+  const [sortBy, setSortBy] = useState<'code' | 'nameAr' | 'currentQty' | 'price'>('code');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -145,6 +148,7 @@ export default function MaterialsPage() {
   const filtered = useMemo(() => {
     let rawData = (materials || []).filter(m => m.status !== 'deleted');
 
+    // 1. Search Filter
     if (search) {
       rawData = rawData.filter(m => 
         m.nameAr?.includes(search) || 
@@ -153,22 +157,34 @@ export default function MaterialsPage() {
       );
     }
 
+    // 2. Category Filter
     if (categoryFilter !== 'all') {
       rawData = rawData.filter(m => m.category === categoryFilter);
     }
 
+    // 3. Status Filter (Available vs Low Stock)
+    if (statusFilter !== 'all') {
+      rawData = rawData.filter(m => {
+        const isLow = (m.currentQty || 0) <= (m.minQty || 0);
+        return statusFilter === 'low' ? isLow : !isLow;
+      });
+    }
+
+    // 4. Advanced Sorting
     return rawData.sort((a, b) => {
       let valA = a[sortBy] ?? '';
       let valB = b[sortBy] ?? '';
 
-      if (sortBy === 'currentQty') {
-        return sortOrder === 'asc' ? Number(valA) - Number(valB) : Number(valB) - Number(valA);
+      if (sortBy === 'currentQty' || sortBy === 'price') {
+        const numA = Number(valA);
+        const numB = Number(valB);
+        return sortOrder === 'asc' ? numA - numB : numB - numA;
       }
 
-      const comparison = String(valA).localeCompare(String(valB), undefined, { numeric: true, sensitivity: 'base' });
+      const comparison = String(valA).localeCompare(String(valB), 'en', { numeric: true, sensitivity: 'base' });
       return sortOrder === 'asc' ? comparison : -comparison;
     });
-  }, [materials, search, categoryFilter, sortBy, sortOrder]);
+  }, [materials, search, categoryFilter, statusFilter, sortBy, sortOrder]);
 
   const resetForm = useCallback(() => {
     setIsAddDialogOpen(false);
@@ -188,6 +204,15 @@ export default function MaterialsPage() {
       status: 'active' 
     });
   }, []);
+
+  const toggleSort = (key: 'code' | 'nameAr' | 'currentQty' | 'price') => {
+    if (sortBy === key) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(key);
+      setSortOrder('asc');
+    }
+  };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -224,8 +249,6 @@ export default function MaterialsPage() {
     if (!db || isSubmitting || isCompressing) return;
 
     setIsSubmitting(true);
-    
-    // Auto-generate SKU if new
     const generatedCode = editingMatId ? formData.code : `MAT-${Math.floor(1000 + Math.random() * 9000)}`;
 
     const materialData = {
@@ -285,14 +308,14 @@ export default function MaterialsPage() {
 
   const handleExportCSV = () => {
     const headers = [
-      lang === 'ar' ? 'كود المادة' : 'SKU',
-      lang === 'ar' ? 'الاسم (عربي)' : 'Name (AR)',
-      lang === 'ar' ? 'الاسم (إنجليزي)' : 'Name (EN)',
-      lang === 'ar' ? 'الفئة' : 'Category',
-      lang === 'ar' ? 'الوحدة' : 'Unit',
-      lang === 'ar' ? 'الكمية الحالية' : 'Qty',
-      lang === 'ar' ? 'حد الأمان' : 'Min Level',
-      lang === 'ar' ? 'السعر' : 'Price'
+      'SKU',
+      'Name (AR)',
+      'Name (EN)',
+      'Category',
+      'Unit',
+      'Qty',
+      'Min Level',
+      'Price'
     ];
 
     const escapeCSV = (val: any) => {
@@ -364,12 +387,12 @@ export default function MaterialsPage() {
             <div className="flex gap-2 bg-slate-50 p-1 rounded-lg border border-slate-100">
               <div className="px-3 py-1 text-center">
                 <p className="text-[9px] font-bold text-slate-400 uppercase">{lang === 'ar' ? 'المواد' : 'Items'}</p>
-                <p className="text-sm font-black text-emerald-600 tabular-nums">{loading ? '..' : filtered.length}</p>
+                <p className="text-sm font-black text-emerald-600 tabular-nums">{(filtered.length).toLocaleString('en-US')}</p>
               </div>
               <div className="w-px h-6 bg-slate-200 self-center" />
               <div className="px-3 py-1 text-center">
                 <p className="text-[9px] font-bold text-slate-400 uppercase">{lang === 'ar' ? 'نقص مخزون' : 'Low Stock'}</p>
-                <p className="text-sm font-black text-rose-600 tabular-nums">{loading ? '..' : filtered.filter(m => (m.currentQty || 0) <= (m.minQty || 0)).length}</p>
+                <p className="text-sm font-black text-rose-600 tabular-nums">{(filtered.filter(m => (m.currentQty || 0) <= (m.minQty || 0)).length).toLocaleString('en-US')}</p>
               </div>
             </div>
             
@@ -403,16 +426,53 @@ export default function MaterialsPage() {
                 <Button variant="ghost" className="h-9 px-4 rounded-md text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent hover:border-slate-200">
                   <Filter className="w-3.5 h-3.5" />
                   {lang === 'ar' ? 'تصفية' : 'Filter'}
+                  {(categoryFilter !== 'all' || statusFilter !== 'all' || sortBy !== 'code' || sortOrder !== 'asc') && (
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  )}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="w-56">
-                <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400">{lang === 'ar' ? 'حسب الفئة' : 'BY CATEGORY'}</DropdownMenuLabel>
-                <DropdownMenuItem onClick={() => setCategoryFilter('all')} className="flex items-center justify-between text-xs font-bold">
+              <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="w-64 rounded-lg border-slate-200 shadow-xl">
+                <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'ترتيب حسب' : 'SORT BY'}</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => toggleSort('code')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
+                  <div className="flex items-center gap-2"><Hash className="w-3.5 h-3.5 text-slate-400" /> {lang === 'ar' ? 'الكود' : 'SKU'}</div>
+                  {sortBy === 'code' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => toggleSort('nameAr')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
+                  <div className="flex items-center gap-2"><Languages className="w-3.5 h-3.5 text-slate-400" /> {lang === 'ar' ? 'الاسم' : 'Name'}</div>
+                  {sortBy === 'nameAr' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => toggleSort('currentQty')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
+                  <div className="flex items-center gap-2"><Activity className="w-3.5 h-3.5 text-slate-400" /> {lang === 'ar' ? 'الكمية' : 'Quantity'}</div>
+                  {sortBy === 'currentQty' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => toggleSort('price')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
+                  <div className="flex items-center gap-2"><Wallet className="w-3.5 h-3.5 text-slate-400" /> {lang === 'ar' ? 'السعر' : 'Price'}</div>
+                  {sortBy === 'price' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'عرض الحالة' : 'STATUS'}</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => setStatusFilter('all')} className="flex items-center justify-between text-xs font-bold cursor-pointer">
+                  {lang === 'ar' ? 'الكل' : 'All Items'}
+                  {statusFilter === 'all' && <Check className="w-3 h-3 text-emerald-600" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setStatusFilter('available')} className="flex items-center justify-between text-xs font-bold cursor-pointer">
+                  {lang === 'ar' ? 'متوفر' : 'Available Only'}
+                  {statusFilter === 'available' && <Check className="w-3 h-3 text-emerald-600" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setStatusFilter('low')} className="flex items-center justify-between text-xs font-bold cursor-pointer">
+                  {lang === 'ar' ? 'مخزون منخفض' : 'Low Stock Only'}
+                  {statusFilter === 'low' && <Check className="w-3 h-3 text-emerald-600" />}
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'حسب الفئة' : 'CATEGORY'}</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => setCategoryFilter('all')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
                   {lang === 'ar' ? 'الكل' : 'All Categories'}
                   {categoryFilter === 'all' && <Check className="w-3 h-3 text-emerald-600" />}
                 </DropdownMenuItem>
                 {categories.map(c => (
-                  <DropdownMenuItem key={c.value} onClick={() => setCategoryFilter(c.value)} className="flex items-center justify-between text-xs font-bold">
+                  <DropdownMenuItem key={c.value} onClick={() => setCategoryFilter(c.value)} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
                     {lang === 'ar' ? c.labelAr : c.labelEn}
                     {categoryFilter === c.value && <Check className="w-3 h-3 text-emerald-600" />}
                   </DropdownMenuItem>
@@ -430,10 +490,25 @@ export default function MaterialsPage() {
             <Table className="text-right">
               <TableHeader className="sticky top-0 z-20 bg-slate-100/95 backdrop-blur-sm">
                 <TableRow>
-                  <TableHead className="h-10 font-bold text-[11px] text-slate-500 px-6 text-right">{lang === 'ar' ? 'المادة' : 'ITEM'}</TableHead>
+                  <TableHead className="h-10 font-bold text-[11px] text-slate-500 px-6 text-right">
+                    <button onClick={() => toggleSort('code')} className="flex items-center gap-2 hover:text-emerald-700 transition-colors uppercase">
+                      {lang === 'ar' ? 'المادة' : 'ITEM'}
+                      {sortBy === 'code' ? (sortOrder === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-30" />}
+                    </button>
+                  </TableHead>
                   <TableHead className="h-10 font-bold text-[11px] text-slate-500 px-6 text-right">{lang === 'ar' ? 'الفئة' : 'CATEGORY'}</TableHead>
-                  <TableHead className="h-10 font-bold text-[11px] text-slate-500 px-6 text-center">{lang === 'ar' ? 'المخزون' : 'ON HAND'}</TableHead>
-                  <TableHead className="h-10 font-bold text-[11px] text-slate-500 px-6 text-center">{lang === 'ar' ? 'السعر' : 'PRICE'}</TableHead>
+                  <TableHead className="h-10 font-bold text-[11px] text-slate-500 px-6 text-center">
+                    <button onClick={() => toggleSort('currentQty')} className="flex items-center gap-2 mx-auto hover:text-emerald-700 transition-colors uppercase">
+                      {lang === 'ar' ? 'المخزون' : 'ON HAND'}
+                      {sortBy === 'currentQty' ? (sortOrder === 'asc' ? <ArrowUp01 className="w-3 h-3" /> : <ArrowDown10 className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-30" />}
+                    </button>
+                  </TableHead>
+                  <TableHead className="h-10 font-bold text-[11px] text-slate-500 px-6 text-center">
+                    <button onClick={() => toggleSort('price')} className="flex items-center gap-2 mx-auto hover:text-emerald-700 transition-colors uppercase">
+                      {lang === 'ar' ? 'السعر' : 'PRICE'}
+                      {sortBy === 'price' ? (sortOrder === 'asc' ? <ArrowUp01 className="w-3 h-3" /> : <ArrowDown10 className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-30" />}
+                    </button>
+                  </TableHead>
                   <TableHead className="h-10 font-bold text-[11px] text-slate-500 px-6 text-center">{lang === 'ar' ? 'الحالة' : 'STATUS'}</TableHead>
                   <TableHead className="h-10 w-[60px] sticky right-0 bg-inherit shadow-[-2px_0_5px_rgba(0,0,0,0.05)]"></TableHead>
                 </TableRow>
@@ -470,7 +545,7 @@ export default function MaterialsPage() {
                       <TableCell className="px-6 py-3 text-center">
                         <div className="flex flex-col items-center">
                           <span className={cn("text-xs font-black tabular-nums", isLow ? "text-rose-600" : "text-slate-900")}>
-                            {mat.currentQty || 0}
+                            {(mat.currentQty || 0).toLocaleString('en-US')}
                           </span>
                           <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">{mat.unit}</span>
                         </div>
@@ -478,7 +553,7 @@ export default function MaterialsPage() {
                       <TableCell className="px-6 py-3 text-center">
                         <div className="inline-flex items-center gap-1 text-xs font-black text-emerald-700 tabular-nums">
                           <Wallet className="w-3 h-3 opacity-30" />
-                          {mat.price?.toLocaleString()}
+                          {(mat.price || 0).toLocaleString('en-US')}
                         </div>
                       </TableCell>
                       <TableCell className="px-6 py-3 text-center">
@@ -553,7 +628,7 @@ export default function MaterialsPage() {
                   <Hash className="w-3 h-3 text-emerald-600" />
                   {lang === 'ar' ? 'كود المادة (تلقائي)' : 'AUTO SKU'}
                 </Label>
-                <Input value={editingMatId ? formData.code : 'AUTO-GENERATE'} disabled className="h-10 font-bold text-xs bg-slate-100 text-slate-500" />
+                <Input value={editingMatId ? formData.code : 'AUTO-GENERATE'} disabled className="h-10 font-bold text-xs bg-slate-100 text-slate-500 tabular-nums" />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
@@ -652,3 +727,4 @@ export default function MaterialsPage() {
     </div>
   );
 }
+
