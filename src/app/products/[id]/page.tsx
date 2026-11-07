@@ -1,7 +1,6 @@
-
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { useTranslation } from '@/components/LanguageProvider';
 import { useCart } from '@/components/CartProvider';
@@ -18,46 +17,65 @@ import {
   Minus,
   Plus,
   Share2,
-  Heart
+  Heart,
+  Loader2
 } from 'lucide-react';
 import Link from 'next/link';
+import { useFirestore, useDoc } from '@/firebase';
+import { doc } from 'firebase/firestore';
 
 export default function ProductDetailsPage() {
   const { id } = useParams();
   const { lang, t, dir } = useTranslation();
   const { addToCart } = useCart();
+  const db = useFirestore();
   const [quantity, setQuantity] = useState(1);
   const [mounted, setMounted] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
+  const productRef = useMemo(() => !db ? null : doc(db, 'products', id as string), [db, id]);
+  const { data: product, loading } = useDoc<any>(productRef);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Demo product (will be fetched via useDoc in real scenario)
-  const product = {
-    id,
-    nameAr: 'معوز ملكي فاخر - نقشة خاصة',
-    nameEn: 'Premium Royal Maawiz - Special Pattern',
-    descriptionAr: 'هذا المعوز الملكي من أجود أنواع الخيوط القطنية، حياكة يدوية متقنة تعكس التراث اليمني الأصيل من مديرية الروضة. يتميز بنقوش فريدة وألوان ثابتة تدوم طويلاً، ويعتبر قطعة فنية تعبر عن الهوية اليمنية العريقة.',
-    descriptionEn: 'This Royal Maawiz is made from the finest cotton threads, expertly hand-woven reflecting authentic Yemeni heritage from Al-Rawdah district. It features unique patterns and long-lasting fast colors, serving as a masterpiece of ancient Yemeni identity.',
-    price: 15000,
-    categoryAr: 'ملكي',
-    categoryEn: 'Royal',
-    image: 'https://picsum.photos/seed/p1/800/1000',
-    status: 'available',
-    isNew: true,
-    sku: 'RW-001'
-  };
+  useEffect(() => {
+    if (product?.image) {
+      setSelectedImage(product.image);
+    }
+  }, [product]);
 
   const handleWhatsAppOrder = () => {
-    const message = `السلام عليكم، أرغب في طلب المنتج: ${lang === 'ar' ? product.nameAr : product.nameEn} (كود: ${product.sku})\nالكمية: ${quantity}`;
+    if (!product) return;
+    const message = `السلام عليكم، أرغب في طلب المنتج: ${lang === 'ar' ? product.nameAr : (product.nameEn || product.nameAr)} (كود: ${product.sku})\nالكمية: ${quantity}`;
     const encoded = encodeURIComponent(message);
     window.open(`https://wa.me/967771687041?text=${encoded}`, '_blank');
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-10 h-10 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!product) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center space-y-4">
+        <h1 className="text-2xl font-black">{lang === 'ar' ? 'المنتج غير موجود' : 'Product Not Found'}</h1>
+        <Button asChild><Link href="/products">{lang === 'ar' ? 'العودة للمنتجات' : 'Back to Products'}</Link></Button>
+      </div>
+    );
+  }
+
   const formattedPrice = mounted 
     ? product.price.toLocaleString('en-US') 
     : product.price.toString();
+
+  // Prepare images array
+  const allImages = [product.image, ...(product.gallery || [])].filter(Boolean);
 
   return (
     <div className="py-8 md:py-16 bg-background min-h-screen">
@@ -80,12 +98,12 @@ export default function ProductDetailsPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 md:gap-16">
           {/* Gallery Section */}
-          <div className="lg:col-span-7 space-y-4">
-            <div className="aspect-[4/5] md:aspect-square rounded-2xl md:rounded-3xl overflow-hidden border bg-muted/20 relative group">
+          <div className="lg:col-span-7 space-y-6">
+            <div className="aspect-[4/5] md:aspect-square rounded-2xl md:rounded-3xl overflow-hidden border bg-muted/20 relative group shadow-2xl">
               <img 
-                src={product.image} 
+                src={selectedImage || product.image} 
                 alt={product.nameAr} 
-                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
+                className="w-full h-full object-cover transition-transform duration-700" 
               />
               {product.isNew && (
                 <Badge className="absolute top-4 right-4 md:top-6 md:right-6 bg-primary px-3 py-1 text-xs md:text-sm font-bold shadow-lg">
@@ -93,32 +111,45 @@ export default function ProductDetailsPage() {
                 </Badge>
               )}
             </div>
-            {/* Thumbnail Placeholder for future extension */}
-            <div className="grid grid-cols-4 gap-2 md:gap-4">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="aspect-square rounded-lg md:rounded-xl overflow-hidden border cursor-pointer hover:border-primary transition-colors">
-                  <img src={`${product.image}?v=${i}`} alt="thumb" className="w-full h-full object-cover opacity-60 hover:opacity-100" />
-                </div>
-              ))}
-            </div>
+            
+            {/* Gallery Thumbnails */}
+            {allImages.length > 1 && (
+              <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
+                {allImages.map((img, i) => (
+                  <div 
+                    key={i} 
+                    onClick={() => setSelectedImage(img)}
+                    className={cn(
+                      "aspect-square w-20 md:w-24 rounded-xl overflow-hidden border-2 cursor-pointer shrink-0 transition-all",
+                      selectedImage === img ? "border-primary shadow-lg scale-105" : "border-transparent opacity-60 hover:opacity-100"
+                    )}
+                  >
+                    <img src={img} alt={`thumb-${i}`} className="w-full h-full object-cover" />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Info Section */}
           <div className="lg:col-span-5 space-y-6 md:space-y-8">
             <div className="space-y-3 md:space-y-4">
-              <div className="inline-flex items-center gap-2 text-primary font-black text-[10px] md:text-xs uppercase tracking-widest bg-primary/5 px-3 py-1 rounded-full">
-                {lang === 'ar' ? product.categoryAr : product.categoryEn}
+              <div className="inline-flex items-center gap-2 text-primary font-black text-[10px] md:text-xs uppercase tracking-widest bg-primary/5 px-3 py-1 rounded-full border border-primary/10">
+                {product.category}
               </div>
               <h1 className="text-2xl md:text-4xl font-black leading-tight text-foreground">
-                {lang === 'ar' ? product.nameAr : product.nameEn}
+                {product.nameAr}
               </h1>
               <div className="flex items-center gap-4">
                 <div className="text-2xl md:text-4xl font-black text-primary tabular-nums">
                   {formattedPrice}
                   <span className="text-sm md:text-base font-bold opacity-70 ms-2">{lang === 'ar' ? 'ريال يمني' : 'YER'}</span>
                 </div>
-                <Badge variant="outline" className="border-primary/20 text-primary bg-primary/5 font-bold">
-                  {lang === 'ar' ? 'متوفر بالمخزن' : 'In Stock'}
+                <Badge variant="outline" className={cn(
+                  "font-bold",
+                  product.status === 'available' ? "border-emerald-200 text-emerald-700 bg-emerald-50" : "border-amber-200 text-amber-700 bg-amber-50"
+                )}>
+                  {product.status === 'available' ? (lang === 'ar' ? 'متوفر بالمخزن' : 'In Stock') : (lang === 'ar' ? 'كمية محدودة' : 'Limited')}
                 </Badge>
               </div>
               <div className="text-xs md:text-sm text-muted-foreground font-bold">
@@ -127,13 +158,13 @@ export default function ProductDetailsPage() {
             </div>
 
             <div className="prose prose-sm md:prose-base text-muted-foreground leading-relaxed font-medium">
-              <p>{lang === 'ar' ? product.descriptionAr : product.descriptionEn}</p>
+              <p>{product.descriptionAr}</p>
             </div>
 
             <div className="space-y-4 pt-6 border-t border-border/50">
               <div className="flex flex-col sm:flex-row items-center gap-4">
                 {/* Quantity Selector */}
-                <div className="flex items-center border border-input rounded-xl bg-muted/10 h-12 md:h-14 w-full sm:w-auto">
+                <div className="flex items-center border border-input rounded-xl bg-muted/10 h-12 md:h-14 w-full sm:w-auto overflow-hidden">
                   <Button 
                     variant="ghost" 
                     className="h-full px-4 rounded-none hover:bg-primary/5 transition-colors" 
@@ -154,7 +185,7 @@ export default function ProductDetailsPage() {
                 {/* Add to Cart */}
                 <Button 
                   className="w-full sm:flex-grow h-12 md:h-14 text-base md:text-lg font-bold gap-3 shadow-lg shadow-primary/20 hover:scale-[1.02] transition-transform" 
-                  onClick={() => addToCart({ ...product, quantity })}
+                  onClick={() => addToCart({ ...product, quantity, image: product.image })}
                 >
                   <ShoppingCart className="h-5 w-5" />
                   {t.products.addToCart}
@@ -172,7 +203,7 @@ export default function ProductDetailsPage() {
               </Button>
             </div>
 
-            {/* Trust Badges - Improved Layout */}
+            {/* Trust Badges */}
             <div className="grid grid-cols-3 gap-2 md:gap-4 pt-6 md:pt-8 border-t border-border/50">
               <div className="p-3 md:p-4 rounded-2xl bg-muted/20 text-center space-y-2 border border-border/50 group hover:bg-background transition-colors">
                 <div className="mx-auto w-10 h-10 md:w-12 md:h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all">
@@ -199,8 +230,8 @@ export default function ProductDetailsPage() {
               <h4 className="text-xs md:text-sm font-black text-primary">{lang === 'ar' ? 'ملاحظات الشراء:' : 'Purchase Notes:'}</h4>
               <p className="text-[10px] md:text-xs text-muted-foreground font-medium leading-relaxed">
                 {lang === 'ar' 
-                  ? 'جميع المعاوز تحاك يدوياً، لذا قد تختلف النقشة بشكل طفيف جداً عن الصورة، مما يضمن تميز كل قطعة.' 
-                  : 'All Maawiz are hand-woven, so the pattern may vary very slightly from the image, ensuring each piece is unique.'}
+                  ? 'جميع المعاوز تحاك يدوياً بنمط تراثي شبواني أصيل. الصور قد تختلف قليلاً بسبب طبيعة الحياكة اليدوية لكل قطعة.' 
+                  : 'All Maawiz are hand-woven in authentic Shabwani heritage style. Images may vary slightly due to the unique handmade nature of each piece.'}
               </p>
             </div>
           </div>

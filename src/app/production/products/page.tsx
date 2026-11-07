@@ -29,8 +29,8 @@ import {
   UploadCloud,
   Loader2,
   Image as ImageIcon,
-  ArrowUp01,
-  ArrowDown10
+  X,
+  PlusCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -81,6 +81,7 @@ export default function ProductsManagementPage() {
   const { lang, dir } = useTranslation();
   const db = useFirestore();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
   const [search, setSearch] = useState('');
   
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
@@ -100,10 +101,11 @@ export default function ProductsManagementPage() {
     nameEn: '',
     descriptionAr: '',
     descriptionEn: '',
-    category: 'ملكي',
+    category: 'شبواني',
     price: 0,
     status: 'available',
     image: '',
+    gallery: [] as string[]
   });
 
   const productsQuery = useMemo(() => {
@@ -114,7 +116,7 @@ export default function ProductsManagementPage() {
   const { data: products, loading } = useCollection<any>(productsQuery);
 
   const categories = [
-    "ملكي", "حليسي", "بيضاني", "حديدي", "شحري", "سلاطيني", 
+    "شبواني", "ملكي", "حليسي", "بيضاني", "حديدي", "شحري", "سلاطيني", 
     "اللحجي", "الحضرمي", "الوصابي", "التهامي", "العدني", 
     "الصنعاني", "السادة", "الشموخ", "أخرى"
   ];
@@ -171,41 +173,66 @@ export default function ProductsManagementPage() {
       nameEn: '', 
       descriptionAr: '',
       descriptionEn: '',
-      category: 'ملكي', 
+      category: 'شبواني', 
       price: 0, 
       status: 'available',
-      image: '' 
+      image: '',
+      gallery: []
     });
   }, []);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const compressImage = (file: File, maxSize: number = 400): Promise<string> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          if (width > height) {
+            if (width > maxSize) { height *= maxSize / width; width = maxSize; }
+          } else {
+            if (height > maxSize) { width *= maxSize / height; height = maxSize; }
+          }
+          canvas.width = width; canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', 0.7));
+        };
+      };
+    });
+  };
+
+  const handleMainImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     setIsCompressing(true);
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = (event) => {
-      const img = new Image();
-      img.src = event.target?.result as string;
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const MAX_SIZE = 400;
-        let width = img.width;
-        let height = img.height;
-        if (width > height) {
-          if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; }
-        } else {
-          if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; }
-        }
-        canvas.width = width; canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx?.drawImage(img, 0, 0, width, height);
-        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
-        setFormData(prev => ({ ...prev, image: compressedBase64 }));
-        setIsCompressing(false);
-      };
-    };
+    const compressed = await compressImage(file);
+    setFormData(prev => ({ ...prev, image: compressed }));
+    setIsCompressing(false);
+  };
+
+  const handleGalleryUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    
+    setIsCompressing(true);
+    const newImages = await Promise.all(files.map(file => compressImage(file, 300)));
+    setFormData(prev => ({ 
+      ...prev, 
+      gallery: [...(prev.gallery || []), ...newImages].slice(0, 10) // Limit to 10 images
+    }));
+    setIsCompressing(false);
+  };
+
+  const removeGalleryImage = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      gallery: prev.gallery.filter((_, i) => i !== index)
+    }));
   };
 
   const handleSaveProduct = (e: React.FormEvent) => {
@@ -259,10 +286,11 @@ export default function ProductsManagementPage() {
       nameEn: prod.nameEn || '',
       descriptionAr: prod.descriptionAr || '',
       descriptionEn: prod.descriptionEn || '',
-      category: prod.category || 'ملكي',
+      category: prod.category || 'شبواني',
       price: prod.price || 0,
       status: prod.status || 'available',
       image: prod.image || '',
+      gallery: prod.gallery || []
     });
     setIsAddDialogOpen(true);
   };
@@ -368,7 +396,7 @@ export default function ProductsManagementPage() {
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => toggleSort('price')} className="flex items-center justify-between text-xs font-bold cursor-pointer">
                   {lang === 'ar' ? 'السعر' : 'Price'}
-                  {sortBy === 'price' && (sortOrder === 'asc' ? <ArrowUp01 className="w-3.5 h-3.5 text-emerald-600" /> : <ArrowDown10 className="w-3.5 h-3.5 text-emerald-600" />)}
+                  {sortBy === 'price' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
                 </DropdownMenuItem>
 
                 <DropdownMenuSeparator />
@@ -476,7 +504,7 @@ export default function ProductsManagementPage() {
 
       {/* ADD/EDIT DIALOG */}
       <Dialog open={isAddDialogOpen} onOpenChange={(open) => !open && resetForm()}>
-        <DialogContent className="sm:max-w-[600px] rounded-lg p-0 overflow-hidden border-none shadow-2xl">
+        <DialogContent className="sm:max-w-[700px] rounded-lg p-0 overflow-hidden border-none shadow-2xl">
           <div className="premium-gradient p-6 text-white">
             <DialogHeader className="text-right rtl:text-right ltr:text-left">
               <DialogTitle className="text-xl font-black flex items-center gap-3">
@@ -487,24 +515,61 @@ export default function ProductsManagementPage() {
             </DialogHeader>
           </div>
 
-          <form onSubmit={handleSaveProduct} className="p-6 space-y-4 bg-white max-h-[70vh] overflow-y-auto no-scrollbar">
-            <div className="flex flex-col items-center gap-3 pb-2 border-b border-slate-100">
-              <div 
-                onClick={() => !isCompressing && fileInputRef.current?.click()}
-                className="relative group cursor-pointer"
-              >
-                <Avatar className="h-24 w-24 rounded-2xl border-4 border-slate-100 shadow-md bg-slate-50 overflow-hidden">
-                  <AvatarImage src={formData.image || undefined} className="object-cover" />
-                  <AvatarFallback className="bg-slate-50 text-slate-300">
-                    {isCompressing ? <Loader2 className="w-8 h-8 animate-spin text-emerald-500" /> : <ImageIcon className="w-12 h-12" />}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="absolute inset-0 bg-black/40 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  <UploadCloud className="w-6 h-6 text-white" />
+          <form onSubmit={handleSaveProduct} className="p-6 space-y-6 bg-white max-h-[85vh] overflow-y-auto no-scrollbar">
+            
+            {/* IMAGE SECTION */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+              {/* Main Image */}
+              <div className="space-y-3">
+                <Label className="text-[10px] font-black uppercase text-slate-400 block text-center">الصورة الرئيسية</Label>
+                <div 
+                  onClick={() => !isCompressing && fileInputRef.current?.click()}
+                  className="relative group cursor-pointer aspect-square rounded-2xl border-4 border-slate-100 shadow-md bg-slate-50 overflow-hidden flex items-center justify-center"
+                >
+                  <AvatarImage src={formData.image || undefined} className="object-cover w-full h-full" />
+                  {!formData.image && (
+                    <div className="text-center text-slate-300">
+                      {isCompressing ? <Loader2 className="w-12 h-12 animate-spin text-emerald-500 mx-auto" /> : <ImageIcon className="w-16 h-16 mx-auto" />}
+                      <p className="text-[10px] font-bold mt-2">انقر للرفع</p>
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <UploadCloud className="w-8 h-8 text-white" />
+                  </div>
                 </div>
+                <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleMainImageUpload} />
               </div>
-              <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
-              <Label className="text-[10px] font-black uppercase text-slate-400">صورة المنتج النهائية</Label>
+
+              {/* Gallery Images */}
+              <div className="space-y-3">
+                <Label className="text-[10px] font-black uppercase text-slate-400 block text-center">صور التشكيلات والألوان (الكتالوج)</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {formData.gallery.map((img, idx) => (
+                    <div key={idx} className="relative aspect-square rounded-xl border border-slate-200 overflow-hidden group/item">
+                      <img src={img} className="w-full h-full object-cover" />
+                      <button 
+                        type="button"
+                        onClick={() => removeGalleryImage(idx)}
+                        className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover/item:opacity-100 transition-opacity"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                  {formData.gallery.length < 10 && (
+                    <button 
+                      type="button"
+                      onClick={() => !isCompressing && galleryInputRef.current?.click()}
+                      className="aspect-square rounded-xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-300 hover:border-emerald-300 hover:text-emerald-400 transition-all"
+                    >
+                      <PlusCircle className="w-8 h-8" />
+                      <span className="text-[8px] font-black mt-1 uppercase">إضافة</span>
+                    </button>
+                  )}
+                </div>
+                <input type="file" ref={galleryInputRef} className="hidden" accept="image/*" multiple onChange={handleGalleryUpload} />
+                <p className="text-[8px] text-slate-400 font-bold text-center mt-2 italic">* يمكنك إضافة حتى 10 صور لاستعراض الألوان والنقشات المختلفة.</p>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -559,7 +624,7 @@ export default function ProductsManagementPage() {
               />
             </div>
 
-            <div className="flex gap-3 pt-2">
+            <div className="flex gap-3 pt-4 border-t border-slate-100">
               <Button type="submit" disabled={isSubmitting || isCompressing} className="flex-1 h-11 premium-gradient hover:opacity-90 text-white rounded-md font-black text-sm border-none shadow-md">
                 {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : <Save className="w-4 h-4 me-2" />}
                 {lang === 'ar' ? (isSubmitting ? 'جاري الحفظ...' : 'حفظ المنتج') : 'Commit Product'}

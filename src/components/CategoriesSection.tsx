@@ -9,12 +9,12 @@ export function CategoriesSection() {
   const { lang, dir } = useTranslation();
 
   const categories = [
+    { nameAr: 'المعوز الشبواني', nameEn: 'Shabwani Maawiz', image: 'shabwa-textile' },
     { nameAr: 'المعاوز الملكي', nameEn: 'Royal Maawiz', image: 'textile-1' },
     { nameAr: 'المعاوز الحليسي', nameEn: 'Halisi Maawiz', image: 'textile-2' },
     { nameAr: 'المعاوز الشحري', nameEn: 'Shihri Maawiz', image: 'textile-3' },
     { nameAr: 'المعاوز اللحجي', nameEn: 'Lahji Maawiz', image: 'textile-4' },
-    { nameAr: 'المعاوز الحضرمي', nameEn: 'Hadhrami Maawiz', image: 'textile-5' },
-    { nameAr: 'المعاوز السادة', nameEn: 'Plain Maawiz', image: 'textile-6' }
+    { nameAr: 'المعاوز الحضرمي', nameEn: 'Hadhrami Maawiz', image: 'textile-5' }
   ];
 
   return (

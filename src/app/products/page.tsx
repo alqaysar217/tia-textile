@@ -27,7 +27,7 @@ export default function ProductsPage() {
   const { data: firestoreProducts, loading } = useCollection<any>(productsQuery);
 
   const categories = [
-    "ملكي", "حليسي", "بيضاني", "حديدي", "شحري", "سلاطيني", 
+    "شبواني", "ملكي", "حليسي", "بيضاني", "حديدي", "شحري", "سلاطيني", 
     "اللحجي", "الحضرمي", "الوصابي", "التهامي", "العدني", 
     "الصنعاني", "السادة", "الشموخ", "أخرى"
   ];
