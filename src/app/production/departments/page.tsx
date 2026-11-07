@@ -63,7 +63,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, addDoc, updateDoc, doc, serverTimestamp, query, where, orderBy } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc, serverTimestamp, query, where } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { toast } from '@/hooks/use-toast';
@@ -87,7 +87,6 @@ export default function DepartmentsPage() {
 
   const departmentsQuery = useMemo(() => {
     if (!db) return null;
-    // تم تبسيط الاستعلام لتجنب مشاكل الفهارس (Indexes) المفقودة حالياً
     return query(
       collection(db, 'departments'), 
       where('status', '!=', 'deleted')
@@ -101,10 +100,16 @@ export default function DepartmentsPage() {
     return rawData.filter(d => 
       (d.nameAr?.includes(search) || 
       d.nameEn?.toLowerCase().includes(search.toLowerCase()) || 
-      d.code?.includes(search)) &&
-      d.status !== 'deleted'
+      d.code?.includes(search))
     );
   }, [departments, search]);
+
+  const resetForm = () => {
+    setIsAddDialogOpen(false);
+    setEditingDept(null);
+    setIsSubmitting(false);
+    setFormData({ code: '', nameAr: '', nameEn: '', descAr: '', status: 'active' });
+  };
 
   const handleSaveDepartment = (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,42 +125,31 @@ export default function DepartmentsPage() {
     if (editingDept) {
       const docRef = doc(db, 'departments', editingDept.id);
       updateDoc(docRef, deptData)
-        .then(() => {
-          toast({ title: lang === 'ar' ? "تم التحديث" : "Updated" });
-          resetForm();
-        })
-        .catch(async (err) => {
+        .catch(async () => {
           errorEmitter.emit('permission-error', new FirestorePermissionError({
             path: 'departments',
             operation: 'update',
             requestResourceData: deptData
           }));
-        })
-        .finally(() => setIsSubmitting(false));
+        });
+      // إغلاق فوري للواجهة لضمان عدم التجمد
+      toast({ title: lang === 'ar' ? "تم تحديث البيانات" : "Data Updated" });
+      resetForm();
     } else {
       const colRef = collection(db, 'departments');
       const newDoc = { ...deptData, createdAt: serverTimestamp() };
       addDoc(colRef, newDoc)
-        .then(() => {
-          toast({ title: lang === 'ar' ? "تمت الإضافة" : "Added" });
-          resetForm();
-        })
-        .catch(async (err) => {
+        .catch(async () => {
           errorEmitter.emit('permission-error', new FirestorePermissionError({
             path: 'departments',
             operation: 'create',
             requestResourceData: newDoc
           }));
-        })
-        .finally(() => setIsSubmitting(false));
+        });
+      // إضافة فورية في الواجهة
+      toast({ title: lang === 'ar' ? "تمت إضافة القسم" : "Department Added" });
+      resetForm();
     }
-  };
-
-  const resetForm = () => {
-    setIsAddDialogOpen(false);
-    setEditingDept(null);
-    setIsSubmitting(false);
-    setFormData({ code: '', nameAr: '', nameEn: '', descAr: '', status: 'active' });
   };
 
   const handleStatusToggle = (dept: any) => {
@@ -174,24 +168,24 @@ export default function DepartmentsPage() {
 
   const handleArchiveDepartment = () => {
     if (!db || !deletingDept) return;
+    const deptToArchive = deletingDept;
+    setDeletingDept(null); // إغلاق فوري
 
-    if ((deletingDept.workerCount || 0) > 0) {
+    if ((deptToArchive.workerCount || 0) > 0) {
       toast({
         variant: "destructive",
         title: lang === 'ar' ? "إجراء غير مسموح" : "Action Prohibited",
         description: lang === 'ar' ? "لا يمكن أرشفة قسم يحتوي على عمال." : "Cannot archive department with workers.",
       });
-      setDeletingDept(null);
       return;
     }
 
-    const docRef = doc(db, 'departments', deletingDept.id);
+    const docRef = doc(db, 'departments', deptToArchive.id);
     updateDoc(docRef, {
       status: 'deleted',
       deletedAt: serverTimestamp(),
     })
     .then(() => {
-      setDeletingDept(null);
       toast({ title: lang === 'ar' ? "تم النقل للأرشيف" : "Archived" });
     })
     .catch(async () => {
@@ -237,8 +231,8 @@ export default function DepartmentsPage() {
         </div>
 
         <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
-          if (!open && !isSubmitting) resetForm();
-          else if (open) setIsAddDialogOpen(true);
+          if (!open) resetForm();
+          else setIsAddDialogOpen(true);
         }}>
           <DialogTrigger asChild>
             <Button className="h-12 px-8 bg-primary hover:bg-primary/95 text-white gap-3 rounded-xl shadow-xl shadow-primary/10 font-black transition-all active:scale-95">
@@ -277,7 +271,6 @@ export default function DepartmentsPage() {
                     placeholder="DEPT-XXX" 
                     className="h-12 rounded-xl border-gray-100 bg-gray-50/50 font-bold focus:bg-white focus:ring-primary/5 focus:border-primary/30 transition-all ps-4" 
                     required 
-                    disabled={isSubmitting}
                   />
                 </div>
                 <div className="space-y-2">
@@ -289,7 +282,6 @@ export default function DepartmentsPage() {
                     value={formData.status}
                     onChange={(e) => setFormData({...formData, status: e.target.value})}
                     className="w-full h-12 px-4 bg-emerald-50/50 border border-emerald-100/50 rounded-xl text-[11px] font-black text-emerald-700 focus:outline-none"
-                    disabled={isSubmitting}
                   >
                     <option value="active">{lang === 'ar' ? 'نشط تشغيلياً' : 'Active'}</option>
                     <option value="inactive">{lang === 'ar' ? 'متوقف مؤقتاً' : 'Inactive'}</option>
@@ -308,7 +300,6 @@ export default function DepartmentsPage() {
                   placeholder={lang === 'ar' ? 'مثال: قسم التطريز' : 'Arabic Name'} 
                   className="h-12 rounded-xl border-gray-100 bg-gray-50/50 font-bold focus:bg-white focus:ring-primary/5 focus:border-primary/30 transition-all" 
                   required 
-                  disabled={isSubmitting}
                 />
               </div>
 
@@ -323,7 +314,6 @@ export default function DepartmentsPage() {
                   placeholder="English Name" 
                   className="h-12 rounded-xl border-gray-100 bg-gray-50/50 font-bold focus:bg-white focus:ring-primary/5 focus:border-primary/30 transition-all" 
                   required 
-                  disabled={isSubmitting}
                 />
               </div>
 
@@ -337,26 +327,21 @@ export default function DepartmentsPage() {
                   onChange={(e) => setFormData({...formData, descAr: e.target.value})}
                   placeholder={lang === 'ar' ? 'شرح للمهام التي تتم في هذا القسم...' : 'Operations details...'} 
                   className="rounded-xl border-gray-100 bg-gray-50/50 resize-none h-24 font-medium focus:bg-white focus:ring-primary/5 focus:border-primary/30 transition-all p-4 text-sm" 
-                  disabled={isSubmitting}
                 />
               </div>
 
               <div className="pt-4 flex gap-4">
                 <Button 
                   type="submit" 
-                  disabled={isSubmitting}
                   className="flex-1 h-14 bg-gradient-to-r from-primary to-[#0a7a44] hover:opacity-90 rounded-xl font-black gap-3 shadow-lg shadow-primary/10 text-base"
                 >
-                  {isSubmitting ? (
-                    <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                  ) : <Save className="w-5 h-5" />}
+                  <Save className="w-5 h-5" />
                   {lang === 'ar' ? 'حفظ البيانات' : 'Save Changes'}
                 </Button>
                 <Button 
                   type="button" 
                   variant="ghost" 
                   onClick={resetForm} 
-                  disabled={isSubmitting}
                   className="h-14 px-8 rounded-xl font-black text-gray-400 hover:text-gray-600"
                 >
                   {lang === 'ar' ? 'إلغاء' : 'Cancel'}
