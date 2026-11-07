@@ -364,7 +364,7 @@ export default function MaterialIssuePage() {
 
           <form onSubmit={handleSaveVoucher} className="p-6 space-y-6 bg-white max-h-[85vh] overflow-y-auto no-scrollbar">
             
-            {/* ROW 1: Date and Worker Selection (Custom Dropdown to avoid Portal issues) */}
+            {/* ROW 1: Date and Worker Selection */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
@@ -403,7 +403,7 @@ export default function MaterialIssuePage() {
                   <ChevronDown className={cn("h-4 w-4 opacity-50 transition-transform", showWorkerDropdown && "rotate-180")} />
                 </button>
 
-                {/* CUSTOM INTERNAL DROPDOWN - Avoids Dialog closure issues */}
+                {/* CUSTOM INTERNAL DROPDOWN */}
                 {showWorkerDropdown && (
                   <div className={cn(
                     "absolute top-full left-0 right-0 z-50 mt-1 bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200",
@@ -432,7 +432,9 @@ export default function MaterialIssuePage() {
                             key={w.id}
                             type="button"
                             onClick={() => {
+                              // MODIFIED: Auto-set department when worker is selected
                               setFormData({...formData, workerId: w.id});
+                              setSelectedDeptId(w.departmentId); 
                               setShowWorkerDropdown(false);
                             }}
                             className={cn(
