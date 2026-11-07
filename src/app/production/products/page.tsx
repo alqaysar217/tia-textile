@@ -526,13 +526,15 @@ export default function ProductsManagementPage() {
                   onClick={() => !isCompressing && fileInputRef.current?.click()}
                   className="relative group cursor-pointer aspect-square rounded-2xl border-4 border-slate-100 shadow-md bg-slate-50 overflow-hidden flex items-center justify-center"
                 >
-                  <AvatarImage src={formData.image || undefined} className="object-cover w-full h-full" />
-                  {!formData.image && (
-                    <div className="text-center text-slate-300">
-                      {isCompressing ? <Loader2 className="w-12 h-12 animate-spin text-emerald-500 mx-auto" /> : <ImageIcon className="w-16 h-16 mx-auto" />}
-                      <p className="text-[10px] font-bold mt-2">انقر للرفع</p>
-                    </div>
-                  )}
+                  <Avatar className="w-full h-full rounded-none">
+                    <AvatarImage src={formData.image || undefined} className="object-cover w-full h-full" />
+                    {!formData.image && (
+                      <AvatarFallback className="bg-slate-50 text-slate-300 w-full h-full flex flex-col items-center justify-center">
+                        {isCompressing ? <Loader2 className="w-12 h-12 animate-spin text-emerald-500" /> : <ImageIcon className="w-16 h-16" />}
+                        <p className="text-[10px] font-bold mt-2">انقر للرفع</p>
+                      </AvatarFallback>
+                    )}
+                  </Avatar>
                   <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                     <UploadCloud className="w-8 h-8 text-white" />
                   </div>
@@ -546,7 +548,10 @@ export default function ProductsManagementPage() {
                 <div className="grid grid-cols-3 gap-2">
                   {formData.gallery.map((img, idx) => (
                     <div key={idx} className="relative aspect-square rounded-xl border border-slate-200 overflow-hidden group/item">
-                      <img src={img} className="w-full h-full object-cover" />
+                      <Avatar className="w-full h-full rounded-none">
+                        <AvatarImage src={img} className="w-full h-full object-cover" />
+                        <AvatarFallback className="w-full h-full bg-slate-100" />
+                      </Avatar>
                       <button 
                         type="button"
                         onClick={() => removeGalleryImage(idx)}
