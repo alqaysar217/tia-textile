@@ -22,7 +22,8 @@ import {
   Calendar,
   Save,
   Loader2,
-  Workflow
+  Workflow,
+  ShoppingBag
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,6 +41,7 @@ import { useFirestore, useCollection } from '@/firebase';
 import { collection, addDoc, serverTimestamp, query, where } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import Link from 'next/link';
 
 export default function ProductionOrdersPage() {
   const { lang, dir } = useTranslation();
@@ -61,7 +63,7 @@ export default function ProductionOrdersPage() {
   const ordersQuery = useMemo(() => !db ? null : collection(db, 'productionOrders'), [db]);
   const deptsQuery = useMemo(() => !db ? null : collection(db, 'departments'), [db]);
 
-  const { data: products } = useCollection<any>(productsQuery);
+  const { data: products, loading: productsLoading } = useCollection<any>(productsQuery);
   const { data: orders, loading: ordersLoading } = useCollection<any>(ordersQuery);
   const { data: departments } = useCollection<any>(deptsQuery);
 
@@ -304,6 +306,23 @@ export default function ProductionOrdersPage() {
                   <option key={p.id} value={p.id}>{p.nameAr}</option>
                 ))}
               </select>
+              
+              {products?.length === 0 && !productsLoading && (
+                <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl flex flex-col gap-2 mt-2">
+                  <div className="flex items-center gap-2 text-amber-700">
+                    <ShoppingBag className="w-4 h-4" />
+                    <p className="text-[10px] font-black uppercase">الكتالوج فارغ حالياً</p>
+                  </div>
+                  <p className="text-[10px] text-amber-600 font-bold leading-relaxed">
+                    {lang === 'ar' 
+                      ? 'يجب إضافة أصناف المعاوز في "دليل المنتجات" أولاً لكي تظهر هنا.' 
+                      : 'You must add product items in "Product Catalog" first to see them here.'}
+                  </p>
+                  <Button variant="link" className="text-amber-800 text-[10px] font-black p-0 h-auto w-fit" asChild>
+                    <Link href="/production/products">{lang === 'ar' ? 'انتقل لإضافة منتجات' : 'Go to Product Catalog'}</Link>
+                  </Button>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -342,7 +361,7 @@ export default function ProductionOrdersPage() {
             </div>
 
             <div className="flex gap-3 pt-2">
-              <Button type="submit" disabled={isSubmitting} className="flex-1 h-12 premium-gradient hover:opacity-90 text-white rounded-xl font-black text-sm border-none shadow-md">
+              <Button type="submit" disabled={isSubmitting || products?.length === 0} className="flex-1 h-12 premium-gradient hover:opacity-90 text-white rounded-xl font-black text-sm border-none shadow-md">
                 {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : <Save className="w-4 h-4 me-2" />}
                 {lang === 'ar' ? 'حفظ والبدء' : 'Create & Start'}
               </Button>
