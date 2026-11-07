@@ -134,6 +134,7 @@ export default function TrashPage() {
   return (
     <div className="flex flex-col h-full bg-[#F8F9FA] overflow-hidden">
       
+      {/* 1. Header Hub */}
       <div className="flex-none px-4 md:px-8 pt-6 pb-4 bg-white border-b border-gray-200/60 shadow-sm z-30">
         <div className="flex items-center gap-2 text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-4">
           <span>{lang === 'ar' ? 'الإدارة' : 'Management'}</span>
@@ -147,9 +148,6 @@ export default function TrashPage() {
               <div className="w-1.5 h-8 bg-amber-500 rounded-full" />
               {lang === 'ar' ? 'الأرشيف وسلة المهملات' : 'Trash & Smart Archive'}
             </h1>
-            <p className="text-sm text-gray-400 font-medium ps-4">
-              {lang === 'ar' ? 'إدارة العناصر المحذوفة مؤقتاً ومراجعة الأثر المالي قبل الاستعادة' : 'Manage temporarily deleted items and review financial impact'}
-            </p>
           </div>
         </div>
 
@@ -190,6 +188,7 @@ export default function TrashPage() {
         </div>
       </div>
 
+      {/* 2. Data Scroll Area */}
       <div className="flex-1 min-h-0 px-4 md:px-8 py-6 overflow-hidden flex flex-col">
         <div className="flex-1 bg-white border border-gray-200/60 rounded-xl shadow-sm overflow-hidden flex flex-col">
           <div className="flex-1 overflow-auto relative">
@@ -199,7 +198,7 @@ export default function TrashPage() {
                   <TableHead className="h-12 font-black text-[10px] uppercase tracking-wider text-gray-400 px-6 text-right whitespace-nowrap">{lang === 'ar' ? 'العنصر' : 'Item'}</TableHead>
                   <TableHead className="h-12 font-black text-[10px] uppercase tracking-wider text-gray-400 px-6 text-right whitespace-nowrap">{lang === 'ar' ? 'تاريخ الحذف' : 'Deleted Date'}</TableHead>
                   <TableHead className="h-12 font-black text-[10px] uppercase tracking-wider text-gray-400 px-6 text-center whitespace-nowrap">{lang === 'ar' ? 'متبقي للحذف النهائي' : 'Days Remaining'}</TableHead>
-                  <TableHead className="h-12 w-[280px] bg-gray-50/95"></TableHead>
+                  <TableHead className="h-12 w-[280px] bg-gray-50/95 sticky right-0"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -231,7 +230,7 @@ export default function TrashPage() {
                           {days} {lang === 'ar' ? 'أيام' : 'Days'}
                         </div>
                       </TableCell>
-                      <TableCell className="px-6 py-5">
+                      <TableCell className="px-6 py-5 sticky right-0 bg-white group-hover:bg-gray-50/30">
                         <div className="flex items-center justify-end gap-2">
                           <Button onClick={() => setRestoringItemId(item.id)} variant="ghost" className="h-9 px-4 rounded-lg font-black text-[10px] gap-2 text-primary hover:bg-primary/5 transition-all">
                             <RotateCcw className="w-3.5 h-3.5" /> {lang === 'ar' ? 'استعادة' : 'Restore'}
@@ -246,20 +245,6 @@ export default function TrashPage() {
                 })}
               </TableBody>
             </Table>
-          </div>
-        </div>
-
-        <div className="flex-none mt-4 bg-blue-50 border border-blue-100 rounded-xl p-5 flex items-start gap-4">
-          <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-blue-600 shadow-sm shrink-0">
-            <Info className="w-6 h-6" />
-          </div>
-          <div className="space-y-1">
-            <p className="text-[11px] font-black text-blue-900 uppercase tracking-widest">{lang === 'ar' ? 'حول نظام الأرشفة' : 'About Archive System'}</p>
-            <p className="text-[11px] text-blue-700 font-medium leading-relaxed max-w-4xl">
-              {lang === 'ar' 
-                ? 'تعتمد الجمعية سياسة أرشفة صارمة. العناصر المحذوفة تظل قابلة للاستعادة لمدة 30 يوماً فقط. بعد هذه الفترة، يتم تطهير البيانات نهائياً لضمان كفاءة النظام والامتثال لقواعد حماية البيانات.' 
-                : 'The association follows a strict archival policy. Deleted items remain restorable for 30 days only. After this period, data is permanently purged.'}
-            </p>
           </div>
         </div>
       </div>
