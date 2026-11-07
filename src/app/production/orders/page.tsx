@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useCallback } from 'react';
@@ -29,7 +28,8 @@ import {
   Trash2,
   Lock,
   History,
-  Type
+  Type,
+  Tag
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,7 +61,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, addDoc, updateDoc, doc, serverTimestamp, deleteDoc } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
@@ -288,7 +288,6 @@ export default function ProductionOrdersPage() {
           const product = products?.find(p => p.id === order.productId);
           const stage = departments?.find(d => d.id === order.currentStageId);
           const progress = Math.round((order.completedQty / order.targetQty) * 100) || 0;
-          const hasStarted = order.completedQty > 0;
 
           return (
             <div key={order.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all overflow-hidden group">
@@ -550,7 +549,7 @@ export default function ProductionOrdersPage() {
                 </AlertDialogDescription>
               </div>
               <div className="bg-white p-6">
-                <Button onClick={() => setDeletingOrder(null)} className="w-full h-11 bg-slate-900 font-black rounded-md">
+                <Button onClick={() => setDeletingOrder(null)} className="w-full h-11 bg-slate-900 font-black rounded-md text-white">
                   {lang === 'ar' ? 'فهمت ذلك' : 'Got it'}
                 </Button>
               </div>
