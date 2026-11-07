@@ -76,7 +76,7 @@ export default function DepartmentsPage() {
   // UI States
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingDeptId, setEditingDeptId] = useState<string | null>(null);
-  const [deletingDept, setDeletingDept] = useState<any>(null);
+  const [deletingDeptId, setDeletingDeptId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [formData, setFormData] = useState({
@@ -129,10 +129,10 @@ export default function DepartmentsPage() {
       updatedAt: serverTimestamp(),
     };
 
-    // Release UI immediately
-    resetForm(); 
+    // RELEASE UI IMMEDIATELY to prevent freezing
+    resetForm();
 
-    // Background Execution
+    // Execute in next tick
     setTimeout(() => {
       if (isEdit && currentId) {
         const docRef = doc(db, 'departments', currentId);
@@ -174,12 +174,13 @@ export default function DepartmentsPage() {
   };
 
   const handleArchiveDepartment = () => {
-    if (!db || !deletingDept) return;
-    const deptToArchiveId = deletingDept.id;
-    const deptWorkerCount = deletingDept.workerCount || 0;
+    if (!db || !deletingDeptId) return;
     
-    if (deptWorkerCount > 0) {
-      setDeletingDept(null);
+    const deptToArchive = (departments || []).find(d => d.id === deletingDeptId);
+    if (!deptToArchive) return;
+
+    if ((deptToArchive.workerCount || 0) > 0) {
+      setDeletingDeptId(null);
       toast({
         variant: "destructive",
         title: lang === 'ar' ? "إجراء غير مسموح" : "Action Prohibited",
@@ -188,10 +189,12 @@ export default function DepartmentsPage() {
       return;
     }
 
-    setDeletingDept(null);
+    // Release UI
+    const targetId = deletingDeptId;
+    setDeletingDeptId(null);
 
     setTimeout(() => {
-      const docRef = doc(db, 'departments', deptToArchiveId);
+      const docRef = doc(db, 'departments', targetId);
       updateDoc(docRef, {
         status: 'deleted',
         deletedAt: serverTimestamp(),
@@ -219,16 +222,17 @@ export default function DepartmentsPage() {
 
   const activeCount = useMemo(() => (departments || []).filter(d => d.status === 'active').length, [departments]);
   const totalWorkers = useMemo(() => (departments || []).reduce((acc, curr) => acc + (curr.workerCount || 0), 0), [departments]);
+  const selectedDeletingDept = useMemo(() => (departments || []).find(d => d.id === deletingDeptId), [departments, deletingDeptId]);
 
   return (
     <div className="flex flex-col h-full bg-[#F8F9FA] overflow-hidden">
       
       {/* 
-          Top Static Hub: 
-          Contains Header Info, Stats, and Filters.
-          Always visible.
+          1. Static Hub: 
+          Fixed Header Info, Stats, and Filters.
+          Does not scroll.
       */}
-      <div className="px-4 md:px-8 pt-6 pb-4 bg-white border-b border-gray-200/60 shadow-sm z-30">
+      <div className="flex-none px-4 md:px-8 pt-6 pb-4 bg-white border-b border-gray-200/60 shadow-sm z-30">
         <div className="flex flex-col gap-6">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <div className="flex items-center gap-4 w-full md:w-auto">
@@ -392,7 +396,6 @@ export default function DepartmentsPage() {
           </div>
         </div>
 
-        {/* Filter Bar Inside Fixed Section */}
         <div className="mt-4 flex flex-wrap items-center justify-between gap-4 bg-gray-50 border border-gray-200/60 p-2 rounded-xl">
           <div className="flex items-center gap-4 flex-1">
             <div className="relative w-full max-w-md">
@@ -413,22 +416,22 @@ export default function DepartmentsPage() {
       </div>
 
       {/* 
-          Data Scroll Area: 
+          2. Data Scroll Area: 
           Only the table content scrolls.
-          Header is sticky within this container.
+          TableHeader is sticky to stay at the top of THIS container.
       */}
       <div className="flex-1 min-h-0 px-4 md:px-8 py-6 overflow-hidden flex flex-col">
         <div className="flex-1 bg-white border border-gray-200/60 rounded-xl shadow-sm overflow-hidden flex flex-col">
           <div className="flex-1 overflow-auto relative">
-            <Table className="text-right">
+            <Table className="text-right border-separate border-spacing-0">
               <TableHeader className="sticky top-0 z-20 bg-gray-50/95 backdrop-blur-md">
                 <TableRow className="hover:bg-gray-50/50 border-b border-gray-200/60">
-                  <TableHead className="h-12 font-black text-[10px] uppercase tracking-wider text-gray-400 px-6 text-right">{lang === 'ar' ? 'المعرف' : 'UID'}</TableHead>
-                  <TableHead className="h-12 font-black text-[10px] uppercase tracking-wider text-gray-400 px-6 text-right">{lang === 'ar' ? 'القسم' : 'Dept Name'}</TableHead>
-                  <TableHead className="h-12 font-black text-[10px] uppercase tracking-wider text-gray-400 px-6 text-right">{lang === 'ar' ? 'وصف المسار' : 'Process'}</TableHead>
-                  <TableHead className="h-12 font-black text-[10px] uppercase tracking-wider text-gray-400 px-6 text-center">{lang === 'ar' ? 'القوى العاملة' : 'Workforce'}</TableHead>
-                  <TableHead className="h-12 font-black text-[10px] uppercase tracking-wider text-gray-400 px-6 text-center">{lang === 'ar' ? 'الحالة' : 'Status'}</TableHead>
-                  <TableHead className="h-12 w-[80px]"></TableHead>
+                  <TableHead className="h-12 font-black text-[10px] uppercase tracking-wider text-gray-400 px-6 text-right whitespace-nowrap">{lang === 'ar' ? 'المعرف' : 'UID'}</TableHead>
+                  <TableHead className="h-12 font-black text-[10px] uppercase tracking-wider text-gray-400 px-6 text-right whitespace-nowrap">{lang === 'ar' ? 'القسم' : 'Dept Name'}</TableHead>
+                  <TableHead className="h-12 font-black text-[10px] uppercase tracking-wider text-gray-400 px-6 text-right whitespace-nowrap">{lang === 'ar' ? 'وصف المسار' : 'Process'}</TableHead>
+                  <TableHead className="h-12 font-black text-[10px] uppercase tracking-wider text-gray-400 px-6 text-center whitespace-nowrap">{lang === 'ar' ? 'القوى العاملة' : 'Workforce'}</TableHead>
+                  <TableHead className="h-12 font-black text-[10px] uppercase tracking-wider text-gray-400 px-6 text-center whitespace-nowrap">{lang === 'ar' ? 'الحالة' : 'Status'}</TableHead>
+                  <TableHead className="h-12 w-[80px] sticky right-0 bg-gray-50/95"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -463,7 +466,7 @@ export default function DepartmentsPage() {
                         {dept.status === 'active' ? (lang === 'ar' ? 'نشط' : 'Active') : (lang === 'ar' ? 'متوقف' : 'Inactive')}
                       </span>
                     </TableCell>
-                    <TableCell className="px-6 py-4">
+                    <TableCell className="px-6 py-4 sticky right-0 bg-white group-hover:bg-gray-50/30">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-gray-100 border border-transparent hover:border-gray-200 transition-all">
@@ -479,7 +482,7 @@ export default function DepartmentsPage() {
                             {dept.status === 'active' ? (lang === 'ar' ? 'تعطيل القسم' : 'Deactivate') : (lang === 'ar' ? 'تفعيل القسم' : 'Activate')}
                           </DropdownMenuItem>
                           <div className="h-px bg-gray-100 my-1 mx-2" />
-                          <DropdownMenuItem onClick={() => setDeletingDept(dept)} className="gap-3 font-bold text-xs py-3 cursor-pointer text-rose-600 focus:text-rose-700 rounded-lg">
+                          <DropdownMenuItem onClick={() => setDeletingDeptId(dept.id)} className="gap-3 font-bold text-xs py-3 cursor-pointer text-rose-600 focus:text-rose-700 rounded-lg">
                             <Trash2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'نقل للأرشيف' : 'Move to Archive'}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -493,7 +496,7 @@ export default function DepartmentsPage() {
         </div>
 
         {/* Fixed Footer Note */}
-        <div className="mt-4 bg-muted/30 border border-border/50 rounded-xl p-4 flex items-start gap-4">
+        <div className="flex-none mt-4 bg-muted/30 border border-border/50 rounded-xl p-4 flex items-start gap-4">
           <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-primary shadow-sm shrink-0">
             <Info className="w-5 h-5" />
           </div>
@@ -508,8 +511,8 @@ export default function DepartmentsPage() {
         </div>
       </div>
 
-      {/* Confirmation Dialogs - Remain as Portals */}
-      <AlertDialog open={!!deletingDept} onOpenChange={(open) => !open && setDeletingDept(null)}>
+      {/* Confirmation Dialogs */}
+      <AlertDialog open={!!deletingDeptId} onOpenChange={(open) => !open && setDeletingDeptId(null)}>
         <AlertDialogContent className="max-w-md rounded-[2rem] border-none shadow-[0_40px_100px_rgba(0,0,0,0.15)] overflow-hidden p-0">
           <div className="bg-gradient-to-br from-[#1A1C1E] to-[#2D3136] p-10 text-center relative overflow-hidden">
             <div className="absolute inset-0 opacity-[0.03] textile-pattern pointer-events-none" />
@@ -525,8 +528,8 @@ export default function DepartmentsPage() {
                 </AlertDialogTitle>
                 <AlertDialogDescription className="text-gray-400 font-bold mt-4 text-sm leading-relaxed text-center">
                   {lang === 'ar' 
-                    ? `هل أنت متأكد من نقل قسم "${deletingDept?.nameAr}" إلى الأرشيف؟ سيتم الاحتفاظ به لمدة 30 يوماً قبل الحذف النهائي.` 
-                    : `Move "${deletingDept?.nameEn}" to archive? It will be held for 30 days before final deletion.`}
+                    ? `هل أنت متأكد من نقل قسم "${selectedDeletingDept?.nameAr}" إلى الأرشيف؟ سيتم الاحتفاظ به لمدة 30 يوماً قبل الحذف النهائي.` 
+                    : `Move "${selectedDeletingDept?.nameEn}" to archive? It will be held for 30 days before final deletion.`}
                 </AlertDialogDescription>
               </AlertDialogHeader>
             </div>
@@ -540,7 +543,7 @@ export default function DepartmentsPage() {
               {lang === 'ar' ? 'تأكيد الأرشفة' : 'Confirm Archive'}
             </AlertDialogAction>
             <AlertDialogCancel 
-              onClick={() => setDeletingDept(null)}
+              onClick={() => setDeletingDeptId(null)}
               className="flex-1 h-14 bg-gray-50 border-gray-100 hover:bg-gray-100 text-gray-500 rounded-2xl font-black transition-all"
             >
               {lang === 'ar' ? 'تراجع' : 'Cancel'}
@@ -548,7 +551,7 @@ export default function DepartmentsPage() {
           </div>
           
           <button 
-            onClick={() => setDeletingDept(null)}
+            onClick={() => setDeletingDeptId(null)}
             className="absolute top-4 left-4 p-2 text-gray-500 hover:text-white transition-colors"
           >
             <X className="w-5 h-5" />
