@@ -1,19 +1,34 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { 
-  Users, 
   Plus, 
   Search, 
+  Edit2, 
+  Trash2, 
+  MoreVertical, 
+  CheckCircle2, 
+  Filter, 
+  ChevronRight, 
+  Save, 
+  Users, 
   UserPlus, 
-  Phone, 
-  MapPin, 
-  Calendar,
-  Filter,
-  MoreVertical,
-  CheckCircle2,
+  Power, 
+  PowerOff, 
+  History, 
+  Info, 
+  Hash,
+  Languages,
+  Activity,
+  FileText,
   AlertCircle,
-  ChevronRight
+  SortAsc,
+  SortDesc,
+  ArrowUpDown,
+  Check,
+  Phone,
+  Calendar,
+  Briefcase
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,132 +46,568 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
-import { Badge } from '@/components/ui/badge';
-import { Avatar } from '@/components/ui/avatar';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Label } from "@/components/ui/label";
+import { useFirestore, useCollection } from '@/firebase';
+import { collection, addDoc, updateDoc, doc, serverTimestamp, query, where } from 'firebase/firestore';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
+import { toast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 export default function WorkersPage() {
   const { lang, dir } = useTranslation();
+  const db = useFirestore();
   const [search, setSearch] = useState('');
+  
+  // Filtering & Sorting State
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [deptFilter, setDeptFilter] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<'fullName' | 'joinDate' | 'workerId'>('fullName');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
-  // Mock data for Phase 3
-  const workers = [
-    { id: 'WRK-001', name: 'سالم أحمد باحاج', dept: 'قسم الخياطة', phone: '777123456', joined: '2023-01-15', status: 'active' },
-    { id: 'WRK-002', name: 'محمد علي اليافعي', dept: 'قسم التطريز', phone: '777987654', joined: '2023-05-10', status: 'active' },
-    { id: 'WRK-003', name: 'عبدالله صالح', dept: 'قسم الخياطة', phone: '770111222', joined: '2024-02-20', status: 'on_leave' },
-    { id: 'WRK-004', name: 'خالد باحاج', dept: 'قسم الصباغة', phone: '771333444', joined: '2022-11-05', status: 'active' },
-    { id: 'WRK-005', name: 'سعيد المحضار', dept: 'فحص الجودة', phone: '777555666', joined: '2023-08-12', status: 'active' },
-  ];
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [editingWorkerId, setEditingWorkerId] = useState<string | null>(null);
+  const [deletingWorkerId, setDeletingWorkerId] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const [formData, setFormData] = useState({
+    fullName: '',
+    departmentId: '',
+    phoneNumber: '',
+    joinDate: new Date().toISOString().split('T')[0],
+    active: true
+  });
 
-  const filtered = workers.filter(w => w.name.includes(search) || w.id.includes(search));
+  // Queries
+  const workersQuery = useMemo(() => {
+    if (!db) return null;
+    return collection(db, 'workers');
+  }, [db]);
+
+  const departmentsQuery = useMemo(() => {
+    if (!db) return null;
+    return query(collection(db, 'departments'), where('status', '==', 'active'));
+  }, [db]);
+
+  const { data: workers, loading: workersLoading } = useCollection<any>(workersQuery);
+  const { data: departments } = useCollection<any>(departmentsQuery);
+
+  const filtered = useMemo(() => {
+    let rawData = [...(workers || [])];
+    
+    // 1. Basic cleaning (Exclude soft-deleted if applicable)
+    rawData = rawData.filter(w => w.status !== 'deleted');
+
+    // 2. Search Filter
+    if (search) {
+      rawData = rawData.filter(w => 
+        w.fullName?.toLowerCase().includes(search.toLowerCase()) || 
+        w.phoneNumber?.includes(search) ||
+        w.workerId?.includes(search)
+      );
+    }
+
+    // 3. Status Filter
+    if (statusFilter !== 'all') {
+      const isActive = statusFilter === 'active';
+      rawData = rawData.filter(w => w.active === isActive);
+    }
+
+    // 4. Department Filter
+    if (deptFilter !== 'all') {
+      rawData = rawData.filter(w => w.departmentId === deptFilter);
+    }
+
+    // 5. Sorting
+    return rawData.sort((a, b) => {
+      let valA = a[sortBy] ?? '';
+      let valB = b[sortBy] ?? '';
+      const comparison = String(valA).localeCompare(String(valB), undefined, { numeric: true, sensitivity: 'base' });
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+  }, [workers, search, statusFilter, deptFilter, sortBy, sortOrder]);
+
+  const resetForm = useCallback(() => {
+    setIsAddDialogOpen(false);
+    setEditingWorkerId(null);
+    setIsSubmitting(false);
+    setFormData({ 
+      fullName: '', 
+      departmentId: '', 
+      phoneNumber: '', 
+      joinDate: new Date().toISOString().split('T')[0], 
+      active: true 
+    });
+  }, []);
+
+  const handleSaveWorker = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!db || isSubmitting) return;
+
+    setIsSubmitting(true);
+    const currentId = editingWorkerId;
+    const isEdit = !!currentId;
+    
+    const workerData = {
+      fullName: formData.fullName,
+      departmentId: formData.departmentId,
+      phoneNumber: formData.phoneNumber,
+      joinDate: formData.joinDate,
+      active: formData.active,
+      updatedAt: serverTimestamp(),
+    };
+
+    resetForm();
+
+    setTimeout(() => {
+      if (isEdit && currentId) {
+        const docRef = doc(db, 'workers', currentId);
+        updateDoc(docRef, workerData).catch((err) => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: 'workers',
+            operation: 'update',
+            requestResourceData: workerData
+          }));
+        });
+        toast({ title: lang === 'ar' ? "تم تحديث بيانات العامل" : "Worker data updated" });
+      } else {
+        const colRef = collection(db, 'workers');
+        // Generate a random worker ID for demo
+        const workerId = `WRK-${Math.floor(1000 + Math.random() * 9000)}`;
+        const newDoc = { ...workerData, workerId, createdAt: serverTimestamp() };
+        addDoc(colRef, newDoc).catch((err) => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: 'workers',
+            operation: 'create',
+            requestResourceData: newDoc
+          }));
+        });
+        toast({ title: lang === 'ar' ? "تم تسجيل العامل بنجاح" : "Worker registered successfully" });
+      }
+    }, 0);
+  };
+
+  const handleStatusToggle = (worker: any) => {
+    if (!db) return;
+    const docRef = doc(db, 'workers', worker.id);
+    updateDoc(docRef, { active: !worker.active, updatedAt: serverTimestamp() });
+  };
+
+  const handleArchiveWorker = () => {
+    if (!db || !deletingWorkerId) return;
+    const targetId = deletingWorkerId;
+    setDeletingWorkerId(null);
+
+    setTimeout(() => {
+      const docRef = doc(db, 'workers', targetId);
+      updateDoc(docRef, {
+        status: 'deleted',
+        deletedAt: serverTimestamp(),
+      });
+      toast({ title: lang === 'ar' ? "تم نقل العامل للأرشيف" : "Worker moved to archive" });
+    }, 0);
+  };
+
+  const handleEditClick = (worker: any) => {
+    setEditingWorkerId(worker.id);
+    setFormData({
+      fullName: worker.fullName || '',
+      departmentId: worker.departmentId || '',
+      phoneNumber: worker.phoneNumber || '',
+      joinDate: worker.joinDate || '',
+      active: worker.active ?? true
+    });
+    setIsAddDialogOpen(true);
+  };
+
+  const stats = useMemo(() => {
+    const list = workers || [];
+    return {
+      active: list.filter(w => w.active && w.status !== 'deleted').length,
+      total: list.filter(w => w.status !== 'deleted').length
+    };
+  }, [workers]);
+
+  const toggleSort = (key: 'fullName' | 'joinDate' | 'workerId') => {
+    if (sortBy === key) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(key);
+      setSortOrder('asc');
+    }
+  };
 
   return (
-    <div className="flex flex-col h-full bg-[#F8F9FA] overflow-hidden">
+    <div className="flex flex-col h-full bg-[#f1f5f9] overflow-hidden">
       
-      {/* 1. Header Hub */}
-      <div className="flex-none px-4 md:px-8 pt-6 pb-4 bg-white border-b border-gray-200/60 shadow-sm z-30">
-        <div className="flex flex-col gap-6">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <div className="flex items-center gap-4 w-full md:w-auto">
-              <div className="w-1.5 h-10 bg-primary rounded-full hidden md:block" />
-              <div className="space-y-0.5">
-                <div className="flex items-center gap-2 text-[9px] font-black text-muted-foreground uppercase tracking-[0.15em]">
-                  <span>{lang === 'ar' ? 'الموارد البشرية' : 'HR'}</span>
-                  <ChevronRight className={`w-2.5 h-2.5 ${dir === 'rtl' ? '' : 'rotate-180'}`} />
-                  <span className="text-primary">{lang === 'ar' ? 'سجل العمال' : 'Workers Registry'}</span>
-                </div>
-                <h1 className="text-lg md:text-xl font-black text-gray-900 tracking-tight">
-                  {lang === 'ar' ? 'قاعدة بيانات الحرفيين' : 'Artisans Database'}
-                </h1>
-              </div>
+      {/* COMPACT ERP HUB - FIXED HEIGHT */}
+      <div className="flex-none bg-white border-b border-slate-200 z-30 px-6 py-4">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+          <div className="flex items-center gap-4">
+            <div className="p-2.5 premium-gradient rounded-lg text-white shadow-lg shadow-emerald-900/20">
+              <Users className="w-5 h-5" />
             </div>
-            <Button className="h-10 px-6 bg-primary hover:bg-primary/95 text-white gap-2.5 rounded-xl shadow-lg shadow-primary/10 font-black transition-all">
-              <UserPlus className="w-4 h-4" />
-              {lang === 'ar' ? 'إضافة عامل جديد' : 'Add New'}
-            </Button>
+            <div>
+              <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                <span>{lang === 'ar' ? 'الموارد البشرية' : 'HR'}</span>
+                <ChevronRight className={`w-3 h-3 ${dir === 'rtl' ? 'rotate-180' : ''}`} />
+                <span className="text-slate-600">{lang === 'ar' ? 'سجل الحرفيين' : 'Workers Registry'}</span>
+              </div>
+              <h1 className="text-xl font-black text-slate-900 leading-tight">
+                {lang === 'ar' ? 'قاعدة بيانات العمال' : 'Personnel Database'}
+              </h1>
+            </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-4 bg-gray-50 border border-gray-200/60 p-2 rounded-xl">
-            <div className="relative flex-1 max-w-md">
-              <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-300`} />
-              <Input 
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={lang === 'ar' ? 'ابحث باسم العامل أو الكود...' : 'Search...'}
-                className={`${dir === 'rtl' ? 'pr-10' : 'pl-10'} h-10 bg-white border-gray-200 rounded-lg text-xs font-bold`}
-              />
+          <div className="flex items-center gap-3">
+            <div className="flex gap-2 bg-slate-50 p-1 rounded-lg border border-slate-100">
+              <div className="px-3 py-1 text-center">
+                <p className="text-[9px] font-bold text-slate-400 uppercase">{lang === 'ar' ? 'نشط' : 'Active'}</p>
+                <p className="text-sm font-black text-emerald-600 tabular-nums">{workersLoading ? '..' : stats.active}</p>
+              </div>
+              <div className="w-px h-6 bg-slate-200 self-center" />
+              <div className="px-3 py-1 text-center">
+                <p className="text-[9px] font-bold text-slate-400 uppercase">{lang === 'ar' ? 'الإجمالي' : 'Total'}</p>
+                <p className="text-sm font-black text-slate-700 tabular-nums">{workersLoading ? '..' : stats.total}</p>
+              </div>
             </div>
-            <Button variant="ghost" className="h-10 px-4 rounded-lg font-black text-xs gap-2 border border-dashed border-gray-200 text-gray-500 hover:text-primary">
-              <Filter className="w-3.5 h-3.5" />
-              {lang === 'ar' ? 'تصفية حسب القسم' : 'Filter'}
+            
+            <Button onClick={() => setIsAddDialogOpen(true)} className="h-10 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md shadow-emerald-900/10 font-black gap-2 transition-all border-none">
+              <UserPlus className="w-4 h-4" />
+              {lang === 'ar' ? 'إضافة عامل' : 'New Hire'}
             </Button>
+          </div>
+        </div>
+
+        {/* SEARCH & FILTER BAR */}
+        <div className="mt-4 flex items-center gap-2 bg-slate-50 p-1.5 rounded-lg border border-slate-200">
+          <div className="relative flex-1">
+            <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400`} />
+            <input 
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={lang === 'ar' ? 'بحث باسم العامل، رقم الهاتف، أو المعرف...' : 'Search personnel...'}
+              className={`w-full ${dir === 'rtl' ? 'pr-10 pl-4' : 'pl-10 pr-4'} h-9 bg-white border border-slate-200 rounded-md text-xs font-bold focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all`}
+            />
+          </div>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-9 px-4 rounded-md text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent hover:border-slate-200">
+                <Filter className="w-3.5 h-3.5" />
+                {lang === 'ar' ? 'تصفية' : 'Filter'}
+                {(statusFilter !== 'all' || deptFilter !== 'all' || sortBy !== 'fullName' || sortOrder !== 'asc') && (
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="w-64 rounded-lg border-slate-200 shadow-xl">
+              <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'ترتيب حسب' : 'SORT BY'}</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => toggleSort('fullName')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
+                <div className="flex items-center gap-2">
+                  <Languages className="w-3.5 h-3.5 text-slate-400" />
+                  {lang === 'ar' ? 'الاسم' : 'Name'}
+                </div>
+                {sortBy === 'fullName' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => toggleSort('workerId')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
+                <div className="flex items-center gap-2">
+                  <Hash className="w-3.5 h-3.5 text-slate-400" />
+                  {lang === 'ar' ? 'المعرف' : 'ID'}
+                </div>
+                {sortBy === 'workerId' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => toggleSort('joinDate')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                  {lang === 'ar' ? 'تاريخ التعيين' : 'Hire Date'}
+                </div>
+                {sortBy === 'joinDate' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
+              </DropdownMenuItem>
+              
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'فلترة الأقسام' : 'DEPARTMENT'}</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => setDeptFilter('all')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
+                {lang === 'ar' ? 'كافة الأقسام' : 'All Departments'}
+                {deptFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+              </DropdownMenuItem>
+              {departments?.map(d => (
+                <DropdownMenuItem key={d.id} onClick={() => setDeptFilter(d.id)} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
+                  {lang === 'ar' ? d.nameAr : d.nameEn}
+                  {deptFilter === d.id && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                </DropdownMenuItem>
+              ))}
+
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'الحالة' : 'STATUS'}</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => setStatusFilter('all')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
+                {lang === 'ar' ? 'الكل' : 'All'}
+                {statusFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setStatusFilter('active')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
+                {lang === 'ar' ? 'نشط فقط' : 'Active Only'}
+                {statusFilter === 'active' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setStatusFilter('inactive')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
+                {lang === 'ar' ? 'مجاز/متوقف' : 'Inactive Only'}
+                {statusFilter === 'inactive' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <div className="w-px h-6 bg-slate-200" />
+          <div className="flex items-center gap-2 px-3 text-[10px] font-bold text-slate-500">
+            <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+            {lang === 'ar' ? 'مزامنة السحابة نشطة' : 'Live Sync Active'}
           </div>
         </div>
       </div>
 
-      {/* 2. Scroll Area */}
-      <div className="flex-1 min-h-0 px-4 md:px-8 py-6 overflow-hidden flex flex-col">
-        <div className="flex-1 bg-white border border-gray-200/60 rounded-xl shadow-sm overflow-hidden flex flex-col">
-          <div className="flex-1 overflow-auto relative">
+      {/* MAIN DATA GRID - FIXED HEADER */}
+      <div className="flex-1 min-h-0 flex flex-col p-4">
+        <div className="flex-1 bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden flex flex-col">
+          <div className="flex-1 overflow-auto relative no-scrollbar">
             <Table className="text-right border-separate border-spacing-0">
-              <TableHeader className="sticky top-0 z-20 bg-gray-50/95 backdrop-blur-md">
-                <TableRow className="border-b border-gray-200/60">
-                  <TableHead className="h-12 font-black text-[10px] uppercase tracking-wider text-gray-400 px-6 text-right whitespace-nowrap">{lang === 'ar' ? 'العامل' : 'Worker'}</TableHead>
-                  <TableHead className="h-12 font-black text-[10px] uppercase tracking-wider text-gray-400 px-6 text-right whitespace-nowrap">{lang === 'ar' ? 'القسم' : 'Department'}</TableHead>
-                  <TableHead className="h-12 font-black text-[10px] uppercase tracking-wider text-gray-400 px-6 text-right whitespace-nowrap">{lang === 'ar' ? 'رقم الجوال' : 'Phone'}</TableHead>
-                  <TableHead className="h-12 font-black text-[10px] uppercase tracking-wider text-gray-400 px-6 text-right whitespace-nowrap">{lang === 'ar' ? 'تاريخ الانضمام' : 'Joined'}</TableHead>
-                  <TableHead className="h-12 font-black text-[10px] uppercase tracking-wider text-gray-400 px-6 text-center whitespace-nowrap">{lang === 'ar' ? 'الحالة' : 'Status'}</TableHead>
-                  <TableHead className="h-12 w-[80px] sticky right-0 bg-gray-50/95"></TableHead>
+              <TableHeader className="sticky top-0 z-20 bg-slate-100/95 backdrop-blur-sm shadow-sm">
+                <TableRow className="border-b border-slate-200">
+                  <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 px-6 text-right whitespace-nowrap bg-inherit">
+                    <button onClick={() => toggleSort('fullName')} className="flex items-center gap-2 hover:text-emerald-700 transition-colors uppercase">
+                      {lang === 'ar' ? 'العامل' : 'PERSONNEL'}
+                      {sortBy === 'fullName' ? (sortOrder === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-30" />}
+                    </button>
+                  </TableHead>
+                  <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 px-6 text-right whitespace-nowrap bg-inherit">{lang === 'ar' ? 'القسم' : 'UNIT'}</TableHead>
+                  <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 px-6 text-right whitespace-nowrap bg-inherit">{lang === 'ar' ? 'التواصل' : 'CONTACT'}</TableHead>
+                  <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 px-6 text-center whitespace-nowrap bg-inherit">
+                    <button onClick={() => toggleSort('joinDate')} className="flex items-center gap-2 mx-auto hover:text-emerald-700 transition-colors uppercase">
+                      {lang === 'ar' ? 'التعيين' : 'JOINED'}
+                      {sortBy === 'joinDate' ? (sortOrder === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-30" />}
+                    </button>
+                  </TableHead>
+                  <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 px-6 text-center whitespace-nowrap bg-inherit">{lang === 'ar' ? 'الحالة' : 'STATUS'}</TableHead>
+                  <TableHead className="h-10 w-[60px] sticky right-0 bg-inherit shadow-[-2px_0_5px_rgba(0,0,0,0.05)]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((worker) => (
-                  <TableRow key={worker.id} className="group hover:bg-gray-50/30 transition-all border-b border-gray-100/60">
-                    <TableCell className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-9 w-9 bg-gray-50 flex items-center justify-center border border-gray-100 font-black text-primary text-[10px]">
-                          {worker.name.charAt(0)}
-                        </Avatar>
-                        <div className="flex flex-col">
-                          <span className="font-black text-gray-900">{worker.name}</span>
-                          <span className="text-[10px] text-primary/60 font-black tabular-nums tracking-widest">{worker.id}</span>
+                {workersLoading ? (
+                  <TableRow><TableCell colSpan={6} className="text-center py-20 font-bold text-slate-400 animate-pulse">جاري سحب سجلات الموظفين...</TableCell></TableRow>
+                ) : filtered.length === 0 ? (
+                  <TableRow><TableCell colSpan={6} className="text-center py-20 font-bold text-slate-300">لا توجد بيانات تطابق معايير البحث</TableCell></TableRow>
+                ) : filtered.map((worker) => {
+                  const dept = departments?.find(d => d.id === worker.departmentId);
+                  return (
+                    <TableRow key={worker.id} className="group hover:bg-slate-50/50 border-b border-slate-100">
+                      <TableCell className="px-6 py-3">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-8 w-8 rounded-lg premium-gradient text-white flex items-center justify-center font-black text-[10px] shadow-sm">
+                            <AvatarFallback>{worker.fullName?.charAt(0)}</AvatarFallback>
+                          </Avatar>
+                          <div className="flex flex-col">
+                            <span className="font-black text-slate-900 text-xs">{worker.fullName}</span>
+                            <span className="text-[10px] text-emerald-700 font-bold tabular-nums tracking-widest">{worker.workerId}</span>
+                          </div>
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="px-6 py-4 font-bold text-gray-600 text-xs">
-                      {worker.dept}
-                    </TableCell>
-                    <TableCell className="px-6 py-4 tabular-nums text-gray-500 text-xs font-bold">
-                      <div className="flex items-center gap-2">
-                        <Phone className="w-3 h-3 opacity-30" />
-                        {worker.phone}
-                      </div>
-                    </TableCell>
-                    <TableCell className="px-6 py-4 tabular-nums text-gray-500 text-xs font-bold">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-3 h-3 opacity-30" />
-                        {worker.joined}
-                      </div>
-                    </TableCell>
-                    <TableCell className="px-6 py-4 text-center">
-                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider ${
-                        worker.status === 'active' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-amber-50 text-amber-600 border border-amber-100'
-                      }`}>
-                        {worker.status === 'active' ? (lang === 'ar' ? 'نشط' : 'Active') : (lang === 'ar' ? 'مجاز' : 'On Leave')}
-                      </span>
-                    </TableCell>
-                    <TableCell className="px-6 py-4 sticky right-0 bg-white group-hover:bg-gray-50/30">
-                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-gray-400">
-                        <MoreVertical className="w-4 h-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                      </TableCell>
+                      <TableCell className="px-6 py-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 rounded-full bg-slate-200" />
+                          <span className="font-bold text-slate-600 text-xs">
+                            {dept ? (lang === 'ar' ? dept.nameAr : dept.nameEn) : '---'}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="px-6 py-3">
+                        <div className="flex items-center gap-2 text-slate-500 text-[11px] font-bold tabular-nums">
+                          <Phone className="w-3 h-3 opacity-30" />
+                          {worker.phoneNumber || '---'}
+                        </div>
+                      </TableCell>
+                      <TableCell className="px-6 py-3 text-center">
+                        <span className="inline-block px-2 py-0.5 bg-slate-100 border border-slate-200 rounded text-[11px] font-black text-slate-700 tabular-nums">
+                          {worker.joinDate || '---'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="px-6 py-3 text-center">
+                        <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-black uppercase ${
+                          worker.active ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-amber-50 text-amber-700 border border-amber-100'
+                        }`}>
+                          <div className={`w-1.5 h-1.5 rounded-full ${worker.active ? 'bg-emerald-600' : 'bg-amber-600'}`} />
+                          {worker.active ? (lang === 'ar' ? 'نشط' : 'Active') : (lang === 'ar' ? 'مجاز' : 'On Leave')}
+                        </div>
+                      </TableCell>
+                      <TableCell className="px-6 py-3 sticky right-0 bg-white group-hover:bg-slate-50/50 shadow-[-10px_0_10px_-5px_rgba(0,0,0,0.05)] border-l border-slate-100">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-slate-200 border border-transparent">
+                              <MoreVertical className="w-4 h-4 text-slate-400" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="rounded-lg border-slate-200 shadow-xl min-w-[180px]">
+                            <DropdownMenuItem onClick={() => handleEditClick(worker)} className="gap-3 font-bold text-xs cursor-pointer py-2.5">
+                              <Edit2 className="w-3.5 h-3.5 text-emerald-600" /> {lang === 'ar' ? 'تعديل الملف' : 'Edit Profile'}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleStatusToggle(worker)} className="gap-3 font-bold text-xs cursor-pointer py-2.5">
+                              {worker.active ? <PowerOff className="w-3.5 h-3.5 text-amber-600" /> : <Power className="w-3.5 h-3.5 text-emerald-600" />}
+                              {worker.active ? (lang === 'ar' ? 'منح إجازة' : 'Set Active') : (lang === 'ar' ? 'تفعيل' : 'Activate')}
+                            </DropdownMenuItem>
+                            <div className="h-px bg-slate-100 my-1" />
+                            <DropdownMenuItem onClick={() => setDeletingWorkerId(worker.id)} className="gap-3 font-bold text-xs cursor-pointer text-red-600 focus:text-red-700 py-2.5">
+                              <Trash2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'نقل للأرشيف' : 'Archive'}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
         </div>
+
+        {/* SYSTEM NOTE - FOOTER */}
+        <div className="mt-4 flex-none bg-slate-900 rounded-lg p-3 text-white flex items-center gap-4 border border-slate-800 shadow-inner">
+          <div className="w-8 h-8 bg-emerald-500/20 rounded flex items-center justify-center text-emerald-400"><Info className="w-4 h-4" /></div>
+          <div className="flex-1">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 leading-none mb-1">
+              {lang === 'ar' ? 'بروتوكول حماية بيانات الموظفين' : 'Employee Data Protection Protocol'}
+            </p>
+            <p className="text-[10px] text-slate-300 font-bold opacity-80">
+              {lang === 'ar' ? 'يتم توثيق كافة تغييرات الحالة في سجل الأداء. لا يمكن حذف عامل لديه مستحقات مالية معلقة.' : 'All status changes are logged. Personnel with pending financial entitlements cannot be deleted.'}
+            </p>
+          </div>
+        </div>
       </div>
+
+      {/* DIALOGS */}
+      <Dialog open={isAddDialogOpen} onOpenChange={(open) => !open && resetForm()}>
+        <DialogContent className="sm:max-w-[500px] rounded-lg border-slate-200 shadow-2xl p-0 overflow-hidden">
+          <div className="premium-gradient p-6 text-white relative">
+            <DialogHeader className="text-right rtl:text-right ltr:text-left">
+              <DialogTitle className="text-xl font-black flex items-center gap-3 text-white">
+                <UserPlus className="w-5 h-5 text-emerald-300" />
+                {editingWorkerId ? (lang === 'ar' ? 'تعديل بيانات الحرفي' : 'Update Profile') : (lang === 'ar' ? 'تسجيل حرفي جديد' : 'New Artisan Enrollment')}
+              </DialogTitle>
+              <DialogDescription className="text-emerald-100/70 font-bold text-[10px] uppercase tracking-widest mt-1">
+                {lang === 'ar' ? 'إدخال البيانات الأساسية وتعيين قسم العمل' : 'Personnel information and unit assignment'}
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+
+          <form onSubmit={handleSaveWorker} className="p-6 space-y-5 bg-white">
+            <div className="space-y-1.5">
+              <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
+                <Languages className="w-3 h-3 text-emerald-600" />
+                {lang === 'ar' ? 'الاسم الكامل' : 'FULL NAME'}
+              </Label>
+              <Input value={formData.fullName} onChange={(e) => setFormData({...formData, fullName: e.target.value})} className="h-10 font-bold text-xs bg-slate-50 border-slate-200" required />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
+                  <Briefcase className="w-3 h-3 text-emerald-600" />
+                  {lang === 'ar' ? 'القسم / المرحلة' : 'DEPARTMENT'}
+                </Label>
+                <select 
+                  value={formData.departmentId} 
+                  onChange={(e) => setFormData({...formData, departmentId: e.target.value})} 
+                  className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold focus:outline-none"
+                  required
+                >
+                  <option value="">{lang === 'ar' ? '-- اختر القسم --' : '-- Select Dept --'}</option>
+                  {departments?.map(d => (
+                    <option key={d.id} value={d.id}>{lang === 'ar' ? d.nameAr : d.nameEn}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
+                  <Activity className="w-3 h-3 text-emerald-600" />
+                  {lang === 'ar' ? 'الحالة التشغيلية' : 'STATUS'}
+                </Label>
+                <select value={formData.active ? 'active' : 'inactive'} onChange={(e) => setFormData({...formData, active: e.target.value === 'active'})} className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold focus:outline-none">
+                  <option value="active">{lang === 'ar' ? 'نشط (على رأس العمل)' : 'Active'}</option>
+                  <option value="inactive">{lang === 'ar' ? 'مجاز (متوقف مؤقتاً)' : 'On Leave'}</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
+                  <Phone className="w-3 h-3 text-emerald-600" />
+                  {lang === 'ar' ? 'رقم الهاتف' : 'PHONE'}
+                </Label>
+                <Input value={formData.phoneNumber} onChange={(e) => setFormData({...formData, phoneNumber: e.target.value})} placeholder="7XXXXXXXX" className="h-10 font-bold text-xs bg-slate-50 border-slate-200 tabular-nums" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
+                  <Calendar className="w-3 h-3 text-emerald-600" />
+                  {lang === 'ar' ? 'تاريخ المباشرة' : 'HIRE DATE'}
+                </Label>
+                <Input type="date" value={formData.joinDate} onChange={(e) => setFormData({...formData, joinDate: e.target.value})} className="h-10 font-bold text-xs bg-slate-50 border-slate-200 tabular-nums" required />
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <Button type="submit" disabled={isSubmitting} className="flex-1 h-11 premium-gradient hover:opacity-90 text-white rounded-md font-black text-sm border-none shadow-md shadow-emerald-900/10">
+                <Save className="w-4 h-4 me-2" />
+                {lang === 'ar' ? (isSubmitting ? 'جاري المعالجة...' : 'حفظ الملف') : 'Save Record'}
+              </Button>
+              <Button type="button" variant="outline" onClick={resetForm} className="px-6 h-11 font-black text-slate-400 rounded-md">
+                {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!deletingWorkerId} onOpenChange={(open) => !open && setDeletingWorkerId(null)}>
+        <AlertDialogContent className="max-w-[400px] rounded-lg border-none shadow-2xl p-0 overflow-hidden">
+          <div className="bg-slate-950 p-8 text-center">
+            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20 shadow-inner">
+              <History className="w-8 h-8 text-red-500" />
+            </div>
+            <AlertDialogTitle className="text-white text-xl font-black">{lang === 'ar' ? 'أرشفة ملف العامل' : 'Confirm Archive'}</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400 font-bold mt-2 text-xs leading-relaxed">
+              {lang === 'ar' 
+                ? 'سيتم نقل هذا السجل للأرشيف. ستبقى كافة بيانات الرواتب والإنتاج التاريخية محفوظة للتدقيق.' 
+                : 'Personnel record will be archived. All historical payroll and production logs remain for auditing.'}
+            </AlertDialogDescription>
+          </div>
+          <div className="bg-white p-6 flex gap-3">
+            <AlertDialogAction onClick={handleArchiveWorker} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-md font-black">
+              {lang === 'ar' ? 'تأكيد الأرشفة' : 'Confirm'}
+            </AlertDialogAction>
+            <AlertDialogCancel onClick={() => setDeletingWorkerId(null)} className="flex-1 h-11 bg-slate-50 border-slate-200 text-slate-400 rounded-md font-black">
+              {lang === 'ar' ? 'تراجع' : 'Cancel'}
+            </AlertDialogCancel>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </div>
   );
 }
