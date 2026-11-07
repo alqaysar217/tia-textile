@@ -22,7 +22,11 @@ import {
   Type,
   Activity,
   FileText,
-  AlertCircle
+  AlertCircle,
+  SortAsc,
+  SortDesc,
+  ArrowUpDown,
+  Check
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,6 +44,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 import {
   Dialog,
@@ -65,12 +71,18 @@ import { collection, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/fi
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { toast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 export default function DepartmentsPage() {
   const { lang, dir } = useTranslation();
   const db = useFirestore();
   const [search, setSearch] = useState('');
   
+  // Filtering & Sorting State
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [sortBy, setSortBy] = useState<'code' | 'nameAr' | 'workerCount'>('code');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingDeptId, setEditingDeptId] = useState<string | null>(null);
   const [deletingDeptId, setDeletingDeptId] = useState<string | null>(null);
@@ -93,16 +105,39 @@ export default function DepartmentsPage() {
   const { data: departments, loading } = useCollection<any>(departmentsQuery);
 
   const filtered = useMemo(() => {
-    const rawData = departments || [];
-    return rawData
-      .filter(d => d.status !== 'deleted')
-      .filter(d => 
+    let rawData = [...(departments || [])];
+    
+    // 1. Basic cleaning
+    rawData = rawData.filter(d => d.status !== 'deleted');
+
+    // 2. Search Filter
+    if (search) {
+      rawData = rawData.filter(d => 
         (d.nameAr?.includes(search) || 
         d.nameEn?.toLowerCase().includes(search.toLowerCase()) || 
         d.code?.includes(search))
-      )
-      .sort((a, b) => (a.code || '').localeCompare(b.code || '', undefined, { numeric: true, sensitivity: 'base' }));
-  }, [departments, search]);
+      );
+    }
+
+    // 3. Status Filter
+    if (statusFilter !== 'all') {
+      rawData = rawData.filter(d => d.status === statusFilter);
+    }
+
+    // 4. Sorting
+    return rawData.sort((a, b) => {
+      let valA = a[sortBy] ?? '';
+      let valB = b[sortBy] ?? '';
+
+      if (sortBy === 'workerCount') {
+        valA = Number(valA);
+        valB = Number(valB);
+      }
+
+      const comparison = String(valA).localeCompare(String(valB), undefined, { numeric: true, sensitivity: 'base' });
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+  }, [departments, search, statusFilter, sortBy, sortOrder]);
 
   const resetForm = useCallback(() => {
     setIsAddDialogOpen(false);
@@ -116,7 +151,6 @@ export default function DepartmentsPage() {
     e.preventDefault();
     if (!db || isSubmitting) return;
 
-    // 1. Validation: Prevent Duplicate Code
     const isDuplicate = departments?.some(d => 
       d.code?.toLowerCase() === formData.code.toLowerCase() && 
       d.id !== editingDeptId && 
@@ -211,6 +245,15 @@ export default function DepartmentsPage() {
     };
   }, [departments]);
 
+  const toggleSort = (key: 'code' | 'nameAr' | 'workerCount') => {
+    if (sortBy === key) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(key);
+      setSortOrder('asc');
+    }
+  };
+
   return (
     <div className="flex flex-col h-full bg-[#f1f5f9] overflow-hidden">
       
@@ -253,7 +296,7 @@ export default function DepartmentsPage() {
           </div>
         </div>
 
-        {/* SEARCH BAR - HIGH DENSITY */}
+        {/* SEARCH & FILTER BAR */}
         <div className="mt-4 flex items-center gap-2 bg-slate-50 p-1.5 rounded-lg border border-slate-200">
           <div className="relative flex-1">
             <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400`} />
@@ -264,10 +307,58 @@ export default function DepartmentsPage() {
               className={`${dir === 'rtl' ? 'pr-10' : 'pl-10'} h-9 bg-white border-slate-200 rounded-md text-xs font-bold focus:ring-emerald-500/10 focus:border-emerald-500`}
             />
           </div>
-          <Button variant="ghost" className="h-9 px-4 rounded-md text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent hover:border-slate-200">
-            <Filter className="w-3.5 h-3.5" />
-            {lang === 'ar' ? 'تصفية' : 'Filter'}
-          </Button>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-9 px-4 rounded-md text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent hover:border-slate-200">
+                <Filter className="w-3.5 h-3.5" />
+                {lang === 'ar' ? 'تصفية' : 'Filter'}
+                {(statusFilter !== 'all' || sortBy !== 'code' || sortOrder !== 'asc') && (
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="w-56 rounded-lg border-slate-200 shadow-xl">
+              <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'ترتيب حسب' : 'SORT BY'}</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => toggleSort('code')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
+                <div className="flex items-center gap-2">
+                  <Hash className="w-3.5 h-3.5 text-slate-400" />
+                  {lang === 'ar' ? 'الكود' : 'Code'}
+                </div>
+                {sortBy === 'code' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => toggleSort('nameAr')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
+                <div className="flex items-center gap-2">
+                  <Languages className="w-3.5 h-3.5 text-slate-400" />
+                  {lang === 'ar' ? 'الاسم' : 'Name'}
+                </div>
+                {sortBy === 'nameAr' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => toggleSort('workerCount')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
+                <div className="flex items-center gap-2">
+                  <Activity className="w-3.5 h-3.5 text-slate-400" />
+                  {lang === 'ar' ? 'عدد العمال' : 'Labor Count'}
+                </div>
+                {sortBy === 'workerCount' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
+              </DropdownMenuItem>
+              
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'عرض الحالة' : 'STATUS FILTER'}</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => setStatusFilter('all')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
+                {lang === 'ar' ? 'الكل' : 'All Departments'}
+                {statusFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setStatusFilter('active')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
+                {lang === 'ar' ? 'نشط فقط' : 'Active Only'}
+                {statusFilter === 'active' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setStatusFilter('inactive')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
+                {lang === 'ar' ? 'متوقف فقط' : 'Inactive Only'}
+                {statusFilter === 'inactive' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           <div className="w-px h-6 bg-slate-200" />
           <div className="flex items-center gap-2 px-3 text-[10px] font-bold text-slate-500">
             <CheckCircle2 className="w-3 h-3 text-emerald-500" />
@@ -276,19 +367,34 @@ export default function DepartmentsPage() {
         </div>
       </div>
 
-      {/* MAIN DATA GRID - MAXIMUM SPACE */}
+      {/* MAIN DATA GRID - FIXED HEADER */}
       <div className="flex-1 min-h-0 flex flex-col p-4">
         <div className="flex-1 bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden flex flex-col">
-          <div className="flex-1 overflow-auto relative">
-            <Table className="text-right">
+          <div className="flex-1 overflow-auto relative no-scrollbar">
+            <Table className="text-right border-separate border-spacing-0">
               <TableHeader className="sticky top-0 z-20 bg-slate-100/95 backdrop-blur-sm shadow-sm">
                 <TableRow className="border-b border-slate-200">
-                  <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 px-6 text-right whitespace-nowrap">{lang === 'ar' ? 'الكود' : 'CODE'}</TableHead>
-                  <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 px-6 text-right whitespace-nowrap">{lang === 'ar' ? 'الاسم' : 'NAME'}</TableHead>
-                  <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 px-6 text-right whitespace-nowrap">{lang === 'ar' ? 'العمليات' : 'OPERATIONS'}</TableHead>
-                  <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 px-6 text-center whitespace-nowrap">{lang === 'ar' ? 'العمال' : 'STAFF'}</TableHead>
-                  <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 px-6 text-center whitespace-nowrap">{lang === 'ar' ? 'الحالة' : 'STATUS'}</TableHead>
-                  <TableHead className="h-10 w-[60px] sticky right-0 bg-slate-100/95"></TableHead>
+                  <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 px-6 text-right whitespace-nowrap bg-inherit">
+                    <button onClick={() => toggleSort('code')} className="flex items-center gap-2 hover:text-emerald-700 transition-colors uppercase">
+                      {lang === 'ar' ? 'الكود' : 'CODE'}
+                      {sortBy === 'code' ? (sortOrder === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-30" />}
+                    </button>
+                  </TableHead>
+                  <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 px-6 text-right whitespace-nowrap bg-inherit">
+                    <button onClick={() => toggleSort('nameAr')} className="flex items-center gap-2 hover:text-emerald-700 transition-colors uppercase">
+                      {lang === 'ar' ? 'الاسم' : 'NAME'}
+                      {sortBy === 'nameAr' ? (sortOrder === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-30" />}
+                    </button>
+                  </TableHead>
+                  <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 px-6 text-right whitespace-nowrap bg-inherit">{lang === 'ar' ? 'العمليات' : 'OPERATIONS'}</TableHead>
+                  <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 px-6 text-center whitespace-nowrap bg-inherit">
+                    <button onClick={() => toggleSort('workerCount')} className="flex items-center gap-2 mx-auto hover:text-emerald-700 transition-colors uppercase">
+                      {lang === 'ar' ? 'العمال' : 'STAFF'}
+                      {sortBy === 'workerCount' ? (sortOrder === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-30" />}
+                    </button>
+                  </TableHead>
+                  <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 px-6 text-center whitespace-nowrap bg-inherit">{lang === 'ar' ? 'الحالة' : 'STATUS'}</TableHead>
+                  <TableHead className="h-10 w-[60px] sticky right-0 bg-inherit shadow-[-2px_0_5px_rgba(0,0,0,0.05)]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -321,7 +427,7 @@ export default function DepartmentsPage() {
                         {dept.status === 'active' ? (lang === 'ar' ? 'نشط' : 'Active') : (lang === 'ar' ? 'متوقف' : 'Inactive')}
                       </div>
                     </TableCell>
-                    <TableCell className="px-6 py-3 sticky right-0 bg-white group-hover:bg-slate-50/50 shadow-[-10px_0_10px_-5px_rgba(0,0,0,0.05)]">
+                    <TableCell className="px-6 py-3 sticky right-0 bg-white group-hover:bg-slate-50/50 shadow-[-10px_0_10px_-5px_rgba(0,0,0,0.05)] border-l border-slate-100">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-slate-200 border border-transparent">
@@ -364,7 +470,7 @@ export default function DepartmentsPage() {
         </div>
       </div>
 
-      {/* DIALOGS - ERP STYLE */}
+      {/* DIALOGS */}
       <Dialog open={isAddDialogOpen} onOpenChange={(open) => !open && resetForm()}>
         <DialogContent className="sm:max-w-[500px] rounded-lg border-slate-200 shadow-2xl p-0 overflow-hidden">
           <div className="premium-gradient p-6 text-white relative">
@@ -393,7 +499,10 @@ export default function DepartmentsPage() {
                     setCodeError(null);
                   }} 
                   placeholder="DEPT-100" 
-                  className={`h-10 font-bold text-xs bg-slate-50 border-slate-200 ${codeError ? 'border-red-500 focus:ring-red-500/10' : ''}`} 
+                  className={cn(
+                    "h-10 font-bold text-xs bg-slate-50 border-slate-200",
+                    codeError && "border-red-500 focus:ring-red-500/10"
+                  )} 
                   required 
                 />
                 {codeError && (
