@@ -66,9 +66,12 @@
         "code": { "type": "string" },
         "nameAr": { "type": "string" },
         "nameEn": { "type": "string" },
-        "category": { "type": "string", "enum": ["yarn", "dye", "packaging", "auxiliary", "other"] },
-        "unit": { "type": "string", "enum": ["kg", "yard", "piece", "roll", "liter"] },
+        "category": { "type": "string", "enum": ["yarn", "dye", "prep", "sewing", "finish", "packaging", "other"] },
+        "unit": { "type": "string", "enum": ["kg", "yard", "roll", "piece", "liter", "meter", "set", "box", "carton", "gram"] },
+        "currentQty": { "type": "number" },
         "minQty": { "type": "number", "description": "Safety stock level" },
+        "price": { "type": "number" },
+        "photoUrl": { "type": "string" },
         "status": { "type": "string" }
       },
       "required": ["code", "nameAr", "category", "unit"]

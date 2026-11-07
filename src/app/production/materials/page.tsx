@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
 import { 
   Plus, 
   Search, 
@@ -13,7 +13,6 @@ import {
   ChevronRight, 
   Save, 
   Box, 
-  Package, 
   History, 
   Info, 
   Hash,
@@ -28,7 +27,16 @@ import {
   FileDown,
   Layers,
   Scale,
-  Gauge
+  Gauge,
+  Wallet,
+  Package,
+  Droplet,
+  Scissors,
+  Zap,
+  BoxSelect,
+  UploadCloud,
+  Loader2,
+  Image as ImageIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -73,22 +81,24 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 export default function MaterialsPage() {
   const { lang, dir } = useTranslation();
   const db = useFirestore();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [search, setSearch] = useState('');
   
   // Filtering & Sorting State
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<'code' | 'nameAr' | 'minQty'>('code');
+  const [sortBy, setSortBy] = useState<'code' | 'nameAr' | 'currentQty'>('code');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingMatId, setEditingMatId] = useState<string | null>(null);
   const [deletingMatId, setDeletingMatId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [codeError, setCodeError] = useState<string | null>(null);
+  const [isCompressing, setIsCompressing] = useState(false);
   
   const [formData, setFormData] = useState({
     code: '',
@@ -96,7 +106,10 @@ export default function MaterialsPage() {
     nameEn: '',
     category: 'yarn',
     unit: 'kg',
+    currentQty: 0,
     minQty: 0,
+    price: 0,
+    photoUrl: '',
     status: 'active'
   });
 
@@ -108,11 +121,26 @@ export default function MaterialsPage() {
   const { data: materials, loading } = useCollection<any>(materialsQuery);
 
   const categories = [
-    { value: 'yarn', labelAr: 'خيوط وغزل', labelEn: 'Yarn & Threads' },
-    { value: 'dye', labelAr: 'أصباغ وألوان', labelEn: 'Dyes & Colors' },
-    { value: 'packaging', labelAr: 'مواد تغليف', labelEn: 'Packaging' },
-    { value: 'auxiliary', labelAr: 'مستلزمات إنتاج', labelEn: 'Auxiliary' },
-    { value: 'other', labelAr: 'أخرى', labelEn: 'Other' },
+    { value: 'yarn', labelAr: 'الخيوط', labelEn: 'Yarn', icon: <Hash className="w-4 h-4" /> },
+    { value: 'dye', labelAr: 'الأصباغ', labelEn: 'Dyes', icon: <Droplet className="w-4 h-4" /> },
+    { value: 'prep', labelAr: 'التحضير والنسيج', labelEn: 'Prep & Weaving', icon: <Layers className="w-4 h-4" /> },
+    { value: 'sewing', labelAr: 'الخياطة', labelEn: 'Sewing', icon: <Scissors className="w-4 h-4" /> },
+    { value: 'finish', labelAr: 'التجهيز', labelEn: 'Processing', icon: <Zap className="w-4 h-4" /> },
+    { value: 'packaging', labelAr: 'التغليف', labelEn: 'Packaging', icon: <Package className="w-4 h-4" /> },
+    { value: 'other', labelAr: 'أخرى', labelEn: 'Other', icon: <BoxSelect className="w-4 h-4" /> },
+  ];
+
+  const units = [
+    { value: 'kg', labelAr: 'كيلو (KG)', labelEn: 'Kilogram' },
+    { value: 'yard', labelAr: 'ياردة (YD)', labelEn: 'Yard' },
+    { value: 'roll', labelAr: 'رول (Roll)', labelEn: 'Roll' },
+    { value: 'piece', labelAr: 'حبة (Pcs)', labelEn: 'Piece' },
+    { value: 'liter', labelAr: 'لتر (L)', labelEn: 'Liter' },
+    { value: 'meter', labelAr: 'متر (M)', labelEn: 'Meter' },
+    { value: 'set', labelAr: 'طقم (Set)', labelEn: 'Set' },
+    { value: 'box', labelAr: 'صندوق (Box)', labelEn: 'Box' },
+    { value: 'carton', labelAr: 'كرتون (Ctn)', labelEn: 'Carton' },
+    { value: 'gram', labelAr: 'جرام (G)', labelEn: 'Gram' },
   ];
 
   const filtered = useMemo(() => {
@@ -134,7 +162,7 @@ export default function MaterialsPage() {
       let valA = a[sortBy] ?? '';
       let valB = b[sortBy] ?? '';
 
-      if (sortBy === 'minQty') {
+      if (sortBy === 'currentQty') {
         return sortOrder === 'asc' ? Number(valA) - Number(valB) : Number(valB) - Number(valA);
       }
 
@@ -147,35 +175,70 @@ export default function MaterialsPage() {
     setIsAddDialogOpen(false);
     setEditingMatId(null);
     setIsSubmitting(false);
-    setCodeError(null);
-    setFormData({ code: '', nameAr: '', nameEn: '', category: 'yarn', unit: 'kg', minQty: 0, status: 'active' });
+    setIsCompressing(false);
+    setFormData({ 
+      code: '', 
+      nameAr: '', 
+      nameEn: '', 
+      category: 'yarn', 
+      unit: 'kg', 
+      currentQty: 0, 
+      minQty: 0, 
+      price: 0,
+      photoUrl: '',
+      status: 'active' 
+    });
   }, []);
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsCompressing(true);
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_SIZE = 300;
+        let width = img.width;
+        let height = img.height;
+        if (width > height) {
+          if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; }
+        } else {
+          if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; }
+        }
+        canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+        setFormData(prev => ({ ...prev, photoUrl: compressedBase64 }));
+        setIsCompressing(false);
+      };
+    };
+  };
 
   const handleSaveMaterial = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!db || isSubmitting) return;
-
-    const isDuplicate = materials?.some(m => 
-      m.code?.toLowerCase() === formData.code.toLowerCase() && 
-      m.id !== editingMatId && 
-      m.status !== 'deleted'
-    );
-
-    if (isDuplicate) {
-      setCodeError(lang === 'ar' ? `هذا الكود مستخدم بالفعل` : `Code already exists`);
-      return;
-    }
+    if (!db || isSubmitting || isCompressing) return;
 
     setIsSubmitting(true);
+    
+    // Auto-generate SKU if new
+    const generatedCode = editingMatId ? formData.code : `MAT-${Math.floor(1000 + Math.random() * 9000)}`;
+
     const materialData = {
       ...formData,
-      code: formData.code.toUpperCase(),
+      code: generatedCode,
+      currentQty: Number(formData.currentQty),
       minQty: Number(formData.minQty),
+      price: Number(formData.price),
       updatedAt: serverTimestamp(),
     };
 
     const currentId = editingMatId;
-
     resetForm();
 
     setTimeout(() => {
@@ -184,14 +247,14 @@ export default function MaterialsPage() {
         updateDoc(docRef, materialData).catch(err => {
           errorEmitter.emit('permission-error', new FirestorePermissionError({ path: 'materials', operation: 'update', requestResourceData: materialData }));
         });
-        toast({ title: lang === 'ar' ? "تم التحديث" : "Updated" });
+        toast({ title: lang === 'ar' ? "تم تحديث الصنف" : "Item Updated" });
       } else {
         const colRef = collection(db, 'materials');
         const newDoc = { ...materialData, createdAt: serverTimestamp() };
         addDoc(colRef, newDoc).catch(err => {
           errorEmitter.emit('permission-error', new FirestorePermissionError({ path: 'materials', operation: 'create', requestResourceData: newDoc }));
         });
-        toast({ title: lang === 'ar' ? "تمت الإضافة" : "Added" });
+        toast({ title: lang === 'ar' ? "تمت إضافة الصنف" : "Item Added" });
       }
     }, 0);
   };
@@ -212,7 +275,10 @@ export default function MaterialsPage() {
       nameEn: mat.nameEn || '',
       category: mat.category || 'yarn',
       unit: mat.unit || 'kg',
+      currentQty: mat.currentQty || 0,
       minQty: mat.minQty || 0,
+      price: mat.price || 0,
+      photoUrl: mat.photoUrl || '',
       status: mat.status || 'active'
     });
     setIsAddDialogOpen(true);
@@ -224,7 +290,8 @@ export default function MaterialsPage() {
       lang === 'ar' ? 'الاسم' : 'Name',
       lang === 'ar' ? 'الفئة' : 'Category',
       lang === 'ar' ? 'الوحدة' : 'Unit',
-      lang === 'ar' ? 'حد الأمان' : 'Min Qty'
+      lang === 'ar' ? 'الكمية' : 'Qty',
+      lang === 'ar' ? 'السعر' : 'Price'
     ];
 
     const rows = filtered.map(m => {
@@ -234,7 +301,8 @@ export default function MaterialsPage() {
         lang === 'ar' ? m.nameAr : m.nameEn,
         cat ? (lang === 'ar' ? cat.labelAr : cat.labelEn) : m.category,
         m.unit,
-        m.minQty
+        m.currentQty,
+        m.price
       ];
     });
 
@@ -250,7 +318,11 @@ export default function MaterialsPage() {
     a.href = url;
     a.download = `materials_${new Date().toISOString().split('T')[0]}.xls`;
     a.click();
-    toast({ title: lang === 'ar' ? "بدء التحميل" : "Downloading" });
+  };
+
+  const getCategoryIcon = (catValue: string) => {
+    const cat = categories.find(c => c.value === catValue);
+    return cat?.icon || <Box className="w-4 h-4" />;
   };
 
   return (
@@ -278,14 +350,19 @@ export default function MaterialsPage() {
           <div className="flex items-center gap-3">
             <div className="flex gap-2 bg-slate-50 p-1 rounded-lg border border-slate-100">
               <div className="px-3 py-1 text-center">
-                <p className="text-[9px] font-bold text-slate-400 uppercase">{lang === 'ar' ? 'المواد' : 'Total Items'}</p>
+                <p className="text-[9px] font-bold text-slate-400 uppercase">{lang === 'ar' ? 'المواد' : 'Items'}</p>
                 <p className="text-sm font-black text-emerald-600 tabular-nums">{loading ? '..' : filtered.length}</p>
+              </div>
+              <div className="w-px h-6 bg-slate-200 self-center" />
+              <div className="px-3 py-1 text-center">
+                <p className="text-[9px] font-bold text-slate-400 uppercase">{lang === 'ar' ? 'نقص مخزون' : 'Low Stock'}</p>
+                <p className="text-sm font-black text-rose-600 tabular-nums">{loading ? '..' : filtered.filter(m => (m.currentQty || 0) <= (m.minQty || 0)).length}</p>
               </div>
             </div>
             
             <Button onClick={() => setIsAddDialogOpen(true)} className="h-10 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 transition-all border-none">
               <Plus className="w-4 h-4" />
-              {lang === 'ar' ? 'إضافة صنف' : 'Add Item'}
+              {lang === 'ar' ? 'إضافة مادة' : 'Add Material'}
             </Button>
           </div>
         </div>
@@ -330,11 +407,6 @@ export default function MaterialsPage() {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-          <div className="w-px h-6 bg-slate-200" />
-          <div className="flex items-center gap-2 px-3 text-[10px] font-bold text-slate-500">
-            <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-            {lang === 'ar' ? 'دليل الأصناف نشط' : 'Catalog Active'}
-          </div>
         </div>
       </div>
 
@@ -345,45 +417,63 @@ export default function MaterialsPage() {
             <Table className="text-right">
               <TableHeader className="sticky top-0 z-20 bg-slate-100/95 backdrop-blur-sm">
                 <TableRow>
-                  <TableHead className="h-10 font-bold text-[11px] text-slate-500 px-6 text-right">{lang === 'ar' ? 'كود المادة (SKU)' : 'SKU'}</TableHead>
-                  <TableHead className="h-10 font-bold text-[11px] text-slate-500 px-6 text-right">{lang === 'ar' ? 'الاسم' : 'NAME'}</TableHead>
+                  <TableHead className="h-10 font-bold text-[11px] text-slate-500 px-6 text-right">{lang === 'ar' ? 'المادة' : 'ITEM'}</TableHead>
                   <TableHead className="h-10 font-bold text-[11px] text-slate-500 px-6 text-right">{lang === 'ar' ? 'الفئة' : 'CATEGORY'}</TableHead>
-                  <TableHead className="h-10 font-bold text-[11px] text-slate-500 px-6 text-center">{lang === 'ar' ? 'الوحدة' : 'UNIT'}</TableHead>
-                  <TableHead className="h-10 font-bold text-[11px] text-slate-500 px-6 text-center">{lang === 'ar' ? 'حد الأمان' : 'SAFETY STOCK'}</TableHead>
+                  <TableHead className="h-10 font-bold text-[11px] text-slate-500 px-6 text-center">{lang === 'ar' ? 'المخزون' : 'ON HAND'}</TableHead>
+                  <TableHead className="h-10 font-bold text-[11px] text-slate-500 px-6 text-center">{lang === 'ar' ? 'السعر' : 'PRICE'}</TableHead>
+                  <TableHead className="h-10 font-bold text-[11px] text-slate-500 px-6 text-center">{lang === 'ar' ? 'الحالة' : 'STATUS'}</TableHead>
                   <TableHead className="h-10 w-[60px] sticky right-0 bg-inherit shadow-[-2px_0_5px_rgba(0,0,0,0.05)]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-20 font-bold text-slate-400 animate-pulse">جاري جلب دليل الأصناف...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={6} className="text-center py-20 font-bold text-slate-400 animate-pulse">جاري سحب دليل المواد...</TableCell></TableRow>
                 ) : filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-20 font-bold text-slate-300">لا توجد مواد مسجلة</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={6} className="text-center py-20 font-bold text-slate-300">لا توجد مواد مسجلة حالياً</TableCell></TableRow>
                 ) : filtered.map((mat) => {
                   const cat = categories.find(c => c.value === mat.category);
+                  const isLow = (mat.currentQty || 0) <= (mat.minQty || 0);
                   return (
                     <TableRow key={mat.id} className="group hover:bg-slate-50/50 border-b border-slate-100">
-                      <TableCell className="px-6 py-3 font-bold text-emerald-700 text-[11px] tabular-nums tracking-wider">{mat.code}</TableCell>
                       <TableCell className="px-6 py-3">
-                        <div className="flex flex-col">
-                          <span className="font-black text-slate-900 text-xs">{lang === 'ar' ? mat.nameAr : mat.nameEn}</span>
-                          <span className="text-[10px] text-slate-400 font-bold uppercase">{lang === 'ar' ? mat.nameEn : mat.nameAr}</span>
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-10 w-10 rounded-lg border border-slate-200 bg-slate-50">
+                            <AvatarImage src={mat.photoUrl || undefined} className="object-cover" />
+                            <AvatarFallback className="bg-emerald-50 text-emerald-600">
+                              {getCategoryIcon(mat.category)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex flex-col">
+                            <span className="font-black text-slate-900 text-xs">{lang === 'ar' ? mat.nameAr : mat.nameEn}</span>
+                            <span className="text-[10px] text-emerald-700 font-bold tabular-nums tracking-wider uppercase">{mat.code}</span>
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell className="px-6 py-3">
-                        <span className="inline-block px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[10px] font-black">
+                        <span className="inline-block px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[10px] font-black uppercase">
                           {cat ? (lang === 'ar' ? cat.labelAr : cat.labelEn) : mat.category}
                         </span>
                       </TableCell>
                       <TableCell className="px-6 py-3 text-center">
-                        <div className="flex items-center justify-center gap-1.5 text-[10px] font-black uppercase text-slate-500">
-                          <Scale className="w-3 h-3 opacity-30" />
-                          {mat.unit}
+                        <div className="flex flex-col items-center">
+                          <span className={cn("text-xs font-black tabular-nums", isLow ? "text-rose-600" : "text-slate-900")}>
+                            {mat.currentQty || 0}
+                          </span>
+                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">{mat.unit}</span>
                         </div>
                       </TableCell>
                       <TableCell className="px-6 py-3 text-center">
-                        <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-100 rounded text-[10px] font-black tabular-nums">
-                          <Gauge className="w-3 h-3" />
-                          {mat.minQty}
+                        <div className="inline-flex items-center gap-1 text-xs font-black text-emerald-700 tabular-nums">
+                          <Wallet className="w-3 h-3 opacity-30" />
+                          {mat.price?.toLocaleString()}
+                        </div>
+                      </TableCell>
+                      <TableCell className="px-6 py-3 text-center">
+                        <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[9px] font-black uppercase ${
+                          isLow ? 'bg-rose-50 text-rose-700 border border-rose-100' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                        }`}>
+                          <div className={cn("w-1 h-1 rounded-full", isLow ? "bg-rose-600" : "bg-emerald-600")} />
+                          {isLow ? (lang === 'ar' ? 'مخزون منخفض' : 'Low Stock') : (lang === 'ar' ? 'جيد' : 'Available')}
                         </div>
                       </TableCell>
                       <TableCell className="px-6 py-3 sticky right-0 bg-white group-hover:bg-slate-50/50 shadow-[-10px_0_10px_-5px_rgba(0,0,0,0.05)]">
@@ -393,11 +483,11 @@ export default function MaterialsPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="rounded-lg border-slate-200 shadow-xl min-w-[180px]">
                             <DropdownMenuItem onClick={() => handleEditClick(mat)} className="gap-3 font-bold text-xs py-2.5">
-                              <Edit2 className="w-3.5 h-3.5 text-emerald-600" /> {lang === 'ar' ? 'تعديل الصنف' : 'Edit Item'}
+                              <Edit2 className="w-3.5 h-3.5 text-emerald-600" /> {lang === 'ar' ? 'تعديل البيانات' : 'Update Record'}
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => setDeletingMatId(mat.id)} className="gap-3 font-bold text-xs text-red-600 py-2.5">
-                              <Trash2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'أرشفة المادة' : 'Archive'}
+                              <Trash2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'نقل للأرشيف' : 'Archive'}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -409,47 +499,48 @@ export default function MaterialsPage() {
             </Table>
           </div>
         </div>
-
-        {/* SYSTEM FOOTER */}
-        <div className="mt-4 flex-none bg-slate-900 rounded-lg p-3 text-white flex items-center gap-4 border border-slate-800">
-          <div className="w-8 h-8 bg-emerald-500/20 rounded flex items-center justify-center text-emerald-400"><Info className="w-4 h-4" /></div>
-          <div className="flex-1">
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 leading-none mb-1">Inventory Master Protocol</p>
-            <p className="text-[10px] text-slate-300 font-bold opacity-80">
-              {lang === 'ar' ? 'تعريف المواد الخام بشكل دقيق هو الخطوة الأولى لحساب تكاليف الإنتاج بشكل صحيح.' : 'Precise material definition is the first step for accurate production costing.'}
-            </p>
-          </div>
-        </div>
       </div>
 
       {/* ADD/EDIT DIALOG */}
       <Dialog open={isAddDialogOpen} onOpenChange={(open) => !open && resetForm()}>
-        <DialogContent className="sm:max-w-[500px] rounded-lg p-0 overflow-hidden border-none shadow-2xl">
+        <DialogContent className="sm:max-w-[550px] rounded-lg p-0 overflow-hidden border-none shadow-2xl">
           <div className="premium-gradient p-6 text-white">
             <DialogHeader className="text-right rtl:text-right ltr:text-left">
               <DialogTitle className="text-xl font-black flex items-center gap-3">
                 <Layers className="w-5 h-5 text-emerald-300" />
-                {editingMatId ? (lang === 'ar' ? 'تعديل صنف' : 'Update Item') : (lang === 'ar' ? 'تسجيل صنف جديد' : 'New Material')}
+                {editingMatId ? (lang === 'ar' ? 'تعديل صنف' : 'Update Item') : (lang === 'ar' ? 'تعريف مادة خام جديدة' : 'New Raw Material')}
               </DialogTitle>
-              <p className="text-emerald-100/70 font-bold text-[10px] uppercase tracking-widest mt-1">Definition of production supplies</p>
+              <p className="text-emerald-100/70 font-bold text-[10px] uppercase tracking-widest mt-1">Definition of production assets & inventory items</p>
             </DialogHeader>
           </div>
 
-          <form onSubmit={handleSaveMaterial} className="p-6 space-y-5 bg-white">
+          <form onSubmit={handleSaveMaterial} className="p-6 space-y-4 bg-white">
+            <div className="flex flex-col items-center gap-3 pb-2 border-b border-slate-100">
+              <div 
+                onClick={() => !isCompressing && fileInputRef.current?.click()}
+                className="relative group cursor-pointer"
+              >
+                <Avatar className="h-20 w-20 rounded-2xl border-4 border-slate-100 shadow-md bg-slate-50 overflow-hidden">
+                  <AvatarImage src={formData.photoUrl || undefined} className="object-cover" />
+                  <AvatarFallback className="bg-slate-50 text-slate-300">
+                    {isCompressing ? <Loader2 className="w-8 h-8 animate-spin text-emerald-500" /> : <ImageIcon className="w-10 h-10" />}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="absolute inset-0 bg-black/40 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <UploadCloud className="w-6 h-6 text-white" />
+                </div>
+              </div>
+              <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
+              <Label className="text-[10px] font-black uppercase text-slate-400">صورة المادة (اختياري)</Label>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
                   <Hash className="w-3 h-3 text-emerald-600" />
-                  {lang === 'ar' ? 'كود المادة (SKU)' : 'ITEM SKU'}
+                  {lang === 'ar' ? 'كود المادة (تلقائي)' : 'AUTO SKU'}
                 </Label>
-                <Input 
-                  value={formData.code} 
-                  onChange={(e) => {setFormData({...formData, code: e.target.value}); setCodeError(null);}} 
-                  placeholder="MAT-001" 
-                  className={cn("h-10 font-bold text-xs bg-slate-50", codeError && "border-red-500")} 
-                  required 
-                />
-                {codeError && <p className="text-[9px] font-black text-red-600 mt-1">{codeError}</p>}
+                <Input value={editingMatId ? formData.code : 'AUTO-GENERATE'} disabled className="h-10 font-bold text-xs bg-slate-100 text-slate-500" />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
@@ -465,17 +556,9 @@ export default function MaterialsPage() {
             <div className="space-y-1.5">
               <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
                 <Languages className="w-3 h-3 text-emerald-600" />
-                {lang === 'ar' ? 'الاسم بالعربي' : 'ARABIC NAME'}
+                {lang === 'ar' ? 'اسم المادة (عربي)' : 'ARABIC NAME'}
               </Label>
               <Input value={formData.nameAr} onChange={(e) => setFormData({...formData, nameAr: e.target.value})} className="h-10 font-bold text-xs bg-slate-50" required />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
-                <Type className="w-3 h-3 text-emerald-600" />
-                {lang === 'ar' ? 'الاسم بالإنجليزي' : 'ENGLISH NAME'}
-              </Label>
-              <Input value={formData.nameEn} onChange={(e) => setFormData({...formData, nameEn: e.target.value})} className="h-10 font-bold text-xs bg-slate-50" required />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -485,26 +568,39 @@ export default function MaterialsPage() {
                   {lang === 'ar' ? 'وحدة القياس' : 'UNIT'}
                 </Label>
                 <select value={formData.unit} onChange={(e) => setFormData({...formData, unit: e.target.value})} className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none">
-                  <option value="kg">{lang === 'ar' ? 'كيلو (KG)' : 'Kilogram'}</option>
-                  <option value="yard">{lang === 'ar' ? 'ياردة (YD)' : 'Yard'}</option>
-                  <option value="roll">{lang === 'ar' ? 'رول (Roll)' : 'Roll'}</option>
-                  <option value="piece">{lang === 'ar' ? 'حبة (Pcs)' : 'Piece'}</option>
-                  <option value="liter">{lang === 'ar' ? 'لتر (L)' : 'Liter'}</option>
+                  {units.map(u => <option key={u.value} value={u.value}>{lang === 'ar' ? u.labelAr : u.labelEn}</option>)}
                 </select>
               </div>
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
+                  <Wallet className="w-3 h-3 text-emerald-600" />
+                  {lang === 'ar' ? 'سعر الوحدة' : 'UNIT PRICE'}
+                </Label>
+                <Input type="number" value={formData.price} onChange={(e) => setFormData({...formData, price: Number(e.target.value)})} className="h-10 font-bold text-xs bg-slate-50 tabular-nums" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
+                  <Box className="w-3 h-3 text-emerald-600" />
+                  {lang === 'ar' ? 'الكمية الحالية' : 'OPENING QTY'}
+                </Label>
+                <Input type="number" value={formData.currentQty} onChange={(e) => setFormData({...formData, currentQty: Number(e.target.value)})} className="h-10 font-bold text-xs bg-slate-50 tabular-nums" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
                   <Gauge className="w-3 h-3 text-emerald-600" />
-                  {lang === 'ar' ? 'حد الأمان' : 'SAFETY STOCK'}
+                  {lang === 'ar' ? 'حد الأمان' : 'MIN LEVEL'}
                 </Label>
                 <Input type="number" value={formData.minQty} onChange={(e) => setFormData({...formData, minQty: Number(e.target.value)})} className="h-10 font-bold text-xs bg-slate-50 tabular-nums" />
               </div>
             </div>
 
             <div className="flex gap-3 pt-2">
-              <Button type="submit" disabled={isSubmitting} className="flex-1 h-11 premium-gradient hover:opacity-90 text-white rounded-md font-black text-sm border-none shadow-md">
-                <Save className="w-4 h-4 me-2" />
-                {lang === 'ar' ? (isSubmitting ? 'جاري الحفظ...' : 'حفظ البيانات') : 'Save Record'}
+              <Button type="submit" disabled={isSubmitting || isCompressing} className="flex-1 h-11 premium-gradient hover:opacity-90 text-white rounded-md font-black text-sm border-none shadow-md">
+                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : <Save className="w-4 h-4 me-2" />}
+                {lang === 'ar' ? (isSubmitting ? 'جاري الحفظ...' : 'حفظ البيانات') : 'Commit Record'}
               </Button>
               <Button type="button" variant="outline" onClick={resetForm} className="px-6 h-11 font-black text-slate-400 rounded-md">
                 {lang === 'ar' ? 'إلغاء' : 'Cancel'}
