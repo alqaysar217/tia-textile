@@ -23,7 +23,8 @@ import {
   Power,
   PowerOff,
   X,
-  ShieldAlert
+  ShieldAlert,
+  TrendingUp
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -129,8 +130,10 @@ export default function DepartmentsPage() {
       updatedAt: serverTimestamp(),
     };
 
+    // Release UI immediately to prevent freezing
     resetForm(); 
 
+    // Background Execution
     setTimeout(() => {
       if (isEdit && currentId) {
         const docRef = doc(db, 'departments', currentId);
@@ -186,8 +189,10 @@ export default function DepartmentsPage() {
       return;
     }
 
+    // Release UI First
     setDeletingDept(null);
 
+    // Run Firestore task in next tick
     setTimeout(() => {
       const docRef = doc(db, 'departments', deptToArchiveId);
       updateDoc(docRef, {
@@ -222,184 +227,178 @@ export default function DepartmentsPage() {
     <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 max-w-7xl mx-auto pb-12">
       
       {/* 
-          Sleek Sticky Header: 
-          Now uses -mx and compensates padding to feel integrated 
-          and less "detached" or "blocking".
+          Master Sticky Hub: 
+          Now combines Header and Stats into one unified, compact area 
+          that stays pinned to the top.
       */}
-      <div className="sticky top-0 z-30 -mx-4 md:-mx-8 px-4 md:px-8 py-4 bg-[#F8F9FA]/95 backdrop-blur-md border-b border-gray-200/60 mb-8 shadow-sm">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="flex items-center gap-4 w-full md:w-auto">
-            <div className="w-1.5 h-10 bg-primary rounded-full hidden md:block" />
-            <div className="space-y-0.5">
-              <div className="flex items-center gap-2 text-[10px] font-black text-muted-foreground uppercase tracking-widest">
-                <span>{lang === 'ar' ? 'نظام الإنتاج' : 'Production'}</span>
-                <ChevronRight className={`w-3 h-3 ${dir === 'rtl' ? '' : 'rotate-180'}`} />
-                <span className="text-primary">{lang === 'ar' ? 'الأقسام' : 'Departments'}</span>
-              </div>
-              <h1 className="text-xl md:text-2xl font-black text-gray-900 tracking-tight">
-                {lang === 'ar' ? 'أقسام ومراحل الإنتاج' : 'Production Departments'}
-              </h1>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3 w-full md:w-auto justify-end">
-            <Dialog open={isAddDialogOpen} onOpenChange={(open) => !open && resetForm()}>
-              <DialogTrigger asChild>
-                <Button onClick={() => setIsAddDialogOpen(true)} className="h-11 px-6 bg-primary hover:bg-primary/95 text-white gap-2.5 rounded-xl shadow-lg shadow-primary/10 font-black transition-all active:scale-95 group">
-                  <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform" />
-                  {lang === 'ar' ? 'قسم جديد' : 'New Dept'}
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[550px] rounded-2xl border-none shadow-2xl overflow-hidden p-0">
-                <div className="bg-gradient-to-br from-primary via-[#0a7a44] to-[#054d2a] p-8 text-white relative">
-                  <div className="absolute top-0 right-0 p-6 opacity-10 rotate-12">
-                    <Factory className="w-32 h-32" />
-                  </div>
-                  <DialogHeader className="relative z-10 text-right rtl:text-right ltr:text-left">
-                    <DialogTitle className="text-2xl font-black flex items-center gap-3">
-                      <Layout className="w-6 h-6 text-secondary" />
-                      {editingDeptId ? (lang === 'ar' ? 'تعديل بيانات القسم' : 'Edit Department') : (lang === 'ar' ? 'إضافة قسم جديد' : 'New Department')}
-                    </DialogTitle>
-                    <DialogDescription className="text-white/70 font-bold mt-2 text-sm leading-relaxed">
-                      {lang === 'ar' 
-                        ? 'يرجى إدخال البيانات بدقة، حيث تُستخدم هذه المعلومات في توزيع التكاليف الصناعية.' 
-                        : 'Please enter data accurately, as this info is used for cost allocation.'}
-                    </DialogDescription>
-                  </DialogHeader>
+      <div className="sticky top-0 z-30 -mx-4 md:-mx-8 px-4 md:px-8 pt-4 pb-4 bg-[#F8F9FA]/95 backdrop-blur-xl border-b border-gray-200/60 mb-8 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.05)] transition-all">
+        <div className="flex flex-col gap-6">
+          {/* Top Row: Navigation and Main Actions */}
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+            <div className="flex items-center gap-4 w-full md:w-auto">
+              <div className="w-1.5 h-10 bg-primary rounded-full hidden md:block" />
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2 text-[9px] font-black text-muted-foreground uppercase tracking-[0.15em]">
+                  <span>{lang === 'ar' ? 'نظام الإنتاج' : 'Production'}</span>
+                  <ChevronRight className={`w-2.5 h-2.5 ${dir === 'rtl' ? '' : 'rotate-180'}`} />
+                  <span className="text-primary">{lang === 'ar' ? 'الأقسام' : 'Departments'}</span>
                 </div>
+                <h1 className="text-lg md:text-xl font-black text-gray-900 tracking-tight">
+                  {lang === 'ar' ? 'أقسام ومراحل الإنتاج' : 'Production Departments'}
+                </h1>
+              </div>
+            </div>
 
-                <form onSubmit={handleSaveDepartment} className="p-8 space-y-6 bg-white">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+              <Dialog open={isAddDialogOpen} onOpenChange={(open) => !open && resetForm()}>
+                <DialogTrigger asChild>
+                  <Button onClick={() => setIsAddDialogOpen(true)} className="h-10 px-6 bg-primary hover:bg-primary/95 text-white gap-2.5 rounded-xl shadow-lg shadow-primary/10 font-black transition-all active:scale-95 group">
+                    <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform" />
+                    {lang === 'ar' ? 'إضافة قسم جديد' : 'New Dept'}
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[550px] rounded-2xl border-none shadow-2xl overflow-hidden p-0">
+                  <div className="bg-gradient-to-br from-primary via-[#0a7a44] to-[#054d2a] p-8 text-white relative">
+                    <div className="absolute top-0 right-0 p-6 opacity-10 rotate-12">
+                      <Factory className="w-32 h-32" />
+                    </div>
+                    <DialogHeader className="relative z-10 text-right rtl:text-right ltr:text-left">
+                      <DialogTitle className="text-2xl font-black flex items-center gap-3">
+                        <Layout className="w-6 h-6 text-secondary" />
+                        {editingDeptId ? (lang === 'ar' ? 'تعديل بيانات القسم' : 'Edit Department') : (lang === 'ar' ? 'إضافة قسم جديد' : 'New Department')}
+                      </DialogTitle>
+                      <DialogDescription className="text-white/70 font-bold mt-2 text-sm leading-relaxed">
+                        {lang === 'ar' 
+                          ? 'يرجى إدخال البيانات بدقة، حيث تُستخدم هذه المعلومات في توزيع التكاليف الصناعية.' 
+                          : 'Please enter data accurately, as this info is used for cost allocation.'}
+                      </DialogDescription>
+                    </DialogHeader>
+                  </div>
+
+                  <form onSubmit={handleSaveDepartment} className="p-8 space-y-6 bg-white">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
+                          <Hash className="w-3 h-3 text-primary/60" />
+                          {lang === 'ar' ? 'كود القسم' : 'Dept Code'}
+                        </Label>
+                        <Input 
+                          value={formData.code}
+                          onChange={(e) => setFormData({...formData, code: e.target.value})}
+                          placeholder="DEPT-XXX" 
+                          className="h-12 rounded-xl border-gray-100 bg-gray-50/50 font-bold focus:bg-white focus:ring-primary/5 focus:border-primary/30 transition-all ps-4" 
+                          required 
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
+                          <Activity className="w-3 h-3 text-primary/60" />
+                          {lang === 'ar' ? 'الحالة التشغيلية' : 'Status'}
+                        </Label>
+                        <select 
+                          value={formData.status}
+                          onChange={(e) => setFormData({...formData, status: e.target.value})}
+                          className="w-full h-12 px-4 bg-emerald-50/50 border border-emerald-100/50 rounded-xl text-[11px] font-black text-emerald-700 focus:outline-none"
+                        >
+                          <option value="active">{lang === 'ar' ? 'نشط تشغيلياً' : 'Active'}</option>
+                          <option value="inactive">{lang === 'ar' ? 'متوقف مؤقتاً' : 'Inactive'}</option>
+                        </select>
+                      </div>
+                    </div>
+
                     <div className="space-y-2">
                       <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
-                        <Hash className="w-3 h-3 text-primary/60" />
-                        {lang === 'ar' ? 'كود القسم' : 'Dept Code'}
+                        <Type className="w-3 h-3 text-primary/60" />
+                        {lang === 'ar' ? 'اسم القسم (بالعربية)' : 'Name (Arabic)'}
                       </Label>
                       <Input 
-                        value={formData.code}
-                        onChange={(e) => setFormData({...formData, code: e.target.value})}
-                        placeholder="DEPT-XXX" 
-                        className="h-12 rounded-xl border-gray-100 bg-gray-50/50 font-bold focus:bg-white focus:ring-primary/5 focus:border-primary/30 transition-all ps-4" 
+                        value={formData.nameAr}
+                        onChange={(e) => setFormData({...formData, nameAr: e.target.value})}
+                        placeholder={lang === 'ar' ? 'مثال: قسم الخياطة' : 'Arabic Name'} 
+                        className="h-12 rounded-xl border-gray-100 bg-gray-50/50 font-bold focus:bg-white focus:ring-primary/5 focus:border-primary/30 transition-all" 
                         required 
                       />
                     </div>
+
                     <div className="space-y-2">
                       <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
-                        <Activity className="w-3 h-3 text-primary/60" />
-                        {lang === 'ar' ? 'الحالة التشغيلية' : 'Status'}
+                        <Globe className="w-3 h-3 text-primary/60" />
+                        {lang === 'ar' ? 'الاسم بالإنجليزية' : 'Name (English)'}
                       </Label>
-                      <select 
-                        value={formData.status}
-                        onChange={(e) => setFormData({...formData, status: e.target.value})}
-                        className="w-full h-12 px-4 bg-emerald-50/50 border border-emerald-100/50 rounded-xl text-[11px] font-black text-emerald-700 focus:outline-none"
-                      >
-                        <option value="active">{lang === 'ar' ? 'نشط تشغيلياً' : 'Active'}</option>
-                        <option value="inactive">{lang === 'ar' ? 'متوقف مؤقتاً' : 'Inactive'}</option>
-                      </select>
+                      <Input 
+                        value={formData.nameEn}
+                        onChange={(e) => setFormData({...formData, nameEn: e.target.value})}
+                        placeholder="English Name" 
+                        className="h-12 rounded-xl border-gray-100 bg-gray-50/50 font-bold focus:bg-white focus:ring-primary/5 focus:border-primary/30 transition-all" 
+                        required 
+                      />
                     </div>
-                  </div>
 
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
-                      <Type className="w-3 h-3 text-primary/60" />
-                      {lang === 'ar' ? 'اسم القسم (بالعربية)' : 'Name (Arabic)'}
-                    </Label>
-                    <Input 
-                      value={formData.nameAr}
-                      onChange={(e) => setFormData({...formData, nameAr: e.target.value})}
-                      placeholder={lang === 'ar' ? 'مثال: قسم الخياطة' : 'Arabic Name'} 
-                      className="h-12 rounded-xl border-gray-100 bg-gray-50/50 font-bold focus:bg-white focus:ring-primary/5 focus:border-primary/30 transition-all" 
-                      required 
-                    />
-                  </div>
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
+                        <FileText className="w-3 h-3 text-primary/60" />
+                        {lang === 'ar' ? 'وصف العمليات' : 'Process Description'}
+                      </Label>
+                      <Textarea 
+                        value={formData.descAr}
+                        onChange={(e) => setFormData({...formData, descAr: e.target.value})}
+                        placeholder={lang === 'ar' ? 'شرح للمهام التي تتم في هذا القسم...' : 'Operations details...'} 
+                        className="rounded-xl border-gray-100 bg-gray-50/50 resize-none h-24 font-medium focus:bg-white focus:ring-primary/5 focus:border-primary/30 transition-all p-4 text-sm" 
+                      />
+                    </div>
 
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
-                      <Globe className="w-3 h-3 text-primary/60" />
-                      {lang === 'ar' ? 'الاسم بالإنجليزية' : 'Name (English)'}
-                    </Label>
-                    <Input 
-                      value={formData.nameEn}
-                      onChange={(e) => setFormData({...formData, nameEn: e.target.value})}
-                      placeholder="English Name" 
-                      className="h-12 rounded-xl border-gray-100 bg-gray-50/50 font-bold focus:bg-white focus:ring-primary/5 focus:border-primary/30 transition-all" 
-                      required 
-                    />
-                  </div>
+                    <div className="pt-4 flex gap-4">
+                      <Button 
+                        type="submit" 
+                        disabled={isSubmitting}
+                        className="flex-1 h-14 bg-gradient-to-r from-primary to-[#0a7a44] hover:opacity-90 rounded-xl font-black gap-3 shadow-lg shadow-primary/10 text-base"
+                      >
+                        <Save className="w-5 h-5" />
+                        {lang === 'ar' ? (isSubmitting ? 'جاري الحفظ...' : 'حفظ البيانات') : (isSubmitting ? 'Saving...' : 'Save Changes')}
+                      </Button>
+                      <Button 
+                        type="button" 
+                        variant="ghost" 
+                        onClick={resetForm} 
+                        className="h-14 px-8 rounded-xl font-black text-gray-400 hover:text-gray-600"
+                      >
+                        {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+                      </Button>
+                    </div>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </div>
+          </div>
 
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
-                      <FileText className="w-3 h-3 text-primary/60" />
-                      {lang === 'ar' ? 'وصف العمليات' : 'Process Description'}
-                    </Label>
-                    <Textarea 
-                      value={formData.descAr}
-                      onChange={(e) => setFormData({...formData, descAr: e.target.value})}
-                      placeholder={lang === 'ar' ? 'شرح للمهام التي تتم في هذا القسم...' : 'Operations details...'} 
-                      className="rounded-xl border-gray-100 bg-gray-50/50 resize-none h-24 font-medium focus:bg-white focus:ring-primary/5 focus:border-primary/30 transition-all p-4 text-sm" 
-                    />
-                  </div>
-
-                  <div className="pt-4 flex gap-4">
-                    <Button 
-                      type="submit" 
-                      disabled={isSubmitting}
-                      className="flex-1 h-14 bg-gradient-to-r from-primary to-[#0a7a44] hover:opacity-90 rounded-xl font-black gap-3 shadow-lg shadow-primary/10 text-base"
-                    >
-                      <Save className="w-5 h-5" />
-                      {lang === 'ar' ? (isSubmitting ? 'جاري الحفظ...' : 'حفظ البيانات') : (isSubmitting ? 'Saving...' : 'Save Changes')}
-                    </Button>
-                    <Button 
-                      type="button" 
-                      variant="ghost" 
-                      onClick={resetForm} 
-                      className="h-14 px-8 rounded-xl font-black text-gray-400 hover:text-gray-600"
-                    >
-                      {lang === 'ar' ? 'إلغاء' : 'Cancel'}
-                    </Button>
-                  </div>
-                </form>
-              </DialogContent>
-            </Dialog>
+          {/* Bottom Row: Inline Stats (Compact Version) */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-gray-100 pt-4">
+            <div className="flex items-center gap-3 bg-white/50 px-4 py-2.5 rounded-lg border border-gray-100 group hover:border-primary/20 transition-all">
+              <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary shrink-0"><Activity className="w-4 h-4" /></div>
+              <div>
+                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">{lang === 'ar' ? 'الأقسام النشطة' : 'Active Units'}</p>
+                <h3 className="text-sm font-black tabular-nums leading-none">{loading ? '...' : activeCount}</h3>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 bg-white/50 px-4 py-2.5 rounded-lg border border-gray-100 group hover:border-secondary/20 transition-all">
+              <div className="w-8 h-8 bg-secondary/10 rounded-lg flex items-center justify-center text-secondary shrink-0"><Users className="w-4 h-4" /></div>
+              <div>
+                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">{lang === 'ar' ? 'إجمالي الحرفيين' : 'Total Artisans'}</p>
+                <h3 className="text-sm font-black tabular-nums leading-none">{loading ? '...' : totalWorkers}</h3>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 bg-primary/10 px-4 py-2.5 rounded-lg border border-primary/10 group">
+              <div className="w-8 h-8 bg-primary/20 rounded-lg flex items-center justify-center text-primary shrink-0"><CheckCircle2 className="w-4 h-4" /></div>
+              <div>
+                <p className="text-[9px] font-black text-primary/60 uppercase tracking-widest leading-none mb-1">{lang === 'ar' ? 'حالة المزامنة' : 'Sync Status'}</p>
+                <h3 className="text-sm font-black leading-none">{lang === 'ar' ? 'متصل لحظياً' : 'Live Sync'}</h3>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
       <div className="space-y-8 px-1">
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="relative overflow-hidden bg-white border border-gray-200/60 rounded-xl p-6 shadow-sm group hover:border-primary/20 transition-all">
-            <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full -mr-12 -mt-12 transition-transform group-hover:scale-125" />
-            <div className="flex items-center gap-4 relative z-10">
-              <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary border border-primary/10"><Activity className="w-6 h-6" /></div>
-              <div>
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{lang === 'ar' ? 'الأقسام النشطة' : 'Active Units'}</p>
-                <h3 className="text-2xl font-black tabular-nums">{loading ? '...' : activeCount}</h3>
-              </div>
-            </div>
-          </div>
-          <div className="relative overflow-hidden bg-white border border-gray-200/60 rounded-xl p-6 shadow-sm group hover:border-secondary/20 transition-all">
-            <div className="absolute top-0 right-0 w-24 h-24 bg-secondary/5 rounded-full -mr-12 -mt-12 transition-transform group-hover:scale-125" />
-            <div className="flex items-center gap-4 relative z-10">
-              <div className="w-12 h-12 bg-secondary/10 rounded-xl flex items-center justify-center text-secondary border border-secondary/10"><Users className="w-6 h-6" /></div>
-              <div>
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{lang === 'ar' ? 'إجمالي الحرفيين' : 'Total Artisans'}</p>
-                <h3 className="text-2xl font-black tabular-nums">{loading ? '...' : totalWorkers}</h3>
-              </div>
-            </div>
-          </div>
-          <div className="relative overflow-hidden bg-primary text-white border-none rounded-xl p-6 shadow-xl transition-all">
-            <div className="absolute inset-0 opacity-10 textile-pattern" />
-            <div className="flex items-center gap-4 relative z-10">
-              <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center text-white border border-white/10"><CheckCircle2 className="w-6 h-6" /></div>
-              <div>
-                <p className="text-[10px] font-black text-white/60 uppercase tracking-widest">{lang === 'ar' ? 'حالة المزامنة' : 'Sync Status'}</p>
-                <h3 className="text-lg font-black">{lang === 'ar' ? 'متصل لحظياً' : 'Live Sync'}</h3>
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* Toolbar */}
         <div className="flex flex-wrap items-center justify-between gap-4 bg-white border border-gray-200/60 p-4 rounded-xl shadow-sm">
           <div className="flex items-center gap-4 flex-1">
