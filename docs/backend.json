@@ -6,16 +6,31 @@
       "description": "A traditional Yemeni Maawiz product",
       "type": "object",
       "properties": {
-        "nameAr": { "type": "string", "description": "Product name in Arabic" },
-        "nameEn": { "type": "string", "description": "Product name in English" },
-        "descriptionAr": { "type": "string", "description": "Full description in Arabic" },
-        "descriptionEn": { "type": "string", "description": "Full description in English" },
-        "category": { "type": "string", "enum": ["حليسي", "ملكي", "بيضاني", "حديدي", "سلاطيني", "أخرى"] },
+        "nameAr": { "type": "string" },
+        "nameEn": { "type": "string" },
+        "category": { "type": "string" },
         "price": { "type": "number" },
-        "status": { "type": "string", "enum": ["available", "out_of_stock", "limited", "soon"] },
-        "sku": { "type": "string" }
+        "status": { "type": "string" },
+        "sku": { "type": "string" },
+        "image": { "type": "string" }
       },
-      "required": ["nameAr", "nameEn", "price", "category", "status"]
+      "required": ["nameAr", "price", "category", "status"]
+    },
+    "ProductionOrder": {
+      "title": "Production Order",
+      "description": "Manufacturing order for a batch of products",
+      "type": "object",
+      "properties": {
+        "orderNumber": { "type": "string" },
+        "productId": { "type": "string" },
+        "targetQty": { "type": "number" },
+        "completedQty": { "type": "number" },
+        "status": { "type": "string", "enum": ["draft", "active", "completed", "cancelled"] },
+        "priority": { "type": "string", "enum": ["low", "normal", "high"] },
+        "startDate": { "type": "string", "format": "date" },
+        "currentStageId": { "type": "string" }
+      },
+      "required": ["productId", "targetQty", "status"]
     },
     "UserProfile": {
       "title": "User Profile",
@@ -23,10 +38,8 @@
       "type": "object",
       "properties": {
         "fullName": { "type": "string" },
-        "role": { "type": "string", "enum": ["admin", "factory_manager", "production_manager", "supervisor", "warehouse_keeper", "accountant", "viewer"] },
-        "departmentId": { "type": "string" },
-        "email": { "type": "string" },
-        "active": { "type": "boolean" }
+        "role": { "type": "string" },
+        "email": { "type": "string" }
       },
       "required": ["fullName", "role", "email"]
     },
@@ -37,42 +50,33 @@
       "properties": {
         "code": { "type": "string" },
         "nameAr": { "type": "string" },
-        "nameEn": { "type": "string" },
-        "descriptionAr": { "type": "string" },
         "status": { "type": "string" }
       },
-      "required": ["code", "nameAr", "nameEn"]
+      "required": ["code", "nameAr"]
     },
     "Worker": {
       "title": "Worker Profile",
-      "description": "Factory worker information (Piece-rate workers)",
+      "description": "Factory worker information",
       "type": "object",
       "properties": {
         "fullName": { "type": "string" },
         "workerId": { "type": "string" },
         "departmentId": { "type": "string" },
-        "phoneNumber": { "type": "string" },
-        "photoUrl": { "type": "string" },
-        "active": { "type": "boolean" },
-        "joinDate": { "type": "string", "format": "date" }
+        "active": { "type": "boolean" }
       },
       "required": ["fullName", "departmentId"]
     },
     "Material": {
       "title": "Raw Material",
-      "description": "Raw materials and components used in production",
+      "description": "Raw materials used in production",
       "type": "object",
       "properties": {
         "code": { "type": "string" },
         "nameAr": { "type": "string" },
-        "nameEn": { "type": "string" },
-        "category": { "type": "string", "enum": ["yarn", "dye", "prep", "sewing", "finish", "packaging", "other"] },
-        "unit": { "type": "string", "enum": ["kg", "yard", "roll", "piece", "liter", "meter", "set", "box", "carton", "gram"] },
+        "category": { "type": "string" },
+        "unit": { "type": "string" },
         "currentQty": { "type": "number" },
-        "minQty": { "type": "number", "description": "Safety stock level" },
-        "price": { "type": "number" },
-        "photoUrl": { "type": "string" },
-        "status": { "type": "string" }
+        "price": { "type": "number" }
       },
       "required": ["code", "nameAr", "category", "unit"]
     }
@@ -81,25 +85,11 @@
     "providers": ["password"]
   },
   "firestore": {
-    "/products": {
-      "schema": "Product",
-      "description": "Collection of traditional Maawiz"
-    },
-    "/users": {
-      "schema": "UserProfile",
-      "description": "System users and their permissions"
-    },
-    "/departments": {
-      "schema": "Department",
-      "description": "Production departments and stages"
-    },
-    "/workers": {
-      "schema": "Worker",
-      "description": "Records of factory workers"
-    },
-    "/materials": {
-      "schema": "Material",
-      "description": "Master data for raw materials"
-    }
+    "/products": { "schema": "Product", "description": "Finished goods" },
+    "/productionOrders": { "schema": "ProductionOrder", "description": "WIP Orders" },
+    "/users": { "schema": "UserProfile", "description": "System users" },
+    "/departments": { "schema": "Department", "description": "Production stages" },
+    "/workers": { "schema": "Worker", "description": "Personnel" },
+    "/materials": { "schema": "Material", "description": "Inventory" }
   }
 }

@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -12,14 +13,11 @@ import {
   BarChart3, 
   Settings, 
   ChevronDown,
-  History,
   Trash2,
-  ChevronLeft,
   ChevronRight,
   ShoppingBag,
   Layers,
   Users2,
-  ClipboardCheck,
   TrendingUp,
   PackageCheck,
   Calculator,
@@ -27,7 +25,10 @@ import {
   ShieldCheck,
   FileInput,
   FileOutput,
-  RefreshCcw
+  RefreshCcw,
+  History,
+  FileBarChart,
+  UserCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -91,9 +92,18 @@ export function Sidebar() {
       ]
     },
     {
+      name: lang === 'ar' ? 'التقارير والتحليل' : 'Reports & Analytics',
+      icon: <FileBarChart className="w-5 h-5" />,
+      children: [
+        { name: lang === 'ar' ? 'تكاليف الأوامر' : 'Order Costing', href: '/production/reports/costs' },
+        { name: lang === 'ar' ? 'إنتاجية العمال' : 'Worker Productivity', href: '/production/reports/productivity' },
+      ]
+    },
+    {
       name: t.production.management,
       icon: <Settings className="w-5 h-5" />,
       children: [
+        { name: lang === 'ar' ? 'المستخدمين والصلاحيات' : 'Users & Permissions', href: '/production/users', icon: <UserCheck className="w-3.5 h-3.5" /> },
         { name: t.production.settings, href: '/production/settings' },
         { name: t.production.trash, href: '/production/trash', icon: <Trash2 className="w-3.5 h-3.5" /> },
       ]
@@ -108,7 +118,6 @@ export function Sidebar() {
       isCollapsed ? "w-20" : "w-72"
     )}>
       <div className="absolute -top-24 -right-24 w-64 h-64 bg-emerald-400/10 rounded-full blur-[100px] pointer-events-none" />
-      <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-emerald-300/5 rounded-full blur-[100px] pointer-events-none" />
       <div className="absolute inset-0 opacity-[0.04] pointer-events-none textile-pattern mix-blend-overlay" />
 
       <div className={cn("mb-10 pt-8 relative z-10", isCollapsed ? "px-4" : "px-8")}>
@@ -127,7 +136,7 @@ export function Sidebar() {
 
       <nav className="flex-1 space-y-2 px-4 overflow-y-auto overflow-x-hidden no-scrollbar relative z-10">
         {navigation.map((group) => (
-          <Collapsible key={group.name} defaultOpen={!isCollapsed && (group.name === t.production.dashboard || group.name === t.production.production)}>
+          <Collapsible key={group.name} defaultOpen={pathname.startsWith(group.children?.[0]?.href?.split('/')?.slice(0,3)?.join('/') || '---')}>
             <CollapsibleTrigger disabled={isCollapsed} className={cn(
               "flex items-center justify-between w-full p-3 rounded-xl hover:bg-white/10 hover:text-white transition-all group",
               isCollapsed && "justify-center"
@@ -151,10 +160,9 @@ export function Sidebar() {
                         : "text-emerald-100/40 hover:text-white hover:bg-white/5"
                     )}
                   >
-                    {item.icon && <span className="opacity-50 group-hover:opacity-100 transition-opacity">{item.icon}</span>}
                     {pathname === item.href && (
                       <span className={cn(
-                        "absolute top-1/2 -translate-y-1/2 w-1 h-4 bg-emerald-400 rounded-full shadow-[0_0_8px_rgba(52,211,153,0.5)]",
+                        "absolute top-1/2 -translate-y-1/2 w-1 h-4 bg-emerald-400 rounded-full",
                         dir === 'rtl' ? "right-0" : "left-0"
                       )} />
                     )}
@@ -167,27 +175,11 @@ export function Sidebar() {
         ))}
       </nav>
 
-      <div className={cn("pt-6 mt-6 border-t border-white/10 pb-8 relative z-10", isCollapsed ? "px-4" : "px-6")}>
-        <div className="p-4 bg-black/10 rounded-[1.5rem] border border-white/5 space-y-4 shadow-inner">
-          {!isCollapsed && (
-            <div className="flex items-center gap-3 animate-in fade-in duration-500">
-              <div className="w-10 h-10 rounded-xl bg-emerald-400/20 flex items-center justify-center text-emerald-300 text-xs font-black border border-emerald-400/20 shadow-inner">
-                {lang === 'ar' ? 'ع' : 'A'}
-              </div>
-              <div>
-                <p className="text-xs font-black text-white">{lang === 'ar' ? 'علي باحاج' : 'Ali Bahaj'}</p>
-                <p className="text-[9px] text-emerald-200/40 font-bold uppercase tracking-widest mt-0.5">{lang === 'ar' ? 'المشرف العام' : 'Manager'}</p>
-              </div>
-            </div>
-          )}
-          <Link href="/" className={cn(
-            "flex items-center justify-center gap-2 py-2 text-[10px] font-black text-white/60 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition-all border border-white/5",
-            isCollapsed && "p-2"
-          )}>
-            <History className="w-3 h-3" />
-            {!isCollapsed && <span className="animate-in fade-in duration-500">{t.production.backToSite}</span>}
-          </Link>
-        </div>
+      <div className={cn("pt-6 mt-6 border-t border-white/10 pb-8 relative z-10 px-6")}>
+        <Link href="/" className="flex items-center justify-center gap-2 py-2 text-[10px] font-black text-white/60 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition-all border border-white/5">
+          <History className="w-3 h-3" />
+          {!isCollapsed && <span>{t.production.backToSite}</span>}
+        </Link>
       </div>
     </div>
   );
