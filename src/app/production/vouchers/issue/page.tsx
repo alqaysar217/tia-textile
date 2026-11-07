@@ -708,9 +708,9 @@ export default function MaterialIssuePage() {
             <div className="p-10 print:p-0 bg-white" id="printable-voucher">
               {printingVoucher && (
                 <div className="flex flex-col h-full text-slate-900 font-sans" dir="rtl">
-                  {/* PROFESSIONAL BILINGUAL HEADER - SWAPPED POSITIONS */}
+                  {/* PROFESSIONAL BILINGUAL HEADER */}
                   <div className="grid grid-cols-3 items-center border-b-4 border-emerald-800 pb-6 mb-6">
-                    {/* ARABIC SIDE (NOW ON LEFT) */}
+                    {/* ARABIC SIDE */}
                     <div className="text-center space-y-0.5">
                       <h2 className="text-base font-black text-emerald-900">جمعية الصناعات النسيجية</h2>
                       <p className="text-xs font-bold text-slate-500">الروضة - محافظة شبوة - اليمن</p>
@@ -724,7 +724,7 @@ export default function MaterialIssuePage() {
                       </div>
                     </div>
 
-                    {/* ENGLISH SIDE (NOW ON RIGHT) */}
+                    {/* ENGLISH SIDE */}
                     <div className="text-center space-y-0.5" dir="ltr">
                       <h2 className="text-[11px] font-black text-emerald-900 uppercase">Textile Industries Association</h2>
                       <p className="text-[10px] font-bold text-slate-500">Al-Rawdah - Shabwa - Yemen</p>
@@ -741,9 +741,8 @@ export default function MaterialIssuePage() {
                     </div>
                   </div>
 
-                  {/* COMPACT DATA GRID - 3 COLUMNS */}
-                  <div className="grid grid-cols-3 gap-x-6 gap-y-4 mb-8 bg-slate-50/50 p-4 rounded-xl border border-slate-100">
-                    {/* Column 1: Recipient & Dept */}
+                  {/* DATA GRID - 3 COLUMNS */}
+                  <div className="grid grid-cols-3 gap-x-6 gap-y-4 mb-6 bg-slate-50/50 p-4 rounded-xl border border-slate-100">
                     <div className="space-y-3">
                       <div className="flex justify-between items-center border-b border-slate-200 pb-1">
                         <span className="text-[9px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'اسم المستلم' : 'Recipient'}</span>
@@ -757,7 +756,6 @@ export default function MaterialIssuePage() {
                       </div>
                     </div>
 
-                    {/* Column 2: Voucher # & Batch Title */}
                     <div className="space-y-3">
                       <div className="flex justify-between items-center border-b border-slate-200 pb-1">
                         <span className="text-[9px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'رقم السند' : 'Voucher No.'}</span>
@@ -769,7 +767,6 @@ export default function MaterialIssuePage() {
                       </div>
                     </div>
 
-                    {/* Column 3: Date & Order # */}
                     <div className="space-y-3">
                       <div className="flex justify-between items-center border-b border-slate-200 pb-1">
                         <span className="text-[9px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'تاريخ السند' : 'Issue Date'}</span>
@@ -783,7 +780,7 @@ export default function MaterialIssuePage() {
                   </div>
 
                   {/* ITEMS TABLE */}
-                  <div className="flex-1 mb-10">
+                  <div className="mb-8">
                     <Table className="text-right border-2 border-emerald-900/10">
                       <TableHeader className="bg-emerald-900/5">
                         <TableRow>
@@ -804,19 +801,19 @@ export default function MaterialIssuePage() {
                     </Table>
                   </div>
 
-                  {/* SIGNATURES SECTION */}
-                  <div className="mt-auto grid grid-cols-3 gap-8 pt-10 border-t-2 border-slate-100 text-center">
-                    <div className="space-y-12">
+                  {/* SIGNATURES SECTION - COMPACT AND ATTACHED */}
+                  <div className="grid grid-cols-3 gap-4 pt-6 border-t border-slate-200 text-center">
+                    <div className="space-y-8">
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{lang === 'ar' ? 'أمين المستودع' : 'Store Keeper'}</p>
                       <div className="h-px bg-slate-300 w-3/4 mx-auto" />
                       <p className="text-[8px] font-bold text-slate-400 uppercase">Signature / التاريخ</p>
                     </div>
-                    <div className="space-y-12">
+                    <div className="space-y-8">
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{lang === 'ar' ? 'توقيع المستلم' : 'Recipient Sign'}</p>
                       <div className="h-px bg-slate-300 w-3/4 mx-auto" />
                       <p className="text-[8px] font-bold text-slate-400 uppercase">Signature / التاريخ</p>
                     </div>
-                    <div className="space-y-12">
+                    <div className="space-y-8">
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{lang === 'ar' ? 'اعتماد المدير' : 'Manager Approval'}</p>
                       <div className="h-px bg-slate-300 w-3/4 mx-auto" />
                       <p className="text-[8px] font-bold text-slate-400 uppercase">Authorized Signature</p>
@@ -824,7 +821,7 @@ export default function MaterialIssuePage() {
                   </div>
 
                   {/* PRINT FOOTER */}
-                  <div className="mt-16 text-center text-[7px] font-black text-slate-300 uppercase tracking-[0.4em]">
+                  <div className="mt-12 text-center text-[7px] font-black text-slate-300 uppercase tracking-[0.4em]">
                     Generated by TIA Production System - {new Date().toLocaleString()}
                   </div>
                 </div>
