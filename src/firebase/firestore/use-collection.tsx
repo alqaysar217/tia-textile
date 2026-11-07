@@ -5,7 +5,8 @@ import {
   Query, 
   onSnapshot, 
   QuerySnapshot, 
-  DocumentData 
+  DocumentData,
+  FirestoreError
 } from 'firebase/firestore';
 import { errorEmitter } from '../error-emitter';
 import { FirestorePermissionError } from '../errors';
@@ -31,12 +32,16 @@ export function useCollection<T = DocumentData>(query: Query<T> | null) {
         setData(items);
         setLoading(false);
       },
-      async (serverError) => {
-        const permissionError = new FirestorePermissionError({
-          path: 'collection',
-          operation: 'list',
-        });
-        errorEmitter.emit('permission-error', permissionError);
+      async (serverError: FirestoreError) => {
+        if (serverError.code === 'permission-denied') {
+          const permissionError = new FirestorePermissionError({
+            path: 'collection',
+            operation: 'list',
+          });
+          errorEmitter.emit('permission-error', permissionError);
+        } else {
+          console.error('Firestore Subscription Error:', serverError);
+        }
         setError(serverError);
         setLoading(false);
       }

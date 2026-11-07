@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Factory, 
   Plus, 
@@ -20,7 +20,6 @@ import {
   Globe,
   FileText,
   Layout,
-  AlertTriangle,
   Power,
   PowerOff,
   X,
@@ -86,25 +85,28 @@ export default function DepartmentsPage() {
     status: 'active'
   });
 
-  // Real-time collection fetch (excluding soft-deleted items)
   const departmentsQuery = useMemo(() => {
     if (!db) return null;
+    // تم تبسيط الاستعلام لتجنب مشاكل الفهارس (Indexes) المفقودة حالياً
     return query(
       collection(db, 'departments'), 
-      where('status', 'in', ['active', 'inactive']),
-      orderBy('createdAt', 'desc')
+      where('status', '!=', 'deleted')
     );
   }, [db]);
 
   const { data: departments, loading } = useCollection<any>(departmentsQuery);
 
-  const filtered = (departments || []).filter(d => 
-    d.nameAr?.includes(search) || 
-    d.nameEn?.toLowerCase().includes(search.toLowerCase()) || 
-    d.code?.includes(search)
-  );
+  const filtered = useMemo(() => {
+    const rawData = departments || [];
+    return rawData.filter(d => 
+      (d.nameAr?.includes(search) || 
+      d.nameEn?.toLowerCase().includes(search.toLowerCase()) || 
+      d.code?.includes(search)) &&
+      d.status !== 'deleted'
+    );
+  }, [departments, search]);
 
-  const handleSaveDepartment = async (e: React.FormEvent) => {
+  const handleSaveDepartment = (e: React.FormEvent) => {
     e.preventDefault();
     if (!db || isSubmitting) return;
 
@@ -115,96 +117,97 @@ export default function DepartmentsPage() {
       workerCount: editingDept ? (editingDept.workerCount || 0) : 0,
     };
 
-    try {
-      if (editingDept) {
-        const docRef = doc(db, 'departments', editingDept.id);
-        await updateDoc(docRef, deptData);
-      } else {
-        const colRef = collection(db, 'departments');
-        await addDoc(colRef, {
-          ...deptData,
-          createdAt: serverTimestamp(),
-        });
-      }
-
-      toast({
-        title: lang === 'ar' ? "تم تحديث البيانات" : "Data Updated",
-        description: lang === 'ar' ? "تمت مزامنة التغييرات مع قاعدة البيانات المركزية." : "Changes synced with central database.",
-      });
-      
-      resetForm();
-    } catch (err: any) {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: 'departments',
-        operation: editingDept ? 'update' : 'create',
-        requestResourceData: deptData
-      }));
-    } finally {
-      setIsSubmitting(false);
+    if (editingDept) {
+      const docRef = doc(db, 'departments', editingDept.id);
+      updateDoc(docRef, deptData)
+        .then(() => {
+          toast({ title: lang === 'ar' ? "تم التحديث" : "Updated" });
+          resetForm();
+        })
+        .catch(async (err) => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: 'departments',
+            operation: 'update',
+            requestResourceData: deptData
+          }));
+        })
+        .finally(() => setIsSubmitting(false));
+    } else {
+      const colRef = collection(db, 'departments');
+      const newDoc = { ...deptData, createdAt: serverTimestamp() };
+      addDoc(colRef, newDoc)
+        .then(() => {
+          toast({ title: lang === 'ar' ? "تمت الإضافة" : "Added" });
+          resetForm();
+        })
+        .catch(async (err) => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: 'departments',
+            operation: 'create',
+            requestResourceData: newDoc
+          }));
+        })
+        .finally(() => setIsSubmitting(false));
     }
   };
 
   const resetForm = () => {
     setIsAddDialogOpen(false);
     setEditingDept(null);
+    setIsSubmitting(false);
     setFormData({ code: '', nameAr: '', nameEn: '', descAr: '', status: 'active' });
   };
 
-  const handleStatusToggle = async (dept: any) => {
+  const handleStatusToggle = (dept: any) => {
     if (!db) return;
     const newStatus = dept.status === 'active' ? 'inactive' : 'active';
     const docRef = doc(db, 'departments', dept.id);
     
-    try {
-      await updateDoc(docRef, { status: newStatus, updatedAt: serverTimestamp() });
-      toast({
-        title: lang === 'ar' ? "تحديث الحالة" : "Status Updated",
-        description: lang === 'ar' ? `تم تغيير حالة القسم إلى ${newStatus === 'active' ? 'نشط' : 'متوقف'}` : `Department status changed to ${newStatus}`,
+    updateDoc(docRef, { status: newStatus, updatedAt: serverTimestamp() })
+      .catch(async () => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: docRef.path,
+          operation: 'update',
+        }));
       });
-    } catch (err) {
-      console.error(err);
-    }
   };
 
-  const handleArchiveDepartment = async () => {
+  const handleArchiveDepartment = () => {
     if (!db || !deletingDept) return;
 
-    // Integrity Check
     if ((deletingDept.workerCount || 0) > 0) {
       toast({
         variant: "destructive",
         title: lang === 'ar' ? "إجراء غير مسموح" : "Action Prohibited",
-        description: lang === 'ar' 
-          ? "لا يمكن أرشفة قسم يحتوي على عمال. يرجى نقلهم أولاً." 
-          : "Cannot archive department with workers. Transfer them first.",
+        description: lang === 'ar' ? "لا يمكن أرشفة قسم يحتوي على عمال." : "Cannot archive department with workers.",
       });
       setDeletingDept(null);
       return;
     }
 
     const docRef = doc(db, 'departments', deletingDept.id);
-    try {
-      await updateDoc(docRef, {
-        status: 'deleted',
-        deletedAt: serverTimestamp(),
-      });
-      toast({
-        title: lang === 'ar' ? "تمت الأرشفة" : "Archived",
-        description: lang === 'ar' ? "انتقل القسم إلى سجل المحذوفات الذكي." : "Department moved to smart trash.",
-      });
-    } catch (err) {
-      console.error(err);
-    } finally {
+    updateDoc(docRef, {
+      status: 'deleted',
+      deletedAt: serverTimestamp(),
+    })
+    .then(() => {
       setDeletingDept(null);
-    }
+      toast({ title: lang === 'ar' ? "تم النقل للأرشيف" : "Archived" });
+    })
+    .catch(async () => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: docRef.path,
+        operation: 'update',
+      }));
+    });
   };
 
   const handleEditClick = (dept: any) => {
     setEditingDept(dept);
     setFormData({
-      code: dept.code,
-      nameAr: dept.nameAr,
-      nameEn: dept.nameEn,
+      code: dept.code || '',
+      nameAr: dept.nameAr || '',
+      nameEn: dept.nameEn || '',
       descAr: dept.descAr || '',
       status: dept.status || 'active'
     });
@@ -216,14 +219,12 @@ export default function DepartmentsPage() {
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 max-w-7xl mx-auto pb-12">
-      {/* System Breadcrumbs */}
       <div className="flex items-center gap-2 text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">
         <span>{lang === 'ar' ? 'نظام الإنتاج' : 'Production'}</span>
         <ChevronRight className="w-3 h-3 rotate-180 rtl:rotate-0" />
         <span className="text-primary">{lang === 'ar' ? 'إدارة الأقسام' : 'Departments'}</span>
       </div>
 
-      {/* Main Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div className="space-y-1">
           <h1 className="text-3xl font-black text-gray-900 tracking-tight flex items-center gap-3">
@@ -366,7 +367,6 @@ export default function DepartmentsPage() {
         </Dialog>
       </div>
 
-      {/* Modern Dashboard Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="relative overflow-hidden bg-white border border-gray-200/60 rounded-xl p-6 shadow-sm group hover:border-primary/20 transition-all">
           <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full -mr-12 -mt-12 transition-transform group-hover:scale-125" />
@@ -400,7 +400,6 @@ export default function DepartmentsPage() {
         </div>
       </div>
 
-      {/* Advanced Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-4 bg-white border border-gray-200/60 p-4 rounded-xl shadow-sm">
         <div className="flex items-center gap-4 flex-1">
           <div className="relative w-full max-w-md">
@@ -419,7 +418,6 @@ export default function DepartmentsPage() {
         </div>
       </div>
 
-      {/* Main Data Grid */}
       <div className="bg-white border border-gray-200/60 rounded-xl shadow-sm overflow-hidden">
         <Table className="text-right">
           <TableHeader>
@@ -492,11 +490,9 @@ export default function DepartmentsPage() {
         </Table>
       </div>
 
-      {/* CUSTOM LUXURY ALERT DIALOG */}
       <AlertDialog open={!!deletingDept} onOpenChange={(open) => !open && setDeletingDept(null)}>
         <AlertDialogContent className="max-w-md rounded-[2rem] border-none shadow-[0_40px_100px_rgba(0,0,0,0.15)] overflow-hidden p-0">
           <div className="bg-gradient-to-br from-[#1A1C1E] to-[#2D3136] p-10 text-center relative overflow-hidden">
-            {/* Background luxury decor */}
             <div className="absolute inset-0 opacity-[0.03] textile-pattern pointer-events-none" />
             <div className="absolute -top-10 -right-10 w-40 h-40 bg-primary/10 rounded-full blur-3xl" />
             
@@ -540,7 +536,6 @@ export default function DepartmentsPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Footer System Info */}
       <div className="bg-muted/30 border border-border/50 rounded-xl p-5 flex items-start gap-4">
         <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-primary shadow-sm shrink-0">
           <Info className="w-6 h-6" />
