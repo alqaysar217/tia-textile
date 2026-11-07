@@ -741,37 +741,43 @@ export default function MaterialIssuePage() {
                     </div>
                   </div>
 
-                  {/* COMPACT DATA GRID */}
-                  <div className="grid grid-cols-2 gap-x-12 gap-y-4 mb-8 bg-slate-50/50 p-4 rounded-xl border border-slate-100">
+                  {/* COMPACT DATA GRID - 3 COLUMNS */}
+                  <div className="grid grid-cols-3 gap-x-6 gap-y-4 mb-8 bg-slate-50/50 p-4 rounded-xl border border-slate-100">
+                    {/* Column 1: Recipient & Dept */}
                     <div className="space-y-3">
                       <div className="flex justify-between items-center border-b border-slate-200 pb-1">
-                        <span className="text-[10px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'رقم السند' : 'Voucher No.'}</span>
-                        <span className="text-sm font-black text-emerald-900 tabular-nums">{printingVoucher.voucherNumber}</span>
+                        <span className="text-[9px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'اسم المستلم' : 'Recipient'}</span>
+                        <span className="text-xs font-black text-slate-700">{allWorkers?.find(w => w.id === printingVoucher.workerId)?.fullName}</span>
                       </div>
                       <div className="flex justify-between items-center border-b border-slate-200 pb-1">
-                        <span className="text-[10px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'تاريخ السند' : 'Issue Date'}</span>
-                        <span className="text-sm font-black text-slate-700 tabular-nums">{printingVoucher.date}</span>
-                      </div>
-                      <div className="flex justify-between items-center border-b border-slate-200 pb-1">
-                        <span className="text-[10px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'أمر الإنتاج' : 'Batch No.'}</span>
-                        <span className="text-sm font-black text-slate-700 tabular-nums">{allOrders?.find(o => o.id === printingVoucher.orderId)?.orderNumber}</span>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center border-b border-slate-200 pb-1">
-                        <span className="text-[10px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'اسم المستلم' : 'Recipient'}</span>
-                        <span className="text-sm font-black text-slate-700">{allWorkers?.find(w => w.id === printingVoucher.workerId)?.fullName}</span>
-                      </div>
-                      <div className="flex justify-between items-center border-b border-slate-200 pb-1">
-                        <span className="text-[10px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'القسم / المسار' : 'Department'}</span>
-                        <span className="text-sm font-black text-slate-700">
+                        <span className="text-[9px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'القسم / المسار' : 'Department'}</span>
+                        <span className="text-xs font-black text-slate-700">
                            {allDepartments?.find(d => d.id === allWorkers?.find(w => w.id === printingVoucher.workerId)?.departmentId)?.nameAr}
                         </span>
                       </div>
+                    </div>
+
+                    {/* Column 2: Voucher # & Batch Title */}
+                    <div className="space-y-3">
                       <div className="flex justify-between items-center border-b border-slate-200 pb-1">
-                        <span className="text-[10px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'الدفعة' : 'Batch Name'}</span>
-                        <span className="text-sm font-black text-slate-700 truncate max-w-[150px]">{allOrders?.find(o => o.id === printingVoucher.orderId)?.title}</span>
+                        <span className="text-[9px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'رقم السند' : 'Voucher No.'}</span>
+                        <span className="text-xs font-black text-emerald-900 tabular-nums">{printingVoucher.voucherNumber}</span>
+                      </div>
+                      <div className="flex justify-between items-center border-b border-slate-200 pb-1">
+                        <span className="text-[9px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'الدفعة' : 'Batch Name'}</span>
+                        <span className="text-xs font-black text-slate-700 truncate max-w-[100px]">{allOrders?.find(o => o.id === printingVoucher.orderId)?.title}</span>
+                      </div>
+                    </div>
+
+                    {/* Column 3: Date & Order # */}
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center border-b border-slate-200 pb-1">
+                        <span className="text-[9px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'تاريخ السند' : 'Issue Date'}</span>
+                        <span className="text-xs font-black text-slate-700 tabular-nums">{printingVoucher.date}</span>
+                      </div>
+                      <div className="flex justify-between items-center border-b border-slate-200 pb-1">
+                        <span className="text-[9px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'أمر الإنتاج' : 'Batch No.'}</span>
+                        <span className="text-xs font-black text-slate-700 tabular-nums">{allOrders?.find(o => o.id === printingVoucher.orderId)?.orderNumber}</span>
                       </div>
                     </div>
                   </div>
