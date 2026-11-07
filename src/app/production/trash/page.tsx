@@ -43,6 +43,7 @@ import { collection, updateDoc, doc, serverTimestamp, query, where, deleteDoc } 
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { toast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 export default function TrashPage() {
   const { lang, dir } = useTranslation();
