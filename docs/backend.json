@@ -6,13 +6,16 @@
       "description": "A traditional Yemeni Maawiz product",
       "type": "object",
       "properties": {
+        "sku": { "type": "string" },
         "nameAr": { "type": "string" },
         "nameEn": { "type": "string" },
+        "descriptionAr": { "type": "string" },
+        "descriptionEn": { "type": "string" },
         "category": { "type": "string" },
         "price": { "type": "number" },
         "status": { "type": "string" },
-        "sku": { "type": "string" },
-        "image": { "type": "string" }
+        "image": { "type": "string" },
+        "gallery": { "type": "array", "items": { "type": "string" } }
       },
       "required": ["nameAr", "price", "category", "status"]
     },
@@ -22,13 +25,15 @@
       "type": "object",
       "properties": {
         "orderNumber": { "type": "string" },
+        "title": { "type": "string", "description": "User friendly title for the batch" },
         "productId": { "type": "string" },
         "targetQty": { "type": "number" },
         "completedQty": { "type": "number" },
         "status": { "type": "string", "enum": ["draft", "active", "completed", "cancelled"] },
         "priority": { "type": "string", "enum": ["low", "normal", "high"] },
         "startDate": { "type": "string", "format": "date" },
-        "currentStageId": { "type": "string" }
+        "currentStageId": { "type": "string" },
+        "notes": { "type": "string" }
       },
       "required": ["productId", "targetQty", "status"]
     },
@@ -50,6 +55,8 @@
       "properties": {
         "code": { "type": "string" },
         "nameAr": { "type": "string" },
+        "nameEn": { "type": "string" },
+        "descAr": { "type": "string" },
         "status": { "type": "string" }
       },
       "required": ["code", "nameAr"]
@@ -62,7 +69,11 @@
         "fullName": { "type": "string" },
         "workerId": { "type": "string" },
         "departmentId": { "type": "string" },
-        "active": { "type": "boolean" }
+        "phoneNumber": { "type": "string" },
+        "photoUrl": { "type": "string" },
+        "joinDate": { "type": "string" },
+        "active": { "type": "boolean" },
+        "status": { "type": "string" }
       },
       "required": ["fullName", "departmentId"]
     },
@@ -73,10 +84,14 @@
       "properties": {
         "code": { "type": "string" },
         "nameAr": { "type": "string" },
+        "nameEn": { "type": "string" },
         "category": { "type": "string" },
         "unit": { "type": "string" },
         "currentQty": { "type": "number" },
-        "price": { "type": "number" }
+        "minQty": { "type": "number" },
+        "price": { "type": "number" },
+        "photoUrl": { "type": "string" },
+        "status": { "type": "string" }
       },
       "required": ["code", "nameAr", "category", "unit"]
     }
