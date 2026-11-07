@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import Link from 'next/link';
+import Link from 'link';
 import { usePathname } from 'next/navigation';
 import { 
   LayoutDashboard, 
@@ -23,7 +23,11 @@ import {
   TrendingUp,
   PackageCheck,
   Calculator,
-  Workflow
+  Workflow,
+  ShieldCheck,
+  FileInput,
+  FileOutput,
+  RefreshCcw
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -37,7 +41,7 @@ import { useSidebar } from '@/components/ui/sidebar';
 type NavItem = {
   name: string;
   icon: React.ReactNode;
-  children?: { name: string; href: string }[];
+  children?: { name: string; href: string; icon?: React.ReactNode }[];
 };
 
 export function Sidebar() {
@@ -55,44 +59,35 @@ export function Sidebar() {
       name: t.production.production,
       icon: <Factory className="w-5 h-5" />,
       children: [
-        { name: lang === 'ar' ? 'أوامر الإنتاج' : 'Production Orders', href: '/production/orders' },
-        { name: lang === 'ar' ? 'متابعة مراحل العمل' : 'WIP Monitoring', href: '/production/monitoring' },
-        { name: lang === 'ar' ? 'توزيع العمل' : 'Assignments', href: '/production/assignments' },
-        { name: lang === 'ar' ? 'دليل المنتجات' : 'Products Catalog', href: '/production/products' },
+        { name: lang === 'ar' ? 'أوامر الإنتاج (WIP)' : 'Production Orders', href: '/production/orders', icon: <Workflow className="w-3.5 h-3.5" /> },
+        { name: lang === 'ar' ? 'متابعة الإنتاج اليومي' : 'Daily Monitoring', href: '/production/monitoring', icon: <TrendingUp className="w-3.5 h-3.5" /> },
+        { name: lang === 'ar' ? 'دليل المنتجات' : 'Products Catalog', href: '/production/products', icon: <ShoppingBag className="w-3.5 h-3.5" /> },
       ]
     },
     {
       name: t.production.vouchers,
       icon: <FileText className="w-5 h-5" />,
       children: [
-        { name: lang === 'ar' ? 'سندات صرف مواد' : 'Material Issue', href: '/production/vouchers/issue' },
-        { name: lang === 'ar' ? 'سندات استلام إنتاج' : 'Production Receipt', href: '/production/vouchers/receipt' },
-        { name: lang === 'ar' ? 'مرتجعات وتوالف' : 'Returns & Waste', href: '/production/vouchers/returns' },
+        { name: lang === 'ar' ? 'سندات صرف مواد' : 'Material Issue', href: '/production/vouchers/issue', icon: <FileInput className="w-3.5 h-3.5" /> },
+        { name: lang === 'ar' ? 'سندات استلام إنتاج' : 'Production Receipt', href: '/production/vouchers/receipt', icon: <FileOutput className="w-3.5 h-3.5" /> },
+        { name: lang === 'ar' ? 'سندات تسوية ومرتجع' : 'Returns & Adjustment', href: '/production/vouchers/returns', icon: <RefreshCcw className="w-3.5 h-3.5" /> },
       ]
     },
     {
       name: t.production.materials,
       icon: <Box className="w-5 h-5" />,
       children: [
-        { name: t.production.rawMaterials, href: '/production/materials' },
-        { name: lang === 'ar' ? 'المستودعات' : 'Warehouses', href: '/production/warehouses' },
+        { name: t.production.rawMaterials, href: '/production/materials', icon: <Layers className="w-3.5 h-3.5" /> },
+        { name: lang === 'ar' ? 'إدارة المستودعات' : 'Warehouses', href: '/production/warehouses', icon: <PackageCheck className="w-3.5 h-3.5" /> },
       ]
     },
     {
       name: t.production.workersAndWages,
       icon: <Users className="w-5 h-5" />,
       children: [
-        { name: t.production.workersList, href: '/production/workers' },
-        { name: t.production.departments, href: '/production/departments' },
-        { name: lang === 'ar' ? 'كشوف الأجور' : 'Payroll', href: '/production/wages' },
-      ]
-    },
-    {
-      name: lang === 'ar' ? 'التكاليف والتقارير' : 'Costs & Reports',
-      icon: <Calculator className="w-5 h-5" />,
-      children: [
-        { name: lang === 'ar' ? 'تحليل التكاليف' : 'Cost Analysis', href: '/production/reports/costs' },
-        { name: t.production.productionReports, href: '/production/reports/production' },
+        { name: t.production.workersList, href: '/production/workers', icon: <Users2 className="w-3.5 h-3.5" /> },
+        { name: t.production.departments, href: '/production/departments', icon: <ShieldCheck className="w-3.5 h-3.5" /> },
+        { name: lang === 'ar' ? 'مستحقات الأجور' : 'Payroll Management', href: '/production/wages', icon: <Calculator className="w-3.5 h-3.5" /> },
       ]
     },
     {
@@ -100,7 +95,7 @@ export function Sidebar() {
       icon: <Settings className="w-5 h-5" />,
       children: [
         { name: t.production.settings, href: '/production/settings' },
-        { name: t.production.trash, href: '/production/trash' },
+        { name: t.production.trash, href: '/production/trash', icon: <Trash2 className="w-3.5 h-3.5" /> },
       ]
     },
   ];
@@ -150,12 +145,13 @@ export function Sidebar() {
                     key={item.name}
                     href={item.href}
                     className={cn(
-                      "flex items-center p-2 rounded-lg text-[11px] font-bold transition-all relative",
+                      "flex items-center gap-3 p-2 rounded-lg text-[11px] font-bold transition-all relative",
                       pathname === item.href 
                         ? "text-white bg-white/10 shadow-inner" 
                         : "text-emerald-100/40 hover:text-white hover:bg-white/5"
                     )}
                   >
+                    {item.icon && <span className="opacity-50 group-hover:opacity-100 transition-opacity">{item.icon}</span>}
                     {pathname === item.href && (
                       <span className={cn(
                         "absolute top-1/2 -translate-y-1/2 w-1 h-4 bg-emerald-400 rounded-full shadow-[0_0_8px_rgba(52,211,153,0.5)]",
@@ -180,7 +176,7 @@ export function Sidebar() {
               </div>
               <div>
                 <p className="text-xs font-black text-white">{lang === 'ar' ? 'علي باحاج' : 'Ali Bahaj'}</p>
-                <p className="text-[9px] text-emerald-200/40 font-bold uppercase tracking-widest mt-0.5">{lang === 'ar' ? 'مدير الإنتاج' : 'Manager'}</p>
+                <p className="text-[9px] text-emerald-200/40 font-bold uppercase tracking-widest mt-0.5">{lang === 'ar' ? 'المشرف العام' : 'Manager'}</p>
               </div>
             </div>
           )}
