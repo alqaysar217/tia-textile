@@ -80,7 +80,7 @@ export default function DepartmentsPage() {
   
   // Filtering & Sorting State
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
-  const [sortBy, setSortBy] = useState<'code' | 'nameAr' | 'workerCount'>('code');
+  const [sortBy, setSortBy] = useState<'code' | 'nameAr' | 'actualWorkerCount'>('code');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -102,15 +102,27 @@ export default function DepartmentsPage() {
     return collection(db, 'departments');
   }, [db]);
 
-  const { data: departments, loading } = useCollection<any>(departmentsQuery);
+  const workersQuery = useMemo(() => {
+    if (!db) return null;
+    return collection(db, 'workers');
+  }, [db]);
+
+  const { data: departments, loading: deptsLoading } = useCollection<any>(departmentsQuery);
+  const { data: workers, loading: workersLoading } = useCollection<any>(workersQuery);
+
+  const loading = deptsLoading || workersLoading;
 
   const filtered = useMemo(() => {
-    let rawData = [...(departments || [])];
+    // 1. Get raw depts and calculate live worker count for each
+    let rawData = (departments || []).map(dept => {
+      const actualWorkerCount = (workers || []).filter(w => w.departmentId === dept.id && w.status !== 'deleted').length;
+      return { ...dept, actualWorkerCount };
+    });
     
-    // 1. Basic cleaning
+    // 2. Filter out deleted
     rawData = rawData.filter(d => d.status !== 'deleted');
 
-    // 2. Search Filter
+    // 3. Search Filter
     if (search) {
       rawData = rawData.filter(d => 
         (d.nameAr?.includes(search) || 
@@ -119,25 +131,26 @@ export default function DepartmentsPage() {
       );
     }
 
-    // 3. Status Filter
+    // 4. Status Filter
     if (statusFilter !== 'all') {
       rawData = rawData.filter(d => d.status === statusFilter);
     }
 
-    // 4. Sorting
+    // 5. Sorting
     return rawData.sort((a, b) => {
       let valA = a[sortBy] ?? '';
       let valB = b[sortBy] ?? '';
 
-      if (sortBy === 'workerCount') {
-        valA = Number(valA);
-        valB = Number(valB);
+      if (sortBy === 'actualWorkerCount') {
+        const numA = Number(valA);
+        const numB = Number(valB);
+        return sortOrder === 'asc' ? numA - numB : numB - numA;
       }
 
       const comparison = String(valA).localeCompare(String(valB), undefined, { numeric: true, sensitivity: 'base' });
       return sortOrder === 'asc' ? comparison : -comparison;
     });
-  }, [departments, search, statusFilter, sortBy, sortOrder]);
+  }, [departments, workers, search, statusFilter, sortBy, sortOrder]);
 
   const resetForm = useCallback(() => {
     setIsAddDialogOpen(false);
@@ -190,7 +203,7 @@ export default function DepartmentsPage() {
         toast({ title: lang === 'ar' ? "تم التحديث" : "Updated" });
       } else {
         const colRef = collection(db, 'departments');
-        const newDoc = { ...deptData, workerCount: 0, createdAt: serverTimestamp() };
+        const newDoc = { ...deptData, createdAt: serverTimestamp() };
         addDoc(colRef, newDoc).catch((err) => {
           errorEmitter.emit('permission-error', new FirestorePermissionError({
             path: 'departments',
@@ -238,14 +251,14 @@ export default function DepartmentsPage() {
   };
 
   const stats = useMemo(() => {
-    const list = departments || [];
+    const list = filtered || [];
     return {
       active: list.filter(d => d.status === 'active').length,
-      totalWorkers: list.reduce((acc, curr) => acc + (curr.workerCount || 0), 0)
+      totalWorkers: list.reduce((acc, curr) => acc + (curr.actualWorkerCount || 0), 0)
     };
-  }, [departments]);
+  }, [filtered]);
 
-  const toggleSort = (key: 'code' | 'nameAr' | 'workerCount') => {
+  const toggleSort = (key: 'code' | 'nameAr' | 'actualWorkerCount') => {
     if (sortBy === key) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     } else {
@@ -334,12 +347,12 @@ export default function DepartmentsPage() {
                 </div>
                 {sortBy === 'nameAr' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => toggleSort('workerCount')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
+              <DropdownMenuItem onClick={() => toggleSort('actualWorkerCount')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
                 <div className="flex items-center gap-2">
                   <Activity className="w-3.5 h-3.5 text-slate-400" />
                   {lang === 'ar' ? 'عدد العمال' : 'Labor Count'}
                 </div>
-                {sortBy === 'workerCount' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
+                {sortBy === 'actualWorkerCount' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
               </DropdownMenuItem>
               
               <DropdownMenuSeparator />
@@ -388,9 +401,9 @@ export default function DepartmentsPage() {
                   </TableHead>
                   <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 px-6 text-right whitespace-nowrap bg-inherit">{lang === 'ar' ? 'العمليات' : 'OPERATIONS'}</TableHead>
                   <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 px-6 text-center whitespace-nowrap bg-inherit">
-                    <button onClick={() => toggleSort('workerCount')} className="flex items-center gap-2 mx-auto hover:text-emerald-700 transition-colors uppercase">
+                    <button onClick={() => toggleSort('actualWorkerCount')} className="flex items-center gap-2 mx-auto hover:text-emerald-700 transition-colors uppercase">
                       {lang === 'ar' ? 'العمال' : 'STAFF'}
-                      {sortBy === 'workerCount' ? (sortOrder === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-30" />}
+                      {sortBy === 'actualWorkerCount' ? (sortOrder === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-30" />}
                     </button>
                   </TableHead>
                   <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 px-6 text-center whitespace-nowrap bg-inherit">{lang === 'ar' ? 'الحالة' : 'STATUS'}</TableHead>
@@ -416,7 +429,7 @@ export default function DepartmentsPage() {
                     </TableCell>
                     <TableCell className="px-6 py-3 text-center">
                       <span className="inline-block px-2 py-0.5 bg-slate-100 border border-slate-200 rounded text-[11px] font-black text-slate-700 tabular-nums">
-                        {dept.workerCount || 0}
+                        {dept.actualWorkerCount || 0}
                       </span>
                     </TableCell>
                     <TableCell className="px-6 py-3 text-center">
