@@ -16,7 +16,7 @@ import {
   AlertCircle,
   FileText,
   Printer,
-  ArrowLeft,
+  Edit2,
   CheckCircle2,
   Box,
   LayoutGrid,
@@ -81,7 +81,7 @@ export default function MaterialIssuePage() {
     qty: 1
   });
 
-  // Fetch Data - Simplified query to avoid empty results on missing fields
+  // Fetch Data
   const ordersQuery = useMemo(() => !db ? null : collection(db, 'productionOrders'), [db]);
   const workersQuery = useMemo(() => !db ? null : collection(db, 'workers'), [db]);
   const deptsQuery = useMemo(() => !db ? null : collection(db, 'departments'), [db]);
@@ -111,18 +111,13 @@ export default function MaterialIssuePage() {
     }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [vouchers, allOrders, allWorkers, search]);
 
-  // Filter workers based on department, status and search
   const filteredWorkers = useMemo(() => {
     if (!allWorkers) return [];
     return allWorkers.filter(w => {
-      // Basic check: must not be deleted
       if (w.status === 'deleted') return false;
-      
       const matchesDept = selectedDeptId ? w.departmentId === selectedDeptId : true;
       const matchesSearch = (w.fullName || '').toLowerCase().includes(workerSearch.toLowerCase()) || 
                            (w.workerId || '').toLowerCase().includes(workerSearch.toLowerCase());
-      
-      // Show if matches search/dept AND worker is marked active (default to true if field missing)
       return matchesDept && matchesSearch && (w.active !== false);
     });
   }, [allWorkers, selectedDeptId, workerSearch]);
@@ -165,6 +160,12 @@ export default function MaterialIssuePage() {
     setFormData({ ...formData, items: formData.items.filter(i => i.id !== id) });
   };
 
+  const editItem = (item: any) => {
+    setCurrentItem({ id: item.id, qty: item.qty });
+    removeItem(item.id);
+    toast({ title: lang === 'ar' ? "تم نقل المادة للتعديل" : "Material moved to edit" });
+  };
+
   const handleSaveVoucher = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!db || isSubmitting || formData.items.length === 0 || !formData.workerId) return;
@@ -189,11 +190,9 @@ export default function MaterialIssuePage() {
     };
 
     try {
-      // 1. Create Voucher
       const voucherRef = doc(collection(db, 'vouchers'));
       batch.set(voucherRef, voucherData);
 
-      // 2. Update Material Quantities
       formData.items.forEach(item => {
         const material = materials?.find(m => m.id === item.id);
         if (material) {
@@ -344,46 +343,16 @@ export default function MaterialIssuePage() {
 
           <form onSubmit={handleSaveVoucher} className="p-6 space-y-6 bg-white max-h-[85vh] overflow-y-auto no-scrollbar">
             
-            {/* 1. MASTER INFO */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
-                    <Calendar className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'تاريخ السند' : 'TRANSACTION DATE'}
-                  </Label>
-                  <Input type="date" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} className="h-10 font-bold text-xs bg-slate-50 border-slate-200" required />
-                </div>
-                
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
-                    <Workflow className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'أمر الإنتاج المستهدف' : 'PRODUCTION ORDER'}
-                  </Label>
-                  <select value={formData.orderId} onChange={(e) => setFormData({...formData, orderId: e.target.value})} className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none" required>
-                    <option value="">{lang === 'ar' ? '-- اختر أمر الإنتاج --' : '-- Select Order --'}</option>
-                    {activeOrders?.map(o => <option key={o.id} value={o.id}>{o.orderNumber} - {o.title}</option>)}
-                  </select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
-                    <Building2 className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'فلترة حسب القسم' : 'FILTER BY DEPARTMENT'}
-                  </Label>
-                  <select 
-                    value={selectedDeptId} 
-                    onChange={(e) => {
-                      setSelectedDeptId(e.target.value);
-                      setFormData({...formData, workerId: ''}); // Reset worker on dept change
-                    }} 
-                    className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none"
-                  >
-                    <option value="">{lang === 'ar' ? 'عرض جميع الأقسام' : 'All Departments'}</option>
-                    {activeDepartments?.map(d => <option key={d.id} value={d.id}>{lang === 'ar' ? d.nameAr : d.nameEn}</option>)}
-                  </select>
-                </div>
+            {/* 1. TOP ROW: DATE AND WORKER */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
+                  <Calendar className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'تاريخ السند' : 'TRANSACTION DATE'}
+                </Label>
+                <Input type="date" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} className="h-10 font-bold text-xs bg-slate-50 border-slate-200" required />
               </div>
 
-              {/* WORKER SELECTION BOX */}
-              <div className="space-y-2 flex flex-col h-full">
+              <div className="space-y-2 flex flex-col">
                 <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
                   <Users2 className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'العامل المستلم للمواد' : 'RECEIVING PERSONNEL'}
                 </Label>
@@ -393,16 +362,16 @@ export default function MaterialIssuePage() {
                   <Input 
                     value={workerSearch}
                     onChange={(e) => setWorkerSearch(e.target.value)}
-                    placeholder={lang === 'ar' ? 'بحث باسم العامل أو المعرف...' : 'Search worker name or ID...'}
+                    placeholder={lang === 'ar' ? 'بحث باسم العامل...' : 'Search worker...'}
                     className="h-9 pr-9 bg-slate-50 border-slate-200 text-xs font-bold"
                   />
                 </div>
 
-                <div className="flex-1 min-h-[180px] border border-slate-100 rounded-xl bg-slate-50/50 p-1.5 overflow-hidden">
+                <div className="h-[150px] border border-slate-100 rounded-xl bg-slate-50/50 p-1.5 overflow-hidden">
                   <ScrollArea className="h-full pr-2">
                     <div className="grid grid-cols-1 gap-1">
                       {filteredWorkers.length === 0 ? (
-                        <div className="text-center py-10">
+                        <div className="text-center py-6">
                           <p className="text-[10px] font-bold text-slate-400">{lang === 'ar' ? 'لا يوجد عمال يطابقون البحث' : 'No personnel found'}</p>
                         </div>
                       ) : filteredWorkers.map(w => (
@@ -435,15 +404,40 @@ export default function MaterialIssuePage() {
                     </div>
                   </ScrollArea>
                 </div>
-                {!formData.workerId && (
-                  <p className="text-[9px] font-black text-amber-600 flex items-center gap-1.5 animate-pulse">
-                    <AlertCircle className="w-3 h-3" /> {lang === 'ar' ? 'يرجى اختيار العامل لتكملة السند' : 'Please select a worker to proceed'}
-                  </p>
-                )}
               </div>
             </div>
 
-            {/* 2. ITEM SELECTION BOX */}
+            {/* 2. SECOND ROW: ORDER AND DEPT FILTER */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
+                  <Workflow className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'أمر الإنتاج المستهدف' : 'PRODUCTION ORDER'}
+                </Label>
+                <select value={formData.orderId} onChange={(e) => setFormData({...formData, orderId: e.target.value})} className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none" required>
+                  <option value="">{lang === 'ar' ? '-- اختر أمر الإنتاج --' : '-- Select Order --'}</option>
+                  {activeOrders?.map(o => <option key={o.id} value={o.id}>{o.orderNumber} - {o.title}</option>)}
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
+                  <Building2 className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'فلترة حسب القسم' : 'FILTER BY DEPARTMENT'}
+                </Label>
+                <select 
+                  value={selectedDeptId} 
+                  onChange={(e) => {
+                    setSelectedDeptId(e.target.value);
+                    setFormData({...formData, workerId: ''});
+                  }} 
+                  className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none"
+                >
+                  <option value="">{lang === 'ar' ? 'عرض جميع الأقسام' : 'All Departments'}</option>
+                  {activeDepartments?.map(d => <option key={d.id} value={d.id}>{lang === 'ar' ? d.nameAr : d.nameEn}</option>)}
+                </select>
+              </div>
+            </div>
+
+            {/* 3. ITEM SELECTION BOX */}
             <div className="p-4 bg-slate-900 rounded-xl border border-slate-800 shadow-xl space-y-4">
               <h3 className="text-[10px] font-black text-emerald-400 uppercase tracking-widest flex items-center gap-2">
                 <Package className="w-3.5 h-3.5" /> {lang === 'ar' ? 'إضافة أصناف الخيوط والمواد من المخزن' : 'ADD RAW MATERIALS FROM INVENTORY'}
@@ -477,7 +471,7 @@ export default function MaterialIssuePage() {
               </div>
             </div>
 
-            {/* 3. VOUCHER ITEMS TABLE */}
+            {/* 4. VOUCHER ITEMS TABLE WITH EDIT */}
             {formData.items.length > 0 && (
               <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
                 <Table className="text-right">
@@ -486,19 +480,24 @@ export default function MaterialIssuePage() {
                       <TableHead className="px-4 py-2 text-[9px] font-black text-slate-500 uppercase text-right">{lang === 'ar' ? 'المادة' : 'MATERIAL'}</TableHead>
                       <TableHead className="px-4 py-2 text-[9px] font-black text-slate-500 uppercase text-center">{lang === 'ar' ? 'الكمية المصروفة' : 'ISSUED QTY'}</TableHead>
                       <TableHead className="px-4 py-2 text-[9px] font-black text-slate-500 uppercase text-center">{lang === 'ar' ? 'الوحدة' : 'UNIT'}</TableHead>
-                      <TableHead className="px-4 py-2 w-10"></TableHead>
+                      <TableHead className="px-4 py-2 w-20"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {formData.items.map((item, idx) => (
-                      <TableRow key={idx} className="border-b border-slate-100 bg-white">
+                      <TableRow key={idx} className="border-b border-slate-100 bg-white group/row">
                         <TableCell className="px-4 py-2 font-black text-slate-800 text-xs text-right">{item.nameAr}</TableCell>
                         <TableCell className="px-4 py-2 text-center font-black text-emerald-700 text-sm tabular-nums">{item.qty}</TableCell>
                         <TableCell className="px-4 py-2 text-center text-[10px] font-bold text-slate-400 uppercase">{item.unit}</TableCell>
                         <TableCell className="px-4 py-2">
-                          <Button type="button" variant="ghost" size="icon" onClick={() => removeItem(item.id)} className="h-7 w-7 text-rose-300 hover:text-rose-600 hover:bg-rose-50">
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
+                          <div className="flex justify-end gap-1">
+                            <Button type="button" variant="ghost" size="icon" onClick={() => editItem(item)} className="h-7 w-7 text-emerald-300 hover:text-emerald-600 hover:bg-emerald-50">
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button type="button" variant="ghost" size="icon" onClick={() => removeItem(item.id)} className="h-7 w-7 text-rose-300 hover:text-rose-600 hover:bg-rose-50">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
