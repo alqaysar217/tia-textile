@@ -259,7 +259,7 @@ export default function MaterialIssuePage() {
           }
         });
 
-        // 2. Subtract new quantities from stock (we'll do this below together with the add logic)
+        // 2. Subtract new quantities from stock
         batch.update(doc(db, 'vouchers', editingVoucherId), voucherData);
       } else {
         // Handle New
@@ -273,7 +273,6 @@ export default function MaterialIssuePage() {
         const material = materials?.find(m => m.id === item.id);
         if (material) {
           const matRef = doc(db, 'materials', item.id);
-          // If editing, we already added back the old qty, so subtracting current qty is correct
           batch.update(matRef, {
             currentQty: (material.currentQty || 0) - item.qty,
             updatedAt: serverTimestamp()
@@ -708,13 +707,13 @@ export default function MaterialIssuePage() {
             <div className="p-10 print:p-0 bg-white" id="printable-voucher">
               {printingVoucher && (
                 <div className="flex flex-col h-full text-slate-900 font-sans" dir="rtl">
-                  {/* PROFESSIONAL BILINGUAL HEADER */}
+                  {/* PROFESSIONAL BILINGUAL HEADER - UPDATED POSITIONS & ALIGNMENT */}
                   <div className="grid grid-cols-3 items-center border-b-4 border-emerald-800 pb-6 mb-6">
-                    {/* ENGLISH SIDE */}
-                    <div className="text-left space-y-0.5" dir="ltr">
-                      <h2 className="text-sm font-black text-emerald-900 uppercase">Textile Industries Association</h2>
-                      <p className="text-[10px] font-bold text-slate-500">Al-Rawdah - Shabwa - Yemen</p>
-                      <p className="text-[9px] font-bold text-slate-400 tabular-nums">0777 263 091 | nseeg202020@gmail.com</p>
+                    {/* ARABIC SIDE (NOW ON LEFT) */}
+                    <div className="text-center space-y-0.5">
+                      <h2 className="text-base font-black text-emerald-900">جمعية الصناعات النسيجية</h2>
+                      <p className="text-xs font-bold text-slate-500">الروضة - محافظة شبوة - اليمن</p>
+                      <p className="text-[10px] font-bold text-slate-400 tabular-nums">0777 263 091 | nseeg202020@gmail.com</p>
                     </div>
 
                     {/* CENTER LOGO */}
@@ -724,11 +723,11 @@ export default function MaterialIssuePage() {
                       </div>
                     </div>
 
-                    {/* ARABIC SIDE */}
-                    <div className="text-right space-y-0.5">
-                      <h2 className="text-base font-black text-emerald-900">جمعية الصناعات النسيجية</h2>
-                      <p className="text-xs font-bold text-slate-500">الروضة - محافظة شبوة - اليمن</p>
-                      <p className="text-[10px] font-bold text-slate-400 tabular-nums">0777 263 091 | nseeg202020@gmail.com</p>
+                    {/* ENGLISH SIDE (NOW ON RIGHT) */}
+                    <div className="text-center space-y-0.5" dir="ltr">
+                      <h2 className="text-sm font-black text-emerald-900 uppercase">Textile Industries Association</h2>
+                      <p className="text-[10px] font-bold text-slate-500">Al-Rawdah - Shabwa - Yemen</p>
+                      <p className="text-[9px] font-bold text-slate-400 tabular-nums">0777 263 091 | nseeg202020@gmail.com</p>
                     </div>
                   </div>
 
