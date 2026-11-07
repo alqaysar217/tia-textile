@@ -594,6 +594,9 @@ export default function MaterialsPage() {
                   {lang === 'ar' ? 'حد الأمان' : 'MIN LEVEL'}
                 </Label>
                 <Input type="number" value={formData.minQty} onChange={(e) => setFormData({...formData, minQty: Number(e.target.value)})} className="h-10 font-bold text-xs bg-slate-50 tabular-nums" />
+                <p className="text-[8px] text-slate-400 font-bold italic">
+                  {lang === 'ar' ? '* أقل كمية مسموح بها قبل إطلاق تنبيه نقص المخزون.' : '* Minimum qty before low stock alert.'}
+                </p>
               </div>
             </div>
 
