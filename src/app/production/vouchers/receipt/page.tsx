@@ -99,7 +99,6 @@ export default function ProductionReceiptPage() {
   const [printingVoucher, setPrintingVoucher] = useState<any | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [showWorkerDropdown, setShowWorkerDropdown] = useState(false);
   const [search, setSearch] = useState('');
   
   // Filtering & Sorting
@@ -107,12 +106,9 @@ export default function ProductionReceiptPage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [batchFilter, setBatchFilter] = useState<string>('all');
 
-  const workerDropdownRef = useRef<HTMLDivElement>(null);
-  const [workerSearch, setWorkerSearch] = useState('');
-
   // Form State
   const [formData, setFormData] = useState({
-    date: new Date().toISOString().split('T')[0],
+    date: new Date().toISOString().split('T', 1)[0],
     orderId: '',
     workerId: '',
     linkedMIVs: [] as string[], 
@@ -123,6 +119,9 @@ export default function ProductionReceiptPage() {
     currency: 'YER',
     returnedItems: [] as any[] 
   });
+
+  // Current Item Selection State
+  const [currentItem, setCurrentItem] = useState({ id: '', qty: 0 });
 
   // Fetch Data
   const ordersQuery = useMemo(() => !db ? null : collection(db, 'productionOrders'), [db]);
@@ -158,9 +157,13 @@ export default function ProductionReceiptPage() {
     );
   }, [formData.orderId, formData.workerId, allMIVs, editingVoucherId, formData.linkedMIVs]);
 
+  // SMART LOGIC: Calculate current net balance in worker hands
   const issuedMaterialsPool = useMemo(() => {
-    if (!formData.linkedMIVs.length || !allMIVs) return [];
+    if (!formData.linkedMIVs.length || !allMIVs || !vouchers) return [];
+    
     const pool: Record<string, { nameAr: string; qty: number; unit: string }> = {};
+    
+    // 1. Calculate Gross Issued (sum of all selected MIVs)
     formData.linkedMIVs.forEach(mivId => {
       const miv = allMIVs.find(m => m.id === mivId);
       if (miv && miv.items) {
@@ -172,8 +175,26 @@ export default function ProductionReceiptPage() {
         });
       }
     });
-    return Object.entries(pool).map(([id, data]) => ({ id, ...data }));
-  }, [formData.linkedMIVs, allMIVs]);
+
+    // 2. Subtract what was ALREADY returned in previous PRVs (Settlements)
+    vouchers.forEach(v => {
+      // Ignore current edit, deleted items, and PRVs not linked to these MIVs
+      if (v.id === editingVoucherId || v.status === 'deleted' || v.type !== 'production_receipt') return;
+      
+      const sharesAnyMIV = v.linkedMIVs?.some((id: string) => formData.linkedMIVs.includes(id));
+      if (sharesAnyMIV && v.returnedItems) {
+        v.returnedItems.forEach((ret: any) => {
+          if (pool[ret.id]) {
+            pool[ret.id].qty -= ret.qty;
+          }
+        });
+      }
+    });
+
+    return Object.entries(pool)
+      .map(([id, data]) => ({ id, ...data }))
+      .filter(item => item.qty > 0); // Only show items worker actually has left
+  }, [formData.linkedMIVs, allMIVs, vouchers, editingVoucherId]);
 
   const selectedOrder = useMemo(() => allOrders?.find(o => o.id === formData.orderId), [allOrders, formData.orderId]);
   const targetProduct = useMemo(() => allProducts?.find(p => p.id === selectedOrder?.productId), [allProducts, selectedOrder]);
@@ -204,35 +225,23 @@ export default function ProductionReceiptPage() {
     if (batchFilter !== 'all') result = result.filter(v => v.orderId === batchFilter);
     
     return result.sort((a, b) => {
+      const format = { numeric: true, sensitivity: 'base' };
       if (sortBy === 'date') return sortOrder === 'asc' ? new Date(a.date).getTime() - new Date(b.date).getTime() : new Date(b.date).getTime() - new Date(a.date).getTime();
-      return sortOrder === 'asc' ? String(a[sortBy]).localeCompare(String(b[sortBy])) : String(b[sortBy]).localeCompare(String(a[sortBy]));
+      return sortOrder === 'asc' ? String(a[sortBy]).localeCompare(String(b[sortBy]), 'en', format) : String(b[sortBy]).localeCompare(String(a[sortBy]), 'en', format);
     });
   }, [vouchers, allOrders, allWorkers, search, batchFilter, sortBy, sortOrder]);
 
   const handleDownloadImage = async () => {
     const element = document.getElementById('printable-voucher');
     if (!element || !printingVoucher) return;
-    
     setIsDownloading(true);
     try {
       await new Promise(resolve => setTimeout(resolve, 800));
-      const dataUrl = await toPng(element, { 
-        backgroundColor: '#ffffff',
-        pixelRatio: 2,
-        cacheBust: true,
-        fontEmbedCSS: '', 
-        filter: (node) => node.tagName !== 'SCRIPT'
-      });
-      
+      const dataUrl = await toPng(element, { backgroundColor: '#ffffff', pixelRatio: 2 });
       const link = document.createElement('a');
-      link.download = `Receipt-${printingVoucher.voucherNumber}.png`;
+      link.download = `Settlement-${printingVoucher.voucherNumber}.png`;
       link.href = dataUrl;
-      document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
-      toast({ title: lang === 'ar' ? "تم تحميل السند" : "Voucher Downloaded" });
-    } catch (err) {
-      console.error('Download error:', err);
     } finally {
       setIsDownloading(false);
     }
@@ -240,8 +249,8 @@ export default function ProductionReceiptPage() {
 
   const handleSaveVoucher = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!db || isSubmitting || !formData.workerId || !formData.orderId || formData.linkedMIVs.length === 0 || formData.qtyAccepted <= 0 || formData.wageRate <= 0) {
-      toast({ variant: "destructive", title: lang === 'ar' ? "بيانات ناقصة" : "Missing Data", description: lang === 'ar' ? "يرجى تحديد السندات والكمية والأجر." : "Please select vouchers, quantity, and wage." });
+    if (!db || isSubmitting || !formData.workerId || !formData.orderId || formData.linkedMIVs.length === 0 || formData.qtyAccepted <= 0) {
+      toast({ variant: "destructive", title: lang === 'ar' ? "بيانات ناقصة" : "Missing Data" });
       return;
     }
 
@@ -260,21 +269,19 @@ export default function ProductionReceiptPage() {
     };
 
     try {
-      // If Editing: First reverse all previous effects
       if (editingVoucherId) {
-        const oldVoucherSnap = await getDoc(doc(db, 'vouchers', editingVoucherId));
-        const oldV = oldVoucherSnap.data();
+        const oldVSnap = await getDoc(doc(db, 'vouchers', editingVoucherId));
+        const oldV = oldVSnap.data();
         if (oldV) {
+          // Revert old effects
           const orderRef = doc(db, 'productionOrders', oldV.orderId);
           const oSnap = await getDoc(orderRef);
           batch.update(orderRef, { completedQty: Math.max(0, (oSnap.data()?.completedQty || 0) - oldV.qtyAccepted) });
+          
           oldV.returnedItems?.forEach((item: any) => {
-            const matRef = doc(db, 'materials', item.id);
-            const mSnap = allMaterials?.find(m => m.id === item.id);
-            if (mSnap) batch.update(matRef, { currentQty: Math.max(0, (mSnap.currentQty || 0) - item.qty) });
-          });
-          oldV.linkedMIVs?.forEach((mivId: string) => {
-            batch.update(doc(db, 'vouchers', mivId), { status: 'posted' });
+            const mRef = doc(db, 'materials', item.id);
+            const mData = allMaterials?.find(m => m.id === item.id);
+            if (mData) batch.update(mRef, { currentQty: Math.max(0, (mData.currentQty || 0) - item.qty) });
           });
         }
         batch.update(doc(db, 'vouchers', editingVoucherId), voucherData);
@@ -285,41 +292,46 @@ export default function ProductionReceiptPage() {
 
       // Apply new effects
       const orderRef = doc(db, 'productionOrders', formData.orderId);
-      const orderSnap = await getDoc(orderRef);
-      batch.update(orderRef, { completedQty: (orderSnap.data()?.completedQty || 0) + Number(formData.qtyAccepted) });
+      const oSnap = await getDoc(orderRef);
+      batch.update(orderRef, { completedQty: (oSnap.data()?.completedQty || 0) + Number(formData.qtyAccepted) });
 
       formData.returnedItems.forEach(item => {
-        const matRef = doc(db, 'materials', item.id);
-        const material = allMaterials?.find(m => m.id === item.id);
-        if (material) batch.update(matRef, { currentQty: (material.currentQty || 0) + Number(item.qty) });
+        const mRef = doc(db, 'materials', item.id);
+        const mData = allMaterials?.find(m => m.id === item.id);
+        if (mData) batch.update(mRef, { currentQty: (mData.currentQty || 0) + Number(item.qty) });
       });
 
       if (formData.isFinalSettlement) {
-        formData.linkedMIVs.forEach(mivId => {
-          batch.update(doc(db, 'vouchers', mivId), { status: 'settled', updatedAt: serverTimestamp() });
-        });
+        formData.linkedMIVs.forEach(id => batch.update(doc(db, 'vouchers', id), { status: 'settled', updatedAt: serverTimestamp() }));
       }
 
       await batch.commit();
-      toast({ title: lang === 'ar' ? "تم الحفظ بنجاح" : "Saved Successfully" });
+      toast({ title: lang === 'ar' ? "تم الترحيل بنجاح" : "Posted Successfully" });
       resetDialog();
-    } catch (error) {
-      console.error(error);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleReturnItem = (matId: string, qty: number) => {
-    const issuedItem = issuedMaterialsPool.find(m => m.id === matId);
-    if (!issuedItem || qty > issuedItem.qty) {
-      toast({ variant: "destructive", title: lang === 'ar' ? "تنبيه" : "Validation", description: lang === 'ar' ? "الكمية تتجاوز العهدة." : "Exceeds issued amount." });
+  const handleReturnItem = () => {
+    if (!currentItem.id || currentItem.qty <= 0) return;
+    const issued = issuedMaterialsPool.find(m => m.id === currentItem.id);
+    if (!issued) return;
+
+    if (currentItem.qty > issued.qty) {
+      toast({ 
+        variant: "destructive", 
+        title: lang === 'ar' ? "تنبيه" : "Validation", 
+        description: lang === 'ar' ? `الكمية المدخلة تتجاوز الرصيد المتبقي بالعهدة (${issued.qty})` : `Qty exceeds remaining balance (${issued.qty})` 
+      });
       return;
     }
+
     setFormData(prev => ({
       ...prev,
-      returnedItems: [...prev.returnedItems.filter(i => i.id !== matId), { id: matId, nameAr: issuedItem.nameAr, qty, unit: issuedItem.unit }]
+      returnedItems: [...prev.returnedItems.filter(i => i.id !== currentItem.id), { ...issued, qty: currentItem.qty }]
     }));
+    setCurrentItem({ id: '', qty: 0 });
   };
 
   const handleEditVoucher = (v: any) => {
@@ -342,7 +354,8 @@ export default function ProductionReceiptPage() {
   const resetDialog = () => {
     setIsAddDialogOpen(false);
     setEditingVoucherId(null);
-    setFormData({ date: new Date().toISOString().split('T')[0], orderId: '', workerId: '', linkedMIVs: [], isFinalSettlement: true, notes: '', qtyAccepted: 0, wageRate: 0, currency: 'YER', returnedItems: [] });
+    setFormData({ date: new Date().toISOString().split('T', 1)[0], orderId: '', workerId: '', linkedMIVs: [], isFinalSettlement: true, notes: '', qtyAccepted: 0, wageRate: 0, currency: 'YER', returnedItems: [] });
+    setCurrentItem({ id: '', qty: 0 });
   };
 
   const handleDeleteRequest = async () => {
@@ -350,24 +363,20 @@ export default function ProductionReceiptPage() {
     setIsSubmitting(true);
     const batch = writeBatch(db);
     try {
-      // REVERSE LOGIC
       const orderRef = doc(db, 'productionOrders', deletingVoucher.orderId);
       const oSnap = await getDoc(orderRef);
       batch.update(orderRef, { completedQty: Math.max(0, (oSnap.data()?.completedQty || 0) - deletingVoucher.qtyAccepted) });
 
       deletingVoucher.returnedItems?.forEach((item: any) => {
-        const matRef = doc(db, 'materials', item.id);
-        const mSnap = allMaterials?.find(m => m.id === item.id);
-        if (mSnap) batch.update(matRef, { currentQty: Math.max(0, (mSnap.currentQty || 0) - item.qty) });
+        const mRef = doc(db, 'materials', item.id);
+        const mData = allMaterials?.find(m => m.id === item.id);
+        if (mData) batch.update(mRef, { currentQty: Math.max(0, (mData.currentQty || 0) - item.qty) });
       });
 
-      deletingVoucher.linkedMIVs?.forEach((mivId: string) => {
-        batch.update(doc(db, 'vouchers', mivId), { status: 'posted' });
-      });
-
+      deletingVoucher.linkedMIVs?.forEach((id: string) => batch.update(doc(db, 'vouchers', id), { status: 'posted' }));
       batch.update(doc(db, 'vouchers', deletingVoucher.id), { status: 'deleted', deletedAt: serverTimestamp() });
       await batch.commit();
-      toast({ title: lang === 'ar' ? "نُقل للمهملات وتم عكس التأثير" : "Moved to trash & reversed" });
+      toast({ title: lang === 'ar' ? "تم النقل للأرشيف" : "Archived" });
     } finally {
       setIsSubmitting(false);
       setDeletingVoucher(null);
@@ -386,7 +395,7 @@ export default function ProductionReceiptPage() {
                 <ChevronRight className={`w-3 h-3 ${dir === 'rtl' ? 'rotate-180' : ''}`} />
                 <span className="text-emerald-600">{lang === 'ar' ? 'استلام وتسوية' : 'Settlement'}</span>
               </div>
-              <h1 className="text-xl font-black text-slate-900 leading-tight">{lang === 'ar' ? 'إغلاق العهدة واستلام المنجز' : 'Settlement Vouchers'}</h1>
+              <h1 className="text-xl font-black text-slate-900 leading-tight">{lang === 'ar' ? 'إغلاق عهدة واستلام المنجز' : 'Settlement Vouchers'}</h1>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -395,7 +404,7 @@ export default function ProductionReceiptPage() {
               <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={lang === 'ar' ? 'بحث...' : 'Search...'} className="h-10 w-64 bg-slate-50 border-slate-200 text-xs font-bold" />
             </div>
             <Button onClick={() => setIsAddDialogOpen(true)} className="h-10 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 transition-all border-none">
-              <Plus className="w-4 h-4" /> {lang === 'ar' ? 'استلام جديد' : 'New Settlement'}
+              <Plus className="w-4 h-4" /> {lang === 'ar' ? 'تسوية جديدة' : 'New Settlement'}
             </Button>
           </div>
         </div>
@@ -418,7 +427,7 @@ export default function ProductionReceiptPage() {
               {vouchersLoading ? (
                 <TableRow><TableCell colSpan={6} className="text-center py-20 font-bold text-slate-400 animate-pulse">جاري التحميل...</TableCell></TableRow>
               ) : filteredVouchers.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-20 font-bold text-slate-300">لا توجد تسويات</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center py-20 font-bold text-slate-300">لا توجد تسويات مسجلة</TableCell></TableRow>
               ) : filteredVouchers.map((v) => (
                 <TableRow key={v.id} className="hover:bg-slate-50/50 border-b border-slate-100">
                   <TableCell className="px-6 py-3 font-black text-slate-900 text-xs tabular-nums">{v.voucherNumber}</TableCell>
@@ -451,8 +460,8 @@ export default function ProductionReceiptPage() {
           <div className="premium-gradient p-6 text-white">
             <DialogHeader className="text-right rtl:text-right ltr:text-left">
               <DialogTitle className="text-xl font-black flex items-center gap-3">
-                <FileOutput className="w-5 h-5 text-emerald-300" />
-                {editingVoucherId ? (lang === 'ar' ? 'تعديل سند التسوية' : 'Edit Settlement') : (lang === 'ar' ? 'إغلاق عهدة واستلام إنتاج' : 'New Settlement')}
+                <ShieldCheck className="w-5 h-5 text-emerald-300" />
+                {editingVoucherId ? 'تعديل سند تسوية' : 'إغلاق عهدة واستلام إنتاج'}
               </DialogTitle>
               <DialogDescription className="text-emerald-100/70 font-bold text-[10px] uppercase tracking-widest mt-1">Full closure of material cycle and wage calculation</DialogDescription>
             </DialogHeader>
@@ -467,7 +476,7 @@ export default function ProductionReceiptPage() {
                   {activeOrders?.map(o => <option key={o.id} value={o.id}>{o.orderNumber} - {o.title}</option>)}
                 </select>
               </div>
-              <div className="space-y-1.5 relative">
+              <div className="space-y-1.5">
                 <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2"><UserCheck className="w-3 h-3 text-emerald-600" /> الموظف (الذي عليه عهدة)</Label>
                 <select value={formData.workerId} onChange={(e) => setFormData({...formData, workerId: e.target.value, linkedMIVs: []})} disabled={!formData.orderId} className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none disabled:opacity-50" required>
                   <option value="">-- اختر الموظف --</option>
@@ -483,7 +492,7 @@ export default function ProductionReceiptPage() {
             {openMIVs.length > 0 && (
               <div className="p-4 bg-amber-50/50 border border-amber-100 rounded-xl space-y-3">
                 <div className="flex items-center justify-between">
-                   <h3 className="text-[10px] font-black text-amber-700 uppercase tracking-widest flex items-center gap-2"><Hash className="w-3.5 h-3.5" /> سندات الصرف المفتوحة</h3>
+                   <h3 className="text-[10px] font-black text-amber-700 uppercase tracking-widest flex items-center gap-2"><Hash className="w-3.5 h-3.5" /> سندات الصرف المفتوحة لهذا الموظف</h3>
                    <div className="flex items-center gap-2 bg-white px-3 py-1 rounded-lg border border-amber-200">
                       <Checkbox id="finalSettlement" checked={formData.isFinalSettlement} onCheckedChange={(val) => setFormData({...formData, isFinalSettlement: !!val})} />
                       <label htmlFor="finalSettlement" className="text-[10px] font-black text-slate-600 cursor-pointer">إغلاق السندات المختارة نهائياً</label>
@@ -511,7 +520,10 @@ export default function ProductionReceiptPage() {
                       <img src={targetProduct?.image || 'https://placehold.co/100'} className="w-full h-full object-cover" alt="product" />
                    </div>
                    <p className="text-xs font-black text-slate-900">{targetProduct?.nameAr || '---'}</p>
-                   <Badge variant="outline" className="bg-white">{targetProduct?.category}</Badge>
+                   <div className="flex items-center justify-center gap-2 text-[10px] font-bold text-slate-500">
+                      <Target className="w-3 h-3" />
+                      المنجز: {(selectedOrder?.completedQty || 0).toLocaleString('en-US')} / {selectedOrder?.targetQty || 0}
+                   </div>
                 </div>
               </div>
               <div className="md:col-span-8 flex flex-col gap-6">
@@ -522,16 +534,16 @@ export default function ProductionReceiptPage() {
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-[10px] font-black text-slate-400 uppercase">ملاحظات الفحص</Label>
-                    <Input value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} className="h-14 bg-slate-50 text-xs font-bold" />
+                    <Input value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} className="h-14 bg-slate-50 text-xs font-bold" placeholder="جودة النسيج، النظافة..." />
                   </div>
                 </div>
                 <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-white rounded-lg text-emerald-600 shadow-sm"><Wallet className="w-5 h-5" /></div>
                     <div className="flex flex-col gap-1">
-                      <p className="text-[9px] font-black text-emerald-800 uppercase">أجر القطعة</p>
+                      <p className="text-[9px] font-black text-emerald-800 uppercase">أجر القطعة الواحدة</p>
                       <div className="flex items-center gap-2">
-                        <Input type="number" step="any" value={formData.wageRate} onChange={(e) => setFormData({...formData, wageRate: Number(e.target.value)})} className="h-8 w-24 text-xs font-black tabular-nums" required />
+                        <Input type="number" step="any" value={formData.wageRate} onChange={(e) => setFormData({...formData, wageRate: Number(e.target.value)})} className="h-8 w-24 text-xs font-black tabular-nums" required min="0.01" />
                         <select value={formData.currency} onChange={(e) => setFormData({...formData, currency: e.target.value})} className="h-8 px-2 bg-white border border-emerald-200 rounded text-[9px] font-black">
                           <option value="YER">YER</option><option value="SAR">SAR</option><option value="USD">USD</option>
                         </select>
@@ -539,7 +551,7 @@ export default function ProductionReceiptPage() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-[9px] font-black text-emerald-800 uppercase">إجمالي المستحق</p>
+                    <p className="text-[9px] font-black text-emerald-800 uppercase">إجمالي المستحق للسند</p>
                     <p className="text-xl font-black text-emerald-700 tabular-nums">{(formData.qtyAccepted * formData.wageRate).toLocaleString('en-US')} <span className="text-[10px]">{formData.currency}</span></p>
                   </div>
                 </div>
@@ -547,29 +559,40 @@ export default function ProductionReceiptPage() {
             </div>
 
             <div className="p-4 bg-blue-50/30 border border-blue-100 rounded-2xl space-y-4">
-              <h3 className="text-[10px] font-black text-blue-700 uppercase tracking-widest flex items-center gap-2"><RefreshCcw className="w-3.5 h-3.5" /> استرجاع المواد المتبقية (تصفية عهدة)</h3>
+              <h3 className="text-[10px] font-black text-blue-700 uppercase tracking-widest flex items-center gap-2"><RefreshCcw className="w-3.5 h-3.5" /> استرجاع المواد المتبقية (تصفية عهدة السندات المختارة)</h3>
               <div className="flex flex-col md:flex-row gap-3 items-end">
                 <div className="flex-1 space-y-1.5">
-                  <Label className="text-[9px] font-bold text-slate-500">الصنف من العهدة</Label>
-                  <select id="matSelect" disabled={formData.linkedMIVs.length === 0} className="w-full h-10 px-3 bg-white border border-blue-200 rounded-md text-xs font-bold outline-none">
-                    <option value="">-- اختر مادة --</option>
-                    {issuedMaterialsPool.map(m => <option key={m.id} value={m.id}>{m.nameAr} (العهدة: {m.qty.toLocaleString('en-US')} {m.unit})</option>)}
+                  <Label className="text-[9px] font-bold text-slate-500">الصنف من العهدة المفتوحة</Label>
+                  <select 
+                    id="matSelect" 
+                    disabled={formData.linkedMIVs.length === 0} 
+                    className="w-full h-10 px-3 bg-white border border-blue-200 rounded-md text-xs font-bold outline-none"
+                    value={currentItem.id}
+                    onChange={(e) => setCurrentItem({ ...currentItem, id: e.target.value })}
+                  >
+                    <option value="">-- اختر مادة من عهدة العامل --</option>
+                    {issuedMaterialsPool.map(m => (
+                      <option key={m.id} value={m.id}>{m.nameAr} (الرصيد المتبقي لديه: {m.qty.toLocaleString('en-US')} {m.unit})</option>
+                    ))}
                   </select>
                 </div>
                 <div className="w-32 space-y-1.5">
                   <Label className="text-[9px] font-bold text-slate-500">الكمية المرتجعة</Label>
-                  <Input id="qtySelect" type="number" step="any" className="h-10 bg-white font-bold tabular-nums" />
+                  <Input 
+                    id="qtySelect" 
+                    type="number" 
+                    step="any" 
+                    value={currentItem.qty || ''} 
+                    onChange={(e) => setCurrentItem({ ...currentItem, qty: Number(e.target.value) })}
+                    className="h-10 bg-white font-bold tabular-nums" 
+                  />
                 </div>
-                <Button type="button" onClick={() => {
-                  const id = (document.getElementById('matSelect') as HTMLSelectElement).value;
-                  const qty = Number((document.getElementById('qtySelect') as HTMLInputElement).value);
-                  if (id && qty > 0) { handleReturnItem(id, qty); (document.getElementById('qtySelect') as HTMLInputElement).value = ''; }
-                }} className="h-10 bg-blue-600 text-white font-black text-xs px-6">إدراج</Button>
+                <Button type="button" onClick={handleReturnItem} className="h-10 bg-blue-600 text-white font-black text-xs px-6">إدراج في السند</Button>
               </div>
               {formData.returnedItems.length > 0 && (
                 <div className="border border-blue-100 rounded-xl overflow-hidden shadow-sm">
                    <Table className="text-right bg-white/50">
-                      <TableHeader className="bg-blue-50/50"><TableRow><TableHead className="text-right text-[9px] font-black text-blue-500 uppercase">المادة</TableHead><TableHead className="text-center text-[9px] font-black text-blue-500 uppercase">الكمية</TableHead><TableHead className="w-10"></TableHead></TableRow></TableHeader>
+                      <TableHeader className="bg-blue-50/50"><TableRow><TableHead className="text-right text-[9px] font-black text-blue-500 uppercase">المادة المستلمة</TableHead><TableHead className="text-center text-[9px] font-black text-blue-500 uppercase">الكمية المرجعة</TableHead><TableHead className="w-10"></TableHead></TableRow></TableHeader>
                       <TableBody>
                          {formData.returnedItems.map((item, idx) => (
                             <TableRow key={idx} className="border-b border-blue-50">
@@ -585,9 +608,9 @@ export default function ProductionReceiptPage() {
             </div>
 
             <div className="flex gap-3 pt-4 border-t border-slate-100">
-              <Button type="submit" disabled={isSubmitting || !formData.workerId || !formData.orderId || formData.linkedMIVs.length === 0 || formData.qtyAccepted <= 0} className="flex-1 h-14 premium-gradient text-white rounded-xl font-black text-base shadow-xl">
+              <Button type="submit" disabled={isSubmitting || !formData.workerId || !formData.orderId || formData.linkedMIVs.length === 0 || formData.qtyAccepted <= 0 || formData.wageRate <= 0} className="flex-1 h-14 premium-gradient text-white rounded-xl font-black text-base shadow-xl">
                 {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin me-2" /> : <CheckCircle2 className="w-5 h-5 me-2" />}
-                {editingVoucherId ? 'تحديث السند والمخازن' : 'ترحيل التسوية وتحديث المخازن'}
+                {editingVoucherId ? 'تحديث السند والمخازن' : 'ترحيل التسوية وتحديث المخازن والإنجاز'}
               </Button>
               <Button type="button" variant="outline" onClick={resetDialog} className="px-8 h-14 font-black text-slate-400 rounded-xl border-slate-200">إلغاء</Button>
             </div>
@@ -601,14 +624,14 @@ export default function ProductionReceiptPage() {
             <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20 shadow-inner">
               <History className="w-8 h-8 text-red-500" />
             </div>
-            <AlertDialogTitle className="text-white text-xl font-black">نقل للمهملات</AlertDialogTitle>
+            <AlertDialogTitle className="text-white text-xl font-black">نقل للمهملات وعكس التأثير</AlertDialogTitle>
             <AlertDialogDescription className="text-slate-400 font-bold mt-2 text-xs leading-relaxed">
-              تحذير: سيتم إلغاء المنجز من أمر الإنتاج وإعادة فتح العهدة للعامل فوراً. السند سيبقى في المهملات للأرشفة.
+              تحذير: سيتم خصم المنجز من أمر الإنتاج وإعادة فتح عهدة المواد للعامل وسحب المرتجع من المخزن تلقائياً.
             </AlertDialogDescription>
           </div>
           <div className="bg-white p-6 flex gap-3">
             <AlertDialogAction onClick={handleDeleteRequest} disabled={isSubmitting} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-md font-black">
-              {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "تأكيد النقل"}
+              {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "تأكيد الحذف"}
             </AlertDialogAction>
             <AlertDialogCancel onClick={() => setDeletingVoucher(null)} className="flex-1 h-11 bg-slate-50 border-slate-200 text-slate-400 rounded-md font-black">تراجع</AlertDialogCancel>
           </div>
@@ -678,6 +701,29 @@ export default function ProductionReceiptPage() {
                       </TableBody>
                     </Table>
                   </div>
+                  {printingVoucher.returnedItems?.length > 0 && (
+                    <div className="mb-8 space-y-6">
+                      <h4 className="text-[10px] font-black text-blue-900 border-r-4 border-blue-600 pr-3 uppercase">ثانياً: المواد المرتجعة للمخزن</h4>
+                      <Table className="text-right border-2 border-blue-900/10">
+                        <TableHeader className="bg-blue-900/5">
+                          <TableRow>
+                            <TableHead className="text-right font-black text-xs py-3 text-blue-900">المادة</TableHead>
+                            <TableHead className="text-center font-black text-xs py-3 text-blue-900">الكمية</TableHead>
+                            <TableHead className="text-center font-black text-xs py-3 text-blue-900">الوحدة</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {printingVoucher.returnedItems.map((item: any, i: number) => (
+                            <TableRow key={i} className="bg-white/40">
+                              <TableCell className="font-bold text-sm py-3">{item.nameAr}</TableCell>
+                              <TableCell className="text-center font-black text-sm text-blue-700 tabular-nums">{(item.qty || 0).toLocaleString('en-US')}</TableCell>
+                              <TableCell className="text-center text-xs font-bold text-slate-500 uppercase">{item.unit}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
                   <div className="grid grid-cols-3 gap-4 pt-6 border-t border-slate-200 text-center">
                     <div className="space-y-6"><p className="text-[10px] font-black text-slate-400 uppercase">أمين المستودع</p><div className="h-px bg-slate-200 w-2/3 mx-auto" /><p className="text-[8px] font-bold text-slate-400 uppercase tabular-nums">Signature</p></div>
                     <div className="space-y-6"><p className="text-[10px] font-black text-slate-400 uppercase">الموظف (المسلم)</p><div className="h-px bg-slate-200 w-2/3 mx-auto" /><p className="text-[8px] font-bold text-slate-400 uppercase tabular-nums">Signature</p></div>
@@ -689,7 +735,7 @@ export default function ProductionReceiptPage() {
           </ScrollArea>
           <DialogFooter className="p-6 bg-slate-50 border-t border-slate-100">
             <Button onClick={handleDownloadImage} disabled={isDownloading} className="premium-gradient font-black gap-2 h-12 px-8 rounded-xl shadow-lg">
-              {isDownloading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
+              {isDownloading ? <Loader2 className="w-5 h-5 animate-spin me-2" /> : <Download className="w-5 h-5" />}
               تحميل السند كصورة PNG
             </Button>
             <Button variant="ghost" onClick={() => setPrintingVoucher(null)} className="font-black h-12 px-6 rounded-xl border border-slate-200">إغلاق</Button>
