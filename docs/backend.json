@@ -12,7 +12,8 @@
         "descriptionAr": { "type": "string" },
         "descriptionEn": { "type": "string" },
         "category": { "type": "string" },
-        "price": { "type": "number" },
+        "price": { "type": "number", "description": "Selling price to customer" },
+        "wageRate": { "type": "number", "description": "Worker wage per accepted piece" },
         "status": { "type": "string" },
         "image": { "type": "string" },
         "gallery": { "type": "array", "items": { "type": "string" } }
@@ -25,7 +26,7 @@
       "type": "object",
       "properties": {
         "orderNumber": { "type": "string" },
-        "title": { "type": "string", "description": "User friendly title for the batch" },
+        "title": { "type": "string" },
         "productId": { "type": "string" },
         "targetQty": { "type": "number" },
         "completedQty": { "type": "number" },
@@ -46,7 +47,7 @@
         "type": { "type": "string", "enum": ["material_issue", "production_receipt", "settlement", "wage"] },
         "orderId": { "type": "string" },
         "workerId": { "type": "string" },
-        "departmentId": { "type": "string" },
+        "supervisorId": { "type": "string", "description": "The supervisor accountable for this transaction" },
         "date": { "type": "string", "format": "date" },
         "items": { 
           "type": "array", 
@@ -61,35 +62,15 @@
             }
           }
         },
+        "qtyAccepted": { "type": "number" },
+        "qtyRejected": { "type": "number" },
+        "qtyWaste": { "type": "number" },
+        "wageAmount": { "type": "number", "description": "Calculated wage for this receipt" },
         "totalAmount": { "type": "number" },
-        "status": { "type": "string", "enum": ["posted", "cancelled"] },
+        "status": { "type": "string", "enum": ["posted", "cancelled", "deleted"] },
         "notes": { "type": "string" }
       },
       "required": ["voucherNumber", "type", "date", "status"]
-    },
-    "UserProfile": {
-      "title": "User Profile",
-      "description": "Extended user information and system role",
-      "type": "object",
-      "properties": {
-        "fullName": { "type": "string" },
-        "role": { "type": "string" },
-        "email": { "type": "string" }
-      },
-      "required": ["fullName", "role", "email"]
-    },
-    "Department": {
-      "title": "Department",
-      "description": "Production department or stage (e.g., Sewing, Dyeing)",
-      "type": "object",
-      "properties": {
-        "code": { "type": "string" },
-        "nameAr": { "type": "string" },
-        "nameEn": { "type": "string" },
-        "descAr": { "type": "string" },
-        "status": { "type": "string" }
-      },
-      "required": ["code", "nameAr"]
     },
     "Worker": {
       "title": "Worker Profile",
@@ -99,31 +80,13 @@
         "fullName": { "type": "string" },
         "workerId": { "type": "string" },
         "departmentId": { "type": "string" },
+        "supervisorId": { "type": "string", "description": "Reference to another worker who is a supervisor" },
+        "isSupervisor": { "type": "boolean" },
         "phoneNumber": { "type": "string" },
-        "photoUrl": { "type": "string" },
-        "joinDate": { "type": "string" },
         "active": { "type": "boolean" },
         "status": { "type": "string" }
       },
       "required": ["fullName", "departmentId"]
-    },
-    "Material": {
-      "title": "Raw Material",
-      "description": "Raw materials used in production",
-      "type": "object",
-      "properties": {
-        "code": { "type": "string" },
-        "nameAr": { "type": "string" },
-        "nameEn": { "type": "string" },
-        "category": { "type": "string" },
-        "unit": { "type": "string" },
-        "currentQty": { "type": "number" },
-        "minQty": { "type": "number" },
-        "price": { "type": "number" },
-        "photoUrl": { "type": "string" },
-        "status": { "type": "string" }
-      },
-      "required": ["code", "nameAr", "category", "unit"]
     }
   },
   "auth": {

@@ -33,7 +33,8 @@ import {
   Hash,
   Activity,
   Target,
-  AlertTriangle
+  AlertTriangle,
+  Users2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -110,6 +111,7 @@ export default function ProductionReceiptPage() {
     date: new Date().toISOString().split('T')[0],
     orderId: '',
     workerId: '',
+    supervisorId: '', // Accountability
     notes: '',
     qtyAccepted: 0,
     qtyRejected: 0,
@@ -187,6 +189,7 @@ export default function ProductionReceiptPage() {
     const totalQty = Number(formData.qtyAccepted) + Number(formData.qtyRejected) + Number(formData.qtyWaste);
     const voucherData = {
       ...formData,
+      supervisorId: selectedWorker?.supervisorId || '', // Capture supervisor for accountability
       qtyAccepted: Number(formData.qtyAccepted),
       qtyRejected: Number(formData.qtyRejected),
       qtyWaste: Number(formData.qtyWaste),
@@ -204,7 +207,6 @@ export default function ProductionReceiptPage() {
         const orderSnap = await getDoc(orderRef);
         const orderData = orderSnap.data();
 
-        // Reverse old quantity and add new
         const diff = Number(formData.qtyAccepted) - (oldVoucher?.qtyAccepted || 0);
         batch.update(orderRef, {
           completedQty: (orderData?.completedQty || 0) + diff
@@ -258,7 +260,7 @@ export default function ProductionReceiptPage() {
   const resetDialog = () => {
     setIsAddDialogOpen(false);
     setEditingVoucherId(null);
-    setFormData({ date: new Date().toISOString().split('T')[0], orderId: '', workerId: '', notes: '', qtyAccepted: 0, qtyRejected: 0, qtyWaste: 0 });
+    setFormData({ date: new Date().toISOString().split('T')[0], orderId: '', workerId: '', supervisorId: '', notes: '', qtyAccepted: 0, qtyRejected: 0, qtyWaste: 0 });
   };
 
   const handleDownloadImage = async () => {
@@ -267,7 +269,12 @@ export default function ProductionReceiptPage() {
     setIsDownloading(true);
     try {
       await new Promise(r => setTimeout(r, 800));
-      const dataUrl = await toPng(element, { backgroundColor: '#ffffff', pixelRatio: 2, fontEmbedCSS: '' });
+      const dataUrl = await toPng(element, { 
+        backgroundColor: '#ffffff', 
+        pixelRatio: 2, 
+        fontEmbedCSS: '',
+        cacheBust: true
+      });
       const link = document.createElement('a');
       link.download = `Receipt-${printingVoucher.voucherNumber}.png`;
       link.href = dataUrl;
@@ -325,7 +332,7 @@ export default function ProductionReceiptPage() {
               <TableRow>
                 <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'رقم السند' : 'REF #'}</TableHead>
                 <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'التاريخ' : 'DATE'}</TableHead>
-                <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'العامل' : 'WORKER'}</TableHead>
+                <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'المستلم / المشرف' : 'RECIPIENT / SUP'}</TableHead>
                 <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center">{lang === 'ar' ? 'المقبول' : 'ACCEPTED'}</TableHead>
                 <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center">{lang === 'ar' ? 'العمليات' : 'ACTIONS'}</TableHead>
               </TableRow>
@@ -337,6 +344,7 @@ export default function ProductionReceiptPage() {
                 <TableRow><TableCell colSpan={5} className="text-center py-20 font-bold text-slate-300">لا توجد سجلات</TableCell></TableRow>
               ) : filteredVouchers.map((v) => {
                 const worker = allWorkers?.find(w => w.id === v.workerId);
+                const supervisor = allWorkers?.find(w => w.id === v.supervisorId);
                 return (
                   <TableRow key={v.id} className="hover:bg-slate-50/50 border-b border-slate-100 group">
                     <TableCell className={cn("px-6 py-3", dir === 'rtl' ? "text-right" : "text-left")}>
@@ -347,10 +355,13 @@ export default function ProductionReceiptPage() {
                     </TableCell>
                     <TableCell className={cn("px-6 py-3 text-slate-500 text-xs", dir === 'rtl' ? "text-right" : "text-left")}>{v.date}</TableCell>
                     <TableCell className={cn("px-6 py-3", dir === 'rtl' ? "text-right" : "text-left")}>
-                      <span className="font-bold text-slate-700 text-xs">{worker?.fullName || '---'}</span>
+                      <div className="flex flex-col">
+                         <span className="font-bold text-slate-700 text-xs">{worker?.fullName || '---'}</span>
+                         {supervisor && <span className="text-[9px] font-black text-emerald-600">بمسؤولية: {supervisor.fullName}</span>}
+                      </div>
                     </TableCell>
                     <TableCell className="px-6 py-3 text-center">
-                      <span className="inline-block px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded text-[10px] font-black">{v.qtyAccepted}</span>
+                      <span className="inline-block px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded text-[10px] font-black tabular-nums">{v.qtyAccepted}</span>
                     </TableCell>
                     <TableCell className="px-6 py-3 text-center">
                       <div className="flex items-center justify-center gap-1">
@@ -381,11 +392,11 @@ export default function ProductionReceiptPage() {
                 <FileOutput className="w-5 h-5 text-emerald-300" />
                 {lang === 'ar' ? 'استلام إنتاج من عامل' : 'New Production Receipt'}
               </DialogTitle>
-              <p className="text-emerald-100/70 font-bold text-[10px] uppercase tracking-widest mt-1">Recording finished pieces and quality metrics</p>
+              <p className="text-emerald-100/70 font-bold text-[10px] uppercase tracking-widest mt-1">Recording finished pieces and accountability</p>
             </DialogHeader>
           </div>
 
-          <form onSubmit={handleSaveVoucher} className="p-6 space-y-6 bg-white">
+          <form onSubmit={handleSaveVoucher} className="p-6 space-y-6 bg-white max-h-[85vh] overflow-y-auto no-scrollbar">
             <div className="grid grid-cols-2 gap-6">
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2"><Calendar className="w-3 h-3 text-emerald-600" /> تاريخ التسليم</Label>
@@ -402,7 +413,7 @@ export default function ProductionReceiptPage() {
 
             <div className="space-y-1.5 relative" ref={workerDropdownRef}>
               <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2"><UserCheck className="w-3 h-3 text-emerald-600" /> الموظف المسلم</Label>
-              <button type="button" onClick={() => setShowWorkerDropdown(!showWorkerDropdown)} className="flex h-12 w-full items-center justify-between rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
+              <button type="button" onClick={() => setShowWorkerDropdown(!showWorkerDropdown)} className="flex h-12 w-full items-center justify-between rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-bold">
                 {selectedWorker ? selectedWorker.fullName : <span className="text-slate-400">-- اختر العامل --</span>}
                 <ChevronDown className={cn("h-4 w-4 opacity-50 transition-transform", showWorkerDropdown && "rotate-180")} />
               </button>
@@ -414,13 +425,27 @@ export default function ProductionReceiptPage() {
                   <ScrollArea className="h-[200px]">
                     {filteredWorkers.map(w => (
                       <button key={w.id} type="button" onClick={() => { setFormData({...formData, workerId: w.id}); setShowWorkerDropdown(false); }} className="flex items-center gap-3 w-full p-2.5 hover:bg-slate-50 text-right border-b border-slate-50">
-                        <span className="text-xs font-bold text-slate-700">{w.fullName}</span>
+                        <Avatar className="h-7 w-7"><AvatarImage src={w.photoUrl} /><AvatarFallback>{w.fullName?.charAt(0)}</AvatarFallback></Avatar>
+                        <div className="flex flex-col">
+                           <span className="text-xs font-bold text-slate-700">{w.fullName}</span>
+                           <span className="text-[8px] text-slate-400 uppercase">{w.workerId}</span>
+                        </div>
                       </button>
                     ))}
                   </ScrollArea>
                 </div>
               )}
             </div>
+
+            {selectedWorker && (
+               <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center gap-3">
+                  <ShieldCheck className="w-5 h-5 text-emerald-600" />
+                  <div>
+                     <p className="text-[10px] font-black text-emerald-800 uppercase">المشرف الضامن للعهدة</p>
+                     <p className="text-xs font-bold text-emerald-700">{allWorkers?.find(w => w.id === selectedWorker.supervisorId)?.fullName || 'لم يعين مشرف'}</p>
+                  </div>
+               </div>
+            )}
 
             <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200 grid grid-cols-3 gap-6">
               <div className="space-y-1.5">
@@ -442,7 +467,7 @@ export default function ProductionReceiptPage() {
               <textarea value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} className="w-full min-h-[80px] p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium resize-none outline-none focus:bg-white focus:border-emerald-500" placeholder="أدخل أي ملاحظات فنية حول القطع المستلمة..." />
             </div>
 
-            <div className="flex gap-3 pt-4">
+            <div className="flex gap-3 pt-4 border-t border-slate-100">
               <Button type="submit" disabled={isSubmitting || !formData.workerId || !formData.orderId} className="flex-1 h-14 premium-gradient text-white rounded-xl font-black text-base shadow-xl">
                 {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin me-2" /> : <CheckCircle2 className="w-5 h-5 me-2" />}
                 ترحيل السند وتحديث الإنجاز
@@ -453,7 +478,7 @@ export default function ProductionReceiptPage() {
         </DialogContent>
       </Dialog>
 
-      {/* VIEW/PRINT DIALOG */}
+      {/* VIEW/PRINT DIALOG (PNG PREVIEW) */}
       <Dialog open={!!printingVoucher} onOpenChange={(open) => !open && setPrintingVoucher(null)}>
         <DialogContent className="sm:max-w-[700px] p-0 overflow-hidden border-none bg-white">
           <DialogHeader className="sr-only"><DialogTitle>معاينة سند استلام إنتاج</DialogTitle></DialogHeader>
@@ -465,7 +490,6 @@ export default function ProductionReceiptPage() {
                     <img src="/images/logo.png" alt="watermark" className="w-full h-full object-contain grayscale" />
                   </div>
 
-                  {/* HEADER */}
                   <div className="grid grid-cols-3 items-center border-b-4 border-emerald-800 pb-6 mb-6">
                     <div className="text-center space-y-0.5">
                       <h2 className="text-base font-black text-emerald-900">جمعية الصناعات النسيجية</h2>
@@ -473,35 +497,33 @@ export default function ProductionReceiptPage() {
                     </div>
                     <div className="flex justify-center"><img src="/images/logo.png" alt="Logo" className="w-20 h-20 object-contain" /></div>
                     <div className="text-center space-y-0.5" dir="ltr">
-                      <h2 className="text-[11px] font-black text-emerald-900 uppercase">Textile Industries Association</h2>
+                      <h2 className="text-[11px] font-black text-emerald-900 uppercase">TIA Production</h2>
                       <p className="text-[9px] font-bold text-slate-500">Al-Rawdah - Shabwa - Yemen</p>
                     </div>
                   </div>
 
                   <div className="text-center mb-6">
-                    <div className="inline-block border-2 border-emerald-800 px-8 py-1 rounded-full bg-white">
-                      <h3 className="text-lg font-black text-emerald-900 uppercase tracking-widest">سند استلام إنتاج</h3>
+                    <div className="inline-block border-2 border-emerald-800 px-8 py-1 rounded-full bg-white shadow-sm">
+                      <h3 className="text-lg font-black text-emerald-900 uppercase tracking-widest">سند استلام إنتاج تام</h3>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-x-6 gap-y-4 mb-6 bg-slate-50/70 p-4 rounded-xl border border-slate-100">
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center border-b border-slate-200 pb-1">
-                        <span className="text-[9px] font-black text-slate-400 uppercase">اسم المسلم</span>
-                        <span className="text-xs font-black text-slate-700">{allWorkers?.find(w => w.id === printingVoucher.workerId)?.fullName}</span>
-                      </div>
+                  <div className="grid grid-cols-3 gap-4 mb-6 bg-slate-50/70 p-4 rounded-xl border border-slate-100">
+                    <div className="space-y-2">
+                       <p className="text-[9px] font-black text-slate-400 uppercase">رقم السند</p>
+                       <p className="text-xs font-black text-emerald-900 tabular-nums">{printingVoucher.voucherNumber}</p>
+                       <p className="text-[9px] font-black text-slate-400 uppercase mt-2">تاريخ الاستلام</p>
+                       <p className="text-xs font-black text-slate-700 tabular-nums">{printingVoucher.date}</p>
                     </div>
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center border-b border-slate-200 pb-1">
-                        <span className="text-[9px] font-black text-slate-400 uppercase">رقم السند</span>
-                        <span className="text-xs font-black text-emerald-900">{printingVoucher.voucherNumber}</span>
-                      </div>
+                    <div className="space-y-2">
+                       <p className="text-[9px] font-black text-slate-400 uppercase">اسم المسلم</p>
+                       <p className="text-xs font-black text-slate-700">{allWorkers?.find(w => w.id === printingVoucher.workerId)?.fullName}</p>
+                       <p className="text-[9px] font-black text-slate-400 uppercase mt-2">أمر الإنتاج</p>
+                       <p className="text-xs font-black text-slate-700 truncate">{allOrders?.find(o => o.id === printingVoucher.orderId)?.orderNumber}</p>
                     </div>
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center border-b border-slate-200 pb-1">
-                        <span className="text-[9px] font-black text-slate-400 uppercase">تاريخ الاستلام</span>
-                        <span className="text-xs font-black text-slate-700">{printingVoucher.date}</span>
-                      </div>
+                    <div className="space-y-2">
+                       <p className="text-[9px] font-black text-slate-400 uppercase">المشرف المسؤول</p>
+                       <p className="text-xs font-black text-slate-700">{allWorkers?.find(w => w.id === printingVoucher.supervisorId)?.fullName || '---'}</p>
                     </div>
                   </div>
 
@@ -509,21 +531,21 @@ export default function ProductionReceiptPage() {
                     <Table className="text-right border-2 border-emerald-900/10">
                       <TableHeader className="bg-emerald-900/5">
                         <TableRow>
-                          <TableHead className="text-center font-black text-xs py-3 text-emerald-900">الحالة</TableHead>
-                          <TableHead className="text-center font-black text-xs py-3 text-emerald-900">الكمية</TableHead>
+                          <TableHead className="text-center font-black text-xs py-3 text-emerald-900 border-b-2 border-emerald-900/20">الحالة التشغيلية</TableHead>
+                          <TableHead className="text-center font-black text-xs py-3 text-emerald-900 border-b-2 border-emerald-900/20">الكمية (قطعة)</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        <TableRow className="border-b border-slate-100">
-                          <TableCell className="text-center font-bold text-sm py-3 text-emerald-700">كمية مقبولة</TableCell>
+                        <TableRow className="border-b border-slate-100 bg-white/40">
+                          <TableCell className="text-center font-bold text-sm py-3 text-emerald-700">كمية مقبولة (صالحة)</TableCell>
                           <TableCell className="text-center font-black text-sm tabular-nums py-3">{printingVoucher.qtyAccepted}</TableCell>
                         </TableRow>
-                        <TableRow className="border-b border-slate-100">
-                          <TableCell className="text-center font-bold text-sm py-3 text-amber-700">كمية مرفوضة</TableCell>
+                        <TableRow className="border-b border-slate-100 bg-white/40">
+                          <TableCell className="text-center font-bold text-sm py-3 text-amber-700">كمية مرفوضة (تحتاج تعديل)</TableCell>
                           <TableCell className="text-center font-black text-sm tabular-nums py-3">{printingVoucher.qtyRejected}</TableCell>
                         </TableRow>
-                        <TableRow className="border-b border-slate-100">
-                          <TableCell className="text-center font-bold text-sm py-3 text-rose-700">كمية تالفة</TableCell>
+                        <TableRow className="border-b border-slate-100 bg-white/40">
+                          <TableCell className="text-center font-bold text-sm py-3 text-rose-700">كمية تالفة (هالك صناعي)</TableCell>
                           <TableCell className="text-center font-black text-sm tabular-nums py-3">{printingVoucher.qtyWaste}</TableCell>
                         </TableRow>
                       </TableBody>
@@ -533,7 +555,7 @@ export default function ProductionReceiptPage() {
                   <div className="grid grid-cols-3 gap-4 pt-6 border-t border-slate-200 text-center">
                     <div className="space-y-8"><p className="text-[10px] font-black text-slate-400">أمين المستودع</p><div className="h-px bg-slate-300 w-3/4 mx-auto" /></div>
                     <div className="space-y-8"><p className="text-[10px] font-black text-slate-400">توقيع الموظف</p><div className="h-px bg-slate-300 w-3/4 mx-auto" /></div>
-                    <div className="space-y-8"><p className="text-[10px] font-black text-slate-400">اعتماد المدير</p><div className="h-px bg-slate-300 w-3/4 mx-auto" /></div>
+                    <div className="space-y-8"><p className="text-[10px] font-black text-slate-400">اعتماد المدير / المشرف</p><div className="h-px bg-slate-300 w-3/4 mx-auto" /></div>
                   </div>
                 </div>
               )}
@@ -542,7 +564,7 @@ export default function ProductionReceiptPage() {
           <DialogFooter className="p-6 bg-slate-50 border-t border-slate-100">
             <Button onClick={handleDownloadImage} disabled={isDownloading} className="premium-gradient font-black gap-2 h-12 px-8 rounded-xl shadow-lg">
               {isDownloading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
-              تحميل كصورة
+              تحميل كصورة PNG
             </Button>
             <Button variant="ghost" onClick={() => setPrintingVoucher(null)} className="font-black h-12 px-6 rounded-xl border border-slate-200">إغلاق</Button>
           </DialogFooter>
@@ -555,7 +577,7 @@ export default function ProductionReceiptPage() {
           <div className="bg-slate-950 p-8 text-center">
             <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20"><History className="w-8 h-8 text-red-500" /></div>
             <AlertDialogTitle className="text-white text-xl font-black">إلغاء سند استلام</AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-400 font-bold mt-2 text-xs leading-relaxed">حذف السند سيؤدي لخصم الكميات من الإنجاز المحقق لأمر الإنتاج تلقائياً.</AlertDialogDescription>
+            <AlertDialogDescription className="text-slate-400 font-bold mt-2 text-xs leading-relaxed">حذف السند سيؤدي لخصم الكميات من الإنجاز المحقق لأمر الإنتاج تلقائياً وتصفير أي أجر مستحق عنه.</AlertDialogDescription>
           </div>
           <div className="bg-white p-6 flex gap-3">
             <AlertDialogAction onClick={handleDeleteVoucher} disabled={isSubmitting} className="flex-1 h-11 bg-red-600 font-black">تأكيد الحذف</AlertDialogAction>
