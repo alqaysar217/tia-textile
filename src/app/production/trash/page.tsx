@@ -169,9 +169,9 @@ export default function TrashPage() {
             <Table className="text-right">
               <TableHeader className="sticky top-0 z-20 bg-slate-100/95 backdrop-blur-sm shadow-sm">
                 <TableRow>
-                  <TableHead className="px-6 py-3 font-bold text-[11px] text-slate-500 uppercase">{lang === 'ar' ? 'العنصر' : 'ITEM'}</TableHead>
-                  <TableHead className="px-6 py-3 font-bold text-[11px] text-slate-500 uppercase">{lang === 'ar' ? 'النوع' : 'TYPE'}</TableHead>
-                  <TableHead className="px-6 py-3 font-bold text-[11px] text-slate-500 uppercase">{lang === 'ar' ? 'تاريخ الحذف' : 'DELETED AT'}</TableHead>
+                  <TableHead className="px-6 py-3 font-bold text-[11px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'العنصر' : 'ITEM'}</TableHead>
+                  <TableHead className="px-6 py-3 font-bold text-[11px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'النوع' : 'TYPE'}</TableHead>
+                  <TableHead className="px-6 py-3 font-bold text-[11px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'تاريخ الحذف' : 'DELETED AT'}</TableHead>
                   <TableHead className="w-[200px]"></TableHead>
                 </TableRow>
               </TableHeader>
