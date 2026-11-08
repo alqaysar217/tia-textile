@@ -6,6 +6,20 @@ import { LanguageProvider } from '@/components/LanguageProvider';
 import { CartProvider } from '@/components/CartProvider';
 import { MainLayoutWrapper } from '@/components/MainLayoutWrapper';
 import { FirebaseClientProvider } from '@/firebase';
+import { IBM_Plex_Sans_Arabic, Inter } from 'next/font/google';
+
+const ibmPlexSansArabic = IBM_Plex_Sans_Arabic({
+  subsets: ['arabic'],
+  weight: ['300', '400', '500', '600', '700'],
+  variable: '--font-ibm-plex-arabic',
+  display: 'swap',
+});
+
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'جمعية الصناعات النسيجية | Textile Association',
@@ -18,12 +32,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ar" dir="rtl">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
-      </head>
+    <html lang="ar" dir="rtl" className={`${ibmPlexSansArabic.variable} ${inter.variable}`}>
       <body className="antialiased min-h-screen flex flex-col selection:bg-primary/20">
         <LanguageProvider>
           <FirebaseClientProvider>

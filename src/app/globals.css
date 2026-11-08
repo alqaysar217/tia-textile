@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -43,12 +44,12 @@
 }
 
 .arabic-font {
-  font-family: 'IBM Plex Sans Arabic', sans-serif;
+  font-family: var(--font-ibm-plex-arabic), sans-serif;
   line-height: 1.5;
 }
 
 .english-font {
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-inter), sans-serif;
   line-height: 1.5;
 }
 

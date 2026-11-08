@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
@@ -343,19 +344,30 @@ export default function MaterialIssuePage() {
     
     setIsDownloading(true);
     try {
+      // Add small delay to ensure all assets are loaded
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       const dataUrl = await toPng(element, { 
         quality: 1, 
         backgroundColor: '#ffffff',
-        pixelRatio: 2 // High quality
+        pixelRatio: 2,
+        // Filter out cross-origin stylesheets that might cause SecurityError
+        style: {
+          fontFamily: 'inherit'
+        }
       });
       const link = document.createElement('a');
       link.download = `MaterialIssue-${printingVoucher.voucherNumber}.png`;
       link.href = dataUrl;
       link.click();
       toast({ title: lang === 'ar' ? "تم تحميل السند كصورة" : "Voucher downloaded as image" });
-    } catch (err) {
+    } catch (err: any) {
       console.error('Download error:', err);
-      toast({ variant: "destructive", title: lang === 'ar' ? "فشل التحميل" : "Download Failed" });
+      toast({ 
+        variant: "destructive", 
+        title: lang === 'ar' ? "فشل التحميل" : "Download Failed",
+        description: lang === 'ar' ? "يرجى تجربة الطباعة المباشرة بدلاً من ذلك." : "Please try direct printing instead."
+      });
     } finally {
       setIsDownloading(false);
     }
@@ -738,11 +750,11 @@ export default function MaterialIssuePage() {
 
                   {/* PROFESSIONAL BILINGUAL HEADER */}
                   <div className="grid grid-cols-3 items-center border-b-4 border-emerald-800 pb-6 mb-6 relative z-10">
-                    {/* ENGLISH SIDE (NOW ON RIGHT AS PER PREVIOUS REQ) */}
-                    <div className="text-center space-y-0.5" dir="ltr">
-                      <h2 className="text-[11px] font-black text-emerald-900 uppercase">Textile Industries Association</h2>
-                      <p className="text-[10px] font-bold text-slate-500">Al-Rawdah - Shabwa - Yemen</p>
-                      <p className="text-[9px] font-bold text-slate-400 tabular-nums">0777 263 091 | nseeg202020@gmail.com</p>
+                    {/* ARABIC SIDE (NOW ON LEFT AS PER PREVIOUS REQ) */}
+                    <div className="text-center space-y-0.5">
+                      <h2 className="text-base font-black text-emerald-900">جمعية الصناعات النسيجية</h2>
+                      <p className="text-xs font-bold text-slate-500">الروضة - محافظة شبوة - اليمن</p>
+                      <p className="text-[10px] font-bold text-slate-400 tabular-nums">0777 263 091 | nseeg202020@gmail.com</p>
                     </div>
 
                     {/* CENTER LOGO */}
@@ -752,11 +764,11 @@ export default function MaterialIssuePage() {
                       </div>
                     </div>
 
-                    {/* ARABIC SIDE (NOW ON LEFT AS PER PREVIOUS REQ) */}
-                    <div className="text-center space-y-0.5">
-                      <h2 className="text-base font-black text-emerald-900">جمعية الصناعات النسيجية</h2>
-                      <p className="text-xs font-bold text-slate-500">الروضة - محافظة شبوة - اليمن</p>
-                      <p className="text-[10px] font-bold text-slate-400 tabular-nums">0777 263 091 | nseeg202020@gmail.com</p>
+                    {/* ENGLISH SIDE (NOW ON RIGHT AS PER PREVIOUS REQ) */}
+                    <div className="text-center space-y-0.5" dir="ltr">
+                      <h2 className="text-[11px] font-black text-emerald-900 uppercase">Textile Industries Association</h2>
+                      <p className="text-[10px] font-bold text-slate-500">Al-Rawdah - Shabwa - Yemen</p>
+                      <p className="text-[9px] font-bold text-slate-400 tabular-nums">0777 263 091 | nseeg202020@gmail.com</p>
                     </div>
                   </div>
 
