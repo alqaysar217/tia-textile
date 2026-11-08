@@ -31,7 +31,10 @@ import {
   User as UserIcon,
   UploadCloud,
   Loader2,
-  FileDown
+  FileDown,
+  ShieldCheck,
+  UserCheck,
+  Users2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -70,6 +73,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, addDoc, updateDoc, doc, serverTimestamp, query, where } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -86,6 +90,7 @@ export default function WorkersPage() {
   
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [deptFilter, setDeptFilter] = useState<string>('all');
+  const [roleFilter, setRoleFilter] = useState<'all' | 'supervisors' | 'workers'>('all');
   const [sortBy, setSortBy] = useState<'fullName' | 'joinDate' | 'workerId'>('fullName');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
@@ -102,7 +107,9 @@ export default function WorkersPage() {
     phoneNumber: '',
     photoUrl: '',
     joinDate: new Date().toISOString().split('T')[0],
-    active: true
+    active: true,
+    isSupervisor: false,
+    supervisorId: ''
   });
 
   const workersQuery = useMemo(() => {
@@ -117,6 +124,11 @@ export default function WorkersPage() {
 
   const { data: workers, loading: workersLoading } = useCollection<any>(workersQuery);
   const { data: departments } = useCollection<any>(departmentsQuery);
+
+  // Get only supervisors for the dropdown selection
+  const supervisors = useMemo(() => {
+    return (workers || []).filter(w => w.isSupervisor && w.status !== 'deleted' && w.active);
+  }, [workers]);
 
   const filtered = useMemo(() => {
     let rawData = [...(workers || [])];
@@ -140,13 +152,19 @@ export default function WorkersPage() {
       rawData = rawData.filter(w => w.departmentId === deptFilter);
     }
 
+    if (roleFilter === 'supervisors') {
+      rawData = rawData.filter(w => w.isSupervisor === true);
+    } else if (roleFilter === 'workers') {
+      rawData = rawData.filter(w => w.isSupervisor !== true);
+    }
+
     return rawData.sort((a, b) => {
       let valA = a[sortBy] ?? '';
       let valB = b[sortBy] ?? '';
       const comparison = String(valA).localeCompare(String(valB), undefined, { numeric: true, sensitivity: 'base' });
       return sortOrder === 'asc' ? comparison : -comparison;
     });
-  }, [workers, search, statusFilter, deptFilter, sortBy, sortOrder]);
+  }, [workers, search, statusFilter, deptFilter, roleFilter, sortBy, sortOrder]);
 
   const resetForm = useCallback(() => {
     setIsAddDialogOpen(false);
@@ -160,7 +178,9 @@ export default function WorkersPage() {
       phoneNumber: '', 
       photoUrl: '',
       joinDate: new Date().toISOString().split('T')[0], 
-      active: true 
+      active: true,
+      isSupervisor: false,
+      supervisorId: ''
     });
   }, []);
 
@@ -219,19 +239,8 @@ export default function WorkersPage() {
       w.status !== 'deleted'
     );
 
-    const isDuplicatePhone = formData.phoneNumber && workers?.some(w => 
-      w.phoneNumber === formData.phoneNumber && 
-      w.id !== editingWorkerId && 
-      w.status !== 'deleted'
-    );
-
     if (isDuplicateName) {
       setValidationError(lang === 'ar' ? "هذا الاسم مسجل مسبقاً في النظام" : "This name is already registered");
-      return;
-    }
-
-    if (isDuplicatePhone) {
-      setValidationError(lang === 'ar' ? "رقم الهاتف هذا مستخدم من قبل عامل آخر" : "This phone number is already in use");
       return;
     }
 
@@ -246,6 +255,8 @@ export default function WorkersPage() {
       photoUrl: formData.photoUrl,
       joinDate: formData.joinDate,
       active: formData.active,
+      isSupervisor: formData.isSupervisor,
+      supervisorId: formData.isSupervisor ? '' : formData.supervisorId, // Supervisor can't have a supervisor
       updatedAt: serverTimestamp(),
     };
 
@@ -307,15 +318,19 @@ export default function WorkersPage() {
       phoneNumber: worker.phoneNumber || '',
       photoUrl: worker.photoUrl || '',
       joinDate: worker.joinDate || '',
-      active: worker.active ?? true
+      active: worker.active ?? true,
+      isSupervisor: worker.isSupervisor ?? false,
+      supervisorId: worker.supervisorId || ''
     });
     setIsAddDialogOpen(true);
   };
 
   const stats = useMemo(() => {
     const list = workers || [];
+    const activeOnes = list.filter(w => w.active && w.status !== 'deleted');
     return {
-      active: list.filter(w => w.active && w.status !== 'deleted').length,
+      active: activeOnes.length,
+      supervisors: activeOnes.filter(w => w.isSupervisor).length,
       total: list.filter(w => w.status !== 'deleted').length
     };
   }, [workers]);
@@ -333,9 +348,10 @@ export default function WorkersPage() {
     const headers = [
       lang === 'ar' ? 'الاسم الكامل' : 'Full Name',
       lang === 'ar' ? 'المعرف' : 'ID',
+      lang === 'ar' ? 'الرتبة' : 'Role',
       lang === 'ar' ? 'القسم' : 'Department',
+      lang === 'ar' ? 'المشرف المسؤول' : 'Supervisor',
       lang === 'ar' ? 'رقم الهاتف' : 'Phone',
-      lang === 'ar' ? 'تاريخ التعيين' : 'Hire Date',
       lang === 'ar' ? 'الحالة' : 'Status'
     ];
 
@@ -349,26 +365,24 @@ export default function WorkersPage() {
 
     const rows = filtered.map(w => {
       const dept = departments?.find(d => d.id === w.departmentId);
+      const sup = supervisors.find(s => s.id === w.supervisorId);
       return [
         escapeCSV(w.fullName),
         escapeCSV(w.workerId),
+        w.isSupervisor ? (lang === 'ar' ? 'مشرف' : 'Supervisor') : (lang === 'ar' ? 'عامل' : 'Worker'),
         dept ? escapeCSV(lang === 'ar' ? dept.nameAr : dept.nameEn) : '---',
+        sup ? escapeCSV(sup.fullName) : '---',
         escapeCSV(w.phoneNumber || '---'),
-        escapeCSV(w.joinDate || '---'),
         w.active ? (lang === 'ar' ? 'نشط' : 'Active') : (lang === 'ar' ? 'مجاز' : 'Inactive')
       ];
     });
 
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.join(','))
-    ].join('\n');
-
+    const csvContent = [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
     const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `workers_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `workers_catalog_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -388,10 +402,10 @@ export default function WorkersPage() {
               <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                 <span>{lang === 'ar' ? 'الموارد البشرية' : 'HR'}</span>
                 <ChevronRight className={`w-3 h-3 ${dir === 'rtl' ? 'rotate-180' : ''}`} />
-                <span className="text-slate-600">{lang === 'ar' ? 'سجل الحرفيين' : 'Personnel'}</span>
+                <span className="text-slate-600">{lang === 'ar' ? 'سجل الحرفيين والمشرفين' : 'Workforce'}</span>
               </div>
               <h1 className="text-xl font-black text-slate-900 leading-tight">
-                {lang === 'ar' ? 'قاعدة بيانات العمال' : 'Workforce Master Data'}
+                {lang === 'ar' ? 'قاعدة بيانات القوى العاملة' : 'Personnel Master Data'}
               </h1>
             </div>
           </div>
@@ -399,19 +413,19 @@ export default function WorkersPage() {
           <div className="flex items-center gap-3">
             <div className="flex gap-2 bg-slate-50 p-1 rounded-lg border border-slate-100">
               <div className="px-3 py-1 text-center">
-                <p className="text-[9px] font-bold text-slate-400 uppercase">{lang === 'ar' ? 'نشط' : 'Active'}</p>
-                <p className="text-sm font-black text-emerald-600 tabular-nums">{workersLoading ? '..' : stats.active}</p>
+                <p className="text-[9px] font-bold text-slate-400 uppercase">{lang === 'ar' ? 'مشرفين' : 'Sups'}</p>
+                <p className="text-sm font-black text-emerald-600 tabular-nums">{workersLoading ? '..' : stats.supervisors}</p>
               </div>
               <div className="w-px h-6 bg-slate-200 self-center" />
               <div className="px-3 py-1 text-center">
-                <p className="text-[9px] font-bold text-slate-400 uppercase">{lang === 'ar' ? 'الإجمالي' : 'Total'}</p>
-                <p className="text-sm font-black text-slate-700 tabular-nums">{workersLoading ? '..' : stats.total}</p>
+                <p className="text-[9px] font-bold text-slate-400 uppercase">{lang === 'ar' ? 'عمال' : 'Workers'}</p>
+                <p className="text-sm font-black text-slate-700 tabular-nums">{workersLoading ? '..' : stats.active - stats.supervisors}</p>
               </div>
             </div>
             
-            <Button onClick={() => setIsAddDialogOpen(true)} className="h-10 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md shadow-emerald-900/10 font-black gap-2 transition-all border-none">
+            <Button onClick={() => setIsAddDialogOpen(true)} className="h-10 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 transition-all border-none">
               <UserPlus className="w-4 h-4" />
-              {lang === 'ar' ? 'إضافة عامل' : 'Enroll Worker'}
+              {lang === 'ar' ? 'إضافة موظف' : 'Enroll Personnel'}
             </Button>
           </div>
         </div>
@@ -422,19 +436,15 @@ export default function WorkersPage() {
             <input 
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder={lang === 'ar' ? 'بحث باسم العامل، رقم الهاتف، أو المعرف...' : 'Quick search...'}
+              placeholder={lang === 'ar' ? 'بحث باسم الموظف أو المعرف...' : 'Search by name or ID...'}
               className={`w-full ${dir === 'rtl' ? 'pr-10 pl-4' : 'pl-10 pr-4'} h-9 bg-white border border-slate-200 rounded-md text-xs font-bold focus:ring-emerald-500/10 focus:border-emerald-500 outline-none`}
             />
           </div>
           
           <div className="flex items-center gap-1.5 px-1.5">
-            <Button 
-              onClick={handleExportCSV}
-              variant="ghost" 
-              className="h-9 px-4 rounded-md text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent hover:border-slate-200"
-            >
+            <Button onClick={handleExportCSV} variant="ghost" className="h-9 px-4 rounded-md text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent hover:border-slate-200">
               <FileDown className="w-3.5 h-3.5 text-emerald-600" />
-              {lang === 'ar' ? 'تصدير CSV' : 'Export CSV'}
+              {lang === 'ar' ? 'تصدير' : 'Export'}
             </Button>
 
             <DropdownMenu>
@@ -442,32 +452,30 @@ export default function WorkersPage() {
                 <Button variant="ghost" className="h-9 px-4 rounded-md text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent hover:border-slate-200">
                   <Filter className="w-3.5 h-3.5" />
                   {lang === 'ar' ? 'تصفية' : 'Filter'}
-                  {(statusFilter !== 'all' || deptFilter !== 'all' || sortBy !== 'fullName' || sortOrder !== 'asc') && (
+                  {(statusFilter !== 'all' || deptFilter !== 'all' || roleFilter !== 'all') && (
                     <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                   )}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="w-64 rounded-lg border-slate-200 shadow-xl">
-                <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'ترتيب حسب' : 'SORT BY'}</DropdownMenuLabel>
-                <DropdownMenuItem onClick={() => toggleSort('fullName')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
-                  <div className="flex items-center gap-2">
-                    <Languages className="w-3.5 h-3.5 text-slate-400" />
-                    {lang === 'ar' ? 'الاسم' : 'Name'}
-                  </div>
-                  {sortBy === 'fullName' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
+                <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'الرتبة الوظيفية' : 'RANK'}</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => setRoleFilter('all')} className="flex items-center justify-between text-xs font-bold cursor-pointer">
+                  {lang === 'ar' ? 'الكل' : 'All Roles'}
+                  {roleFilter === 'all' && <Check className="w-3 h-3 text-emerald-600" />}
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => toggleSort('workerId')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
-                  <div className="flex items-center gap-2">
-                    <Hash className="w-3.5 h-3.5 text-slate-400" />
-                    {lang === 'ar' ? 'المعرف' : 'ID'}
-                  </div>
-                  {sortBy === 'workerId' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
+                <DropdownMenuItem onClick={() => setRoleFilter('supervisors')} className="flex items-center justify-between text-xs font-bold cursor-pointer">
+                  {lang === 'ar' ? 'المشرفين فقط' : 'Supervisors Only'}
+                  {roleFilter === 'supervisors' && <Check className="w-3 h-3 text-emerald-600" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setRoleFilter('workers')} className="flex items-center justify-between text-xs font-bold cursor-pointer">
+                  {lang === 'ar' ? 'العمال فقط' : 'Workers Only'}
+                  {roleFilter === 'workers' && <Check className="w-3 h-3 text-emerald-600" />}
                 </DropdownMenuItem>
                 
                 <DropdownMenuSeparator />
                 <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'فلترة الأقسام' : 'DEPARTMENT'}</DropdownMenuLabel>
-                <DropdownMenuItem onClick={() => setDeptFilter('all')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
-                  {lang === 'ar' ? 'الكل' : 'All Departments'}
+                <DropdownMenuItem onClick={() => setDeptFilter('all')} className="text-xs font-bold cursor-pointer py-2">
+                  {lang === 'ar' ? 'جميع الأقسام' : 'All Departments'}
                   {deptFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
                 </DropdownMenuItem>
                 {departments?.map(d => (
@@ -479,26 +487,17 @@ export default function WorkersPage() {
 
                 <DropdownMenuSeparator />
                 <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'الحالة' : 'STATUS'}</DropdownMenuLabel>
-                <DropdownMenuItem onClick={() => setStatusFilter('all')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
-                  {lang === 'ar' ? 'الكل' : 'All'}
-                  {statusFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setStatusFilter('active')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
-                  {lang === 'ar' ? 'نشط فقط' : 'Active Only'}
-                  {statusFilter === 'active' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setStatusFilter('inactive')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
-                  {lang === 'ar' ? 'مجاز' : 'Inactive'}
-                  {statusFilter === 'inactive' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
-                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setStatusFilter('all')} className="text-xs font-bold cursor-pointer">{lang === 'ar' ? 'الكل' : 'All'}</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setStatusFilter('active')} className="text-xs font-bold cursor-pointer">{lang === 'ar' ? 'نشط' : 'Active'}</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setStatusFilter('inactive')} className="text-xs font-bold cursor-pointer">{lang === 'ar' ? 'مجاز' : 'Inactive'}</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
 
           <div className="w-px h-6 bg-slate-200" />
           <div className="flex items-center gap-2 px-3 text-[10px] font-bold text-slate-500">
-            <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-            {lang === 'ar' ? 'بيانات مؤمنة' : 'Secure Data'}
+            <ShieldCheck className="w-3 h-3 text-emerald-500" />
+            {lang === 'ar' ? 'نظام الرقابة الإدارية' : 'Management Control System'}
           </div>
         </div>
       </div>
@@ -511,66 +510,71 @@ export default function WorkersPage() {
                 <TableRow className="border-b border-slate-200">
                   <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 px-6 text-right whitespace-nowrap bg-inherit">
                     <button onClick={() => toggleSort('fullName')} className="flex items-center gap-2 hover:text-emerald-700 transition-colors uppercase">
-                      {lang === 'ar' ? 'العامل' : 'PERSONNEL'}
+                      {lang === 'ar' ? 'الموظف' : 'PERSONNEL'}
                       {sortBy === 'fullName' ? (sortOrder === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-30" />}
                     </button>
                   </TableHead>
+                  <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 px-6 text-right whitespace-nowrap bg-inherit">{lang === 'ar' ? 'الرتبة' : 'RANK'}</TableHead>
                   <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 px-6 text-right whitespace-nowrap bg-inherit">{lang === 'ar' ? 'القسم' : 'UNIT'}</TableHead>
-                  <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 px-6 text-right whitespace-nowrap bg-inherit">{lang === 'ar' ? 'التواصل' : 'CONTACT'}</TableHead>
-                  <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 px-6 text-center whitespace-nowrap bg-inherit">
-                    <button onClick={() => toggleSort('joinDate')} className="flex items-center gap-2 mx-auto hover:text-emerald-700 transition-colors uppercase">
-                      {lang === 'ar' ? 'التعيين' : 'JOINED'}
-                      {sortBy === 'joinDate' ? (sortOrder === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-30" />}
-                    </button>
-                  </TableHead>
+                  <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 px-6 text-right whitespace-nowrap bg-inherit">{lang === 'ar' ? 'المشرف المسؤول' : 'DIRECT SUPERVISOR'}</TableHead>
                   <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 px-6 text-center whitespace-nowrap bg-inherit">{lang === 'ar' ? 'الحالة' : 'STATUS'}</TableHead>
                   <TableHead className="h-10 w-[60px] sticky right-0 bg-inherit shadow-[-2px_0_5px_rgba(0,0,0,0.05)]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {workersLoading ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-20 font-bold text-slate-400 animate-pulse">جاري تحميل السجلات...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={6} className="text-center py-20 font-bold text-slate-400 animate-pulse">جاري سحب الهيكل التنظيمي...</TableCell></TableRow>
                 ) : filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-20 font-bold text-slate-300">لا توجد بيانات تطابق معايير البحث</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={6} className="text-center py-20 font-bold text-slate-300">لا توجد سجلات مطابقة</TableCell></TableRow>
                 ) : filtered.map((worker) => {
                   const dept = departments?.find(d => d.id === worker.departmentId);
+                  const supervisor = supervisors.find(s => s.id === worker.supervisorId);
                   return (
                     <TableRow key={worker.id} className="group hover:bg-slate-50/50 border-b border-slate-100">
                       <TableCell className="px-6 py-3">
                         <div className="flex items-center gap-3">
-                          <Avatar className="h-9 w-9 rounded-lg border border-slate-200 bg-slate-50">
+                          <Avatar className={cn("h-9 w-9 rounded-lg border-2", worker.isSupervisor ? "border-emerald-200" : "border-slate-100")}>
                             <AvatarImage src={worker.photoUrl || undefined} alt={worker.fullName} className="object-cover" />
-                            <AvatarFallback className="premium-gradient text-white text-[10px] font-black uppercase">
+                            <AvatarFallback className={cn("text-[10px] font-black uppercase", worker.isSupervisor ? "bg-emerald-600 text-white" : "bg-slate-100 text-slate-500")}>
                               {worker.fullName?.charAt(0)}
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex flex-col">
                             <span className="font-black text-slate-900 text-xs">{worker.fullName}</span>
-                            <span className="text-[10px] text-emerald-700 font-bold tabular-nums tracking-widest">{worker.workerId}</span>
+                            <span className="text-[10px] text-emerald-700 font-bold tabular-nums tracking-widest uppercase">{worker.workerId}</span>
                           </div>
                         </div>
                       </TableCell>
                       <TableCell className="px-6 py-3">
-                        <div className="flex items-center gap-2">
-                          <div className="w-1.5 h-1.5 rounded-full bg-slate-200" />
-                          <span className="font-bold text-slate-600 text-xs">
-                            {dept ? (lang === 'ar' ? dept.nameAr : dept.nameEn) : '---'}
-                          </span>
-                        </div>
+                        {worker.isSupervisor ? (
+                          <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded text-[9px] font-black uppercase">
+                            <ShieldCheck className="w-2.5 h-2.5" />
+                            {lang === 'ar' ? 'مشرف قسم' : 'Supervisor'}
+                          </div>
+                        ) : (
+                          <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-slate-50 text-slate-500 border border-slate-100 rounded text-[9px] font-black uppercase">
+                            <UserIcon className="w-2.5 h-2.5" />
+                            {lang === 'ar' ? 'حرفي / عامل' : 'Worker'}
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell className="px-6 py-3">
-                        <div className="flex items-center gap-2 text-slate-500 text-[11px] font-bold tabular-nums">
-                          <Phone className="w-3 h-3 opacity-30" />
-                          {worker.phoneNumber || '---'}
-                        </div>
+                        <span className="font-bold text-slate-600 text-xs">{dept ? (lang === 'ar' ? dept.nameAr : dept.nameEn) : '---'}</span>
+                      </TableCell>
+                      <TableCell className="px-6 py-3">
+                        {worker.isSupervisor ? (
+                          <span className="text-[9px] font-bold text-slate-300 italic uppercase">---</span>
+                        ) : supervisor ? (
+                          <div className="flex items-center gap-2 text-slate-700 font-bold text-xs">
+                            <UserCheck className="w-3 h-3 text-emerald-500" />
+                            {supervisor.fullName}
+                          </div>
+                        ) : (
+                          <span className="text-[9px] font-bold text-rose-300 italic">{lang === 'ar' ? 'لم يعين مشرف' : 'No Supervisor'}</span>
+                        )}
                       </TableCell>
                       <TableCell className="px-6 py-3 text-center">
-                        <span className="inline-block px-2 py-0.5 bg-slate-100 border border-slate-200 rounded text-[11px] font-black text-slate-700 tabular-nums">
-                          {worker.joinDate || '---'}
-                        </span>
-                      </TableCell>
-                      <TableCell className="px-6 py-3 text-center">
-                        <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-black uppercase ${
+                        <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[9px] font-black uppercase ${
                           worker.active ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-amber-50 text-amber-700 border border-amber-100'
                         }`}>
                           <div className={`w-1.5 h-1.5 rounded-full ${worker.active ? 'bg-emerald-600' : 'bg-amber-600'}`} />
@@ -580,22 +584,16 @@ export default function WorkersPage() {
                       <TableCell className="px-6 py-3 sticky right-0 bg-white group-hover:bg-slate-50/50 shadow-[-10px_0_10px_-5px_rgba(0,0,0,0.05)] border-l border-slate-100">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-slate-200 border border-transparent">
-                              <MoreVertical className="w-4 h-4 text-slate-400" />
-                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-slate-200"><MoreVertical className="w-4 h-4 text-slate-400" /></Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="rounded-lg border-slate-200 shadow-xl min-w-[180px]">
-                            <DropdownMenuItem onClick={() => handleEditClick(worker)} className="gap-3 font-bold text-xs cursor-pointer py-2.5">
-                              <Edit2 className="w-3.5 h-3.5 text-emerald-600" /> {lang === 'ar' ? 'تعديل الملف' : 'Edit Info'}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleStatusToggle(worker)} className="gap-3 font-bold text-xs cursor-pointer py-2.5">
+                            <DropdownMenuItem onClick={() => handleEditClick(worker)} className="gap-3 font-bold text-xs py-2.5"><Edit2 className="w-3.5 h-3.5 text-emerald-600" /> {lang === 'ar' ? 'تعديل الملف' : 'Update Info'}</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleStatusToggle(worker)} className="gap-3 font-bold text-xs py-2.5">
                               {worker.active ? <PowerOff className="w-3.5 h-3.5 text-amber-600" /> : <Power className="w-3.5 h-3.5 text-emerald-600" />}
                               {worker.active ? (lang === 'ar' ? 'منح إجازة' : 'Activate') : (lang === 'ar' ? 'تفعيل' : 'Deactivate')}
                             </DropdownMenuItem>
                             <div className="h-px bg-slate-100 my-1" />
-                            <DropdownMenuItem onClick={() => setDeletingWorkerId(worker.id)} className="gap-3 font-bold text-xs cursor-pointer text-red-600 focus:text-red-700 py-2.5">
-                              <Trash2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'نقل للأرشيف' : 'Archive'}
-                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setDeletingWorkerId(worker.id)} className="gap-3 font-bold text-xs text-red-600 py-2.5"><Trash2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'نقل للأرشيف' : 'Archive'}</DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -611,142 +609,120 @@ export default function WorkersPage() {
           <div className="w-8 h-8 bg-emerald-500/20 rounded flex items-center justify-center text-emerald-400"><Info className="w-4 h-4" /></div>
           <div className="flex-1">
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 leading-none mb-1">
-              {lang === 'ar' ? 'بروتوكول إدارة القوى العاملة' : 'Personnel Management Protocol'}
+              {lang === 'ar' ? 'بروتوكول الرقابة الإدارية' : 'Management Protocol'}
             </p>
             <p className="text-[10px] text-slate-300 font-bold opacity-80">
-              {lang === 'ar' ? 'يتم توثيق كافة التغييرات لأغراض التدقيق. تكرار الاسم أو رقم الهاتف يمنع عملية التسجيل لضمان دقة السجلات.' : 'All changes are logged. Duplicate names or phone numbers are blocked to ensure data integrity.'}
+              {lang === 'ar' ? 'المشرف هو المسؤول قانونياً وإدارياً عن كافة المواد الخام المستلمة لمجموعته، وعن جودة المخرجات المنجزة.' : 'The supervisor is legally responsible for all materials issued to their group and the final production quality.'}
             </p>
           </div>
         </div>
       </div>
 
       <Dialog open={isAddDialogOpen} onOpenChange={(open) => !open && resetForm()}>
-        <DialogContent className="sm:max-w-[500px] rounded-lg border-slate-200 shadow-2xl p-0 overflow-hidden">
+        <DialogContent className="sm:max-w-[550px] rounded-lg border-slate-200 shadow-2xl p-0 overflow-hidden">
           <div className="premium-gradient p-6 text-white relative">
             <DialogHeader className="text-right rtl:text-right ltr:text-left">
               <DialogTitle className="text-xl font-black flex items-center gap-3 text-white">
                 <UserPlus className="w-5 h-5 text-emerald-300" />
-                {editingWorkerId ? (lang === 'ar' ? 'تعديل بيانات العامل' : 'Update Worker') : (lang === 'ar' ? 'تسجيل عامل جديد' : 'New Enrollment')}
+                {editingWorkerId ? (lang === 'ar' ? 'تعديل سجل الموظف' : 'Update Record') : (lang === 'ar' ? 'تسجيل جديد في قاعدة البيانات' : 'New Enrollment')}
               </DialogTitle>
               <DialogDescription className="text-emerald-100/70 font-bold text-[10px] uppercase tracking-widest mt-1">
-                {lang === 'ar' ? 'إدخال البيانات والتحقق من التكرار' : 'Information entry and validation'}
+                {lang === 'ar' ? 'تحديد الدور الوظيفي والمسؤوليات الإدارية' : 'Defining roles and administrative duties'}
               </DialogDescription>
             </DialogHeader>
           </div>
 
           <form onSubmit={handleSaveWorker} className="p-6 space-y-5 bg-white">
-            <div className="flex flex-col items-center gap-3 pb-2 border-b border-slate-100">
-              <div 
-                onClick={() => !isCompressing && fileInputRef.current?.click()}
-                className="relative group cursor-pointer"
-              >
-                <Avatar className="h-20 w-20 rounded-2xl border-4 border-slate-100 shadow-md group-hover:border-emerald-100 transition-all overflow-hidden bg-slate-50">
-                  <AvatarImage src={formData.photoUrl || undefined} className="object-cover" />
-                  <AvatarFallback className="bg-slate-50 text-slate-300">
-                    {isCompressing ? <Loader2 className="w-8 h-8 animate-spin text-emerald-500" /> : <UserIcon className="w-10 h-10" />}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="absolute inset-0 bg-black/40 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  <UploadCloud className="w-6 h-6 text-white" />
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+              <div className="md:col-span-4 flex flex-col items-center gap-3 pt-2">
+                <div onClick={() => !isCompressing && fileInputRef.current?.click()} className="relative group cursor-pointer">
+                  <Avatar className="h-24 w-24 rounded-2xl border-4 border-slate-100 shadow-md bg-slate-50 overflow-hidden">
+                    <AvatarImage src={formData.photoUrl || undefined} className="object-cover" />
+                    <AvatarFallback className="bg-slate-50 text-slate-300">
+                      {isCompressing ? <Loader2 className="w-8 h-8 animate-spin text-emerald-500" /> : <UserIcon className="w-10 h-10" />}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="absolute inset-0 bg-black/40 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <UploadCloud className="w-6 h-6 text-white" />
+                  </div>
+                </div>
+                <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
+                <Label className="text-[9px] font-black uppercase text-slate-400">صورة الموظف</Label>
+              </div>
+
+              <div className="md:col-span-8 space-y-4">
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-black uppercase text-slate-400">{lang === 'ar' ? 'الاسم الكامل' : 'FULL NAME'}</Label>
+                  <Input value={formData.fullName} onChange={(e) => setFormData({...formData, fullName: e.target.value})} className="h-10 font-bold text-xs bg-slate-50" required />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-black uppercase text-slate-400">{lang === 'ar' ? 'رقم الهاتف' : 'PHONE NUMBER'}</Label>
+                  <Input value={formData.phoneNumber} onChange={(e) => setFormData({...formData, phoneNumber: e.target.value})} placeholder="7XXXXXXXX" className="h-10 font-bold text-xs bg-slate-50 tabular-nums" />
                 </div>
               </div>
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                className="hidden" 
-                accept="image/*" 
-                onChange={handleImageUpload} 
-              />
-              <div className="text-center">
-                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2 justify-center mb-1">
-                  {lang === 'ar' ? 'الصورة الشخصية (رفع محلي)' : 'PERSONNEL PHOTO'}
-                </Label>
-                <p className="text-[8px] text-slate-400 font-bold">
-                  {lang === 'ar' ? 'سيتم ضغط الصورة وتخزينها كبيانات مشفرة' : 'Image will be compressed & stored as encoded data'}
-                </p>
-              </div>
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
-                <Languages className="w-3 h-3 text-emerald-600" />
-                {lang === 'ar' ? 'الاسم الكامل للعامل' : 'FULL NAME'}
-              </Label>
-              <Input 
-                value={formData.fullName} 
-                onChange={(e) => { setFormData({...formData, fullName: e.target.value}); setValidationError(null); }} 
-                className={cn("h-10 font-bold text-xs bg-slate-50", validationError?.includes('الاسم') && "border-red-500 ring-red-500/10")} 
-                required 
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
-                  <Briefcase className="w-3 h-3 text-emerald-600" />
-                  {lang === 'ar' ? 'القسم / المسار' : 'DEPARTMENT'}
-                </Label>
-                <select 
-                  value={formData.departmentId} 
-                  onChange={(e) => setFormData({...formData, departmentId: e.target.value})} 
-                  className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold focus:outline-none"
-                  required
-                >
-                  <option value="">{lang === 'ar' ? '-- اختر القسم --' : '-- Select Dept --'}</option>
-                  {departments?.map(d => (
-                    <option key={d.id} value={d.id}>{lang === 'ar' ? d.nameAr : d.nameEn}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
-                  <Activity className="w-3 h-3 text-emerald-600" />
-                  {lang === 'ar' ? 'الحالة' : 'STATUS'}
-                </Label>
-                <select value={formData.active ? 'active' : 'inactive'} onChange={(e) => setFormData({...formData, active: e.target.value === 'active'})} className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold focus:outline-none">
-                  <option value="active">{lang === 'ar' ? 'نشط' : 'Active'}</option>
-                  <option value="inactive">{lang === 'ar' ? 'مجاز' : 'Inactive'}</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
-                  <Phone className="w-3 h-3 text-emerald-600" />
-                  {lang === 'ar' ? 'رقم الهاتف' : 'PHONE'}
-                </Label>
-                <Input 
-                  value={formData.phoneNumber} 
-                  onChange={(e) => { setFormData({...formData, phoneNumber: e.target.value}); setValidationError(null); }} 
-                  placeholder="7XXXXXXXX" 
-                  className={cn("h-10 font-bold text-xs bg-slate-50 tabular-nums", validationError?.includes('الهاتف') && "border-red-500 ring-red-500/10")} 
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={cn("p-2 rounded-lg transition-colors", formData.isSupervisor ? "bg-emerald-600 text-white shadow-lg" : "bg-white text-slate-300 border border-slate-200")}>
+                    <ShieldCheck className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-black text-slate-800">{lang === 'ar' ? 'هل هذا الموظف مشرف؟' : 'Is this employee a supervisor?'}</p>
+                    <p className="text-[9px] text-slate-400 font-bold">{lang === 'ar' ? 'المشرف يمكنه قيادة مجموعة من العمال' : 'Supervisors can lead worker groups'}</p>
+                  </div>
+                </div>
+                <Checkbox 
+                  checked={formData.isSupervisor} 
+                  onCheckedChange={(val) => setFormData({...formData, isSupervisor: !!val, supervisorId: ''})} 
+                  className="w-5 h-5 border-emerald-500 data-[state=checked]:bg-emerald-600"
                 />
               </div>
+
+              {!formData.isSupervisor && (
+                <div className="space-y-1.5 pt-2 border-t border-slate-200">
+                  <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
+                    <UserCheck className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'تعيين المشرف المباشر' : 'ASSIGN DIRECT SUPERVISOR'}
+                  </Label>
+                  <select 
+                    value={formData.supervisorId} 
+                    onChange={(e) => setFormData({...formData, supervisorId: e.target.value})} 
+                    className="w-full h-11 px-3 bg-white border border-slate-200 rounded-md text-xs font-bold focus:outline-none"
+                  >
+                    <option value="">{lang === 'ar' ? '-- بدون مشرف حالياً --' : '-- No Supervisor Assigned --'}</option>
+                    {supervisors.filter(s => s.departmentId === formData.departmentId || !formData.departmentId).map(s => (
+                      <option key={s.id} value={s.id}>{s.fullName} ({departments?.find(d => d.id === s.departmentId)?.nameAr})</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
-                  <Calendar className="w-3 h-3 text-emerald-600" />
-                  {lang === 'ar' ? 'تاريخ التعيين' : 'HIRE DATE'}
-                </Label>
+                <Label className="text-[10px] font-black uppercase text-slate-400">{lang === 'ar' ? 'القسم / المسار' : 'DEPARTMENT'}</Label>
+                <select value={formData.departmentId} onChange={(e) => setFormData({...formData, departmentId: e.target.value})} className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none" required>
+                  <option value="">-- اختر القسم --</option>
+                  {departments?.map(d => <option key={d.id} value={d.id}>{lang === 'ar' ? d.nameAr : d.nameEn}</option>)}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-black uppercase text-slate-400">{lang === 'ar' ? 'تاريخ الانضمام' : 'JOIN DATE'}</Label>
                 <Input type="date" value={formData.joinDate} onChange={(e) => setFormData({...formData, joinDate: e.target.value})} className="h-10 font-bold text-xs bg-slate-50 tabular-nums" required />
               </div>
             </div>
 
             {validationError && (
-              <div className="p-3 bg-red-50 border border-red-100 rounded-md flex items-center gap-2 animate-in fade-in slide-in-from-top-1">
-                <AlertCircle className="w-4 h-4 text-red-600" />
-                <p className="text-[10px] font-black text-red-600 uppercase tracking-tighter">{validationError}</p>
-              </div>
+              <div className="p-3 bg-red-50 border border-red-100 rounded-md flex items-center gap-2"><AlertCircle className="w-4 h-4 text-red-600" /><p className="text-[10px] font-black text-red-600">{validationError}</p></div>
             )}
 
             <div className="flex gap-3 pt-2">
-              <Button type="submit" disabled={isSubmitting || isCompressing} className="flex-1 h-11 premium-gradient hover:opacity-90 text-white rounded-md font-black text-sm border-none shadow-md shadow-emerald-900/10">
+              <Button type="submit" disabled={isSubmitting || isCompressing} className="flex-1 h-11 premium-gradient text-white rounded-md font-black text-sm shadow-md">
                 {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : <Save className="w-4 h-4 me-2" />}
-                {lang === 'ar' ? (isSubmitting ? 'جاري الحفظ...' : 'حفظ الملف') : 'Save Record'}
+                {lang === 'ar' ? (isSubmitting ? 'جاري الحفظ...' : 'حفظ البيانات') : 'Commit Record'}
               </Button>
-              <Button type="button" variant="outline" onClick={resetForm} className="px-6 h-11 font-black text-slate-400 rounded-md">
-                {lang === 'ar' ? 'إلغاء' : 'Cancel'}
-              </Button>
+              <Button type="button" variant="outline" onClick={resetForm} className="px-6 h-11 font-black text-slate-400 rounded-md">إلغاء</Button>
             </div>
           </form>
         </DialogContent>
@@ -755,23 +731,13 @@ export default function WorkersPage() {
       <AlertDialog open={!!deletingWorkerId} onOpenChange={(open) => !open && setDeletingWorkerId(null)}>
         <AlertDialogContent className="max-w-[400px] rounded-lg border-none shadow-2xl p-0 overflow-hidden">
           <div className="bg-slate-950 p-8 text-center">
-            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20 shadow-inner">
-              <History className="w-8 h-8 text-red-500" />
-            </div>
+            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20"><History className="w-8 h-8 text-red-500" /></div>
             <AlertDialogTitle className="text-white text-xl font-black">{lang === 'ar' ? 'أرشفة السجل' : 'Archive Record'}</AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-400 font-bold mt-2 text-xs leading-relaxed">
-              {lang === 'ar' 
-                ? 'سيتم نقل ملف العامل إلى الأرشيف. ستبقى كافة سجلات الإنتاج السابقة محفوظة للتدقيق.' 
-                : 'Worker file will be moved to archive. All historical production logs remain for audit.'}
-            </AlertDialogDescription>
+            <AlertDialogDescription className="text-slate-400 font-bold mt-2 text-xs leading-relaxed">أرشفة السجل لا تمسح تاريخ الإنتاج السابق للموظف، ولكن ستوقفه عن استلام مواد جديدة.</AlertDialogDescription>
           </div>
           <div className="bg-white p-6 flex gap-3">
-            <AlertDialogAction onClick={handleArchiveWorker} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-md font-black">
-              {lang === 'ar' ? 'تأكيد الأرشفة' : 'Confirm'}
-            </AlertDialogAction>
-            <AlertDialogCancel onClick={() => setDeletingWorkerId(null)} className="flex-1 h-11 bg-slate-50 border-slate-200 text-slate-400 rounded-md font-black">
-              {lang === 'ar' ? 'تراجع' : 'Cancel'}
-            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleArchiveWorker} className="flex-1 h-11 bg-red-600 font-black">تأكيد الأرشفة</AlertDialogAction>
+            <AlertDialogCancel onClick={() => setDeletingWorkerId(null)} className="flex-1 h-11 bg-slate-50 font-black">تراجع</AlertDialogCancel>
           </div>
         </AlertDialogContent>
       </AlertDialog>
