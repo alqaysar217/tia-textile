@@ -143,8 +143,8 @@ export default function PayrollManagementPage() {
     return activeReceipts.filter(r => r.workerId === formData.workerId && !paidReceiptIds.has(r.id));
   }, [formData.workerId, allReceipts, allPayments]);
 
-  // LOGIC: Calculate net balances per worker
-  const workerBalances = useMemo(() => {
+  // LOGIC: Calculate flat balances per worker per currency
+  const flattenedBalances = useMemo(() => {
     if (!allWorkers || !allReceipts) return [];
     
     const activePayments = (allPayments || []).filter(p => p.status !== 'deleted');
@@ -155,15 +155,28 @@ export default function PayrollManagementPage() {
       p.linkedReceipts?.forEach((id: string) => paidReceiptIds.add(id));
     });
 
-    return allWorkers.filter(w => w.status !== 'deleted').map(worker => {
+    const list: any[] = [];
+
+    allWorkers.filter(w => w.status !== 'deleted').forEach(worker => {
       const myUnpaid = activeReceipts.filter(r => r.workerId === worker.id && !paidReceiptIds.has(r.id));
+      
       const balanceByCurrency: Record<string, number> = {};
       myUnpaid.forEach(r => {
         const curr = r.currency || 'YER';
         balanceByCurrency[curr] = (balanceByCurrency[curr] || 0) + (r.wageAmount || 0);
       });
-      return { ...worker, balances: balanceByCurrency, hasBalance: Object.keys(balanceByCurrency).length > 0 };
-    }).filter(w => w.hasBalance);
+
+      // Split each currency into its own row as requested
+      Object.entries(balanceByCurrency).forEach(([currency, amount]) => {
+        list.push({
+          ...worker,
+          displayCurrency: currency,
+          displayAmount: amount
+        });
+      });
+    });
+
+    return list;
   }, [allWorkers, allReceipts, allPayments]);
 
   const toggleReceiptSelection = (receiptId: string) => {
@@ -318,20 +331,7 @@ export default function PayrollManagementPage() {
       <div className="flex-1 min-h-0 flex flex-col p-4 md:p-6 no-scrollbar">
         <Tabs defaultValue="balances" className="w-full h-full flex flex-col" onValueChange={setActiveTab}>
           <div className="flex items-center justify-between mb-4 bg-white p-2 rounded-xl border border-slate-200 shadow-sm">
-            {/* Swapped Stats Section to come first (Right side in RTL) */}
-            <div className="px-4 hidden md:flex items-center gap-4 text-[10px] font-bold text-slate-400">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                {lang === 'ar' ? 'إجمالي الدفعات:' : 'Total Payments:'} <span className="text-slate-900 tabular-nums">{(filteredPayments.length).toLocaleString('en-US')}</span>
-              </div>
-              <div className="w-px h-3 bg-slate-200" />
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-rose-500" />
-                {lang === 'ar' ? 'حسابات نشطة:' : 'Active Accounts:'} <span className="text-slate-900 tabular-nums">{(workerBalances.length).toLocaleString('en-US')}</span>
-              </div>
-            </div>
-
-            {/* Swapped TabsList to come second (Left side in RTL) */}
+            {/* TabsList first -> Right side in RTL */}
             <TabsList className="grid grid-cols-2 w-[400px] h-10">
               <TabsTrigger value="balances" className="font-black text-xs h-8">
                 <Users2 className="w-3.5 h-3.5 me-2" />
@@ -342,6 +342,19 @@ export default function PayrollManagementPage() {
                 {lang === 'ar' ? 'أرشيف سندات الصرف' : 'Payment Archive'}
               </TabsTrigger>
             </TabsList>
+
+            {/* Stats second -> Left side in RTL */}
+            <div className="px-4 hidden md:flex items-center gap-4 text-[10px] font-bold text-slate-400">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                {lang === 'ar' ? 'إجمالي الدفعات:' : 'Total Payments:'} <span className="text-slate-900 tabular-nums">{(filteredPayments.length).toLocaleString('en-US')}</span>
+              </div>
+              <div className="w-px h-3 bg-slate-200" />
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-rose-500" />
+                {lang === 'ar' ? 'حسابات نشطة:' : 'Active Accounts:'} <span className="text-slate-900 tabular-nums">{(flattenedBalances.length).toLocaleString('en-US')}</span>
+              </div>
+            </div>
           </div>
 
           <TabsContent value="balances" className="flex-1 min-h-0 focus-visible:ring-0">
@@ -353,12 +366,13 @@ export default function PayrollManagementPage() {
              ) : (
                <div className="h-full flex flex-col space-y-4">
                 <div className="p-4 bg-emerald-50/50 border border-emerald-100 rounded-xl flex items-center gap-3">
-                   <Info className="w-5 h-5 text-emerald-600" />
-                   <p className="text-xs font-bold text-emerald-800 leading-tight">
+                   {/* Reversed orientation: Text first, icon second for consistent direction reversal */}
+                   <p className="text-xs font-bold text-emerald-800 leading-tight flex-1">
                       {lang === 'ar' 
                         ? 'تظهر الأرصدة هنا آلياً بناءً على "سندات استلام الإنتاج" التي تم ترحيلها ولم تُدفع بعد. بمجرد ترحيل سند صرف، يتم تسوية الرصيد.' 
                         : 'Balances are generated from posted Production Receipts. Posting a payment voucher clears the balance.'}
                    </p>
+                   <Info className="w-5 h-5 text-emerald-600 shrink-0" />
                 </div>
 
                 <div className="flex-1 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
@@ -366,17 +380,17 @@ export default function PayrollManagementPage() {
                     <Table className="text-right border-separate border-spacing-0">
                       <TableHeader className="bg-slate-50 sticky top-0 z-10">
                         <TableRow>
-                          <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase">{lang === 'ar' ? 'الموظف' : 'WORKER'}</TableHead>
-                          <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase">{lang === 'ar' ? 'القسم' : 'DEPT'}</TableHead>
+                          <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'الموظف' : 'WORKER'}</TableHead>
+                          <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'القسم' : 'DEPT'}</TableHead>
                           <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center">{lang === 'ar' ? 'الرصيد المستحق' : 'BALANCE DUE'}</TableHead>
                           <TableHead className="w-40 px-6 py-4 text-center"></TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {workerBalances.map(w => {
+                        {flattenedBalances.map((w, idx) => {
                           const dept = allDepartments?.find(d => d.id === w.departmentId);
                           return (
-                            <TableRow key={w.id} className="hover:bg-slate-50/50 border-b border-slate-100 transition-colors group">
+                            <TableRow key={`${w.id}-${w.displayCurrency}-${idx}`} className="hover:bg-slate-50/50 border-b border-slate-100 transition-colors group">
                               <TableCell className="px-6 py-3">
                                 <div className="flex items-center gap-3">
                                   <Avatar className="h-9 w-9 border-2 border-white shadow-sm">
@@ -393,17 +407,13 @@ export default function PayrollManagementPage() {
                                 <span className="font-bold text-slate-600 text-xs">{dept ? (lang === 'ar' ? dept.nameAr : dept.nameEn) : '---'}</span>
                               </TableCell>
                               <TableCell className="px-6 py-3 text-center">
-                                <div className="flex flex-wrap justify-center gap-2">
-                                  {Object.entries(w.balances).map(([curr, amt]) => (
-                                    <Badge key={curr} variant="outline" className="bg-rose-50 text-rose-700 tabular-nums font-black border-rose-100 py-1">
-                                      {(amt as number).toLocaleString('en-US')} <span className="ms-1 text-[9px] opacity-60 uppercase">{curr}</span>
-                                    </Badge>
-                                  ))}
-                                </div>
+                                <Badge variant="outline" className="bg-rose-50 text-rose-700 tabular-nums font-black border-rose-100 py-1">
+                                  {(w.displayAmount).toLocaleString('en-US')} <span className="ms-1 text-[9px] opacity-60 uppercase">{w.displayCurrency}</span>
+                                </Badge>
                               </TableCell>
                               <TableCell className="px-6 py-3 text-center">
                                 <Button 
-                                  onClick={() => { setFormData({...formData, workerId: w.id}); setIsPayDialogOpen(true); }}
+                                  onClick={() => { setFormData({...formData, workerId: w.id, currency: w.displayCurrency}); setIsPayDialogOpen(true); }}
                                   variant="outline" 
                                   className="h-9 px-4 rounded-xl text-[10px] font-black uppercase text-emerald-600 border-emerald-100 hover:bg-emerald-600 hover:text-white transition-all gap-2"
                                 >
@@ -414,7 +424,7 @@ export default function PayrollManagementPage() {
                             </TableRow>
                           );
                         })}
-                        {workerBalances.length === 0 && (
+                        {flattenedBalances.length === 0 && (
                           <TableRow>
                             <TableCell colSpan={4} className="text-center py-24">
                               <div className="flex flex-col items-center justify-center">
@@ -438,9 +448,9 @@ export default function PayrollManagementPage() {
                    <Table className="text-right border-separate border-spacing-0">
                       <TableHeader className="bg-slate-50 sticky top-0 z-10">
                          <TableRow>
-                           <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase">{lang === 'ar' ? 'رقم السند' : 'REF #'}</TableHead>
-                           <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase">{lang === 'ar' ? 'التاريخ' : 'DATE'}</TableHead>
-                           <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase">{lang === 'ar' ? 'الموظف' : 'WORKER'}</TableHead>
+                           <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'رقم السند' : 'REF #'}</TableHead>
+                           <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'التاريخ' : 'DATE'}</TableHead>
+                           <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'الموظف' : 'WORKER'}</TableHead>
                            <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center">{lang === 'ar' ? 'المبلغ المصروف' : 'AMOUNT PAID'}</TableHead>
                            <TableHead className="w-20"></TableHead>
                          </TableRow>
@@ -515,8 +525,8 @@ export default function PayrollManagementPage() {
                       <TableHeader className="bg-slate-50">
                         <TableRow>
                           <TableHead className="w-10 px-4"></TableHead>
-                          <TableHead className="px-4 py-2 text-[10px] font-black text-slate-500 uppercase">{lang === 'ar' ? 'رقم سند الاستلام' : 'REF #'}</TableHead>
-                          <TableHead className="px-4 py-2 text-[10px] font-black text-slate-500 uppercase">{lang === 'ar' ? 'التاريخ' : 'DATE'}</TableHead>
+                          <TableHead className="px-4 py-2 text-[10px] font-black text-slate-500 uppercase text-right">{lang === 'ar' ? 'رقم سند الاستلام' : 'REF #'}</TableHead>
+                          <TableHead className="px-4 py-2 text-[10px] font-black text-slate-500 uppercase text-right">{lang === 'ar' ? 'التاريخ' : 'DATE'}</TableHead>
                           <TableHead className="px-4 py-2 text-center text-[10px] font-black text-slate-500 uppercase">{lang === 'ar' ? 'المبلغ المستحق' : 'DUE'}</TableHead>
                         </TableRow>
                       </TableHeader>
