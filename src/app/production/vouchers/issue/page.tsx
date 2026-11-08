@@ -32,7 +32,8 @@ import {
   MoreVertical,
   History,
   ArrowRight,
-  Download
+  Download,
+  Eye
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -346,18 +347,15 @@ export default function MaterialIssuePage() {
     
     setIsDownloading(true);
     try {
-      // Wait a bit more for fonts and layout to settle
       await new Promise(resolve => setTimeout(resolve, 800));
       
       const dataUrl = await toPng(element, { 
         backgroundColor: '#ffffff',
         pixelRatio: 2,
         cacheBust: true,
-        skipFonts: false, // Keep fonts as we moved to local
-        // Skip problematic style extraction to prevent TypeError/SecurityError
+        skipFonts: false,
         fontEmbedCSS: '', 
         filter: (node) => {
-          // Exclude any script or non-visible tags that might be picked up
           return node.tagName !== 'SCRIPT';
         }
       });
@@ -428,10 +426,10 @@ export default function MaterialIssuePage() {
           <Table className="text-right border-separate border-spacing-0">
             <TableHeader className="bg-slate-50 sticky top-0 z-10">
               <TableRow>
-                <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-right border-b border-slate-200">{lang === 'ar' ? 'رقم السند' : 'REF #'}</TableHead>
-                <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-right border-b border-slate-200">{lang === 'ar' ? 'التاريخ' : 'DATE'}</TableHead>
-                <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-right border-b border-slate-200">{lang === 'ar' ? 'أمر الإنتاج' : 'ORDER'}</TableHead>
-                <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-right border-b border-slate-200">{lang === 'ar' ? 'العامل' : 'WORKER'}</TableHead>
+                <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'رقم السند' : 'REF #'}</TableHead>
+                <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'التاريخ' : 'DATE'}</TableHead>
+                <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'أمر الإنتاج' : 'ORDER'}</TableHead>
+                <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'العامل' : 'WORKER'}</TableHead>
                 <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">{lang === 'ar' ? 'الأصناف' : 'ITEMS'}</TableHead>
                 <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">{lang === 'ar' ? 'العمليات' : 'ACTIONS'}</TableHead>
               </TableRow>
@@ -446,24 +444,21 @@ export default function MaterialIssuePage() {
                 const worker = allWorkers?.find(w => w.id === v.workerId);
                 return (
                   <TableRow key={v.id} className="hover:bg-slate-50/50 border-b border-slate-100 transition-colors group">
-                    <TableCell className="px-6 py-3 text-right">
-                      <div className="flex items-center gap-2 justify-end">
-                        <span className="font-black text-slate-900 text-xs tabular-nums">{v.voucherNumber}</span>
+                    <TableCell className={cn("px-6 py-3", dir === 'rtl' ? "text-right" : "text-left")}>
+                      <div className={cn("flex items-center gap-2", dir === 'rtl' ? "justify-start" : "justify-start")}>
                         <div className="p-1.5 bg-emerald-50 text-emerald-600 rounded-md"><FileText className="w-3.5 h-3.5" /></div>
+                        <span className="font-black text-slate-900 text-xs tabular-nums">{v.voucherNumber}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="px-6 py-3 font-bold text-slate-500 text-xs tabular-nums text-right">{v.date}</TableCell>
-                    <TableCell className="px-6 py-3 text-right">
-                      <div className="flex flex-col items-end">
+                    <TableCell className={cn("px-6 py-3 font-bold text-slate-500 text-xs tabular-nums", dir === 'rtl' ? "text-right" : "text-left")}>{v.date}</TableCell>
+                    <TableCell className={cn("px-6 py-3", dir === 'rtl' ? "text-right" : "text-left")}>
+                      <div className={cn("flex flex-col", dir === 'rtl' ? "items-start" : "items-start")}>
                         <span className="font-black text-slate-800 text-xs">{order?.orderNumber || '---'}</span>
                         <span className="text-[10px] text-slate-400 font-bold truncate max-w-[150px]">{order?.title}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="px-6 py-3 text-right">
-                      <div className="flex items-center gap-2 justify-end">
-                        <span className="font-bold text-slate-700 text-xs">{worker?.fullName || '---'}</span>
-                        <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-black text-slate-500 uppercase">{worker?.fullName?.charAt(0)}</div>
-                      </div>
+                    <TableCell className={cn("px-6 py-3", dir === 'rtl' ? "text-right" : "text-left")}>
+                      <span className="font-bold text-slate-700 text-xs">{worker?.fullName || '---'}</span>
                     </TableCell>
                     <TableCell className="px-6 py-3 text-center">
                       <span className="inline-block px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[10px] font-black tabular-nums">
@@ -478,13 +473,16 @@ export default function MaterialIssuePage() {
                           className="h-8 w-8 rounded-md text-slate-400 hover:text-emerald-600 hover:bg-emerald-50"
                           onClick={() => setPrintingVoucher(v)}
                         >
-                          <Printer className="w-4 h-4" />
+                          <Eye className="w-4 h-4" />
                         </Button>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-8 w-8 rounded-md hover:bg-slate-100"><MoreVertical className="w-4 h-4 text-slate-400" /></Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-44 rounded-lg shadow-xl">
+                            <DropdownMenuItem onClick={() => setPrintingVoucher(v)} className="gap-2 font-bold py-1.5 cursor-pointer text-xs">
+                              <Eye className="w-3.5 h-3.5 text-emerald-600" /> {lang === 'ar' ? 'عرض السند' : 'View Voucher'}
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleEditVoucher(v)} className="gap-2 font-bold py-1.5 cursor-pointer text-xs">
                               <Edit2 className="w-3.5 h-3.5 text-emerald-600" /> {lang === 'ar' ? 'تعديل السند' : 'Edit Voucher'}
                             </DropdownMenuItem>
@@ -509,7 +507,7 @@ export default function MaterialIssuePage() {
         <DialogContent className="sm:max-w-[850px] rounded-lg p-0 overflow-hidden border-none shadow-2xl">
           <div className="premium-gradient p-6 text-white">
             <DialogHeader className="text-right rtl:text-right ltr:text-left">
-              <DialogTitle className="text-xl font-black flex items-center gap-3">
+              <DialogTitle className="text-xl font-black flex items-center gap-3 text-white">
                 <FileInput className="w-5 h-5 text-emerald-300" />
                 {editingVoucherId ? (lang === 'ar' ? 'تعديل سند صرف مواد' : 'Update Material Issue') : (lang === 'ar' ? 'إنشاء سند صرف مواد للإنتاج' : 'New Material Issue')}
               </DialogTitle>
@@ -521,7 +519,6 @@ export default function MaterialIssuePage() {
 
           <form onSubmit={handleSaveVoucher} className="p-6 space-y-6 bg-white max-h-[85vh] overflow-y-auto no-scrollbar">
             
-            {/* ROW 1: Date and Worker Selection */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
@@ -615,7 +612,6 @@ export default function MaterialIssuePage() {
               </div>
             </div>
 
-            {/* ROW 2: Production Order and Dept Filter */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
@@ -646,7 +642,6 @@ export default function MaterialIssuePage() {
               </div>
             </div>
 
-            {/* 3. ITEM SELECTION BOX */}
             <div className="p-4 bg-emerald-50/30 rounded-xl border border-emerald-100 shadow-sm space-y-4">
               <h3 className="text-[10px] font-black text-emerald-700 uppercase tracking-widest flex items-center gap-2">
                 <Package className="w-3.5 h-3.5" /> {lang === 'ar' ? 'إضافة أصناف الخيوط والمواد من المخزن' : 'ADD RAW MATERIALS FROM INVENTORY'}
@@ -680,7 +675,6 @@ export default function MaterialIssuePage() {
               </div>
             </div>
 
-            {/* 4. VOUCHER ITEMS TABLE */}
             {formData.items.length > 0 && (
               <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
                 <Table className="text-right">
@@ -932,4 +926,3 @@ export default function MaterialIssuePage() {
     </div>
   );
 }
-
