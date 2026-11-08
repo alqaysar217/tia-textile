@@ -19,7 +19,8 @@ import {
   Workflow,
   FileText,
   RefreshCcw,
-  FileOutput
+  FileOutput,
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -106,13 +107,10 @@ export default function TrashPage() {
     
     try {
       if (actionType === 'restore') {
-        // Special logic for vouchers to re-apply effects
-        if (selectedItem.type === 'voucher') {
-          if (selectedItem.type === 'production_receipt') {
-            const orderRef = doc(db, 'productionOrders', selectedItem.orderId);
-            const oSnap = await getDoc(orderRef);
-            batch.update(orderRef, { completedQty: (oSnap.data()?.completedQty || 0) + (selectedItem.qtyAccepted || 0) });
-          }
+        if (selectedItem.type === 'voucher' && selectedItem.type === 'production_receipt') {
+          const orderRef = doc(db, 'productionOrders', selectedItem.orderId);
+          const oSnap = await getDoc(orderRef);
+          batch.update(orderRef, { completedQty: (oSnap.data()?.completedQty || 0) + (selectedItem.qtyAccepted || 0) });
         }
         
         batch.update(doc(db, col, targetId), { 
