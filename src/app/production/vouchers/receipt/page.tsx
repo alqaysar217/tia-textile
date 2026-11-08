@@ -117,7 +117,7 @@ export default function ProductionReceiptPage() {
     workerId: '',
     linkedMIVs: [] as string[], // Vouchers being settled
     notes: '',
-    qtyAccepted: 0,
+    qtyAccepted: 0, // Used as the main "Produced Quantity"
     qtyRejected: 0,
     qtyWaste: 0,
     wageRate: 0,
@@ -198,16 +198,15 @@ export default function ProductionReceiptPage() {
     setIsSubmitting(true);
     const batch = writeBatch(db);
     
-    const totalQty = Number(formData.qtyAccepted) + Number(formData.qtyRejected) + Number(formData.qtyWaste);
     const wageAmount = Number(formData.qtyAccepted) * Number(formData.wageRate);
     
     const voucherData = {
       ...formData,
       qtyAccepted: Number(formData.qtyAccepted),
-      qtyRejected: Number(formData.qtyRejected),
-      qtyWaste: Number(formData.qtyWaste),
+      qtyRejected: 0,
+      qtyWaste: 0,
       wageAmount,
-      totalQty,
+      totalQty: Number(formData.qtyAccepted),
       type: 'production_receipt',
       status: 'posted',
       updatedAt: serverTimestamp()
@@ -247,12 +246,12 @@ export default function ProductionReceiptPage() {
     }
   };
 
-  const handleReturnItem = (matId: string, qty: number, condition: string) => {
+  const handleReturnItem = (matId: string, qty: number) => {
     const material = allMaterials?.find(m => m.id === matId);
     if (!material) return;
     setFormData(prev => ({
       ...prev,
-      returnedItems: [...prev.returnedItems, { id: matId, nameAr: material.nameAr, qty, condition, unit: material.unit }]
+      returnedItems: [...prev.returnedItems, { id: matId, nameAr: material.nameAr, qty, unit: material.unit }]
     }));
   };
 
@@ -471,6 +470,7 @@ export default function ProductionReceiptPage() {
                     </button>
                   ))}
                 </div>
+                <p className="text-[8px] text-amber-600 font-bold italic">* يمكنك اختيار أكثر من سند إذا كان التسليم يغطي عدة طلبات صرف سابقة.</p>
               </div>
             )}
 
@@ -487,25 +487,34 @@ export default function ProductionReceiptPage() {
                 </div>
               </div>
 
-              <div className="md:col-span-8 grid grid-cols-3 gap-4">
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-black text-emerald-700">الكمية المقبولة</Label>
-                  <Input type="number" value={formData.qtyAccepted} onChange={(e) => setFormData({...formData, qtyAccepted: Number(e.target.value)})} className="h-12 font-black text-center text-lg text-emerald-700" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-black text-amber-700">الكمية المرفوضة</Label>
-                  <Input type="number" value={formData.qtyRejected} onChange={(e) => setFormData({...formData, qtyRejected: Number(e.target.value)})} className="h-12 font-black text-center text-lg text-amber-700" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-black text-rose-700">الكمية التالفة</Label>
-                  <Input type="number" value={formData.qtyWaste} onChange={(e) => setFormData({...formData, qtyWaste: Number(e.target.value)})} className="h-12 font-black text-center text-lg text-rose-700" />
+              <div className="md:col-span-8 flex flex-col gap-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-black text-emerald-700 uppercase">الكمية المستلمة (صالحة)</Label>
+                    <Input 
+                      type="number" 
+                      value={formData.qtyAccepted} 
+                      onChange={(e) => setFormData({...formData, qtyAccepted: Number(e.target.value)})} 
+                      className="h-14 font-black text-center text-2xl text-emerald-700 bg-emerald-50 border-emerald-200" 
+                      placeholder="0"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-black text-slate-400 uppercase">ملاحظات الفحص</Label>
+                    <Input 
+                      value={formData.notes} 
+                      onChange={(e) => setFormData({...formData, notes: e.target.value})} 
+                      className="h-14 bg-slate-50"
+                      placeholder="جودة ممتازة، نقشة دقيقة..."
+                    />
+                  </div>
                 </div>
                 
-                <div className="col-span-3 p-4 bg-emerald-50 rounded-xl border border-emerald-100 flex items-center justify-between">
+                <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-white rounded-lg text-emerald-600 shadow-sm"><Wallet className="w-5 h-5" /></div>
                     <div>
-                      <p className="text-[9px] font-black text-emerald-800 uppercase">أجر الموظف لكل قطعة مقبولة</p>
+                      <p className="text-[9px] font-black text-emerald-800 uppercase">أجر الموظف لكل قطعة منتجة</p>
                       <div className="flex items-center gap-2">
                         <Input 
                           type="number" 
@@ -522,7 +531,7 @@ export default function ProductionReceiptPage() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-[9px] font-black text-emerald-800 uppercase">إجمالي المستحق للسند</p>
+                    <p className="text-[9px] font-black text-emerald-800 uppercase">إجمالي المستحق لهذا السند</p>
                     <p className="text-xl font-black text-emerald-700 tabular-nums">
                       {(formData.qtyAccepted * formData.wageRate).toLocaleString()} <span className="text-[10px]">{formData.currency}</span>
                     </p>
@@ -534,7 +543,7 @@ export default function ProductionReceiptPage() {
             {/* STEP 4: RETURNED MATERIALS (WASTE/EXCESS) */}
             <div className="p-4 bg-blue-50/30 border border-blue-100 rounded-2xl space-y-4">
               <h3 className="text-[10px] font-black text-blue-700 uppercase tracking-widest flex items-center gap-2">
-                <RefreshCcw className="w-3.5 h-3.5" /> استرجاع المواد الخام المتبقية للمخزن
+                <RefreshCcw className="w-3.5 h-3.5" /> استرجاع المواد الخام المتبقية للمخزن (تصفية عهدة)
               </h3>
               
               <div className="flex gap-2 mb-4">
@@ -542,26 +551,23 @@ export default function ProductionReceiptPage() {
                   id="matSelect"
                   className="flex-1 h-10 px-3 bg-white border border-blue-200 rounded-md text-xs font-bold"
                 >
-                  <option value="">-- اختر مادة لإعادتها --</option>
+                  <option value="">-- اختر مادة لإعادتها للمخزن --</option>
                   {allMaterials?.map(m => <option key={m.id} value={m.id}>{m.nameAr} ({m.unit})</option>)}
                 </select>
-                <select id="condSelect" className="w-32 h-10 px-3 bg-white border border-blue-200 rounded-md text-xs font-bold">
-                  <option value="full">كاملة</option>
-                  <option value="half">نصف</option>
-                  <option value="quarter">ربع</option>
-                </select>
-                <Input id="qtySelect" type="number" placeholder="الكمية" className="w-24 h-10 bg-white" />
+                <Input id="qtySelect" type="number" step="0.01" placeholder="الكمية المرتجعة" className="w-40 h-10 bg-white font-bold" />
                 <Button 
                   type="button" 
                   onClick={() => {
                     const id = (document.getElementById('matSelect') as HTMLSelectElement).value;
-                    const cond = (document.getElementById('condSelect') as HTMLSelectElement).value;
                     const qty = Number((document.getElementById('qtySelect') as HTMLInputElement).value);
-                    if (id && qty > 0) handleReturnItem(id, qty, cond);
+                    if (id && qty > 0) {
+                      handleReturnItem(id, qty);
+                      (document.getElementById('qtySelect') as HTMLInputElement).value = '';
+                    }
                   }}
-                  className="h-10 bg-blue-600 hover:bg-blue-500 text-white font-black text-xs"
+                  className="h-10 bg-blue-600 hover:bg-blue-500 text-white font-black text-xs px-6"
                 >
-                  إضافة
+                  إدراج الاسترجاع
                 </Button>
               </div>
 
@@ -570,18 +576,18 @@ export default function ProductionReceiptPage() {
                    <Table className="text-right bg-white/50">
                       <TableHeader className="bg-blue-50/50">
                          <TableRow>
-                            <TableHead className="text-right text-[9px] font-black text-blue-500 uppercase">المادة</TableHead>
-                            <TableHead className="text-center text-[9px] font-black text-blue-500 uppercase">الكمية</TableHead>
-                            <TableHead className="text-center text-[9px] font-black text-blue-500 uppercase">الحالة</TableHead>
+                            <TableHead className="text-right text-[9px] font-black text-blue-500 uppercase">المادة المستلمة</TableHead>
+                            <TableHead className="text-center text-[9px] font-black text-blue-500 uppercase">الكمية الصافية</TableHead>
+                            <TableHead className="text-center text-[9px] font-black text-blue-500 uppercase">الوحدة</TableHead>
                             <TableHead className="w-10"></TableHead>
                          </TableRow>
                       </TableHeader>
                       <TableBody>
                          {formData.returnedItems.map((item, idx) => (
                             <TableRow key={idx} className="border-b border-blue-50">
-                               <TableCell className="text-xs font-bold">{item.nameAr}</TableCell>
-                               <TableCell className="text-center font-black tabular-nums">{item.qty} {item.unit}</TableCell>
-                               <TableCell className="text-center text-[10px] font-black text-blue-600 uppercase">{item.condition}</TableCell>
+                               <TableCell className="text-xs font-bold text-slate-700">{item.nameAr}</TableCell>
+                               <TableCell className="text-center font-black tabular-nums text-blue-700">{item.qty}</TableCell>
+                               <TableCell className="text-center text-[10px] font-black text-slate-400 uppercase">{item.unit}</TableCell>
                                <TableCell>
                                   <button type="button" onClick={() => setFormData({...formData, returnedItems: formData.returnedItems.filter((_, i) => i !== idx)})} className="text-rose-400 hover:text-rose-600"><Trash2 className="w-3.5 h-3.5" /></button>
                                </TableCell>
@@ -593,28 +599,18 @@ export default function ProductionReceiptPage() {
               )}
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase text-slate-400">ملاحظات الجودة / إغلاق العهدة</Label>
-              <textarea 
-                value={formData.notes} 
-                onChange={(e) => setFormData({...formData, notes: e.target.value})} 
-                className="w-full min-h-[80px] p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium resize-none outline-none focus:bg-white focus:border-emerald-500" 
-                placeholder="أدخل أي ملاحظات فنية حول القطع المستلمة أو حالة المواد المرتجعة..." 
-              />
-            </div>
-
             <div className="flex gap-3 pt-4 border-t border-slate-100">
               <Button type="submit" disabled={isSubmitting || !formData.workerId || !formData.orderId} className="flex-1 h-14 premium-gradient text-white rounded-xl font-black text-base shadow-xl">
                 {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin me-2" /> : <CheckCircle2 className="w-5 h-5 me-2" />}
-                ترحيل التسوية وتحديث المخازن
+                ترحيل التسوية وتحديث المخازن والإنجاز
               </Button>
-              <Button type="button" variant="outline" onClick={resetDialog} className="px-8 h-14 font-black text-slate-400 rounded-xl">إلغاء</Button>
+              <Button type="button" variant="outline" onClick={resetDialog} className="px-8 h-14 font-black text-slate-400 rounded-xl border-slate-200">إلغاء</Button>
             </div>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* VIEW/PRINT DIALOG (BILINGUAL DESIGN) */}
+      {/* VIEW/PRINT DIALOG */}
       <Dialog open={!!printingVoucher} onOpenChange={(open) => !open && setPrintingVoucher(null)}>
         <DialogContent className="sm:max-w-[750px] p-0 overflow-hidden border-none bg-white">
           <ScrollArea className="max-h-[80vh]">
@@ -666,17 +662,17 @@ export default function ProductionReceiptPage() {
                       <TableHeader className="bg-emerald-900/5">
                         <TableRow>
                           <TableHead className="text-right font-black text-xs py-3 text-emerald-900">نوع المعوز</TableHead>
-                          <TableHead className="text-center font-black text-xs py-3 text-emerald-900">مقبول</TableHead>
-                          <TableHead className="text-center font-black text-xs py-3 text-emerald-900">مرفوض</TableHead>
-                          <TableHead className="text-center font-black text-xs py-3 text-emerald-900">تالف</TableHead>
+                          <TableHead className="text-center font-black text-xs py-3 text-emerald-900">الكمية الصالحة</TableHead>
+                          <TableHead className="text-center font-black text-xs py-3 text-emerald-900">أجر القطعة</TableHead>
+                          <TableHead className="text-center font-black text-xs py-3 text-emerald-900">الإجمالي</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         <TableRow className="bg-white/40">
                           <TableCell className="font-bold text-sm py-3">{allProducts?.find(p => p.id === allOrders?.find(o => o.id === printingVoucher.orderId)?.productId)?.nameAr}</TableCell>
-                          <TableCell className="text-center font-black text-sm text-emerald-700">{printingVoucher.qtyAccepted}</TableCell>
-                          <TableCell className="text-center font-black text-sm text-amber-600">{printingVoucher.qtyRejected}</TableCell>
-                          <TableCell className="text-center font-black text-sm text-rose-600">{printingVoucher.qtyWaste}</TableCell>
+                          <TableCell className="text-center font-black text-sm text-emerald-700 tabular-nums">{printingVoucher.qtyAccepted} قطعة</TableCell>
+                          <TableCell className="text-center font-bold text-sm tabular-nums">{printingVoucher.wageRate}</TableCell>
+                          <TableCell className="text-center font-black text-sm tabular-nums text-emerald-900">{printingVoucher.wageAmount?.toLocaleString()}</TableCell>
                         </TableRow>
                       </TableBody>
                     </Table>
@@ -688,16 +684,16 @@ export default function ProductionReceiptPage() {
                           <TableHeader className="bg-blue-900/5">
                             <TableRow>
                               <TableHead className="text-right font-black text-xs py-3 text-blue-900">المادة الخام</TableHead>
-                              <TableHead className="text-center font-black text-xs py-3 text-blue-900">الكمية</TableHead>
-                              <TableHead className="text-center font-black text-xs py-3 text-blue-900">الحالة</TableHead>
+                              <TableHead className="text-center font-black text-xs py-3 text-blue-900">الكمية المرتجعة</TableHead>
+                              <TableHead className="text-center font-black text-xs py-3 text-blue-900">الوحدة</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
                             {printingVoucher.returnedItems.map((item: any, i: number) => (
                               <TableRow key={i} className="bg-white/40 border-b border-blue-50">
                                 <TableCell className="font-bold text-sm py-3 text-slate-800">{item.nameAr}</TableCell>
-                                <TableCell className="text-center font-black text-sm text-blue-700">{item.qty} {item.unit}</TableCell>
-                                <TableCell className="text-center text-[10px] font-black text-blue-500 uppercase">{item.condition}</TableCell>
+                                <TableCell className="text-center font-black text-sm text-blue-700 tabular-nums">{item.qty}</TableCell>
+                                <TableCell className="text-center text-[10px] font-black text-blue-500 uppercase">{item.unit}</TableCell>
                               </TableRow>
                             ))}
                           </TableBody>
@@ -707,13 +703,13 @@ export default function ProductionReceiptPage() {
                   </div>
 
                   <div className="grid grid-cols-3 gap-4 pt-6 border-t border-slate-200 text-center">
-                    <div className="space-y-6"><p className="text-[10px] font-black text-slate-400">أمين المستودع</p><div className="h-px bg-slate-200 w-2/3 mx-auto" /></div>
-                    <div className="space-y-6"><p className="text-[10px] font-black text-slate-400">الموظف (المسلم)</p><div className="h-px bg-slate-200 w-2/3 mx-auto" /></div>
-                    <div className="space-y-6"><p className="text-[10px] font-black text-slate-400">المدير / المشرف</p><div className="h-px bg-slate-200 w-2/3 mx-auto" /></div>
+                    <div className="space-y-6"><p className="text-[10px] font-black text-slate-400 uppercase">أمين المستودع</p><div className="h-px bg-slate-200 w-2/3 mx-auto" /><p className="text-[8px] font-bold text-slate-400">Signature / التاريخ</p></div>
+                    <div className="space-y-6"><p className="text-[10px] font-black text-slate-400 uppercase">الموظف (المسلم)</p><div className="h-px bg-slate-200 w-2/3 mx-auto" /><p className="text-[8px] font-bold text-slate-400">Signature / التاريخ</p></div>
+                    <div className="space-y-6"><p className="text-[10px] font-black text-slate-400 uppercase">المدير / المشرف</p><div className="h-px bg-slate-200 w-2/3 mx-auto" /><p className="text-[8px] font-bold text-slate-400">Approval / التوقيع</p></div>
                   </div>
                   
                   <div className="mt-12 text-center text-[7px] font-black text-slate-300 uppercase tracking-[0.4em]">
-                    GENERATED BY TIA SYSTEM - ACCOUNTABILITY PROTOCOL ACTIVE
+                    GENERATED BY TIA SYSTEM - PRODUCTION SETTLEMENT PROTOCOL ACTIVE
                   </div>
                 </div>
               )}
