@@ -129,7 +129,7 @@ export default function PayrollManagementPage() {
 
   const loading = workersLoading || receiptsLoading || paymentsLoading;
 
-  // LOGIC: Filter unpaid receipts
+  // LOGIC: Filter unpaid receipts by selected worker AND selected currency
   const unpaidReceipts = useMemo(() => {
     if (!formData.workerId || !allReceipts) return [];
     
@@ -141,8 +141,13 @@ export default function PayrollManagementPage() {
       p.linkedReceipts?.forEach((id: string) => paidReceiptIds.add(id));
     });
 
-    return activeReceipts.filter(r => r.workerId === formData.workerId && !paidReceiptIds.has(r.id));
-  }, [formData.workerId, allReceipts, allPayments]);
+    // Filter by worker AND matching currency to prevent cross-currency payment vouchers
+    return activeReceipts.filter(r => 
+      r.workerId === formData.workerId && 
+      !paidReceiptIds.has(r.id) && 
+      (r.currency || 'YER') === formData.currency
+    );
+  }, [formData.workerId, formData.currency, allReceipts, allPayments]);
 
   // LOGIC: Calculate flat balances per worker per currency
   const flattenedBalances = useMemo(() => {
@@ -190,13 +195,11 @@ export default function PayrollManagementPage() {
       
       const selectedVouchers = allReceipts?.filter(r => newSelection.includes(r.id)) || [];
       const total = selectedVouchers.reduce((sum, v) => sum + (v.wageAmount || 0), 0);
-      const primaryCurrency = selectedVouchers[0]?.currency || prev.currency;
       
       return { 
         ...prev, 
         linkedReceipts: newSelection, 
-        amount: total, 
-        currency: primaryCurrency 
+        amount: total
       };
     });
   }, [allReceipts]);
@@ -362,7 +365,7 @@ export default function PayrollManagementPage() {
         <Tabs value={activeTab} onValueChange={setActiveTab} dir={dir} className="w-full h-full flex flex-col">
           <div className="flex items-center justify-between mb-4 bg-white p-2 rounded-xl border border-slate-200 shadow-sm">
             
-            {/* Tabs List - Right in RTL (Primary Navigation) */}
+            {/* Tabs List */}
             <TabsList className="grid grid-cols-2 w-[360px] h-9">
               <TabsTrigger value="balances" className="font-black text-xs">
                 <Users2 className="w-3.5 h-3.5 me-2" />
@@ -374,7 +377,7 @@ export default function PayrollManagementPage() {
               </TabsTrigger>
             </TabsList>
 
-            {/* Stats - Left in RTL (Secondary Info) */}
+            {/* Stats */}
             <div className="px-4 hidden md:flex items-center gap-4 text-[10px] font-bold text-slate-400">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-emerald-500" />
@@ -533,7 +536,7 @@ export default function PayrollManagementPage() {
           <form onSubmit={handleSavePayment} className="p-6 space-y-5 bg-white max-h-[80vh] overflow-y-auto no-scrollbar">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5 text-right">
-                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2 justify-end"><Users2 className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'اختيار الموظف' : 'WORKER'}</Label>
+                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2 justify-start"><Users2 className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'اختيار الموظف' : 'WORKER'}</Label>
                 <select value={formData.workerId} onChange={(e) => setFormData(prev => ({...prev, workerId: e.target.value, amount: 0, linkedReceipts: []}))} className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none" required>
                    <option value="">-- اختر الموظف --</option>
                    {allWorkers?.filter(w => w.status !== 'deleted' && w.active).map(w => (
@@ -542,59 +545,79 @@ export default function PayrollManagementPage() {
                 </select>
               </div>
               <div className="space-y-1.5 text-right">
-                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2 justify-end"><Calendar className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'تاريخ العملية' : 'DATE'}</Label>
+                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2 justify-start"><Calendar className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'تاريخ العملية' : 'DATE'}</Label>
                 <Input type="date" value={formData.date} onChange={(e) => setFormData(prev => ({...prev, date: e.target.value}))} className="h-11 font-bold bg-slate-50 tabular-nums text-right" required />
               </div>
             </div>
 
-            {formData.workerId && unpaidReceipts.length > 0 && (
-              <div className="space-y-3">
-                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 justify-end">
-                  <Receipt className="w-3.5 h-3.5 text-emerald-600" /> {lang === 'ar' ? 'سندات الإنجاز المستحقة (اختر للسداد)' : 'UNPAID PRODUCTION RECEIPTS'}
-                </h3>
-                <div className="border border-slate-100 rounded-xl overflow-hidden shadow-sm">
-                   <Table className="text-right border-separate border-spacing-0">
-                      <TableHeader className="bg-slate-50">
-                        <TableRow>
-                          <TableHead className="w-10 px-4"></TableHead>
-                          <TableHead className="px-4 py-2 text-[10px] font-black text-slate-500 uppercase text-right">{lang === 'ar' ? 'رقم السند' : 'REF #'}</TableHead>
-                          <TableHead className="px-4 py-2 text-[10px] font-black text-slate-500 uppercase text-right">{lang === 'ar' ? 'التاريخ' : 'DATE'}</TableHead>
-                          <TableHead className="px-4 py-2 text-center text-[10px] font-black text-slate-500 uppercase">{lang === 'ar' ? 'المبلغ' : 'DUE'}</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {unpaidReceipts.map(r => (
-                          <TableRow key={r.id} className="bg-white border-b border-slate-50 hover:bg-emerald-50/20 transition-colors">
-                            <TableCell className="px-4">
-                               <Checkbox 
-                                 checked={formData.linkedReceipts.includes(r.id)} 
-                                 onCheckedChange={() => toggleReceiptSelection(r.id)} 
-                               />
-                            </TableCell>
-                            <TableCell className="px-4 py-2 text-xs font-black text-slate-700 tabular-nums text-right">{r.voucherNumber}</TableCell>
-                            <TableCell className="px-4 py-2 text-xs font-bold text-slate-400 tabular-nums text-right">{r.date}</TableCell>
-                            <TableCell className="px-4 py-2 text-center">
-                               <span className="text-sm font-black text-emerald-700 tabular-nums">{(r.wageAmount || 0).toLocaleString('en-US')}</span>
-                               <span className="text-[9px] font-black text-slate-400 ms-1 uppercase">{r.currency}</span>
-                            </TableCell>
+            <div className="p-4 bg-emerald-50/30 border border-emerald-100 rounded-xl space-y-4">
+              <div className="flex items-center justify-between">
+                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2 justify-start">
+                  <Coins className="w-3.5 h-3.5 text-emerald-600" /> {lang === 'ar' ? 'عملة الصرف (تصفية سندات بنفس العملة)' : 'PAYMENT CURRENCY'}
+                </Label>
+                <select 
+                  value={formData.currency} 
+                  onChange={(e) => setFormData(prev => ({...prev, currency: e.target.value, amount: 0, linkedReceipts: []}))} 
+                  className="h-9 px-3 bg-white border border-emerald-200 rounded-lg text-[10px] font-black shadow-sm outline-none"
+                >
+                  <option value="YER">YER - ريال يمني</option>
+                  <option value="SAR">SAR - ريال سعودي</option>
+                  <option value="USD">USD - دولار أمريكي</option>
+                </select>
+              </div>
+              
+              {formData.workerId && unpaidReceipts.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="text-[9px] font-black text-emerald-700 uppercase tracking-widest flex items-center gap-2">
+                    <Receipt className="w-3 h-3" /> {lang === 'ar' ? `سندات الإنجاز المستحقة بالـ (${formData.currency})` : `UNPAID RECEIPTS IN (${formData.currency})`}
+                  </h3>
+                  <div className="border border-slate-100 rounded-xl overflow-hidden shadow-sm bg-white">
+                     <Table className="text-right border-separate border-spacing-0">
+                        <TableHeader className="bg-slate-50">
+                          <TableRow>
+                            <TableHead className="w-10 px-4"></TableHead>
+                            <TableHead className="px-4 py-2 text-[9px] font-black text-slate-500 uppercase text-right">{lang === 'ar' ? 'رقم السند' : 'REF #'}</TableHead>
+                            <TableHead className="px-4 py-2 text-[9px] font-black text-slate-500 uppercase text-right">{lang === 'ar' ? 'التاريخ' : 'DATE'}</TableHead>
+                            <TableHead className="px-4 py-2 text-center text-[9px] font-black text-slate-500 uppercase">{lang === 'ar' ? 'المبلغ' : 'DUE'}</TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                   </Table>
+                        </TableHeader>
+                        <TableBody>
+                          {unpaidReceipts.map(r => (
+                            <TableRow 
+                              key={r.id} 
+                              className="bg-white border-b border-slate-50 hover:bg-emerald-50/40 transition-colors"
+                            >
+                              <TableCell className="px-4">
+                                 <Checkbox 
+                                   checked={formData.linkedReceipts.includes(r.id)} 
+                                   onCheckedChange={() => toggleReceiptSelection(r.id)} 
+                                 />
+                              </TableCell>
+                              <TableCell className="px-4 py-2 text-xs font-black text-slate-700 tabular-nums text-right">{r.voucherNumber}</TableCell>
+                              <TableCell className="px-4 py-2 text-xs font-bold text-slate-400 tabular-nums text-right">{r.date}</TableCell>
+                              <TableCell className="px-4 py-2 text-center">
+                                 <span className="text-sm font-black text-emerald-700 tabular-nums">{(r.wageAmount || 0).toLocaleString('en-US')}</span>
+                                 <span className="text-[9px] font-black text-slate-400 ms-1 uppercase">{r.currency}</span>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                     </Table>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {formData.workerId && unpaidReceipts.length === 0 && (
-              <div className="p-10 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-                 <CheckCircle2 className="w-10 h-10 text-emerald-200 mx-auto mb-2" />
-                 <p className="text-sm font-bold text-slate-400">{lang === 'ar' ? 'لا توجد مستحقات مالية معلقة لهذا الموظف' : 'Account is cleared for this personnel'}</p>
-              </div>
-            )}
+              {formData.workerId && unpaidReceipts.length === 0 && (
+                <div className="p-8 text-center bg-white/50 rounded-2xl border border-dashed border-slate-200">
+                   <AlertCircle className="w-8 h-8 text-amber-300 mx-auto mb-2" />
+                   <p className="text-[10px] font-bold text-slate-400">{lang === 'ar' ? `لا توجد مستحقات معلقة بالـ (${formData.currency}) لهذا الموظف` : `No outstanding wages in (${formData.currency}) for this personnel`}</p>
+                </div>
+              )}
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
               <div className="md:col-span-2 space-y-1.5 text-right">
-                <Label className="text-[10px] font-black uppercase text-slate-400 block">{lang === 'ar' ? 'المبلغ الإجمالي للصرف' : 'TOTAL PAYMENT'}</Label>
+                <Label className="text-[10px] font-black uppercase text-slate-400 block">{lang === 'ar' ? 'إجمالي المبلغ المصروف' : 'TOTAL DISBURSEMENT'}</Label>
                 <div className="relative">
                   <Input 
                     type="number" 
@@ -605,14 +628,14 @@ export default function PayrollManagementPage() {
                     required 
                   />
                   <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                     <select value={formData.currency} onChange={(e) => setFormData(prev => ({...prev, currency: e.target.value}))} className="h-9 px-3 bg-white border border-emerald-100 rounded-lg text-xs font-black shadow-sm outline-none">
-                        <option value="YER">YER</option><option value="SAR">SAR</option><option value="USD">USD</option>
-                     </select>
+                     <div className="h-9 px-3 bg-white border border-emerald-100 rounded-lg flex items-center justify-center text-xs font-black shadow-sm">
+                        {formData.currency}
+                     </div>
                   </div>
                 </div>
               </div>
               <div className="space-y-1.5 text-right">
-                <Label className="text-[10px] font-black uppercase text-slate-400 block">{lang === 'ar' ? 'عدد السندات' : 'VOUCHERS'}</Label>
+                <Label className="text-[10px] font-black uppercase text-slate-400 block">{lang === 'ar' ? 'عدد السندات' : 'BATCH COUNT'}</Label>
                 <div className="h-14 flex items-center justify-center bg-slate-900 text-white rounded-xl font-black text-xl tabular-nums">
                    {formData.linkedReceipts.length}
                 </div>
@@ -698,4 +721,3 @@ export default function PayrollManagementPage() {
     </div>
   );
 }
-
