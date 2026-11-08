@@ -33,7 +33,9 @@ import {
   ArrowUpRight,
   FileInput,
   ShieldCheck,
-  Users2
+  Users2,
+  Building2,
+  UserCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -71,6 +73,7 @@ import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { Badge } from '@/components/ui/badge';
 
 export default function ProductionOrdersPage() {
   const { lang, dir } = useTranslation();
@@ -78,7 +81,9 @@ export default function ProductionOrdersPage() {
   const router = useRouter();
   const [search, setSearch] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isLogisticsDialogOpen, setIsLogisticsDialogOpen] = useState(false);
   const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
+  const [managingOrder, setManagingOrder] = useState<any | null>(null);
   const [deletingOrder, setDeletingOrder] = useState<any | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -88,6 +93,12 @@ export default function ProductionOrdersPage() {
     productId: '',
     targetQty: 300,
     priority: 'normal',
+    notes: ''
+  });
+
+  // Logistics Form State
+  const [logisticsData, setLogisticsData] = useState({
+    currentStageId: '',
     notes: ''
   });
 
@@ -121,6 +132,12 @@ export default function ProductionOrdersPage() {
     setFormData({ title: '', productId: '', targetQty: 300, priority: 'normal', notes: '' });
   }, []);
 
+  const resetLogistics = useCallback(() => {
+    setIsLogisticsDialogOpen(false);
+    setManagingOrder(null);
+    setLogisticsData({ currentStageId: '', notes: '' });
+  }, []);
+
   const handleEditClick = (order: any) => {
     setEditingOrderId(order.id);
     setFormData({
@@ -131,6 +148,15 @@ export default function ProductionOrdersPage() {
       notes: order.notes || ''
     });
     setIsAddDialogOpen(true);
+  };
+
+  const handleManageTeams = (order: any) => {
+    setManagingOrder(order);
+    setLogisticsData({
+      currentStageId: order.currentStageId || '',
+      notes: ''
+    });
+    setIsLogisticsDialogOpen(true);
   };
 
   const handleSaveOrder = async (e: React.FormEvent) => {
@@ -159,13 +185,32 @@ export default function ProductionOrdersPage() {
           completedQty: 0,
           status: 'active',
           startDate: new Date().toISOString().split('T')[0],
-          currentStageId: departments?.[0]?.id || '',
+          currentStageId: departments?.find(d => d.status === 'active')?.id || '',
           createdAt: serverTimestamp()
         };
         await addDoc(collection(db, 'productionOrders'), newOrder);
         toast({ title: lang === 'ar' ? "تم إنشاء أمر الإنتاج" : "Order Created" });
       }
       resetForm();
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleUpdateLogistics = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!db || !managingOrder || isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      await updateDoc(doc(db, 'productionOrders', managingOrder.id), {
+        currentStageId: logisticsData.currentStageId,
+        updatedAt: serverTimestamp()
+      });
+      toast({ title: lang === 'ar' ? "تم تحديث مرحلة التشغيل" : "Logistics Updated" });
+      resetLogistics();
     } catch (error) {
       console.error(error);
     } finally {
@@ -256,7 +301,6 @@ export default function ProductionOrdersPage() {
           const product = products?.find(p => p.id === order.productId);
           const stage = departments?.find(d => d.id === order.currentStageId);
           
-          // Find any supervisor in this stage for info (This will be improved as assignments get more granular)
           const stageSupervisor = workers?.find(w => w.departmentId === order.currentStageId && w.isSupervisor && w.active);
           
           const progress = Math.round((order.completedQty / order.targetQty) * 100) || 0;
@@ -371,7 +415,10 @@ export default function ProductionOrdersPage() {
                     <FileText className="w-3.5 h-3.5 text-emerald-600" />
                     {lang === 'ar' ? 'سندات الأمر' : 'Vouchers'}
                   </Button>
-                  <Button className="flex-1 lg:w-full h-9 premium-gradient rounded-lg text-[9px] font-black gap-1.5 border-none shadow-md hover:opacity-90 uppercase">
+                  <Button 
+                    onClick={() => handleManageTeams(order)}
+                    className="flex-1 lg:w-full h-9 premium-gradient rounded-lg text-[9px] font-black gap-1.5 border-none shadow-md hover:opacity-90 uppercase"
+                  >
                     <Users2 className="w-3.5 h-3.5" />
                     {lang === 'ar' ? 'إدارة الفرق' : 'Manage Teams'}
                   </Button>
@@ -488,6 +535,91 @@ export default function ProductionOrdersPage() {
         </DialogContent>
       </Dialog>
 
+      {/* MANAGE TEAMS & LOGISTICS DIALOG */}
+      <Dialog open={isLogisticsDialogOpen} onOpenChange={(open) => !open && resetLogistics()}>
+        <DialogContent className="sm:max-w-[500px] rounded-lg p-0 overflow-hidden border-none shadow-2xl">
+          <div className="bg-slate-900 p-6 text-white relative">
+            <div className="absolute top-0 right-0 p-6 opacity-10"><Users2 className="w-24 h-24" /></div>
+            <DialogHeader className="text-right rtl:text-right ltr:text-left relative z-10">
+              <DialogTitle className="text-xl font-black flex items-center gap-3 text-white">
+                <Building2 className="w-5 h-5 text-emerald-400" />
+                {lang === 'ar' ? 'إدارة الفرق واللوجستيات' : 'Order Logistics & Teams'}
+              </DialogTitle>
+              <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest mt-1">
+                Routing batches through production work centers
+              </p>
+            </DialogHeader>
+          </div>
+
+          <form onSubmit={handleUpdateLogistics} className="p-6 space-y-6 bg-white">
+            {managingOrder && (
+              <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-emerald-600 shadow-sm"><Activity className="w-5 h-5" /></div>
+                  <div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'الحالة الحالية' : 'CURRENT STATUS'}</p>
+                    <p className="text-sm font-black text-slate-800">
+                      {departments?.find(d => d.id === managingOrder.currentStageId)?.nameAr || (lang === 'ar' ? 'غير محدد' : 'N/A')}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <Badge className="bg-emerald-50 text-emerald-700 font-black text-[10px]">{managingOrder.orderNumber}</Badge>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
+                  <Layers className="w-3 h-3 text-emerald-600" />
+                  {lang === 'ar' ? 'تغيير مرحلة الإنتاج (Work Center)' : 'MOVE TO WORK CENTER'}
+                </Label>
+                <select 
+                  value={logisticsData.currentStageId} 
+                  onChange={(e) => setLogisticsData({...logisticsData, currentStageId: e.target.value})}
+                  className="w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-black outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                  required
+                >
+                  <option value="">{lang === 'ar' ? '-- اختر القسم المستلم --' : '-- Select Stage --'}</option>
+                  {departments?.filter(d => d.status === 'active').map(d => (
+                    <option key={d.id} value={d.id}>{d.nameAr}</option>
+                  ))}
+                </select>
+                <p className="text-[9px] font-bold text-slate-400 italic">
+                  {lang === 'ar' ? '* اختيار القسم سيقوم تلقائياً بتحديث المشرف المسؤول عن الطلبية.' : '* Selecting a stage updates the responsible supervisor.'}
+                </p>
+              </div>
+
+              {/* RELEVANT SUPERVISOR INFO */}
+              {logisticsData.currentStageId && (
+                <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center gap-3 animate-in fade-in zoom-in-95">
+                  <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-emerald-600 shadow-sm">
+                    <UserCheck className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black text-emerald-800 uppercase tracking-widest">{lang === 'ar' ? 'المشرف المسؤول في هذا القسم' : 'STAGE LEAD'}</p>
+                    <p className="text-xs font-bold text-emerald-700">
+                      {workers?.find(w => w.departmentId === logisticsData.currentStageId && w.isSupervisor && w.active)?.fullName || (lang === 'ar' ? 'لم يعين مشرف لهذا القسم' : 'No lead assigned')}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3 pt-4 border-t border-slate-100">
+              <Button type="submit" disabled={isSubmitting || !logisticsData.currentStageId} className="flex-1 h-12 premium-gradient hover:opacity-90 text-white rounded-xl font-black text-sm border-none shadow-xl shadow-emerald-900/10 gap-2">
+                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                {lang === 'ar' ? 'تأكيد النقل والمسؤولية' : 'Commit Transfer'}
+              </Button>
+              <Button type="button" variant="outline" onClick={resetLogistics} className="px-6 h-12 font-black text-slate-400 rounded-xl">
+                {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       {/* DELETE ORDER ALERT DIALOG */}
       <AlertDialog open={!!deletingOrder} onOpenChange={(open) => !open && setDeletingOrder(null)}>
         <AlertDialogContent className="max-w-[400px] rounded-lg border-none shadow-2xl p-0 overflow-hidden">
@@ -524,5 +656,28 @@ export default function ProductionOrdersPage() {
       </div>
 
     </div>
+  );
+}
+
+// Add simple Refresh icon component as it might not be imported correctly from lucide-react if the version varies
+function RefreshCw(props: any) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+      <path d="M21 3v5h-5" />
+      <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+      <path d="M3 21v-5h5" />
+    </svg>
   );
 }
