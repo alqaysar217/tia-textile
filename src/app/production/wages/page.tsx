@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useCallback } from 'react';
@@ -113,10 +114,10 @@ export default function PayrollManagementPage() {
     linkedReceipts: [] as string[]
   });
 
-  // Fetch Data
+  // Fetch Data - Simplified queries to avoid Index errors (status filtering moved to client side filtering)
   const workersQuery = useMemo(() => !db ? null : collection(db, 'workers'), [db]);
-  const receiptsQuery = useMemo(() => !db ? null : query(collection(db, 'vouchers'), where('type', '==', 'production_receipt'), where('status', '!=', 'deleted')), [db]);
-  const paymentsQuery = useMemo(() => !db ? null : query(collection(db, 'vouchers'), where('type', '==', 'wage_payment'), where('status', '!=', 'deleted')), [db]);
+  const receiptsQuery = useMemo(() => !db ? null : query(collection(db, 'vouchers'), where('type', '==', 'production_receipt')), [db]);
+  const paymentsQuery = useMemo(() => !db ? null : query(collection(db, 'vouchers'), where('type', '==', 'wage_payment')), [db]);
 
   const { data: allWorkers, loading: workersLoading } = useCollection<any>(workersQuery);
   const { data: allReceipts, loading: receiptsLoading } = useCollection<any>(receiptsQuery);
@@ -124,26 +125,36 @@ export default function PayrollManagementPage() {
 
   const loading = workersLoading || receiptsLoading || paymentsLoading;
 
-  // LOGIC: Filter unpaid receipts
+  // LOGIC: Filter unpaid receipts (Client-side filtering for status)
   const unpaidReceipts = useMemo(() => {
     if (!formData.workerId || !allReceipts) return [];
+    
+    // Filter active items here to bypass Firebase Index requirements
+    const activePayments = (allPayments || []).filter(p => p.status !== 'deleted');
+    const activeReceipts = (allReceipts || []).filter(r => r.status !== 'deleted');
+
     const paidReceiptIds = new Set<string>();
-    allPayments?.forEach(p => {
+    activePayments.forEach(p => {
       p.linkedReceipts?.forEach((id: string) => paidReceiptIds.add(id));
     });
-    return allReceipts.filter(r => r.workerId === formData.workerId && !paidReceiptIds.has(r.id));
+
+    return activeReceipts.filter(r => r.workerId === formData.workerId && !paidReceiptIds.has(r.id));
   }, [formData.workerId, allReceipts, allPayments]);
 
   // LOGIC: Calculate net balances per worker
   const workerBalances = useMemo(() => {
     if (!allWorkers || !allReceipts) return [];
+    
+    const activePayments = (allPayments || []).filter(p => p.status !== 'deleted');
+    const activeReceipts = (allReceipts || []).filter(r => r.status !== 'deleted');
+
     const paidReceiptIds = new Set<string>();
-    allPayments?.forEach(p => {
+    activePayments.forEach(p => {
       p.linkedReceipts?.forEach((id: string) => paidReceiptIds.add(id));
     });
 
     return allWorkers.filter(w => w.status !== 'deleted').map(worker => {
-      const myUnpaid = allReceipts.filter(r => r.workerId === worker.id && !paidReceiptIds.has(r.id));
+      const myUnpaid = activeReceipts.filter(r => r.workerId === worker.id && !paidReceiptIds.has(r.id));
       const balanceByCurrency: Record<string, number> = {};
       myUnpaid.forEach(r => {
         const curr = r.currency || 'YER';
@@ -219,6 +230,46 @@ export default function PayrollManagementPage() {
     }
   };
 
+  const handleExportCSV = () => {
+    const headers = [
+      lang === 'ar' ? 'رقم السند' : 'Voucher No',
+      lang === 'ar' ? 'التاريخ' : 'Date',
+      lang === 'ar' ? 'الموظف' : 'Worker',
+      lang === 'ar' ? 'المبلغ المصروف' : 'Amount Paid',
+      lang === 'ar' ? 'العملة' : 'Currency'
+    ];
+
+    const rows = filteredPayments.map(p => {
+      const worker = allWorkers?.find(w => w.id === p.workerId);
+      return [
+        p.voucherNumber,
+        p.date,
+        worker?.fullName || '---',
+        (p.totalAmount || 0).toLocaleString('en-US'),
+        p.currency || 'YER'
+      ];
+    });
+
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `Payments_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const toggleSort = (field: typeof sortBy) => {
+    if (sortBy === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(field);
+      setSortOrder('asc');
+    }
+  };
+
   return (
     <div className="flex flex-col h-full bg-[#f8fafc] overflow-hidden">
       
@@ -279,7 +330,7 @@ export default function PayrollManagementPage() {
             <div className="px-4 hidden md:flex items-center gap-4 text-[10px] font-bold text-slate-400">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                {lang === 'ar' ? 'إجمالي الدفعات:' : 'Total Payments:'} <span className="text-slate-900 tabular-nums">{(allPayments?.length || 0).toLocaleString('en-US')}</span>
+                {lang === 'ar' ? 'إجمالي الدفعات:' : 'Total Payments:'} <span className="text-slate-900 tabular-nums">{(filteredPayments.length).toLocaleString('en-US')}</span>
               </div>
               <div className="w-px h-3 bg-slate-200" />
               <div className="flex items-center gap-2">
@@ -372,7 +423,7 @@ export default function PayrollManagementPage() {
                          </TableRow>
                       </TableHeader>
                       <TableBody>
-                         {paymentsLoading ? (
+                         {loading ? (
                            <TableRow><TableCell colSpan={5} className="text-center py-20 font-bold text-slate-300 animate-pulse">جاري سحب الأرشيف...</TableCell></TableRow>
                          ) : filteredPayments.length === 0 ? (
                             <TableRow><TableCell colSpan={5} className="text-center py-32 text-slate-300 font-black uppercase">{lang === 'ar' ? 'الأرشيف فارغ' : 'Archive is empty'}</TableCell></TableRow>
@@ -383,7 +434,7 @@ export default function PayrollManagementPage() {
                               <TableCell className="px-6 py-3 font-bold text-slate-700 text-xs">{allWorkers?.find(w => w.id === p.workerId)?.fullName || '---'}</TableCell>
                               <TableCell className="px-6 py-3 text-center">
                                  <Badge variant="outline" className="bg-emerald-50 text-emerald-700 tabular-nums font-black border-emerald-100">
-                                   {p.totalAmount?.toLocaleString('en-US')} {p.currency}
+                                   {(p.totalAmount || 0).toLocaleString('en-US')} {p.currency}
                                  </Badge>
                               </TableCell>
                               <TableCell className="px-6 py-3">
@@ -455,7 +506,7 @@ export default function PayrollManagementPage() {
                             <TableCell className="px-4 py-2 text-xs font-black text-slate-700 tabular-nums">{r.voucherNumber}</TableCell>
                             <TableCell className="px-4 py-2 text-xs font-bold text-slate-400 tabular-nums">{r.date}</TableCell>
                             <TableCell className="px-4 py-2 text-center">
-                               <span className="text-sm font-black text-emerald-700 tabular-nums">{r.wageAmount?.toLocaleString('en-US')}</span>
+                               <span className="text-sm font-black text-emerald-700 tabular-nums">{(r.wageAmount || 0).toLocaleString('en-US')}</span>
                                <span className="text-[9px] font-black text-slate-400 ms-1 uppercase">{r.currency}</span>
                             </TableCell>
                           </TableRow>
@@ -578,9 +629,4 @@ export default function PayrollManagementPage() {
 
     </div>
   );
-}
-
-function handleExportCSV() {
-  // Global helper since it's referenced in the UI
-  toast({ title: "Export feature is ready" });
 }
