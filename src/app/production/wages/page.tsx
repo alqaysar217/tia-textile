@@ -83,6 +83,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {
   Tabs,
+  TabsContent,
   TabsList,
   TabsTrigger,
 } from '@/components/ui/tabs';
@@ -322,7 +323,6 @@ export default function PayrollManagementPage() {
     setIsDownloading(true);
     try {
       await new Promise(resolve => setTimeout(resolve, 800));
-      // Fix for 'trim' error: fontEmbedCSS: '' and a proper filter
       const dataUrl = await toPng(element, { 
         backgroundColor: '#ffffff', 
         pixelRatio: 2, 
@@ -339,7 +339,6 @@ export default function PayrollManagementPage() {
       toast({ title: lang === 'ar' ? "تم تحميل السند" : "Voucher Downloaded" });
     } catch (err) {
       console.error('Image capture failed:', err);
-      toast({ variant: 'destructive', title: lang === 'ar' ? 'فشل تحميل الصورة' : 'Image download failed' });
     } finally {
       setIsDownloading(false);
     }
@@ -936,4 +935,3 @@ export default function PayrollManagementPage() {
     </div>
   );
 }
-
