@@ -124,11 +124,15 @@ export default function PayrollManagementPage() {
   // Fetch Data
   const workersQuery = useMemo(() => !db ? null : collection(db, 'workers'), [db]);
   const deptsQuery = useMemo(() => !db ? null : collection(db, 'departments'), [db]);
+  const productsQuery = useMemo(() => !db ? null : collection(db, 'products'), [db]);
+  const ordersQuery = useMemo(() => !db ? null : collection(db, 'productionOrders'), [db]);
   const receiptsQuery = useMemo(() => !db ? null : query(collection(db, 'vouchers'), where('type', '==', 'production_receipt')), [db]);
   const paymentsQuery = useMemo(() => !db ? null : query(collection(db, 'vouchers'), where('type', '==', 'wage_payment')), [db]);
 
   const { data: allWorkers, loading: workersLoading } = useCollection<any>(workersQuery);
   const { data: allDepartments } = useCollection<any>(deptsQuery);
+  const { data: allProducts } = useCollection<any>(productsQuery);
+  const { data: allOrders } = useCollection<any>(ordersQuery);
   const { data: allReceipts, loading: receiptsLoading } = useCollection<any>(receiptsQuery);
   const { data: allPayments, loading: paymentsLoading } = useCollection<any>(paymentsQuery);
 
@@ -202,7 +206,7 @@ export default function PayrollManagementPage() {
   }, [allWorkers, allReceipts, allPayments]);
 
   const toggleReceiptSelection = useCallback((receiptId: string, e: React.MouseEvent) => {
-    e.stopPropagation(); // CRITICAL: Stop event bubbling to fix the recursive depth error
+    e.stopPropagation();
     setFormData(prev => {
       const isSelected = prev.linkedReceipts.includes(receiptId);
       const newSelection = isSelected 
@@ -284,8 +288,6 @@ export default function PayrollManagementPage() {
     if (!db || !deletingVoucher || isSubmitting) return;
     setIsSubmitting(true);
     try {
-      // Just move to trash by setting status deleted
-      // The unpaidReceipts memo logic automatically accounts for deleted status of payments
       await updateDoc(doc(db, 'vouchers', deletingVoucher.id), {
         status: 'deleted',
         deletedAt: serverTimestamp()
@@ -325,11 +327,16 @@ export default function PayrollManagementPage() {
       const link = document.createElement('a');
       link.download = `Payment-${printingVoucher.voucherNumber}.png`;
       link.href = dataUrl;
+      document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
+      toast({ title: lang === 'ar' ? "تم تحميل السند" : "Voucher Downloaded" });
+    } catch (err) {
+      console.error(err);
     } finally {
       setIsDownloading(false);
     }
-  }, [printingVoucher]);
+  }, [printingVoucher, lang]);
 
   const handleExportCSV = useCallback(() => {
     const headers = [
@@ -416,8 +423,6 @@ export default function PayrollManagementPage() {
       <div className="flex-1 min-h-0 flex flex-col p-4 md:p-6 no-scrollbar">
         <Tabs value={activeTab} onValueChange={setActiveTab} dir={dir} className="w-full h-full flex flex-col">
           <div className="flex items-center justify-between mb-4 bg-white p-2 rounded-xl border border-slate-200 shadow-sm">
-            
-            {/* Stats (Now on Left for Arabic) */}
             <div className="px-4 hidden md:flex items-center gap-4 text-[10px] font-bold text-slate-400">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-emerald-500" />
@@ -430,7 +435,6 @@ export default function PayrollManagementPage() {
               </div>
             </div>
 
-            {/* Tabs List (Now on Right for Arabic) */}
             <TabsList className="grid grid-cols-2 w-[360px] h-9">
               <TabsTrigger value="balances" className="font-black text-xs">
                 <Users2 className="w-3.5 h-3.5 me-2" />
@@ -662,7 +666,6 @@ export default function PayrollManagementPage() {
                                  <Checkbox 
                                    checked={formData.linkedReceipts.includes(r.id)} 
                                    onCheckedChange={(val) => {
-                                      // Create pseudo-event to use existing toggle function
                                       const e = { stopPropagation: () => {} } as React.MouseEvent;
                                       toggleReceiptSelection(r.id, e);
                                    }} 
@@ -737,38 +740,141 @@ export default function PayrollManagementPage() {
 
       {/* PRINT PREVIEW DIALOG */}
       <Dialog open={!!printingVoucher} onOpenChange={(open) => !open && setPrintingVoucher(null)}>
-        <DialogContent className="sm:max-w-[700px] p-0 overflow-hidden border-none bg-white">
+        <DialogContent className="sm:max-w-[800px] p-0 overflow-hidden border-none bg-white">
           <DialogHeader className="sr-only"><DialogTitle>سند صرف مالي</DialogTitle></DialogHeader>
-          <ScrollArea className="max-h-[75vh]">
+          <ScrollArea className="max-h-[85vh]">
             <div className="p-10 bg-white" id="printable-payment">
                {printingVoucher && (
                  <div className="flex flex-col text-slate-900 font-sans relative" dir="rtl">
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 opacity-[0.04] pointer-events-none -z-10"><img src="/images/logo.png" alt="w" className="w-full h-full object-contain grayscale" /></div>
-                    
-                    <div className="grid grid-cols-3 items-center border-b-4 border-emerald-800 pb-6 mb-8">
-                       <div className="text-center space-y-0.5"><h2 className="text-base font-black text-emerald-900">جمعية الصناعات النسيجية</h2><p className="text-[10px] font-bold text-slate-500">الروضة - محافظة شبوة</p></div>
-                       <div className="flex justify-center"><img src="/images/logo.png" alt="L" className="w-16 h-16 object-contain" /></div>
-                       <div className="text-center space-y-0.5" dir="ltr"><h2 className="text-[10px] font-black text-emerald-900 uppercase">Textile Association</h2><p className="text-[9px] font-bold text-slate-500">Shabwa - Yemen</p></div>
+                    {/* WATERMARK LOGO */}
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 opacity-[0.04] pointer-events-none -z-10 select-none">
+                      <img src="/images/logo.png" alt="watermark" className="w-full h-full object-contain grayscale" />
                     </div>
 
-                    <div className="text-center mb-10"><h3 className="text-xl font-black text-emerald-900 border-2 border-emerald-800 inline-block px-10 py-1.5 rounded-full bg-white shadow-sm uppercase tracking-widest">{lang === 'ar' ? 'سند صرف أجور' : 'Wage Payment Voucher'}</h3></div>
+                    {/* HEADER */}
+                    <div className="grid grid-cols-3 items-center border-b-4 border-emerald-800 pb-6 mb-6 relative z-10">
+                      <div className="text-center space-y-0.5">
+                        <h2 className="text-base font-black text-emerald-900">جمعية الصناعات النسيجية</h2>
+                        <p className="text-xs font-bold text-slate-500">الروضة - محافظة شبوة - اليمن</p>
+                        <p className="text-[10px] font-bold text-slate-400 tabular-nums">0777 263 091 | nseeg202020@gmail.com</p>
+                      </div>
 
-                    <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 space-y-6 mb-10">
-                       <div className="grid grid-cols-2 gap-x-12 gap-y-6 text-right">
-                          <div className="border-b border-slate-200 pb-1 flex justify-between items-center"><span className="text-[10px] font-black text-slate-400 uppercase">رقم السند</span><span className="text-xs font-black tabular-nums">{printingVoucher.voucherNumber}</span></div>
-                          <div className="border-b border-slate-200 pb-1 flex justify-between items-center"><span className="text-[10px] font-black text-slate-400 uppercase">التاريخ</span><span className="text-xs font-black tabular-nums">{printingVoucher.date}</span></div>
-                          <div className="border-b border-slate-200 pb-1 flex justify-between items-center"><span className="text-[10px] font-black text-slate-400 uppercase">يصرف للأخ</span><span className="text-xs font-black">{allWorkers?.find(w => w.id === printingVoucher.workerId)?.fullName}</span></div>
-                          <div className="border-b border-slate-200 pb-1 flex justify-between items-center"><span className="text-[10px] font-black text-slate-400 uppercase">المبلغ</span><span className="text-base font-black text-emerald-800 tabular-nums">{(printingVoucher.totalAmount || 0).toLocaleString('en-US')} {printingVoucher.currency}</span></div>
+                      <div className="flex justify-center">
+                        <div className="w-20 h-20 bg-white border border-slate-100 rounded-full flex items-center justify-center p-1 shadow-md">
+                          <img src="/images/logo.png" alt="Logo" className="w-full h-full object-contain" />
+                        </div>
+                      </div>
+
+                      <div className="text-center space-y-0.5" dir="ltr">
+                        <h2 className="text-[11px] font-black text-emerald-900 uppercase">Textile Industries Association</h2>
+                        <p className="text-[10px] font-bold text-slate-500">Al-Rawdah - Shabwa - Yemen</p>
+                        <p className="text-[9px] font-bold text-slate-400 tabular-nums">0777 263 091 | nseeg202020@gmail.com</p>
+                      </div>
+                    </div>
+
+                    {/* TITLE */}
+                    <div className="text-center mb-8 relative z-10">
+                      <div className="inline-block border-2 border-emerald-800 px-10 py-1.5 rounded-full bg-white shadow-sm">
+                        <h3 className="text-xl font-black text-emerald-900 uppercase tracking-widest">
+                          {lang === 'ar' ? 'سند صرف أجور مالي' : 'Wage Payment Voucher'}
+                        </h3>
+                      </div>
+                    </div>
+
+                    {/* INFO BOX */}
+                    <div className="grid grid-cols-2 gap-x-12 gap-y-4 mb-8 bg-slate-50/70 p-6 rounded-2xl border border-slate-100 relative z-10">
+                      <div className="flex justify-between items-center border-b border-slate-200 pb-1">
+                        <span className="text-[10px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'يصرف للأخ' : 'Recipient'}</span>
+                        <span className="text-sm font-black text-slate-900">{allWorkers?.find(w => w.id === printingVoucher.workerId)?.fullName}</span>
+                      </div>
+                      <div className="flex justify-between items-center border-b border-slate-200 pb-1">
+                        <span className="text-[10px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'رقم السند' : 'Payment ID'}</span>
+                        <span className="text-sm font-black text-emerald-900 tabular-nums">{printingVoucher.voucherNumber}</span>
+                      </div>
+                      <div className="flex justify-between items-center border-b border-slate-200 pb-1">
+                        <span className="text-[10px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'تاريخ الصرف' : 'Date'}</span>
+                        <span className="text-sm font-black text-slate-700 tabular-nums">{printingVoucher.date}</span>
+                      </div>
+                      <div className="flex justify-between items-center border-b border-slate-200 pb-1">
+                        <span className="text-[10px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'العملة' : 'Currency'}</span>
+                        <span className="text-sm font-black text-slate-700 uppercase">{printingVoucher.currency}</span>
+                      </div>
+                    </div>
+
+                    {/* DETAILS TABLE */}
+                    <div className="mb-8 relative z-10">
+                      <h4 className="text-[10px] font-black text-emerald-900 border-r-4 border-emerald-600 pr-3 mb-3 uppercase">
+                        {lang === 'ar' ? 'تفاصيل مستحقات الإنتاج المسواة' : 'PRODUCTION ENTITLEMENTS BREAKDOWN'}
+                      </h4>
+                      <Table className="text-right border-2 border-emerald-900/10">
+                        <TableHeader className="bg-emerald-900/5">
+                          <TableRow>
+                            <TableHead className="text-right font-black text-xs py-3 text-emerald-900">{lang === 'ar' ? 'رقم سند الاستلام' : 'Receipt #'}</TableHead>
+                            <TableHead className="text-right font-black text-xs py-3 text-emerald-900">{lang === 'ar' ? 'المنتج' : 'Product'}</TableHead>
+                            <TableHead className="text-center font-black text-xs py-3 text-emerald-900">{lang === 'ar' ? 'الكمية' : 'Qty'}</TableHead>
+                            <TableHead className="text-center font-black text-xs py-3 text-emerald-900">{lang === 'ar' ? 'أجر القطعة' : 'Rate'}</TableHead>
+                            <TableHead className="text-center font-black text-xs py-3 text-emerald-900">{lang === 'ar' ? 'الإجمالي' : 'Subtotal'}</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {printingVoucher.linkedReceipts?.map((receiptId: string, i: number) => {
+                             const receipt = allReceipts?.find(r => r.id === receiptId);
+                             const order = allOrders?.find(o => o.id === receipt?.orderId);
+                             const product = allProducts?.find(p => p.id === order?.productId);
+                             return (
+                               <TableRow key={i} className="bg-white/40 border-b border-slate-100">
+                                 <TableCell className="font-bold text-xs tabular-nums text-slate-600">{receipt?.voucherNumber}</TableCell>
+                                 <TableCell className="font-bold text-xs text-slate-800">{product?.nameAr || '---'}</TableCell>
+                                 <TableCell className="text-center font-black text-xs tabular-nums">{receipt?.qtyAccepted || 0}</TableCell>
+                                 <TableCell className="text-center font-bold text-xs tabular-nums">{receipt?.wageRate || 0}</TableCell>
+                                 <TableCell className="text-center font-black text-xs tabular-nums text-emerald-700">{(receipt?.wageAmount || 0).toLocaleString('en-US')}</TableCell>
+                               </TableRow>
+                             );
+                          })}
+                          <TableRow className="bg-emerald-50/50">
+                             <TableCell colSpan={4} className="text-left font-black text-sm text-emerald-900 px-6 py-4 uppercase">
+                               {lang === 'ar' ? 'إجمالي المبلغ المصروف' : 'GRAND TOTAL'}
+                             </TableCell>
+                             <TableCell className="text-center font-black text-lg text-emerald-700 tabular-nums">
+                               {(printingVoucher.totalAmount || 0).toLocaleString('en-US')}
+                             </TableCell>
+                          </TableRow>
+                        </TableBody>
+                      </Table>
+                    </div>
+
+                    {/* NOTES */}
+                    {printingVoucher.notes && (
+                      <div className="mb-10 relative z-10">
+                        <p className="text-[10px] font-black text-slate-400 uppercase mb-2">{lang === 'ar' ? 'البيان / ملاحظات الصرف' : 'PAYMENT MEMO'}</p>
+                        <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 text-xs font-bold text-slate-600 leading-relaxed italic">
+                           {printingVoucher.notes}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* SIGNATURES */}
+                    <div className="grid grid-cols-3 gap-8 pt-10 border-t border-slate-200 text-center relative z-10">
+                       <div className="space-y-12">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{lang === 'ar' ? 'توقيع المستلم' : 'Recipient Sign'}</p>
+                          <div className="h-px bg-slate-300 w-full" />
+                          <p className="text-[8px] font-bold text-slate-300 uppercase">Signature / التاريخ</p>
                        </div>
-                       <div className="pt-2 text-right"><p className="text-[10px] font-black text-slate-400 uppercase mb-1">البيان / ملاحظات السداد</p><p className="text-xs font-bold text-slate-600 bg-white p-3 rounded-lg border border-slate-100">{printingVoucher.notes || '---'}</p></div>
+                       <div className="space-y-12">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{lang === 'ar' ? 'أمين الصندوق' : 'Cashier'}</p>
+                          <div className="h-px bg-slate-300 w-full" />
+                          <p className="text-[8px] font-bold text-slate-300 uppercase">Cash Release Authorized</p>
+                       </div>
+                       <div className="space-y-12">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{lang === 'ar' ? 'اعتماد المدير' : 'General Approval'}</p>
+                          <div className="h-px bg-slate-300 w-full" />
+                          <p className="text-[8px] font-bold text-slate-300 uppercase">TIA Management Sign</p>
+                       </div>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-8 pt-10 border-t border-slate-200 text-center">
-                       <div className="space-y-10"><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">توقيع المستلم</p><div className="h-px bg-slate-300 w-full" /></div>
-                       <div className="space-y-10"><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">أمين الصندوق</p><div className="h-px bg-slate-300 w-full" /></div>
-                       <div className="space-y-10"><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">اعتماد المدير</p><div className="h-px bg-slate-300 w-full" /></div>
+                    <div className="mt-16 text-center text-[7px] font-black text-slate-300 uppercase tracking-[0.4em] relative z-10">
+                      Generated by TIA Production System - {new Date().toLocaleString('en-US')}
                     </div>
-                    <div className="mt-16 text-center text-[7px] font-black text-slate-300 uppercase tracking-[0.4em]">Generated by TIA Production System - {new Date().toLocaleString('en-US')}</div>
                  </div>
                )}
             </div>
@@ -776,9 +882,11 @@ export default function PayrollManagementPage() {
           <DialogFooter className="p-6 bg-slate-50 border-t border-slate-100">
              <Button onClick={handleDownloadImage} disabled={isDownloading} className="premium-gradient font-black h-12 px-8 rounded-xl shadow-lg gap-2">
                 {isDownloading ? <Loader2 className="w-5 h-5 animate-spin me-2" /> : <Download className="w-5 h-5" />}
-                {lang === 'ar' ? 'تحميل السند كصورة' : 'Download PNG'}
+                {lang === 'ar' ? 'تحميل السند كصورة PNG' : 'Download PNG Image'}
              </Button>
-             <Button variant="ghost" onClick={() => setPrintingVoucher(null)} className="h-12 px-6 rounded-xl border border-slate-200 font-black">إغلاق</Button>
+             <Button variant="ghost" onClick={() => setPrintingVoucher(null)} className="h-12 px-6 rounded-xl border border-slate-200 font-black">
+               {lang === 'ar' ? 'إغلاق' : 'Close'}
+             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -821,3 +929,4 @@ export default function PayrollManagementPage() {
     </div>
   );
 }
+
