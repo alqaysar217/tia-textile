@@ -463,7 +463,7 @@ export default function ProductionReceiptPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-[10px) font-black uppercase text-slate-400 flex items-center gap-2"><Calendar className="w-3 h-3 text-emerald-600" /> تاريخ التسوية</Label>
+                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2"><Calendar className="w-3 h-3 text-emerald-600" /> تاريخ التسوية</Label>
                 <Input type="date" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} className="h-11 font-bold bg-slate-50" required />
               </div>
             </div>
