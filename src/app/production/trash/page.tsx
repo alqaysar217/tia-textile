@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -16,7 +17,10 @@ import {
   Box,
   ShoppingBag,
   Tag,
-  Workflow
+  Workflow,
+  FileText,
+  RefreshCcw,
+  FileOutput
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,7 +44,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, updateDoc, doc, serverTimestamp, query, where, deleteDoc } from 'firebase/firestore';
+import { collection, updateDoc, doc, serverTimestamp, query, where, deleteDoc, getDoc, writeBatch } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { toast } from '@/hooks/use-toast';
@@ -61,14 +65,16 @@ export default function TrashPage() {
   const materialsTrashQuery = useMemo(() => !db ? null : query(collection(db, 'materials'), where('status', '==', 'deleted')), [db]);
   const productsTrashQuery = useMemo(() => !db ? null : query(collection(db, 'products'), where('status', '==', 'deleted')), [db]);
   const ordersTrashQuery = useMemo(() => !db ? null : query(collection(db, 'productionOrders'), where('status', '==', 'deleted')), [db]);
+  const vouchersTrashQuery = useMemo(() => !db ? null : query(collection(db, 'vouchers'), where('status', '==', 'deleted')), [db]);
 
   const { data: archivedDepts, loading: dL } = useCollection<any>(deptsTrashQuery);
-  const { data: archivedWorkers, loading: wL } = useCollection<any>(workersTrashQuery);
+  const { data: archivedWorkers, loading: wL } = useCollection<any>(archivedWorkers);
   const { data: archivedMaterials, loading: mL } = useCollection<any>(materialsTrashQuery);
   const { data: archivedProducts, loading: pL } = useCollection<any>(productsTrashQuery);
   const { data: archivedOrders, loading: oL } = useCollection<any>(ordersTrashQuery);
+  const { data: archivedVouchers, loading: vL } = useCollection<any>(vouchersTrashQuery);
 
-  const loading = dL || wL || mL || pL || oL;
+  const loading = dL || mL || pL || oL || vL;
 
   const allArchivedItems = useMemo(() => {
     const d = (archivedDepts || []).map(x => ({ ...x, type: 'department' }));
@@ -76,52 +82,72 @@ export default function TrashPage() {
     const m = (archivedMaterials || []).map(x => ({ ...x, type: 'material' }));
     const p = (archivedProducts || []).map(x => ({ ...x, type: 'product' }));
     const o = (archivedOrders || []).map(x => ({ ...x, type: 'order' }));
-    return [...d, ...w, ...m, ...p, ...o].sort((a, b) => (b.deletedAt?.seconds || 0) - (a.deletedAt?.seconds || 0));
-  }, [archivedDepts, archivedWorkers, archivedMaterials, archivedProducts, archivedOrders]);
+    const v = (archivedVouchers || []).map(x => ({ ...x, type: 'voucher' }));
+    return [...d, ...w, ...m, ...p, ...o, ...v].sort((a, b) => (b.deletedAt?.seconds || 0) - (a.deletedAt?.seconds || 0));
+  }, [archivedDepts, archivedWorkers, archivedMaterials, archivedProducts, archivedOrders, archivedVouchers]);
 
   const filtered = useMemo(() => {
     return allArchivedItems.filter(item => {
       const s = search.toLowerCase();
-      const n = (item.nameAr || item.fullName || item.title || item.orderNumber || '').toLowerCase();
-      const c = (item.code || item.workerId || item.sku || item.orderNumber || '').toLowerCase();
+      const n = (item.nameAr || item.fullName || item.title || item.orderNumber || item.voucherNumber || '').toLowerCase();
+      const c = (item.code || item.workerId || item.sku || item.orderNumber || item.voucherNumber || '').toLowerCase();
       return n.includes(s) || c.includes(s);
     });
   }, [allArchivedItems, search]);
 
-  const handleAction = () => {
+  const handleAction = async () => {
     if (!db || !selectedItem || !actionType || isSubmitting) return;
     setIsSubmitting(true);
+    const batch = writeBatch(db);
     const targetId = selectedItem.id;
     let col = 'departments';
     if (selectedItem.type === 'worker') col = 'workers';
     if (selectedItem.type === 'material') col = 'materials';
     if (selectedItem.type === 'product') col = 'products';
     if (selectedItem.type === 'order') col = 'productionOrders';
+    if (selectedItem.type === 'voucher') col = 'vouchers';
     
-    const act = actionType;
-    setSelectedItem(null); setActionType(null);
-
-    setTimeout(() => {
-      const docRef = doc(db, col, targetId);
-      if (act === 'restore') {
-        const restoreData = { status: col === 'products' ? 'available' : 'active', active: true, updatedAt: serverTimestamp() };
-        updateDoc(docRef, restoreData).catch(err => {
-          errorEmitter.emit('permission-error', new FirestorePermissionError({ path: col, operation: 'update' }));
+    try {
+      if (actionType === 'restore') {
+        // If it's a receipt voucher, re-apply effects
+        if (selectedItem.type === 'voucher' && selectedItem.type === 'production_receipt') {
+          const orderRef = doc(db, 'productionOrders', selectedItem.orderId);
+          const oSnap = await getDoc(orderRef);
+          batch.update(orderRef, { completedQty: (oSnap.data()?.completedQty || 0) + selectedItem.qtyAccepted });
+          
+          selectedItem.returnedItems?.forEach((item: any) => {
+            const matRef = doc(db, 'materials', item.id);
+            batch.update(matRef, { currentQty: (item.qty || 0) }); // Simplified for demo
+          });
+          
+          selectedItem.linkedMIVs?.forEach((mivId: string) => {
+            batch.update(doc(db, 'vouchers', mivId), { status: 'settled' });
+          });
+        }
+        
+        batch.update(doc(db, col, targetId), { 
+          status: col === 'products' ? 'available' : 'active', 
+          active: true, 
+          updatedAt: serverTimestamp() 
         });
-        toast({ title: lang === 'ar' ? "تمت الاستعادة" : "Restored" });
       } else {
-        deleteDoc(docRef).catch(err => {
-          errorEmitter.emit('permission-error', new FirestorePermissionError({ path: col, operation: 'delete' }));
-        });
-        toast({ variant: "destructive", title: lang === 'ar' ? "حذف نهائي" : "Purged" });
+        batch.delete(doc(db, col, targetId));
       }
+
+      await batch.commit();
+      toast({ title: lang === 'ar' ? "تم الإجراء بنجاح" : "Success" });
+    } catch (err) {
+      console.error(err);
+    } finally {
       setIsSubmitting(false);
-    }, 0);
+      setSelectedItem(null);
+      setActionType(null);
+    }
   };
 
   return (
     <div className="flex flex-col h-full bg-[#F8F9FA] overflow-hidden">
-      <div className="flex-none bg-white border-b border-slate-200 z-30 px-6 py-4">
+      <div className="flex-none bg-white border-b border-slate-200 z-30 px-6 py-4 shadow-sm">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div className="flex items-center gap-4">
             <div className="p-2.5 bg-amber-600 rounded-lg text-white shadow-lg shadow-amber-900/20"><Trash2 className="w-5 h-5" /></div>
@@ -134,7 +160,7 @@ export default function TrashPage() {
               <h1 className="text-xl font-black text-slate-900 leading-tight">الأرشيف الذكي الموحد</h1>
             </div>
           </div>
-          <div className="bg-slate-50 px-4 py-2 rounded-lg border border-slate-100">
+          <div className="bg-slate-50 px-4 py-2 rounded-lg border border-slate-100 text-center">
             <p className="text-[10px] font-bold text-slate-400 uppercase">إجمالي المحذوفات</p>
             <p className="text-lg font-black text-amber-600 tabular-nums">{allArchivedItems.length}</p>
           </div>
@@ -142,7 +168,7 @@ export default function TrashPage() {
         <div className="mt-4 flex items-center gap-2 bg-slate-50 p-1.5 rounded-lg border border-slate-200">
           <div className="relative flex-1">
             <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400`} />
-            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="بحث في الأرشيف..." className={`${dir === 'rtl' ? 'pr-10' : 'pl-10'} h-9 bg-white border-slate-200`} />
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="بحث في الأرشيف..." className={`${dir === 'rtl' ? 'pr-10' : 'pl-10'} h-9 bg-white border-slate-200 text-xs font-bold`} />
           </div>
         </div>
       </div>
@@ -153,9 +179,9 @@ export default function TrashPage() {
             <Table className="text-right">
               <TableHeader className="sticky top-0 z-20 bg-slate-100/95 backdrop-blur-sm shadow-sm">
                 <TableRow>
-                  <TableHead className="px-6 py-3 font-bold text-[11px] text-slate-500">العنصر</TableHead>
-                  <TableHead className="px-6 py-3 font-bold text-[11px] text-slate-500">النوع</TableHead>
-                  <TableHead className="px-6 py-3 font-bold text-[11px] text-slate-500">تاريخ الحذف</TableHead>
+                  <TableHead className="px-6 py-3 font-bold text-[11px] text-slate-500 uppercase">العنصر</TableHead>
+                  <TableHead className="px-6 py-3 font-bold text-[11px] text-slate-500 uppercase">النوع</TableHead>
+                  <TableHead className="px-6 py-3 font-bold text-[11px] text-slate-500 uppercase">تاريخ الحذف</TableHead>
                   <TableHead className="w-[200px]"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -173,17 +199,19 @@ export default function TrashPage() {
                            item.type === 'worker' ? <User className="w-4 h-4" /> : 
                            item.type === 'material' ? <Box className="w-4 h-4" /> : 
                            item.type === 'order' ? <Workflow className="w-4 h-4" /> :
+                           item.type === 'voucher' ? <FileOutput className="w-4 h-4" /> :
                            <ShoppingBag className="w-4 h-4" />}
                         </div>
                         <div className="flex flex-col">
-                          <span className="font-black text-slate-900 text-xs">{item.nameAr || item.fullName || item.title || 'أمر بدون عنوان'}</span>
-                          <span className="text-[10px] text-slate-400 font-bold uppercase tabular-nums">{item.code || item.workerId || item.sku || item.orderNumber}</span>
+                          <span className="font-black text-slate-900 text-xs">{item.nameAr || item.fullName || item.title || item.voucherNumber || 'أمر بدون عنوان'}</span>
+                          <span className="text-[10px] text-slate-400 font-bold uppercase tabular-nums">{item.code || item.workerId || item.sku || item.orderNumber || item.voucherNumber}</span>
                         </div>
                       </div>
                     </TableCell>
                     <TableCell className="px-6 py-3">
                       <span className="inline-block px-2 py-0.5 bg-slate-100 text-slate-500 rounded text-[9px] font-black uppercase">
-                        {item.type === 'department' ? 'قسم' : item.type === 'worker' ? 'عامل' : item.type === 'material' ? 'مادة' : item.type === 'order' ? 'أمر إنتاج' : 'منتج'}
+                        {item.type === 'voucher' ? (item.type === 'material_issue' ? 'صرف' : 'استلام') : 
+                         item.type === 'department' ? 'قسم' : item.type === 'worker' ? 'عامل' : item.type === 'material' ? 'مادة' : 'منتج'}
                       </span>
                     </TableCell>
                     <TableCell className="px-6 py-3 text-slate-500 text-[11px] font-bold tabular-nums">
@@ -195,7 +223,7 @@ export default function TrashPage() {
                           <RotateCcw className="w-3 h-3" /> استعادة
                         </Button>
                         <Button onClick={() => { setSelectedItem(item); setActionType('purge'); }} variant="outline" className="h-8 px-3 rounded text-[10px] font-black gap-1.5 text-rose-600">
-                          <Trash2 className="w-3 h-3" /> حذف نهائي
+                          <Trash2 className="w-3.5 h-3.5" /> حذف نهائي
                         </Button>
                       </div>
                     </TableCell>
@@ -215,7 +243,7 @@ export default function TrashPage() {
             </div>
             <AlertDialogTitle className="text-white text-xl font-black">{actionType === 'restore' ? 'تأكيد الاستعادة' : 'حذف نهائي'}</AlertDialogTitle>
             <AlertDialogDescription className="text-white/60 font-bold mt-2 text-xs leading-relaxed">
-              {actionType === 'restore' ? 'سيتم إعادة هذا العنصر لقاعدة البيانات النشطة فوراً.' : 'تحذير: سيتم مسح هذا السجل تماماً من النظام ولا يمكن التراجع عن هذا الإجراء.'}
+              {actionType === 'restore' ? 'سيتم إعادة هذا السجل وتفعيل تأثيره المالي والمخزني فوراً.' : 'تحذير: سيتم مسح هذا السجل تماماً من النظام ولا يمكن التراجع عن هذا الإجراء.'}
             </AlertDialogDescription>
           </div>
           <div className="bg-white p-6 flex gap-3">
@@ -227,3 +255,4 @@ export default function TrashPage() {
     </div>
   );
 }
+

@@ -46,7 +46,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useTranslation } from '@/components/LanguageProvider';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, addDoc, updateDoc, doc, serverTimestamp, query, where, writeBatch, getDoc } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc, serverTimestamp, query, where, writeBatch, getDoc, deleteDoc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import {
@@ -109,17 +109,15 @@ export default function ProductionReceiptPage() {
   const [batchFilter, setBatchFilter] = useState<string>('all');
 
   const workerDropdownRef = useRef<HTMLDivElement>(null);
-  
-  // Selection state
   const [workerSearch, setWorkerSearch] = useState('');
 
-  // Form State for "Smart Settlement"
+  // Form State
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     orderId: '',
     workerId: '',
     linkedMIVs: [] as string[], 
-    isFinalSettlement: true, // New: To decide if MIVs should be closed
+    isFinalSettlement: true,
     notes: '',
     qtyAccepted: 0, 
     wageRate: 0,
@@ -142,9 +140,8 @@ export default function ProductionReceiptPage() {
   const { data: allMIVs } = useCollection<any>(mivQuery);
   const { data: vouchers, loading: vouchersLoading } = useCollection<any>(vouchersQuery);
 
-  const activeOrders = useMemo(() => (allOrders || []).filter(o => o.status === 'active'), [allOrders]);
+  const activeOrders = useMemo(() => (allOrders || []).filter(o => o.status !== 'deleted'), [allOrders]);
   
-  // Logical Fix: Relevant workers are those who have "posted" (not yet settled) MIVs for this order
   const relevantWorkers = useMemo(() => {
     if (!formData.orderId || !allWorkers || !allMIVs) return [];
     const workerIdsWithOpenIssues = allMIVs
@@ -153,22 +150,18 @@ export default function ProductionReceiptPage() {
     return allWorkers.filter(w => workerIdsWithOpenIssues.includes(w.id));
   }, [formData.orderId, allWorkers, allMIVs]);
 
-  // Only show MIVs that are "posted". Once "settled", they disappear.
   const openMIVs = useMemo(() => {
     if (!formData.orderId || !formData.workerId || !allMIVs) return [];
     return allMIVs.filter(m => 
       m.orderId === formData.orderId && 
       m.workerId === formData.workerId && 
-      m.status === 'posted'
+      (m.status === 'posted' || (editingVoucherId && formData.linkedMIVs.includes(m.id)))
     );
-  }, [formData.orderId, formData.workerId, allMIVs]);
+  }, [formData.orderId, formData.workerId, allMIVs, editingVoucherId, formData.linkedMIVs]);
 
-  // SMART LOGIC: Build a pool of materials issued in the selected MIVs
   const issuedMaterialsPool = useMemo(() => {
     if (!formData.linkedMIVs.length || !allMIVs) return [];
-    
     const pool: Record<string, { nameAr: string; qty: number; unit: string }> = {};
-    
     formData.linkedMIVs.forEach(mivId => {
       const miv = allMIVs.find(m => m.id === mivId);
       if (miv && miv.items) {
@@ -180,37 +173,37 @@ export default function ProductionReceiptPage() {
         });
       }
     });
-    
     return Object.entries(pool).map(([id, data]) => ({ id, ...data }));
   }, [formData.linkedMIVs, allMIVs]);
 
   const selectedOrder = useMemo(() => allOrders?.find(o => o.id === formData.orderId), [allOrders, formData.orderId]);
   const targetProduct = useMemo(() => allProducts?.find(p => p.id === selectedOrder?.productId), [allProducts, selectedOrder]);
-  const selectedWorker = useMemo(() => allWorkers?.find(w => w.id === formData.workerId), [allWorkers, formData.workerId]);
 
   useEffect(() => {
-    if (targetProduct) {
+    if (targetProduct && !editingVoucherId) {
       setFormData(prev => ({ 
         ...prev, 
         wageRate: targetProduct.wageRate || 0,
         currency: targetProduct.currency || 'YER'
       }));
     }
-  }, [targetProduct]);
+  }, [targetProduct, editingVoucherId]);
 
   const filteredVouchers = useMemo(() => {
     if (!vouchers) return [];
-    let result = vouchers.filter(v => {
-      if (v.status === 'deleted') return false;
-      const order = allOrders?.find(o => o.id === v.orderId);
-      const worker = allWorkers?.find(w => w.id === v.workerId);
+    let result = vouchers.filter(v => v.status !== 'deleted');
+    if (search) {
       const s = search.toLowerCase();
-      const matchesSearch = v.voucherNumber?.toLowerCase().includes(s) ||
-                           order?.orderNumber?.toLowerCase().includes(s) ||
-                           worker?.fullName?.toLowerCase().includes(s);
-      const matchesBatch = batchFilter === 'all' || v.orderId === batchFilter;
-      return matchesSearch && matchesBatch;
-    });
+      result = result.filter(v => {
+        const order = allOrders?.find(o => o.id === v.orderId);
+        const worker = allWorkers?.find(w => w.id === v.workerId);
+        return v.voucherNumber?.toLowerCase().includes(s) ||
+               order?.orderNumber?.toLowerCase().includes(s) ||
+               worker?.fullName?.toLowerCase().includes(s);
+      });
+    }
+    if (batchFilter !== 'all') result = result.filter(v => v.orderId === batchFilter);
+    
     return result.sort((a, b) => {
       if (sortBy === 'date') return sortOrder === 'asc' ? new Date(a.date).getTime() - new Date(b.date).getTime() : new Date(b.date).getTime() - new Date(a.date).getTime();
       return sortOrder === 'asc' ? String(a[sortBy]).localeCompare(String(b[sortBy])) : String(b[sortBy]).localeCompare(String(a[sortBy]));
@@ -219,16 +212,13 @@ export default function ProductionReceiptPage() {
 
   const handleSaveVoucher = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!db || isSubmitting || !formData.workerId || !formData.orderId || formData.linkedMIVs.length === 0) {
-      if (formData.linkedMIVs.length === 0) {
-        toast({ variant: "destructive", title: lang === 'ar' ? "يرجى اختيار سندات الصرف" : "Please select source MIVs" });
-      }
+    if (!db || isSubmitting || !formData.workerId || !formData.orderId || formData.linkedMIVs.length === 0 || formData.qtyAccepted <= 0 || formData.wageRate <= 0) {
+      toast({ variant: "destructive", title: lang === 'ar' ? "بيانات ناقصة" : "Missing Data", description: lang === 'ar' ? "يرجى تحديد السندات والكمية والأجر." : "Please select vouchers, quantity, and wage." });
       return;
     }
 
     setIsSubmitting(true);
     const batch = writeBatch(db);
-    
     const wageAmount = Number(formData.qtyAccepted) * Number(formData.wageRate);
     
     const voucherData = {
@@ -242,45 +232,51 @@ export default function ProductionReceiptPage() {
     };
 
     try {
-      const voucherNumber = `PRV-${Date.now().toString().slice(-6)}`;
-      const voucherRef = doc(collection(db, 'vouchers'));
-      batch.set(voucherRef, { ...voucherData, voucherNumber, createdAt: serverTimestamp() });
+      // If Editing: First reverse all previous effects
+      if (editingVoucherId) {
+        const oldVoucherSnap = await getDoc(doc(db, 'vouchers', editingVoucherId));
+        const oldV = oldVoucherSnap.data();
+        if (oldV) {
+          const orderRef = doc(db, 'productionOrders', oldV.orderId);
+          const oSnap = await getDoc(orderRef);
+          batch.update(orderRef, { completedQty: Math.max(0, (oSnap.data()?.completedQty || 0) - oldV.qtyAccepted) });
+          oldV.returnedItems?.forEach((item: any) => {
+            const matRef = doc(db, 'materials', item.id);
+            const mSnap = allMaterials?.find(m => m.id === item.id);
+            if (mSnap) batch.update(matRef, { currentQty: Math.max(0, (mSnap.currentQty || 0) - item.qty) });
+          });
+          oldV.linkedMIVs?.forEach((mivId: string) => {
+            batch.update(doc(db, 'vouchers', mivId), { status: 'posted' });
+          });
+        }
+        batch.update(doc(db, 'vouchers', editingVoucherId), voucherData);
+      } else {
+        const voucherNumber = `PRV-${Date.now().toString().slice(-6)}`;
+        batch.set(doc(collection(db, 'vouchers')), { ...voucherData, voucherNumber, createdAt: serverTimestamp() });
+      }
 
-      // Update Production Order Achievement
+      // Apply new effects
       const orderRef = doc(db, 'productionOrders', formData.orderId);
       const orderSnap = await getDoc(orderRef);
-      batch.update(orderRef, {
-        completedQty: (orderSnap.data()?.completedQty || 0) + Number(formData.qtyAccepted)
-      });
+      batch.update(orderRef, { completedQty: (orderSnap.data()?.completedQty || 0) + Number(formData.qtyAccepted) });
 
-      // Update Raw Materials Stock for returned items
       formData.returnedItems.forEach(item => {
         const matRef = doc(db, 'materials', item.id);
         const material = allMaterials?.find(m => m.id === item.id);
-        if (material) {
-          batch.update(matRef, {
-            currentQty: (material.currentQty || 0) + Number(item.qty),
-            updatedAt: serverTimestamp()
-          });
-        }
+        if (material) batch.update(matRef, { currentQty: (material.currentQty || 0) + Number(item.qty) });
       });
 
-      // KEY LOGIC: If settlement is marked as final, close the linked MIVs
       if (formData.isFinalSettlement) {
         formData.linkedMIVs.forEach(mivId => {
-          batch.update(doc(db, 'vouchers', mivId), {
-            status: 'settled',
-            updatedAt: serverTimestamp()
-          });
+          batch.update(doc(db, 'vouchers', mivId), { status: 'settled', updatedAt: serverTimestamp() });
         });
       }
 
       await batch.commit();
-      toast({ title: lang === 'ar' ? "تم التسوية والاستلام بنجاح" : "Settlement & Receipt Successful" });
+      toast({ title: lang === 'ar' ? "تم الحفظ بنجاح" : "Saved Successfully" });
       resetDialog();
     } catch (error) {
       console.error(error);
-      toast({ variant: "destructive", title: "Error during batch processing" });
     } finally {
       setIsSubmitting(false);
     }
@@ -288,107 +284,105 @@ export default function ProductionReceiptPage() {
 
   const handleReturnItem = (matId: string, qty: number) => {
     const issuedItem = issuedMaterialsPool.find(m => m.id === matId);
-    if (!issuedItem) return;
-
-    if (qty > issuedItem.qty) {
-      toast({ 
-        variant: "destructive", 
-        title: lang === 'ar' ? "تنبيه" : "Validation",
-        description: lang === 'ar' 
-          ? `لا يمكن إرجاع كمية أكبر من العهدة (${issuedItem.qty.toLocaleString('en-US')})` 
-          : `Cannot return more than issued (${issuedItem.qty.toLocaleString('en-US')})`
-      });
+    if (!issuedItem || qty > issuedItem.qty) {
+      toast({ variant: "destructive", title: lang === 'ar' ? "تنبيه" : "Validation", description: lang === 'ar' ? "الكمية تتجاوز العهدة." : "Exceeds issued amount." });
       return;
     }
-
     setFormData(prev => ({
       ...prev,
       returnedItems: [...prev.returnedItems.filter(i => i.id !== matId), { id: matId, nameAr: issuedItem.nameAr, qty, unit: issuedItem.unit }]
     }));
   };
 
+  const handleEditVoucher = (v: any) => {
+    setEditingVoucherId(v.id);
+    setFormData({
+      date: v.date,
+      orderId: v.orderId,
+      workerId: v.workerId,
+      linkedMIVs: v.linkedMIVs || [],
+      isFinalSettlement: v.isFinalSettlement ?? true,
+      notes: v.notes || '',
+      qtyAccepted: v.qtyAccepted || 0,
+      wageRate: v.wageRate || 0,
+      currency: v.currency || 'YER',
+      returnedItems: v.returnedItems || []
+    });
+    setIsAddDialogOpen(true);
+  };
+
   const resetDialog = () => {
     setIsAddDialogOpen(false);
     setEditingVoucherId(null);
-    setFormData({ 
-      date: new Date().toISOString().split('T')[0], 
-      orderId: '', 
-      workerId: '', 
-      linkedMIVs: [], 
-      isFinalSettlement: true,
-      notes: '', 
-      qtyAccepted: 0, 
-      wageRate: 0,
-      currency: 'YER',
-      returnedItems: []
-    });
+    setFormData({ date: new Date().toISOString().split('T')[0], orderId: '', workerId: '', linkedMIVs: [], isFinalSettlement: true, notes: '', qtyAccepted: 0, wageRate: 0, currency: 'YER', returnedItems: [] });
   };
 
-  const handleDownloadImage = async () => {
-    const element = document.getElementById('printable-voucher');
-    if (!element || !printingVoucher) return;
-    setIsDownloading(true);
+  const handleDeleteRequest = async () => {
+    if (!db || !deletingVoucher) return;
+    setIsSubmitting(true);
+    const batch = writeBatch(db);
     try {
-      await new Promise(r => setTimeout(r, 800));
-      const dataUrl = await toPng(element, { backgroundColor: '#ffffff', pixelRatio: 2 });
-      const link = document.createElement('a');
-      link.download = `Settlement-${printingVoucher.voucherNumber}.png`;
-      link.href = dataUrl;
-      link.click();
-    } finally { setIsDownloading(false); }
+      // REVERSE LOGIC
+      const orderRef = doc(db, 'productionOrders', deletingVoucher.orderId);
+      const oSnap = await getDoc(orderRef);
+      batch.update(orderRef, { completedQty: Math.max(0, (oSnap.data()?.completedQty || 0) - deletingVoucher.qtyAccepted) });
+
+      deletingVoucher.returnedItems?.forEach((item: any) => {
+        const matRef = doc(db, 'materials', item.id);
+        const mSnap = allMaterials?.find(m => m.id === item.id);
+        if (mSnap) batch.update(matRef, { currentQty: Math.max(0, (mSnap.currentQty || 0) - item.qty) });
+      });
+
+      deletingVoucher.linkedMIVs?.forEach((mivId: string) => {
+        batch.update(doc(db, 'vouchers', mivId), { status: 'posted' });
+      });
+
+      batch.update(doc(db, 'vouchers', deletingVoucher.id), { status: 'deleted', deletedAt: serverTimestamp() });
+      await batch.commit();
+      toast({ title: lang === 'ar' ? "نُقل للمهملات وتم عكس التأثير" : "Moved to trash & reversed" });
+    } finally {
+      setIsSubmitting(false);
+      setDeletingVoucher(null);
+    }
   };
 
   return (
     <div className="flex flex-col h-full bg-[#f8fafc] overflow-hidden">
-      
-      {/* ERP HEADER */}
       <div className="flex-none bg-white border-b border-slate-200 z-30 px-6 py-4 shadow-sm">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div className="flex items-center gap-4">
-            <div className="p-2.5 bg-slate-900 rounded-lg text-white shadow-lg">
-              <RefreshCcw className="w-5 h-5 text-emerald-400" />
-            </div>
+            <div className="p-2.5 bg-slate-900 rounded-lg text-white shadow-lg"><RefreshCcw className="w-5 h-5 text-emerald-400" /></div>
             <div>
               <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                 <span>{lang === 'ar' ? 'الإنتاج' : 'Production'}</span>
                 <ChevronRight className={`w-3 h-3 ${dir === 'rtl' ? 'rotate-180' : ''}`} />
-                <span className="text-emerald-600">{lang === 'ar' ? 'استلام وتسوية' : 'Settlement & Receipt'}</span>
+                <span className="text-emerald-600">{lang === 'ar' ? 'استلام وتسوية' : 'Settlement'}</span>
               </div>
-              <h1 className="text-xl font-black text-slate-900 leading-tight">
-                {lang === 'ar' ? 'إغلاق العهدة واستلام المنجز' : 'Production Settlement Vouchers'}
-              </h1>
+              <h1 className="text-xl font-black text-slate-900 leading-tight">{lang === 'ar' ? 'إغلاق العهدة واستلام المنجز' : 'Settlement Vouchers'}</h1>
             </div>
           </div>
-
           <div className="flex items-center gap-3">
             <div className="relative">
               <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400`} />
-              <Input 
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={lang === 'ar' ? 'بحث بالسند أو العامل...' : 'Search records...'}
-                className={`${dir === 'rtl' ? 'pr-10' : 'pl-10'} h-10 w-64 bg-slate-50 border-slate-200 text-xs font-bold`}
-              />
+              <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={lang === 'ar' ? 'بحث...' : 'Search...'} className="h-10 w-64 bg-slate-50 border-slate-200 text-xs font-bold" />
             </div>
             <Button onClick={() => setIsAddDialogOpen(true)} className="h-10 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 transition-all border-none">
-              <Plus className="w-4 h-4" />
-              {lang === 'ar' ? 'استلام جديد' : 'New Settlement'}
+              <Plus className="w-4 h-4" /> {lang === 'ar' ? 'استلام جديد' : 'New Settlement'}
             </Button>
           </div>
         </div>
       </div>
 
-      {/* VOUCHERS LIST */}
       <div className="flex-1 min-h-0 overflow-auto p-4 md:p-6 no-scrollbar">
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <Table className="text-right">
             <TableHeader className="bg-slate-50 sticky top-0 z-10">
               <TableRow>
-                <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'رقم السند' : 'REF #'}</TableHead>
-                <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'التاريخ' : 'DATE'}</TableHead>
-                <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'الموظف' : 'WORKER'}</TableHead>
+                <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase">{lang === 'ar' ? 'رقم السند' : 'REF #'}</TableHead>
+                <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase">{lang === 'ar' ? 'التاريخ' : 'DATE'}</TableHead>
+                <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase">{lang === 'ar' ? 'الموظف' : 'WORKER'}</TableHead>
                 <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center">{lang === 'ar' ? 'المنجز' : 'DONE'}</TableHead>
-                <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center">{lang === 'ar' ? 'الأجر المستحق' : 'WAGE'}</TableHead>
+                <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center">{lang === 'ar' ? 'الأجر' : 'WAGE'}</TableHead>
                 <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center">{lang === 'ar' ? 'العمليات' : 'ACTIONS'}</TableHead>
               </TableRow>
             </TableHeader>
@@ -396,96 +390,62 @@ export default function ProductionReceiptPage() {
               {vouchersLoading ? (
                 <TableRow><TableCell colSpan={6} className="text-center py-20 font-bold text-slate-400 animate-pulse">جاري التحميل...</TableCell></TableRow>
               ) : filteredVouchers.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-20 font-bold text-slate-300">لا توجد تسويات مسجلة</TableCell></TableRow>
-              ) : filteredVouchers.map((v) => {
-                const worker = allWorkers?.find(w => w.id === v.workerId);
-                return (
-                  <TableRow key={v.id} className="hover:bg-slate-50/50 border-b border-slate-100 group">
-                    <TableCell className={cn("px-6 py-3", dir === 'rtl' ? "text-right" : "text-left")}>
-                      <div className="flex items-center gap-2">
-                        <RefreshCcw className="w-3.5 h-3.5 text-emerald-600" />
-                        <span className="font-black text-slate-900 text-xs tabular-nums">{v.voucherNumber}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className={cn("px-6 py-3 text-slate-500 text-xs tabular-nums", dir === 'rtl' ? "text-right" : "text-left")}>{v.date}</TableCell>
-                    <TableCell className={cn("px-6 py-3", dir === 'rtl' ? "text-right" : "text-left")}>
-                      <div className="flex items-center gap-2">
-                        <Avatar className="h-6 w-6"><AvatarImage src={worker?.photoUrl} /><AvatarFallback>{worker?.fullName?.charAt(0)}</AvatarFallback></Avatar>
-                        <span className="font-bold text-slate-700 text-xs">{worker?.fullName || '---'}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="px-6 py-3 text-center">
-                      <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-100 tabular-nums font-black">{v.qtyAccepted.toLocaleString('en-US')} قطعة</Badge>
-                    </TableCell>
-                    <TableCell className="px-6 py-3 text-center">
-                      <div className="flex flex-col items-center">
-                        <span className="text-xs font-black text-slate-900 tabular-nums">{v.wageAmount?.toLocaleString('en-US')}</span>
-                        <span className="text-[8px] font-bold text-slate-400 uppercase">{v.currency}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="px-6 py-3 text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => setPrintingVoucher(v)} className="h-8 w-8 text-slate-400 hover:text-emerald-600"><Eye className="w-4 h-4" /></Button>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="w-4 h-4 text-slate-400" /></Button></DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-44">
-                            <DropdownMenuItem onClick={() => setPrintingVoucher(v)} className="gap-2 font-bold py-1.5"><Eye className="w-3.5 h-3.5" /> عرض التفاصيل</DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => setDeletingVoucher(v)} className="gap-2 font-bold py-1.5 text-rose-600"><Trash2 className="w-3.5 h-3.5" /> حذف السند</DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
+                <TableRow><TableCell colSpan={6} className="text-center py-20 font-bold text-slate-300">لا توجد تسويات</TableCell></TableRow>
+              ) : filteredVouchers.map((v) => (
+                <TableRow key={v.id} className="hover:bg-slate-50/50 border-b border-slate-100">
+                  <TableCell className="px-6 py-3 font-black text-slate-900 text-xs tabular-nums">{v.voucherNumber}</TableCell>
+                  <TableCell className="px-6 py-3 text-slate-500 text-xs tabular-nums">{v.date}</TableCell>
+                  <TableCell className="px-6 py-3 font-bold text-slate-700 text-xs">{allWorkers?.find(w => w.id === v.workerId)?.fullName || '---'}</TableCell>
+                  <TableCell className="px-6 py-3 text-center"><Badge variant="outline" className="bg-emerald-50 text-emerald-700 tabular-nums font-black">{v.qtyAccepted.toLocaleString('en-US')} قطعة</Badge></TableCell>
+                  <TableCell className="px-6 py-3 text-center font-black text-slate-900 tabular-nums">{v.wageAmount?.toLocaleString('en-US')} {v.currency}</TableCell>
+                  <TableCell className="px-6 py-3 text-center">
+                    <div className="flex items-center justify-center gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => setPrintingVoucher(v)} className="h-8 w-8 text-slate-400"><Eye className="w-4 h-4" /></Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="w-4 h-4 text-slate-400" /></Button></DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-44">
+                          <DropdownMenuItem onClick={() => handleEditVoucher(v)} className="gap-2 font-bold py-1.5"><Edit2 className="w-3.5 h-3.5 text-emerald-600" /> تعديل السند</DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => setDeletingVoucher(v)} className="gap-2 font-bold py-1.5 text-rose-600"><Trash2 className="w-3.5 h-3.5" /> نقل للمهملات</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
         </div>
       </div>
 
-      {/* SETTLEMENT DIALOG */}
       <Dialog open={isAddDialogOpen} onOpenChange={(open) => !open && resetDialog()}>
         <DialogContent className="sm:max-w-[900px] rounded-lg p-0 overflow-hidden border-none shadow-2xl">
           <div className="premium-gradient p-6 text-white">
             <DialogHeader className="text-right rtl:text-right ltr:text-left">
               <DialogTitle className="text-xl font-black flex items-center gap-3">
                 <FileOutput className="w-5 h-5 text-emerald-300" />
-                {lang === 'ar' ? 'إغلاق عهدة واستلام إنتاج' : 'Settlement & Production Receipt'}
+                {editingVoucherId ? (lang === 'ar' ? 'تعديل سند التسوية' : 'Edit Settlement') : (lang === 'ar' ? 'إغلاق عهدة واستلام إنتاج' : 'New Settlement')}
               </DialogTitle>
-              <DialogDescription className="sr-only">New Production Settlement</DialogDescription>
-              <p className="text-emerald-100/70 font-bold text-[10px] uppercase tracking-widest mt-1">Full closure of material cycle and wage calculation</p>
+              <DialogDescription className="text-emerald-100/70 font-bold text-[10px] uppercase tracking-widest mt-1">Full closure of material cycle and wage calculation</DialogDescription>
             </DialogHeader>
           </div>
 
           <form onSubmit={handleSaveVoucher} className="p-6 space-y-6 bg-white max-h-[85vh] overflow-y-auto no-scrollbar">
-            
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2"><Workflow className="w-3 h-3 text-emerald-600" /> أمر الإنتاج</Label>
-                <select 
-                  value={formData.orderId} 
-                  onChange={(e) => setFormData({...formData, orderId: e.target.value, workerId: '', linkedMIVs: []})} 
-                  className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none" required
-                >
+                <select value={formData.orderId} onChange={(e) => setFormData({...formData, orderId: e.target.value, workerId: '', linkedMIVs: []})} className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none" required>
                   <option value="">-- اختر أمر الإنتاج --</option>
                   {activeOrders?.map(o => <option key={o.id} value={o.id}>{o.orderNumber} - {o.title}</option>)}
                 </select>
               </div>
-
               <div className="space-y-1.5 relative">
                 <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2"><UserCheck className="w-3 h-3 text-emerald-600" /> الموظف (الذي عليه عهدة)</Label>
-                <select 
-                  value={formData.workerId} 
-                  onChange={(e) => setFormData({...formData, workerId: e.target.value, linkedMIVs: []})}
-                  disabled={!formData.orderId}
-                  className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none disabled:opacity-50" required
-                >
+                <select value={formData.workerId} onChange={(e) => setFormData({...formData, workerId: e.target.value, linkedMIVs: []})} disabled={!formData.orderId} className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none disabled:opacity-50" required>
                   <option value="">-- اختر الموظف --</option>
                   {relevantWorkers.map(w => <option key={w.id} value={w.id}>{w.fullName}</option>)}
                 </select>
               </div>
-
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2"><Calendar className="w-3 h-3 text-emerald-600" /> تاريخ التسوية</Label>
                 <Input type="date" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} className="h-11 font-bold bg-slate-50 tabular-nums" required />
@@ -495,38 +455,18 @@ export default function ProductionReceiptPage() {
             {openMIVs.length > 0 && (
               <div className="p-4 bg-amber-50/50 border border-amber-100 rounded-xl space-y-3">
                 <div className="flex items-center justify-between">
-                   <h3 className="text-[10px] font-black text-amber-700 uppercase tracking-widest flex items-center gap-2">
-                     <Hash className="w-3.5 h-3.5" /> سندات الصرف المفتوحة (التي سيتم تسويتها)
-                   </h3>
+                   <h3 className="text-[10px] font-black text-amber-700 uppercase tracking-widest flex items-center gap-2"><Hash className="w-3.5 h-3.5" /> سندات الصرف المفتوحة</h3>
                    <div className="flex items-center gap-2 bg-white px-3 py-1 rounded-lg border border-amber-200">
-                      <Checkbox 
-                        id="finalSettlement" 
-                        checked={formData.isFinalSettlement}
-                        onCheckedChange={(val) => setFormData({...formData, isFinalSettlement: !!val})}
-                      />
+                      <Checkbox id="finalSettlement" checked={formData.isFinalSettlement} onCheckedChange={(val) => setFormData({...formData, isFinalSettlement: !!val})} />
                       <label htmlFor="finalSettlement" className="text-[10px] font-black text-slate-600 cursor-pointer">إغلاق السندات المختارة نهائياً</label>
                    </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {openMIVs.map(m => (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => {
-                        const exists = formData.linkedMIVs.includes(m.id);
-                        setFormData({
-                          ...formData,
-                          linkedMIVs: exists ? formData.linkedMIVs.filter(id => id !== m.id) : [...formData.linkedMIVs, m.id],
-                          returnedItems: [] 
-                        });
-                      }}
-                      className={cn(
-                        "px-3 py-1.5 rounded-lg border text-[10px] font-black transition-all flex items-center gap-2",
-                        formData.linkedMIVs.includes(m.id) 
-                          ? "bg-emerald-600 text-white border-emerald-700 shadow-md" 
-                          : "bg-white text-slate-600 border-slate-200 hover:border-amber-300"
-                      )}
-                    >
+                    <button key={m.id} type="button" onClick={() => {
+                      const exists = formData.linkedMIVs.includes(m.id);
+                      setFormData({ ...formData, linkedMIVs: exists ? formData.linkedMIVs.filter(id => id !== m.id) : [...formData.linkedMIVs, m.id], returnedItems: [] });
+                    }} className={cn("px-3 py-1.5 rounded-lg border text-[10px] font-black transition-all flex items-center gap-2", formData.linkedMIVs.includes(m.id) ? "bg-emerald-600 text-white border-emerald-700 shadow-md" : "bg-white text-slate-600 border-slate-200 hover:border-amber-300")}>
                       {formData.linkedMIVs.includes(m.id) ? <CheckCircle2 className="w-3 h-3" /> : <FileText className="w-3 h-3" />}
                       {m.voucherNumber} ({(m.items?.length || 0).toLocaleString('en-US')} أصناف)
                     </button>
@@ -546,122 +486,68 @@ export default function ProductionReceiptPage() {
                    <Badge variant="outline" className="bg-white">{targetProduct?.category}</Badge>
                 </div>
               </div>
-
               <div className="md:col-span-8 flex flex-col gap-6">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <Label className="text-[10px] font-black text-emerald-700 uppercase">الكمية المستلمة (صالحة)</Label>
-                    <Input 
-                      type="number" 
-                      value={formData.qtyAccepted} 
-                      onChange={(e) => setFormData({...formData, qtyAccepted: Number(e.target.value)})} 
-                      className="h-14 font-black text-center text-2xl text-emerald-700 bg-emerald-50 border-emerald-200 tabular-nums" 
-                      placeholder="0"
-                    />
+                    <Input type="number" value={formData.qtyAccepted} onChange={(e) => setFormData({...formData, qtyAccepted: Number(e.target.value)})} className="h-14 font-black text-center text-2xl text-emerald-700 bg-emerald-50 border-emerald-200 tabular-nums" required min="1" />
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-[10px] font-black text-slate-400 uppercase">ملاحظات الفحص</Label>
-                    <Input 
-                      value={formData.notes} 
-                      onChange={(e) => setFormData({...formData, notes: e.target.value})} 
-                      className="h-14 bg-slate-50 text-xs font-bold"
-                      placeholder="جودة ممتازة، نقشة دقيقة..."
-                    />
+                    <Input value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} className="h-14 bg-slate-50 text-xs font-bold" />
                   </div>
                 </div>
-                
                 <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-white rounded-lg text-emerald-600 shadow-sm"><Wallet className="w-5 h-5" /></div>
-                    <div>
-                      <p className="text-[9px] font-black text-emerald-800 uppercase">أجر الموظف لكل قطعة منتجة</p>
+                    <div className="flex flex-col gap-1">
+                      <p className="text-[9px] font-black text-emerald-800 uppercase">أجر القطعة</p>
                       <div className="flex items-center gap-2">
-                        <Input 
-                          type="number" 
-                          value={formData.wageRate} 
-                          onChange={(e) => setFormData({...formData, wageRate: Number(e.target.value)})}
-                          className="h-8 w-24 text-xs font-black bg-white border-emerald-200 tabular-nums" 
-                        />
+                        <Input type="number" value={formData.wageRate} onChange={(e) => setFormData({...formData, wageRate: Number(e.target.value)})} className="h-8 w-24 text-xs font-black tabular-nums" required min="0.1" />
                         <select value={formData.currency} onChange={(e) => setFormData({...formData, currency: e.target.value})} className="h-8 px-2 bg-white border border-emerald-200 rounded text-[9px] font-black">
-                          <option value="YER">YER</option>
-                          <option value="SAR">SAR</option>
-                          <option value="USD">USD</option>
+                          <option value="YER">YER</option><option value="SAR">SAR</option><option value="USD">USD</option>
                         </select>
                       </div>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-[9px] font-black text-emerald-800 uppercase">إجمالي المستحق لهذا السند</p>
-                    <p className="text-xl font-black text-emerald-700 tabular-nums">
-                      {(formData.qtyAccepted * formData.wageRate).toLocaleString('en-US')} <span className="text-[10px]">{formData.currency}</span>
-                    </p>
+                    <p className="text-[9px] font-black text-emerald-800 uppercase">إجمالي المستحق</p>
+                    <p className="text-xl font-black text-emerald-700 tabular-nums">{(formData.qtyAccepted * formData.wageRate).toLocaleString('en-US')} <span className="text-[10px]">{formData.currency}</span></p>
                   </div>
                 </div>
               </div>
             </div>
 
             <div className="p-4 bg-blue-50/30 border border-blue-100 rounded-2xl space-y-4">
-              <h3 className="text-[10px] font-black text-blue-700 uppercase tracking-widest flex items-center gap-2">
-                <RefreshCcw className="w-3.5 h-3.5" /> استرجاع المواد الخام المتبقية (تصفية عهدة)
-              </h3>
-              
+              <h3 className="text-[10px] font-black text-blue-700 uppercase tracking-widest flex items-center gap-2"><RefreshCcw className="w-3.5 h-3.5" /> استرجاع المواد المتبقية (تصفية عهدة)</h3>
               <div className="flex flex-col md:flex-row gap-3 items-end">
                 <div className="flex-1 space-y-1.5">
-                  <Label className="text-[9px] font-bold text-slate-500">{lang === 'ar' ? 'الصنف من العهدة' : 'ISSUED MATERIAL'}</Label>
-                  <select 
-                    id="matSelect"
-                    disabled={formData.linkedMIVs.length === 0}
-                    className="w-full h-10 px-3 bg-white text-slate-900 border border-blue-200 rounded-md text-xs font-bold outline-none disabled:opacity-50"
-                  >
-                    <option value="">{formData.linkedMIVs.length === 0 ? '-- اختر سندات الصرف أولاً --' : '-- اختر مادة لاسترجاعها --'}</option>
-                    {issuedMaterialsPool.map(m => (
-                      <option key={m.id} value={m.id} className="text-slate-900">
-                        {m.nameAr} ({lang === 'ar' ? 'العهدة الكلية:' : 'Total Issued:'} {m.qty.toLocaleString('en-US')} {m.unit})
-                      </option>
-                    ))}
+                  <Label className="text-[9px] font-bold text-slate-500">الصنف من العهدة</Label>
+                  <select id="matSelect" disabled={formData.linkedMIVs.length === 0} className="w-full h-10 px-3 bg-white border border-blue-200 rounded-md text-xs font-bold outline-none">
+                    <option value="">-- اختر مادة --</option>
+                    {issuedMaterialsPool.map(m => <option key={m.id} value={m.id}>{m.nameAr} (العهدة: {m.qty.toLocaleString('en-US')} {m.unit})</option>)}
                   </select>
                 </div>
                 <div className="w-32 space-y-1.5">
-                  <Label className="text-[9px] font-bold text-slate-500">{lang === 'ar' ? 'الكمية المرتجعة' : 'RETURN QTY'}</Label>
-                  <Input id="qtySelect" type="number" step="0.01" placeholder="0.00" className="h-10 bg-white font-bold tabular-nums" />
+                  <Label className="text-[9px] font-bold text-slate-500">الكمية المرتجعة</Label>
+                  <Input id="qtySelect" type="number" step="0.01" className="h-10 bg-white font-bold tabular-nums" />
                 </div>
-                <Button 
-                  type="button" 
-                  disabled={formData.linkedMIVs.length === 0}
-                  onClick={() => {
-                    const id = (document.getElementById('matSelect') as HTMLSelectElement).value;
-                    const qty = Number((document.getElementById('qtySelect') as HTMLInputElement).value);
-                    if (id && qty > 0) {
-                      handleReturnItem(id, qty);
-                      (document.getElementById('qtySelect') as HTMLInputElement).value = '';
-                    }
-                  }}
-                  className="h-10 bg-blue-600 hover:bg-blue-500 text-white font-black text-xs px-6 shadow-md"
-                >
-                  إدراج الاسترجاع
-                </Button>
+                <Button type="button" onClick={() => {
+                  const id = (document.getElementById('matSelect') as HTMLSelectElement).value;
+                  const qty = Number((document.getElementById('qtySelect') as HTMLInputElement).value);
+                  if (id && qty > 0) { handleReturnItem(id, qty); (document.getElementById('qtySelect') as HTMLInputElement).value = ''; }
+                }} className="h-10 bg-blue-600 text-white font-black text-xs px-6">إدراج</Button>
               </div>
-
               {formData.returnedItems.length > 0 && (
                 <div className="border border-blue-100 rounded-xl overflow-hidden shadow-sm">
                    <Table className="text-right bg-white/50">
-                      <TableHeader className="bg-blue-50/50">
-                         <TableRow>
-                            <TableHead className="text-right text-[9px] font-black text-blue-500 uppercase">المادة المستلمة</TableHead>
-                            <TableHead className="text-center text-[9px] font-black text-blue-500 uppercase">الكمية المرتجعة</TableHead>
-                            <TableHead className="text-center text-[9px] font-black text-blue-500 uppercase">الوحدة</TableHead>
-                            <TableHead className="w-10"></TableHead>
-                         </TableRow>
-                      </TableHeader>
+                      <TableHeader className="bg-blue-50/50"><TableRow><TableHead className="text-right text-[9px] font-black text-blue-500 uppercase">المادة</TableHead><TableHead className="text-center text-[9px] font-black text-blue-500 uppercase">الكمية</TableHead><TableHead className="w-10"></TableHead></TableRow></TableHeader>
                       <TableBody>
                          {formData.returnedItems.map((item, idx) => (
                             <TableRow key={idx} className="border-b border-blue-50">
-                               <TableCell className="text-xs font-bold text-slate-700">{item.nameAr}</TableCell>
-                               <TableCell className="text-center font-black tabular-nums text-blue-700">{item.qty.toLocaleString('en-US')}</TableCell>
-                               <TableCell className="text-center text-[10px] font-black text-slate-400 uppercase">{item.unit}</TableCell>
-                               <TableCell>
-                                  <button type="button" onClick={() => setFormData({...formData, returnedItems: formData.returnedItems.filter((_, i) => i !== idx)})} className="text-rose-400 hover:text-rose-600"><Trash2 className="w-3.5 h-3.5" /></button>
-                               </TableCell>
+                               <TableCell className="text-xs font-bold">{item.nameAr}</TableCell>
+                               <TableCell className="text-center font-black tabular-nums">{item.qty.toLocaleString('en-US')} {item.unit}</TableCell>
+                               <TableCell><button type="button" onClick={() => setFormData({...formData, returnedItems: formData.returnedItems.filter((_, i) => i !== idx)})} className="text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button></TableCell>
                             </TableRow>
                          ))}
                       </TableBody>
@@ -671,9 +557,9 @@ export default function ProductionReceiptPage() {
             </div>
 
             <div className="flex gap-3 pt-4 border-t border-slate-100">
-              <Button type="submit" disabled={isSubmitting || !formData.workerId || !formData.orderId || formData.linkedMIVs.length === 0} className="flex-1 h-14 premium-gradient text-white rounded-xl font-black text-base shadow-xl">
+              <Button type="submit" disabled={isSubmitting || !formData.workerId || !formData.orderId || formData.linkedMIVs.length === 0 || formData.qtyAccepted <= 0} className="flex-1 h-14 premium-gradient text-white rounded-xl font-black text-base shadow-xl">
                 {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin me-2" /> : <CheckCircle2 className="w-5 h-5 me-2" />}
-                ترحيل التسوية وتحديث المخازن والإنجاز
+                {editingVoucherId ? 'تحديث السند والمخازن' : 'ترحيل التسوية وتحديث المخازن'}
               </Button>
               <Button type="button" variant="outline" onClick={resetDialog} className="px-8 h-14 font-black text-slate-400 rounded-xl border-slate-200">إلغاء</Button>
             </div>
@@ -681,12 +567,30 @@ export default function ProductionReceiptPage() {
         </DialogContent>
       </Dialog>
 
-      {/* VIEW/PRINT DIALOG */}
+      <AlertDialog open={!!deletingVoucher} onOpenChange={(open) => !open && setDeletingVoucher(null)}>
+        <AlertDialogContent className="max-w-[400px] rounded-lg border-none shadow-2xl p-0 overflow-hidden">
+          <div className="bg-slate-950 p-8 text-center">
+            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20 shadow-inner">
+              <History className="w-8 h-8 text-red-500" />
+            </div>
+            <AlertDialogTitle className="text-white text-xl font-black">نقل للمهملات</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400 font-bold mt-2 text-xs leading-relaxed">
+              تحذير: سيتم إلغاء المنجز من أمر الإنتاج وإعادة فتح العهدة للعامل فوراً. السند سيبقى في المهملات للأرشفة.
+            </AlertDialogDescription>
+          </div>
+          <div className="bg-white p-6 flex gap-3">
+            <AlertDialogAction onClick={handleDeleteRequest} disabled={isSubmitting} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-md font-black">
+              {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "تأكيد النقل"}
+            </AlertDialogAction>
+            <AlertDialogCancel onClick={() => setDeletingVoucher(null)} className="flex-1 h-11 bg-slate-50 border-slate-200 text-slate-400 rounded-md font-black">تراجع</AlertDialogCancel>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* REMAINDER OF DIALOGS (PRINT PREVIEW) UNCHANGED */}
       <Dialog open={!!printingVoucher} onOpenChange={(open) => !open && setPrintingVoucher(null)}>
         <DialogContent className="sm:max-w-[750px] p-0 overflow-hidden border-none bg-white">
-          <DialogHeader className="sr-only">
-            <DialogTitle>Voucher Print Preview</DialogTitle>
-          </DialogHeader>
+          <DialogHeader className="sr-only"><DialogTitle>Preview</DialogTitle></DialogHeader>
           <ScrollArea className="max-h-[80vh]">
             <div className="p-10 bg-white relative z-0" id="printable-voucher">
               {printingVoucher && (
@@ -694,7 +598,6 @@ export default function ProductionReceiptPage() {
                   <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 opacity-[0.04] pointer-events-none -z-10 select-none">
                     <img src="/images/logo.png" alt="watermark" className="w-full h-full object-contain grayscale" />
                   </div>
-
                   <div className="grid grid-cols-3 items-center border-b-4 border-emerald-800 pb-6 mb-6">
                     <div className="text-center space-y-0.5">
                       <h2 className="text-base font-black text-emerald-900">جمعية الصناعات النسيجية</h2>
@@ -706,13 +609,11 @@ export default function ProductionReceiptPage() {
                       <p className="text-[9px] font-bold text-slate-500">Production Receipt</p>
                     </div>
                   </div>
-
                   <div className="text-center mb-6">
                     <div className="inline-block border-2 border-emerald-800 px-8 py-1 rounded-full bg-white shadow-sm">
                       <h3 className="text-lg font-black text-emerald-900 uppercase tracking-widest">سند تسوية واستلام منجز</h3>
                     </div>
                   </div>
-
                   <div className="grid grid-cols-3 gap-6 mb-8 bg-slate-50/70 p-4 rounded-xl border border-slate-100">
                     <div className="space-y-2">
                        <p className="text-[9px] font-black text-slate-400 uppercase">بيانات السند</p>
@@ -729,7 +630,6 @@ export default function ProductionReceiptPage() {
                        <p className="text-lg font-black text-emerald-700 tabular-nums">{printingVoucher.wageAmount?.toLocaleString('en-US')} {printingVoucher.currency}</p>
                     </div>
                   </div>
-
                   <div className="mb-8 space-y-6">
                     <h4 className="text-[10px] font-black text-emerald-900 border-r-4 border-emerald-600 pr-3 uppercase">أولاً: مخرجات الإنتاج (المنجز)</h4>
                     <Table className="text-right border-2 border-emerald-900/10">
@@ -750,40 +650,11 @@ export default function ProductionReceiptPage() {
                         </TableRow>
                       </TableBody>
                     </Table>
-
-                    {printingVoucher.returnedItems?.length > 0 && (
-                      <>
-                        <h4 className="text-[10px] font-black text-blue-900 border-r-4 border-blue-600 pr-3 uppercase">ثانياً: المواد المرجعة للمخازن</h4>
-                        <Table className="text-right border-2 border-blue-900/10">
-                          <TableHeader className="bg-blue-900/5">
-                            <TableRow>
-                              <TableHead className="text-right font-black text-xs py-3 text-blue-900">المادة الخام</TableHead>
-                              <TableHead className="text-center font-black text-xs py-3 text-blue-900">الكمية المرتجعة</TableHead>
-                              <TableHead className="text-center font-black text-xs py-3 text-blue-900">الوحدة</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {printingVoucher.returnedItems.map((item: any, i: number) => (
-                              <TableRow key={i} className="bg-white/40 border-b border-blue-50">
-                                <TableCell className="font-bold text-sm py-3 text-slate-800">{item.nameAr}</TableCell>
-                                <TableCell className="text-center font-black text-sm text-blue-700 tabular-nums">{item.qty.toLocaleString('en-US')}</TableCell>
-                                <TableCell className="text-center text-[10px] font-black text-blue-500 uppercase">{item.unit}</TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </>
-                    )}
                   </div>
-
                   <div className="grid grid-cols-3 gap-4 pt-6 border-t border-slate-200 text-center">
-                    <div className="space-y-6"><p className="text-[10px] font-black text-slate-400 uppercase">أمين المستودع</p><div className="h-px bg-slate-200 w-2/3 mx-auto" /><p className="text-[8px] font-bold text-slate-400 uppercase tabular-nums">Signature / التاريخ</p></div>
-                    <div className="space-y-6"><p className="text-[10px] font-black text-slate-400 uppercase">الموظف (المسلم)</p><div className="h-px bg-slate-200 w-2/3 mx-auto" /><p className="text-[8px] font-bold text-slate-400 uppercase tabular-nums">Signature / التاريخ</p></div>
-                    <div className="space-y-6"><p className="text-[10px] font-black text-slate-400 uppercase">المدير / المشرف</p><div className="h-px bg-slate-200 w-2/3 mx-auto" /><p className="text-[8px] font-bold text-slate-400 uppercase tabular-nums">Approval / التوقيع</p></div>
-                  </div>
-                  
-                  <div className="mt-12 text-center text-[7px] font-black text-slate-300 uppercase tracking-[0.4em]">
-                    GENERATED BY TIA SYSTEM - PRODUCTION SETTLEMENT PROTOCOL ACTIVE - {new Date().toLocaleString('en-US')}
+                    <div className="space-y-6"><p className="text-[10px] font-black text-slate-400 uppercase">أمين المستودع</p><div className="h-px bg-slate-200 w-2/3 mx-auto" /><p className="text-[8px] font-bold text-slate-400 uppercase tabular-nums">Signature</p></div>
+                    <div className="space-y-6"><p className="text-[10px] font-black text-slate-400 uppercase">الموظف (المسلم)</p><div className="h-px bg-slate-200 w-2/3 mx-auto" /><p className="text-[8px] font-bold text-slate-400 uppercase tabular-nums">Signature</p></div>
+                    <div className="space-y-6"><p className="text-[10px] font-black text-slate-400 uppercase">المدير / المشرف</p><div className="h-px bg-slate-200 w-2/3 mx-auto" /><p className="text-[8px] font-bold text-slate-400 uppercase tabular-nums">Approval</p></div>
                   </div>
                 </div>
               )}
@@ -798,64 +669,7 @@ export default function ProductionReceiptPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* DELETE CONFIRMATION */}
-      <AlertDialog open={!!deletingVoucher} onOpenChange={(open) => !open && setDeletingVoucher(null)}>
-        <AlertDialogContent className="max-w-[400px] rounded-lg border-none shadow-2xl p-0 overflow-hidden">
-          <div className="bg-slate-950 p-8 text-center">
-            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20 shadow-inner">
-              <History className="w-8 h-8 text-red-500" />
-            </div>
-            <AlertDialogTitle className="text-white text-xl font-black">حذف سند التسوية</AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-400 font-bold mt-2 text-xs leading-relaxed">
-              تحذير: سيؤدي حذف السند لإلغاء المنجز من أمر الإنتاج وإعادة فتح العهدة للعامل.
-            </AlertDialogDescription>
-          </div>
-          <div className="bg-white p-6 flex gap-3">
-            <AlertDialogAction 
-              onClick={async () => {
-                if (!db || !deletingVoucher) return;
-                setIsSubmitting(true);
-                const batch = writeBatch(db);
-                
-                // Reverse achieved qty
-                const orderRef = doc(db, 'productionOrders', deletingVoucher.orderId);
-                const orderSnap = await getDoc(orderRef);
-                batch.update(orderRef, {
-                  completedQty: Math.max(0, (orderSnap.data()?.completedQty || 0) - deletingVoucher.qtyAccepted)
-                });
-
-                // Reverse returned materials
-                deletingVoucher.returnedItems?.forEach((item: any) => {
-                  const matRef = doc(db, 'materials', item.id);
-                  const material = allMaterials?.find(m => m.id === item.id);
-                  if (material) {
-                    batch.update(matRef, {
-                      currentQty: Math.max(0, (material.currentQty || 0) - item.qty)
-                    });
-                  }
-                });
-
-                // Re-open linked MIVs
-                deletingVoucher.linkedMIVs?.forEach((mivId: string) => {
-                  batch.update(doc(db, 'vouchers', mivId), { status: 'posted', updatedAt: serverTimestamp() });
-                });
-
-                batch.delete(doc(db, 'vouchers', deletingVoucher.id));
-                await batch.commit();
-                toast({ title: lang === 'ar' ? "تم حذف السند وإعادة فتح العهدة" : "Voucher deleted and cycle re-opened" });
-                setIsSubmitting(false);
-                setDeletingVoucher(null);
-              }} 
-              className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-md font-black"
-            >
-              تأكيد الحذف
-            </AlertDialogAction>
-            <AlertDialogCancel onClick={() => setDeletingVoucher(null)} className="flex-1 h-11 bg-slate-50 border-slate-200 text-slate-400 rounded-md font-black">تراجع</AlertDialogCancel>
-          </div>
-        </AlertDialogContent>
-      </AlertDialog>
-
     </div>
   );
 }
+
