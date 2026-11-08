@@ -271,8 +271,8 @@ export default function ProductionReceiptPage() {
         variant: "destructive", 
         title: lang === 'ar' ? "كمية غير منطقية" : "Invalid Quantity",
         description: lang === 'ar' 
-          ? `لا يمكن إرجاع ${qty} بينما إجمالي ما استلمه العامل هو ${issuedItem.qty}` 
-          : `Cannot return ${qty} when only ${issuedItem.qty} was issued.`
+          ? `لا يمكن إرجاع ${qty.toLocaleString('en-US')} بينما إجمالي ما استلمه العامل هو ${issuedItem.qty.toLocaleString('en-US')}` 
+          : `Cannot return ${qty.toLocaleString('en-US')} when only ${issuedItem.qty.toLocaleString('en-US')} was issued.`
       });
       return;
     }
@@ -392,11 +392,11 @@ export default function ProductionReceiptPage() {
                       </div>
                     </TableCell>
                     <TableCell className="px-6 py-3 text-center">
-                      <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-100 tabular-nums font-black">{v.qtyAccepted} قطعة</Badge>
+                      <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-100 tabular-nums font-black">{v.qtyAccepted.toLocaleString('en-US')} قطعة</Badge>
                     </TableCell>
                     <TableCell className="px-6 py-3 text-center">
                       <div className="flex flex-col items-center">
-                        <span className="text-xs font-black text-slate-900 tabular-nums">{v.wageAmount?.toLocaleString()}</span>
+                        <span className="text-xs font-black text-slate-900 tabular-nums">{v.wageAmount?.toLocaleString('en-US')}</span>
                         <span className="text-[8px] font-bold text-slate-400 uppercase">{v.currency}</span>
                       </div>
                     </TableCell>
@@ -495,7 +495,7 @@ export default function ProductionReceiptPage() {
                       )}
                     >
                       {formData.linkedMIVs.includes(m.id) ? <CheckCircle2 className="w-3 h-3" /> : <FileText className="w-3 h-3" />}
-                      {m.voucherNumber} ({m.items?.length} أصناف)
+                      {m.voucherNumber} ({m.items?.length.toLocaleString('en-US')} أصناف)
                     </button>
                   ))}
                 </div>
@@ -524,7 +524,7 @@ export default function ProductionReceiptPage() {
                       type="number" 
                       value={formData.qtyAccepted} 
                       onChange={(e) => setFormData({...formData, qtyAccepted: Number(e.target.value)})} 
-                      className="h-14 font-black text-center text-2xl text-emerald-700 bg-emerald-50 border-emerald-200" 
+                      className="h-14 font-black text-center text-2xl text-emerald-700 bg-emerald-50 border-emerald-200 tabular-nums" 
                       placeholder="0"
                     />
                   </div>
@@ -549,7 +549,7 @@ export default function ProductionReceiptPage() {
                           type="number" 
                           value={formData.wageRate} 
                           onChange={(e) => setFormData({...formData, wageRate: Number(e.target.value)})}
-                          className="h-8 w-24 text-xs font-black bg-white border-emerald-200" 
+                          className="h-8 w-24 text-xs font-black bg-white border-emerald-200 tabular-nums" 
                         />
                         <select value={formData.currency} onChange={(e) => setFormData({...formData, currency: e.target.value})} className="h-8 px-2 bg-white border border-emerald-200 rounded text-[9px] font-black">
                           <option value="YER">YER</option>
@@ -562,7 +562,7 @@ export default function ProductionReceiptPage() {
                   <div className="text-right">
                     <p className="text-[9px] font-black text-emerald-800 uppercase">إجمالي المستحق لهذا السند</p>
                     <p className="text-xl font-black text-emerald-700 tabular-nums">
-                      {(formData.qtyAccepted * formData.wageRate).toLocaleString()} <span className="text-[10px]">{formData.currency}</span>
+                      {(formData.qtyAccepted * formData.wageRate).toLocaleString('en-US')} <span className="text-[10px]">{formData.currency}</span>
                     </p>
                   </div>
                 </div>
@@ -586,14 +586,14 @@ export default function ProductionReceiptPage() {
                     <option value="">{formData.linkedMIVs.length === 0 ? '-- اختر سندات الصرف أولاً --' : '-- اختر مادة من العهدة لاسترجاعها --'}</option>
                     {issuedMaterialsPool.map(m => (
                       <option key={m.id} value={m.id} className="text-slate-900">
-                        {m.nameAr} ({lang === 'ar' ? 'العهدة الكلية:' : 'Total Issued:'} {m.qty} {m.unit})
+                        {m.nameAr} ({lang === 'ar' ? 'العهدة الكلية:' : 'Total Issued:'} {m.qty.toLocaleString('en-US')} {m.unit})
                       </option>
                     ))}
                   </select>
                 </div>
                 <div className="w-32 space-y-1.5">
                   <Label className="text-[9px] font-bold text-slate-500">{lang === 'ar' ? 'الكمية المرتجعة' : 'RETURN QTY'}</Label>
-                  <Input id="qtySelect" type="number" step="0.01" placeholder="0.00" className="h-10 bg-white font-bold" />
+                  <Input id="qtySelect" type="number" step="0.01" placeholder="0.00" className="h-10 bg-white font-bold tabular-nums" />
                 </div>
                 <Button 
                   type="button" 
@@ -627,7 +627,7 @@ export default function ProductionReceiptPage() {
                          {formData.returnedItems.map((item, idx) => (
                             <TableRow key={idx} className="border-b border-blue-50">
                                <TableCell className="text-xs font-bold text-slate-700">{item.nameAr}</TableCell>
-                               <TableCell className="text-center font-black tabular-nums text-blue-700">{item.qty}</TableCell>
+                               <TableCell className="text-center font-black tabular-nums text-blue-700">{item.qty.toLocaleString('en-US')}</TableCell>
                                <TableCell className="text-center text-[10px] font-black text-slate-400 uppercase">{item.unit}</TableCell>
                                <TableCell>
                                   <button type="button" onClick={() => setFormData({...formData, returnedItems: formData.returnedItems.filter((_, i) => i !== idx)})} className="text-rose-400 hover:text-rose-600"><Trash2 className="w-3.5 h-3.5" /></button>
@@ -698,7 +698,7 @@ export default function ProductionReceiptPage() {
                     </div>
                     <div className="space-y-2 text-left">
                        <p className="text-[9px] font-black text-slate-400 uppercase">الاستحقاق المالي</p>
-                       <p className="text-lg font-black text-emerald-700 tabular-nums">{printingVoucher.wageAmount?.toLocaleString()} {printingVoucher.currency}</p>
+                       <p className="text-lg font-black text-emerald-700 tabular-nums">{printingVoucher.wageAmount?.toLocaleString('en-US')} {printingVoucher.currency}</p>
                     </div>
                   </div>
 
@@ -716,9 +716,9 @@ export default function ProductionReceiptPage() {
                       <TableBody>
                         <TableRow className="bg-white/40">
                           <TableCell className="font-bold text-sm py-3">{allProducts?.find(p => p.id === allOrders?.find(o => o.id === printingVoucher.orderId)?.productId)?.nameAr}</TableCell>
-                          <TableCell className="text-center font-black text-sm text-emerald-700 tabular-nums">{printingVoucher.qtyAccepted} قطعة</TableCell>
-                          <TableCell className="text-center font-bold text-sm tabular-nums">{printingVoucher.wageRate}</TableCell>
-                          <TableCell className="text-center font-black text-sm tabular-nums text-emerald-900">{printingVoucher.wageAmount?.toLocaleString()}</TableCell>
+                          <TableCell className="text-center font-black text-sm text-emerald-700 tabular-nums">{printingVoucher.qtyAccepted.toLocaleString('en-US')} قطعة</TableCell>
+                          <TableCell className="text-center font-bold text-sm tabular-nums">{printingVoucher.wageRate.toLocaleString('en-US')}</TableCell>
+                          <TableCell className="text-center font-black text-sm tabular-nums text-emerald-900">{printingVoucher.wageAmount?.toLocaleString('en-US')}</TableCell>
                         </TableRow>
                       </TableBody>
                     </Table>
@@ -738,7 +738,7 @@ export default function ProductionReceiptPage() {
                             {printingVoucher.returnedItems.map((item: any, i: number) => (
                               <TableRow key={i} className="bg-white/40 border-b border-blue-50">
                                 <TableCell className="font-bold text-sm py-3 text-slate-800">{item.nameAr}</TableCell>
-                                <TableCell className="text-center font-black text-sm text-blue-700 tabular-nums">{item.qty}</TableCell>
+                                <TableCell className="text-center font-black text-sm text-blue-700 tabular-nums">{item.qty.toLocaleString('en-US')}</TableCell>
                                 <TableCell className="text-center text-[10px] font-black text-blue-500 uppercase">{item.unit}</TableCell>
                               </TableRow>
                             ))}
@@ -755,7 +755,7 @@ export default function ProductionReceiptPage() {
                   </div>
                   
                   <div className="mt-12 text-center text-[7px] font-black text-slate-300 uppercase tracking-[0.4em]">
-                    GENERATED BY TIA SYSTEM - PRODUCTION SETTLEMENT PROTOCOL ACTIVE
+                    GENERATED BY TIA SYSTEM - PRODUCTION SETTLEMENT PROTOCOL ACTIVE - {new Date().toLocaleString('en-US')}
                   </div>
                 </div>
               )}

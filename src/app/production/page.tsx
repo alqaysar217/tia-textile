@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo } from 'react';
@@ -18,7 +17,8 @@ import {
   ExternalLink,
   ClipboardList,
   ShieldCheck,
-  Loader2
+  Loader2,
+  AlertTriangle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -48,15 +48,15 @@ export default function ProductionDashboard() {
     const lowStock = allMaterials.filter(m => (m.currentQty || 0) <= (m.minQty || 0)).length;
     const supervisors = allWorkers.filter(w => w.isSupervisor && w.active).length;
     
-    // Summing completed quantities for "Daily Production" (mocking daily by total for now)
+    // Summing completed quantities for "Daily Production"
     const totalCompleted = allOrders.reduce((acc, curr) => acc + (curr.completedQty || 0), 0);
 
     return [
-      { title: t.production.stats.totalOrders, value: allOrders.length.toString(), change: '+', type: 'info', icon: <Factory className="w-6 h-6" /> },
-      { title: t.production.stats.activeOrders, value: active.toString(), change: 'Live', type: 'increase', icon: <PlayCircle className="w-6 h-6" /> },
-      { title: t.production.stats.dailyProduction, value: totalCompleted.toLocaleString(), change: 'Total', type: 'increase', icon: <CheckCircle2 className="w-6 h-6" /> },
-      { title: t.production.stats.rawMaterialsCount, value: allMaterials.length.toString(), change: `${lowStock} Low`, type: lowStock > 0 ? 'danger' : 'info', icon: <Box className="w-6 h-6" /> },
-      { title: t.production.stats.activeWorkers, value: allWorkers.filter(w => w.active).length.toString(), change: `${supervisors} Sups`, type: 'info', icon: <Users className="w-6 h-6" /> },
+      { title: t.production.stats.totalOrders, value: allOrders.length.toLocaleString('en-US'), change: '+', type: 'info', icon: <Factory className="w-6 h-6" /> },
+      { title: t.production.stats.activeOrders, value: active.toLocaleString('en-US'), change: 'Live', type: 'increase', icon: <PlayCircle className="w-6 h-6" /> },
+      { title: t.production.stats.dailyProduction, value: totalCompleted.toLocaleString('en-US'), change: 'Total', type: 'increase', icon: <CheckCircle2 className="w-6 h-6" /> },
+      { title: t.production.stats.rawMaterialsCount, value: allMaterials.length.toLocaleString('en-US'), change: `${lowStock.toLocaleString('en-US')} Low`, type: lowStock > 0 ? 'danger' : 'info', icon: <Box className="w-6 h-6" /> },
+      { title: t.production.stats.activeWorkers, value: allWorkers.filter(w => w.active).length.toLocaleString('en-US'), change: `${supervisors.toLocaleString('en-US')} Sups`, type: 'info', icon: <Users className="w-6 h-6" /> },
     ];
   }, [allOrders, allMaterials, allWorkers, t.production.stats]);
 
@@ -146,14 +146,14 @@ export default function ProductionDashboard() {
                   return (
                     <tr key={i} className="hover:bg-gray-50 transition-colors">
                       <td className="production-table-cell text-primary font-black tabular-nums">{order.orderNumber}</td>
-                      <td className="production-table-cell tabular-nums font-bold text-slate-400">{order.targetQty}</td>
-                      <td className="production-table-cell tabular-nums font-black text-emerald-600">{order.completedQty || 0}</td>
+                      <td className="production-table-cell tabular-nums font-bold text-slate-400">{(order.targetQty || 0).toLocaleString('en-US')}</td>
+                      <td className="production-table-cell tabular-nums font-black text-emerald-600">{(order.completedQty || 0).toLocaleString('en-US')}</td>
                       <td className="production-table-cell font-black">
                         <div className="flex items-center gap-2">
                            <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden w-16">
                               <div className="h-full bg-emerald-500" style={{ width: `${progress}%` }} />
                            </div>
-                           <span className="text-[10px] tabular-nums">{progress}%</span>
+                           <span className="text-[10px] tabular-nums">{progress.toLocaleString('en-US')}%</span>
                         </div>
                       </td>
                       <td className="production-table-cell">
@@ -189,7 +189,7 @@ export default function ProductionDashboard() {
                   <div className="flex flex-col">
                     <span className="text-xs font-black text-slate-700">{m.nameAr}</span>
                     <span className="text-[9px] text-rose-600 font-black uppercase tracking-widest mt-0.5">
-                      {lang === 'ar' ? `المتبقي: ${m.currentQty} ${m.unit}` : `Left: ${m.currentQty} ${m.unit}`}
+                      {lang === 'ar' ? `المتبقي: ${m.currentQty.toLocaleString('en-US')} ${m.unit}` : `Left: ${m.currentQty.toLocaleString('en-US')} ${m.unit}`}
                     </span>
                   </div>
                   <div className="p-1 bg-white rounded shadow-sm">
