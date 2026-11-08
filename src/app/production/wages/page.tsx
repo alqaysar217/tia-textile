@@ -27,17 +27,14 @@ import {
   ArrowUpDown,
   Hash,
   Coins,
-  TrendingUp,
-  ArrowUpRight,
   HandCoins,
   Receipt,
   AlertCircle,
   Info,
-  Building2,
-  User as UserIcon,
   Edit2,
   Trash2,
-  RefreshCcw
+  RefreshCcw,
+  CalendarDays
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -83,9 +80,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {
   Tabs,
-  TabsContent,
   TabsList,
   TabsTrigger,
+  TabsContent,
 } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -109,6 +106,12 @@ export default function PayrollManagementPage() {
   const [sortBy, setSortBy] = useState<'date' | 'voucherNumber' | 'totalAmount'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [activeTab, setActiveTab] = useState('balances');
+  
+  // New filtering state
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [workerFilter, setWorkerFilter] = useState('all');
+  const [currencyFilter, setCurrencyFilter] = useState('all');
 
   // Payment Form State
   const [formData, setFormData] = useState({
@@ -137,7 +140,7 @@ export default function PayrollManagementPage() {
 
   const loading = workersLoading || receiptsLoading || paymentsLoading;
 
-  // Reset selection when worker or currency changes
+  // Reset selection when worker or currency changes in FORM
   useEffect(() => {
     if (!editingVoucherId) {
       setFormData(prev => ({
@@ -148,7 +151,7 @@ export default function PayrollManagementPage() {
     }
   }, [formData.workerId, formData.currency, editingVoucherId]);
 
-  // Filter unpaid receipts by selected worker AND selected currency
+  // Filter unpaid receipts by selected worker AND selected currency for the FORM
   const unpaidReceipts = useMemo(() => {
     if (!formData.workerId || !allReceipts) return [];
     
@@ -168,7 +171,7 @@ export default function PayrollManagementPage() {
     );
   }, [formData.workerId, formData.currency, allReceipts, allPayments, editingVoucherId]);
 
-  // Calculate flat balances per worker per currency
+  // Calculate flat balances per worker per currency for the LIST
   const flattenedBalances = useMemo(() => {
     if (!allWorkers || !allReceipts) return [];
     
@@ -302,6 +305,8 @@ export default function PayrollManagementPage() {
   const filteredPayments = useMemo(() => {
     if (!allPayments) return [];
     let result = allPayments.filter(p => p.status !== 'deleted');
+    
+    // Search filter
     if (search) {
       const s = search.toLowerCase();
       result = result.filter(p => {
@@ -309,13 +314,41 @@ export default function PayrollManagementPage() {
         return p.voucherNumber?.toLowerCase().includes(s) || worker?.fullName?.toLowerCase().includes(s);
       });
     }
+
+    // Worker filter
+    if (workerFilter !== 'all') {
+      result = result.filter(p => p.workerId === workerFilter);
+    }
+
+    // Currency filter
+    if (currencyFilter !== 'all') {
+      result = result.filter(p => p.currency === currencyFilter);
+    }
+
+    // Date range filter
+    if (dateFrom) {
+      result = result.filter(p => p.date >= dateFrom);
+    }
+    if (dateTo) {
+      result = result.filter(p => p.date <= dateTo);
+    }
+
+    // Sorting (Defaults to latest first)
     return result.sort((a, b) => {
       let valA = a[sortBy] ?? '';
       let valB = b[sortBy] ?? '';
-      if (sortBy === 'date') return sortOrder === 'asc' ? new Date(valA).getTime() - new Date(valB).getTime() : new Date(valB).getTime() - new Date(valA).getTime();
-      return sortOrder === 'asc' ? Number(valA) - Number(valB) : Number(valB) - Number(valA);
+      if (sortBy === 'date') {
+        const timeA = new Date(valA).getTime();
+        const timeB = new Date(valB).getTime();
+        return sortOrder === 'asc' ? timeA - timeB : timeB - timeA;
+      }
+      if (sortBy === 'totalAmount') {
+        return sortOrder === 'asc' ? Number(valA) - Number(valB) : Number(valB) - Number(valA);
+      }
+      const comp = String(valA).localeCompare(String(valB), undefined, { numeric: true });
+      return sortOrder === 'asc' ? comp : -comp;
     });
-  }, [allPayments, allWorkers, search, sortBy, sortOrder]);
+  }, [allPayments, allWorkers, search, sortBy, sortOrder, workerFilter, currencyFilter, dateFrom, dateTo]);
 
   const handleDownloadImage = useCallback(async () => {
     const element = document.getElementById('printable-payment');
@@ -327,7 +360,7 @@ export default function PayrollManagementPage() {
         backgroundColor: '#ffffff', 
         pixelRatio: 2, 
         cacheBust: true,
-        fontEmbedCSS: '',
+        fontEmbedCSS: '', // Critical fix for trim/font error
         filter: (node) => node.tagName !== 'SCRIPT'
       });
       const link = document.createElement('a');
@@ -409,18 +442,81 @@ export default function PayrollManagementPage() {
           </div>
         </div>
 
-        <div className="mt-4 flex items-center gap-2 bg-slate-50 p-1.5 rounded-lg border border-slate-200">
-          <div className="relative flex-1">
+        <div className="mt-4 flex flex-col md:flex-row items-center gap-3 bg-slate-50 p-2 rounded-xl border border-slate-200">
+          <div className="relative flex-1 w-full">
             <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400`} />
             <Input 
               value={search} 
               onChange={(e) => setSearch(e.target.value)} 
               placeholder={lang === 'ar' ? 'بحث باسم الموظف أو رقم السند...' : 'Search...'} 
-              className={`${dir === 'rtl' ? 'pr-10' : 'pl-10'} h-9 bg-white border-slate-200 text-xs font-bold tabular-nums text-right`} 
+              className={`${dir === 'rtl' ? 'pr-10' : 'pl-10'} h-10 bg-white border-slate-200 text-xs font-bold tabular-nums text-right`} 
             />
           </div>
-          <div className="flex items-center gap-1.5 px-1.5 border-l border-slate-200">
-             <Button onClick={handleExportCSV} variant="ghost" className="h-9 px-3 rounded-lg text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent hover:border-slate-200"><FileDown className="w-4 h-4 text-emerald-600" /> {lang === 'ar' ? 'تصدير' : 'Export'}</Button>
+          
+          <div className="flex items-center gap-2 w-full md:w-auto">
+             <div className="flex items-center gap-2 px-3 bg-white rounded-lg border border-slate-200 h-10">
+                <CalendarDays className="w-3.5 h-3.5 text-slate-400" />
+                <Input 
+                  type="date" 
+                  value={dateFrom} 
+                  onChange={(e) => setDateFrom(e.target.value)} 
+                  className="h-8 border-none shadow-none text-[10px] w-28 font-bold tabular-nums"
+                />
+                <span className="text-[10px] font-black text-slate-300">→</span>
+                <Input 
+                  type="date" 
+                  value={dateTo} 
+                  onChange={(e) => setDateTo(e.target.value)} 
+                  className="h-8 border-none shadow-none text-[10px] w-28 font-bold tabular-nums"
+                />
+             </div>
+
+             <div className="flex items-center gap-1.5 px-1.5 border-r border-slate-200">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="h-10 px-3 rounded-lg text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent hover:border-slate-200">
+                      <Filter className="w-4 h-4" />
+                      {lang === 'ar' ? 'تصفية' : 'Filter'}
+                      {(workerFilter !== 'all' || currencyFilter !== 'all' || dateFrom || dateTo) && (
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                      )}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="w-64 rounded-xl border-slate-200 shadow-xl">
+                    <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'فلترة حسب الموظف' : 'FILTER BY WORKER'}</DropdownMenuLabel>
+                    <ScrollArea className="h-40">
+                       <DropdownMenuItem onClick={() => setWorkerFilter('all')} className="flex items-center justify-between text-xs font-bold cursor-pointer">
+                          {lang === 'ar' ? 'جميع الموظفين' : 'All Personnel'}
+                          {workerFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                       </DropdownMenuItem>
+                       {allWorkers?.filter(w => w.status !== 'deleted').map(w => (
+                         <DropdownMenuItem key={w.id} onClick={() => setWorkerFilter(w.id)} className="flex items-center justify-between text-xs font-bold cursor-pointer">
+                            {w.fullName}
+                            {workerFilter === w.id && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                         </DropdownMenuItem>
+                       ))}
+                    </ScrollArea>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'العملة' : 'CURRENCY'}</DropdownMenuLabel>
+                    <DropdownMenuItem onClick={() => setCurrencyFilter('all')} className="flex items-center justify-between text-xs font-bold cursor-pointer">
+                       {lang === 'ar' ? 'الكل' : 'All Currencies'}
+                       {currencyFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setCurrencyFilter('YER')} className="flex items-center justify-between text-xs font-bold cursor-pointer">YER{currencyFilter === 'YER' && <Check className="w-3.5 h-3.5 text-emerald-600" />}</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setCurrencyFilter('SAR')} className="flex items-center justify-between text-xs font-bold cursor-pointer">SAR{currencyFilter === 'SAR' && <Check className="w-3.5 h-3.5 text-emerald-600" />}</DropdownMenuItem>
+                    
+                    <DropdownMenuSeparator />
+                    <button onClick={() => { setWorkerFilter('all'); setCurrencyFilter('all'); setDateFrom(''); setDateTo(''); }} className="w-full text-center py-2 text-[10px] font-black text-rose-500 hover:bg-rose-50 transition-colors uppercase">
+                       {lang === 'ar' ? 'إعادة ضبط الفلاتر' : 'Reset All Filters'}
+                    </button>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                <Button onClick={handleExportCSV} variant="ghost" className="h-10 px-3 rounded-lg text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent hover:border-slate-200">
+                  <FileDown className="w-4 h-4 text-emerald-600" />
+                  {lang === 'ar' ? 'تصدير' : 'Export'}
+                </Button>
+             </div>
           </div>
         </div>
       </div>
@@ -428,29 +524,29 @@ export default function PayrollManagementPage() {
       {/* MAIN CONTENT AREA */}
       <div className="flex-1 min-h-0 flex flex-col p-4 md:p-6 no-scrollbar">
         <Tabs value={activeTab} onValueChange={setActiveTab} dir={dir} className="w-full h-full flex flex-col">
-          <div className="flex flex-row-reverse items-center justify-between mb-4 bg-white p-2 rounded-xl border border-slate-200 shadow-sm">
+          <div className="flex items-center justify-between mb-4 bg-white p-2 rounded-xl border border-slate-200 shadow-sm">
+            <TabsList className="grid grid-cols-2 w-[360px] h-9">
+              <TabsTrigger value="balances" className="font-black text-xs">
+                <Users2 className="w-3.5 h-3.5 me-2" />
+                {lang === 'ar' ? 'الأرصدة المستحقة للعمال' : 'Outstanding Balances'}
+              </TabsTrigger>
+              <TabsTrigger value="vouchers" className="font-black text-xs">
+                <Receipt className="w-3.5 h-3.5 me-2" />
+                {lang === 'ar' ? 'أرشيف سندات الصرف' : 'Payment Archive'}
+              </TabsTrigger>
+            </TabsList>
+
             <div className="px-4 hidden md:flex items-center gap-4 text-[10px] font-bold text-slate-400">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                {lang === 'ar' ? 'إجمالي السندات:' : 'Total Vouchers:'} <span className="text-slate-900 tabular-nums">{(filteredPayments.length).toLocaleString('en-US')}</span>
+                {lang === 'ar' ? 'إجمالي الدفعات:' : 'Total Vouchers:'} <span className="text-slate-900 tabular-nums">{(filteredPayments.length).toLocaleString('en-US')}</span>
               </div>
               <div className="w-px h-3 bg-slate-200" />
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-rose-500" />
-                {lang === 'ar' ? 'كشوف نشطة:' : 'Active Ledgers:'} <span className="text-slate-900 tabular-nums">{(flattenedBalances.length).toLocaleString('en-US')}</span>
+                {lang === 'ar' ? 'حسابات نشطة:' : 'Active Accounts:'} <span className="text-slate-900 tabular-nums">{(flattenedBalances.length).toLocaleString('en-US')}</span>
               </div>
             </div>
-
-            <TabsList className="grid grid-cols-2 w-[360px] h-9">
-              <TabsTrigger value="balances" className="font-black text-xs">
-                <Users2 className="w-3.5 h-3.5 me-2" />
-                {lang === 'ar' ? 'الأرصدة المستحقة' : 'Outstanding'}
-              </TabsTrigger>
-              <TabsTrigger value="vouchers" className="font-black text-xs">
-                <Receipt className="w-3.5 h-3.5 me-2" />
-                {lang === 'ar' ? 'أرشيف الصرف' : 'Archive'}
-              </TabsTrigger>
-            </TabsList>
           </div>
 
           <TabsContent value="balances" className="flex-1 min-h-0 focus-visible:ring-0">
@@ -461,15 +557,13 @@ export default function PayrollManagementPage() {
                 </div>
              ) : (
                <div className="h-full flex flex-col space-y-4">
-                <div className="p-4 bg-emerald-50/50 border border-emerald-100 rounded-xl flex items-center justify-between">
-                   <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center text-white shadow-md"><Info className="w-5 h-5" /></div>
-                      <p className="text-xs font-bold text-emerald-800 leading-tight">
-                         {lang === 'ar' 
-                           ? 'تظهر الأرصدة هنا آلياً بناءً على "سندات استلام الإنتاج" التي تم ترحيلها ولم تُدفع بعد. بمجرد ترحيل سند صرف، يتم تسوية الرصيد.' 
-                           : 'Balances are generated from posted Production Receipts. Posting a payment clears the balance.'}
-                      </p>
-                   </div>
+                <div className="p-4 bg-emerald-50/50 border border-emerald-100 rounded-xl flex items-center gap-3">
+                   <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center text-white shadow-md shrink-0"><Info className="w-5 h-5" /></div>
+                   <p className="text-xs font-bold text-emerald-800 leading-tight">
+                      {lang === 'ar' 
+                        ? 'تظهر الأرصدة هنا آلياً بناءً على "سندات استلام الإنتاج" التي تم ترحيلها ولم تُدفع بعد. بمجرد ترحيل سند صرف، يتم تسوية الرصيد.' 
+                        : 'Balances are generated from posted Production Receipts. Posting a payment clears the balance.'}
+                   </p>
                 </div>
 
                 <div className="flex-1 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
@@ -490,7 +584,7 @@ export default function PayrollManagementPage() {
                             <TableRow key={`${w.id}-${w.displayCurrency}-${idx}`} className="hover:bg-slate-50/50 border-b border-slate-100 transition-colors group">
                               <TableCell className="px-6 py-3 text-right">
                                 <div className="flex items-center gap-3">
-                                  <Avatar className="h-10 w-10 border-2 border-white shadow-sm shrink-0 rounded-xl">
+                                  <Avatar className={cn("h-10 w-10 border-2 border-white shadow-sm shrink-0 rounded-xl", w.isSupervisor ? "border-emerald-200" : "border-slate-100")}>
                                     <AvatarImage src={w.photoUrl} className="object-cover" />
                                     <AvatarFallback className="bg-slate-100 text-slate-400 text-[10px] font-black uppercase">{w.fullName?.charAt(0)}</AvatarFallback>
                                   </Avatar>
@@ -545,10 +639,25 @@ export default function PayrollManagementPage() {
                    <Table className="text-right border-separate border-spacing-0">
                       <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
                          <TableRow>
-                           <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'رقم السند' : 'REF #'}</TableHead>
-                           <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'تاريخ الصرف' : 'DATE'}</TableHead>
+                           <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-right">
+                              <button onClick={() => toggleSort('voucherNumber')} className="flex items-center gap-2 hover:text-emerald-700 transition-colors uppercase">
+                                {lang === 'ar' ? 'رقم السند' : 'REF #'}
+                                {sortBy === 'voucherNumber' ? (sortOrder === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-30" />}
+                              </button>
+                           </TableHead>
+                           <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-right">
+                              <button onClick={() => toggleSort('date')} className="flex items-center gap-2 hover:text-emerald-700 transition-colors uppercase">
+                                {lang === 'ar' ? 'تاريخ الصرف' : 'DATE'}
+                                {sortBy === 'date' ? (sortOrder === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-30" />}
+                              </button>
+                           </TableHead>
                            <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'المستلم' : 'WORKER'}</TableHead>
-                           <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center">{lang === 'ar' ? 'المبلغ المصروف' : 'PAID AMOUNT'}</TableHead>
+                           <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center">
+                              <button onClick={() => toggleSort('totalAmount')} className="flex items-center justify-center gap-2 hover:text-emerald-700 transition-colors uppercase w-full">
+                                {lang === 'ar' ? 'المبلغ المصروف' : 'PAID AMOUNT'}
+                                {sortBy === 'totalAmount' ? (sortOrder === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-30" />}
+                              </button>
+                           </TableHead>
                            <TableHead className="w-24 px-6 py-4 text-center">{lang === 'ar' ? 'العمليات' : 'ACTIONS'}</TableHead>
                          </TableRow>
                       </TableHeader>
@@ -647,7 +756,7 @@ export default function PayrollManagementPage() {
               {formData.workerId && unpaidReceipts.length > 0 && (
                 <div className="space-y-3">
                   <h3 className="text-[9px] font-black text-emerald-700 uppercase tracking-widest flex items-center gap-2">
-                    <Receipt className="w-3 h-3" /> {lang === 'ar' ? `سندات الإنجاز المستحقة بالـ (${formData.currency})` : `UNPAID RECEIPTS IN (${formData.currency})`}
+                    <Receipt className="w-3 h-3" /> {lang === 'ar' ? `سندات الإنجاز المستحقة (اختر للسداد)` : `UNPAID RECEIPTS (SELECT TO PAY)`}
                   </h3>
                   <div className="border border-slate-100 rounded-xl overflow-hidden shadow-sm bg-white">
                      <Table className="text-right border-separate border-spacing-0">
@@ -664,9 +773,10 @@ export default function PayrollManagementPage() {
                             <TableRow 
                               key={r.id} 
                               className={cn(
-                                "bg-white border-b border-slate-50 transition-colors",
+                                "bg-white border-b border-slate-50 transition-colors cursor-pointer",
                                 formData.linkedReceipts.includes(r.id) ? "bg-emerald-50/40" : "hover:bg-slate-50/50"
                               )}
+                              onClick={(e) => toggleReceiptSelection(r.id, e as any)}
                             >
                               <TableCell className="px-4">
                                  <Checkbox 
@@ -675,6 +785,7 @@ export default function PayrollManagementPage() {
                                       const dummyEvent = { stopPropagation: () => {} } as unknown as React.MouseEvent;
                                       toggleReceiptSelection(r.id, dummyEvent);
                                    }} 
+                                   onClick={(e) => e.stopPropagation()}
                                  />
                               </TableCell>
                               <TableCell className="px-4 py-2 text-xs font-black text-slate-700 tabular-nums text-right">{r.voucherNumber}</TableCell>
@@ -701,7 +812,7 @@ export default function PayrollManagementPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
               <div className="md:col-span-2 space-y-1.5 text-right">
-                <Label className="text-[10px] font-black uppercase text-slate-400 block">{lang === 'ar' ? 'إجمالي المبلغ المصروف' : 'TOTAL DISBURSEMENT'}</Label>
+                <Label className="text-[10px] font-black uppercase text-slate-400 block">{lang === 'ar' ? 'المبلغ الإجمالي للصرف' : 'TOTAL DISBURSEMENT'}</Label>
                 <div className="relative">
                   <Input 
                     type="number" 
