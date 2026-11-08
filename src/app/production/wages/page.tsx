@@ -318,17 +318,7 @@ export default function PayrollManagementPage() {
       <div className="flex-1 min-h-0 flex flex-col p-4 md:p-6 no-scrollbar">
         <Tabs defaultValue="balances" className="w-full h-full flex flex-col" onValueChange={setActiveTab}>
           <div className="flex items-center justify-between mb-4 bg-white p-2 rounded-xl border border-slate-200 shadow-sm">
-            <TabsList className="grid grid-cols-2 w-[400px] h-10">
-              <TabsTrigger value="balances" className="font-black text-xs h-8">
-                <Users2 className="w-3.5 h-3.5 me-2" />
-                {lang === 'ar' ? 'الأرصدة المستحقة للعمال' : 'Outstanding Balances'}
-              </TabsTrigger>
-              <TabsTrigger value="vouchers" className="font-black text-xs h-8">
-                <Receipt className="w-3.5 h-3.5 me-2" />
-                {lang === 'ar' ? 'أرشيف سندات الصرف' : 'Payment Archive'}
-              </TabsTrigger>
-            </TabsList>
-            
+            {/* Swapped Stats Section to come first (Right side in RTL) */}
             <div className="px-4 hidden md:flex items-center gap-4 text-[10px] font-bold text-slate-400">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-emerald-500" />
@@ -340,6 +330,18 @@ export default function PayrollManagementPage() {
                 {lang === 'ar' ? 'حسابات نشطة:' : 'Active Accounts:'} <span className="text-slate-900 tabular-nums">{(workerBalances.length).toLocaleString('en-US')}</span>
               </div>
             </div>
+
+            {/* Swapped TabsList to come second (Left side in RTL) */}
+            <TabsList className="grid grid-cols-2 w-[400px] h-10">
+              <TabsTrigger value="balances" className="font-black text-xs h-8">
+                <Users2 className="w-3.5 h-3.5 me-2" />
+                {lang === 'ar' ? 'الأرصدة المستحقة للعمال' : 'Outstanding Balances'}
+              </TabsTrigger>
+              <TabsTrigger value="vouchers" className="font-black text-xs h-8">
+                <Receipt className="w-3.5 h-3.5 me-2" />
+                {lang === 'ar' ? 'أرشيف سندات الصرف' : 'Payment Archive'}
+              </TabsTrigger>
+            </TabsList>
           </div>
 
           <TabsContent value="balances" className="flex-1 min-h-0 focus-visible:ring-0">
