@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useCallback } from 'react';
@@ -76,6 +75,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -95,7 +100,7 @@ export default function PayrollManagementPage() {
   // Filtering & Sorting State
   const [sortBy, setSortBy] = useState<'date' | 'voucherNumber' | 'totalAmount'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [workerFilter, setWorkerFilter] = useState<string>('all');
+  const [activeTab, setActiveTab] = useState('balances');
 
   // Payment Form State
   const [formData, setFormData] = useState({
@@ -104,7 +109,7 @@ export default function PayrollManagementPage() {
     amount: 0,
     currency: 'YER',
     notes: '',
-    linkedReceipts: [] as string[] // IDs of production_receipt vouchers being paid
+    linkedReceipts: [] as string[]
   });
 
   // Fetch Data
@@ -116,26 +121,19 @@ export default function PayrollManagementPage() {
   const { data: allReceipts } = useCollection<any>(receiptsQuery);
   const { data: allPayments, loading: paymentsLoading } = useCollection<any>(paymentsQuery);
 
-  // LOGIC: Find receipts that are NOT already paid
+  // LOGIC: Filter unpaid receipts
   const unpaidReceipts = useMemo(() => {
     if (!formData.workerId || !allReceipts) return [];
-    
-    // Get all receipt IDs that have already been linked to a payment
     const paidReceiptIds = new Set<string>();
     allPayments?.forEach(p => {
       p.linkedReceipts?.forEach((id: string) => paidReceiptIds.add(id));
     });
-
-    return allReceipts.filter(r => 
-      r.workerId === formData.workerId && 
-      !paidReceiptIds.has(r.id)
-    );
+    return allReceipts.filter(r => r.workerId === formData.workerId && !paidReceiptIds.has(r.id));
   }, [formData.workerId, allReceipts, allPayments]);
 
-  // Calculate worker balances based on individual unpaid receipts
+  // LOGIC: Calculate net balances per worker
   const workerBalances = useMemo(() => {
     if (!allWorkers || !allReceipts) return [];
-    
     const paidReceiptIds = new Set<string>();
     allPayments?.forEach(p => {
       p.linkedReceipts?.forEach((id: string) => paidReceiptIds.add(id));
@@ -143,63 +141,33 @@ export default function PayrollManagementPage() {
 
     return allWorkers.filter(w => w.status !== 'deleted').map(worker => {
       const myUnpaid = allReceipts.filter(r => r.workerId === worker.id && !paidReceiptIds.has(r.id));
-      
-      // Group by currency for display
       const balanceByCurrency: Record<string, number> = {};
       myUnpaid.forEach(r => {
         const curr = r.currency || 'YER';
         balanceByCurrency[curr] = (balanceByCurrency[curr] || 0) + (r.wageAmount || 0);
       });
-
-      return {
-        ...worker,
-        balances: balanceByCurrency,
-        hasBalance: Object.keys(balanceByCurrency).length > 0
-      };
+      return { ...worker, balances: balanceByCurrency, hasBalance: Object.keys(balanceByCurrency).length > 0 };
     }).filter(w => w.hasBalance);
   }, [allWorkers, allReceipts, allPayments]);
 
   const toggleReceiptSelection = (receiptId: string) => {
     const isSelected = formData.linkedReceipts.includes(receiptId);
-    let newSelection = [];
-    if (isSelected) {
-      newSelection = formData.linkedReceipts.filter(id => id !== receiptId);
-    } else {
-      newSelection = [...formData.linkedReceipts, receiptId];
-    }
-
-    // Auto-update amount and currency based on selection
+    let newSelection = isSelected ? formData.linkedReceipts.filter(id => id !== receiptId) : [...formData.linkedReceipts, receiptId];
     const selectedVouchers = allReceipts?.filter(r => newSelection.includes(r.id)) || [];
     const total = selectedVouchers.reduce((sum, v) => sum + (v.wageAmount || 0), 0);
     const primaryCurrency = selectedVouchers[0]?.currency || 'YER';
-
-    setFormData({
-      ...formData,
-      linkedReceipts: newSelection,
-      amount: total,
-      currency: primaryCurrency
-    });
+    setFormData({ ...formData, linkedReceipts: newSelection, amount: total, currency: primaryCurrency });
   };
 
   const handleSavePayment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!db || isSubmitting || !formData.workerId || formData.amount <= 0 || formData.linkedReceipts.length === 0) {
-       toast({ variant: "destructive", title: lang === 'ar' ? "بيانات ناقصة" : "Missing Data", description: lang === 'ar' ? "يجب اختيار سند استحقاق واحد على الأقل" : "Select at least one entitlement voucher" });
+       toast({ variant: "destructive", title: lang === 'ar' ? "بيانات ناقصة" : "Missing Data" });
        return;
     }
-
     setIsSubmitting(true);
     const voucherNumber = `PAY-${Date.now().toString().slice(-6)}`;
-    const paymentData = {
-      ...formData,
-      voucherNumber,
-      type: 'wage_payment',
-      totalAmount: Number(formData.amount),
-      status: 'posted',
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    };
-
+    const paymentData = { ...formData, voucherNumber, type: 'wage_payment', totalAmount: Number(formData.amount), status: 'posted', createdAt: serverTimestamp(), updatedAt: serverTimestamp() };
     try {
       await addDoc(collection(db, 'vouchers'), paymentData);
       toast({ title: lang === 'ar' ? "تم تسجيل سند الصرف بنجاح" : "Payment Voucher Recorded" });
@@ -217,28 +185,20 @@ export default function PayrollManagementPage() {
   const filteredPayments = useMemo(() => {
     if (!allPayments) return [];
     let result = allPayments.filter(p => p.status !== 'deleted');
-    
     if (search) {
       const s = search.toLowerCase();
       result = result.filter(p => {
         const worker = allWorkers?.find(w => w.id === p.workerId);
-        return p.voucherNumber?.toLowerCase().includes(s) || 
-               worker?.fullName?.toLowerCase().includes(s);
+        return p.voucherNumber?.toLowerCase().includes(s) || worker?.fullName?.toLowerCase().includes(s);
       });
     }
-
-    if (workerFilter !== 'all') {
-      result = result.filter(p => p.workerId === workerFilter);
-    }
-
     return result.sort((a, b) => {
       let valA = a[sortBy] ?? '';
       let valB = b[sortBy] ?? '';
       if (sortBy === 'date') return sortOrder === 'asc' ? new Date(valA).getTime() - new Date(valB).getTime() : new Date(valB).getTime() - new Date(valA).getTime();
-      if (sortBy === 'totalAmount') return sortOrder === 'asc' ? Number(valA) - Number(valB) : Number(valB) - Number(valA);
-      return sortOrder === 'asc' ? String(valA).localeCompare(String(valB)) : String(valB).localeCompare(String(valA));
+      return sortOrder === 'asc' ? Number(valA) - Number(valB) : Number(valB) - Number(valA);
     });
-  }, [allPayments, allWorkers, search, workerFilter, sortBy, sortOrder]);
+  }, [allPayments, allWorkers, search, sortBy, sortOrder]);
 
   const handleDownloadImage = async () => {
     const element = document.getElementById('printable-payment');
@@ -292,100 +252,131 @@ export default function PayrollManagementPage() {
               className={`${dir === 'rtl' ? 'pr-10' : 'pl-10'} h-9 bg-white border-slate-200 text-xs font-bold tabular-nums`} 
             />
           </div>
-          <div className="flex items-center gap-1.5 px-1.5">
+          <div className="flex items-center gap-1.5 px-1.5 border-l border-slate-200">
              <Button variant="ghost" className="h-9 px-3 rounded-lg text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent hover:border-slate-200"><FileDown className="w-4 h-4 text-emerald-600" /> {lang === 'ar' ? 'تصدير' : 'Export'}</Button>
-             <DropdownMenu>
-                <DropdownMenuTrigger asChild><Button variant="ghost" className="h-9 px-3 rounded-lg text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent hover:border-slate-200"><Filter className="w-4 h-4" /> {lang === 'ar' ? 'تصفية' : 'Filter'}</Button></DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-64 rounded-xl shadow-xl">
-                   <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">ترتيب حسب</DropdownMenuLabel>
-                   <DropdownMenuItem onClick={() => setSortBy('date')} className="flex items-center justify-between text-xs font-bold cursor-pointer">التاريخ {sortBy === 'date' && <Check className="w-3 h-3 text-emerald-600" />}</DropdownMenuItem>
-                   <DropdownMenuItem onClick={() => setSortBy('totalAmount')} className="flex items-center justify-between text-xs font-bold cursor-pointer">المبلغ {sortBy === 'totalAmount' && <Check className="w-3 h-3 text-emerald-600" />}</DropdownMenuItem>
-                </DropdownMenuContent>
-             </DropdownMenu>
           </div>
         </div>
       </div>
 
-      {/* MAIN CONTENT AREA */}
-      <div className="flex-1 min-h-0 overflow-auto p-4 md:p-6 no-scrollbar">
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-          
-          {/* LEFT: WORKER BALANCES (ACCRUALS) */}
-          <div className="xl:col-span-4 space-y-4">
-             <div className="flex items-center justify-between px-2">
-                <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-widest flex items-center gap-2"><Users2 className="w-4 h-4 text-emerald-600" /> {lang === 'ar' ? 'أرصدة مستحقة للعمال' : 'OUTSTANDING BALANCES'}</h3>
-             </div>
-             <div className="space-y-2">
+      {/* MAIN CONTENT AREA - SWITCHABLE TABS */}
+      <div className="flex-1 min-h-0 flex flex-col p-4 md:p-6 no-scrollbar">
+        <Tabs defaultValue="balances" className="w-full h-full flex flex-col" onValueChange={setActiveTab}>
+          <div className="flex items-center justify-between mb-4 bg-white p-2 rounded-xl border border-slate-200 shadow-sm">
+            <TabsList className="grid grid-cols-2 w-[400px] h-10">
+              <TabsTrigger value="balances" className="font-black text-xs h-8">
+                <Users2 className="w-3.5 h-3.5 me-2" />
+                {lang === 'ar' ? 'الأرصدة المستحقة للعمال' : 'Outstanding Balances'}
+              </TabsTrigger>
+              <TabsTrigger value="vouchers" className="font-black text-xs h-8">
+                <Receipt className="w-3.5 h-3.5 me-2" />
+                {lang === 'ar' ? 'أرشيف سندات الصرف' : 'Payment Archive'}
+              </TabsTrigger>
+            </TabsList>
+            
+            <div className="px-4 hidden md:flex items-center gap-4 text-[10px] font-bold text-slate-400">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                {lang === 'ar' ? 'إجمالي الدفعات:' : 'Total Payments:'} <span className="text-slate-900 tabular-nums">{(allPayments?.length || 0).toLocaleString('en-US')}</span>
+              </div>
+              <div className="w-px h-3 bg-slate-200" />
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-rose-500" />
+                {lang === 'ar' ? 'حسابات نشطة:' : 'Active Accounts:'} <span className="text-slate-900 tabular-nums">{(workerBalances.length).toLocaleString('en-US')}</span>
+              </div>
+            </div>
+          </div>
+
+          <TabsContent value="balances" className="flex-1 min-h-0 focus-visible:ring-0">
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 overflow-y-auto h-full pr-2 no-scrollbar">
                 {workerBalances.map(w => (
-                  <div key={w.id} className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm hover:border-emerald-200 transition-all group">
-                     <div className="flex items-center gap-3">
-                        <Avatar className="h-10 w-10 border border-slate-100">
+                  <div key={w.id} className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm hover:border-emerald-500 hover:shadow-lg transition-all duration-300 group relative overflow-hidden">
+                     <div className="absolute top-0 right-0 w-20 h-20 bg-emerald-50/50 rounded-full -mr-10 -mt-10 group-hover:scale-150 transition-transform duration-500" />
+                     <div className="relative z-10 flex items-center gap-4 mb-4">
+                        <Avatar className="h-12 w-12 border-2 border-white shadow-md">
                            <AvatarImage src={w.photoUrl} className="object-cover" />
-                           <AvatarFallback className="bg-slate-50 text-slate-400 text-[10px] font-black">{w.fullName?.charAt(0)}</AvatarFallback>
+                           <AvatarFallback className="bg-slate-50 text-slate-400 text-xs font-black">{w.fullName?.charAt(0)}</AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
-                           <p className="text-xs font-black text-slate-800 truncate">{w.fullName}</p>
-                           <p className="text-[10px] font-bold text-slate-400 tabular-nums uppercase">{w.workerId}</p>
+                           <p className="text-sm font-black text-slate-900 truncate">{w.fullName}</p>
+                           <p className="text-[10px] font-bold text-slate-400 tabular-nums uppercase tracking-widest">{w.workerId}</p>
                         </div>
-                        <div className="text-right space-y-1">
+                     </div>
+                     <div className="relative z-10 space-y-2">
+                        <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 uppercase border-b border-slate-50 pb-1">
+                           <span>{lang === 'ar' ? 'الرصيد المستحق' : 'Balance Due'}</span>
+                           <TrendingUp className="w-3 h-3 text-rose-400" />
+                        </div>
+                        <div className="flex flex-wrap gap-2">
                            {Object.entries(w.balances).map(([curr, amt]) => (
-                             <div key={curr} className="flex flex-col items-end leading-none">
-                                <span className="text-xs font-black text-rose-600 tabular-nums">{(amt as number).toLocaleString('en-US')}</span>
-                                <span className="text-[7px] font-black text-slate-400 uppercase">{curr}</span>
+                             <div key={curr} className="flex items-baseline gap-1 bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-100">
+                                <span className="text-sm font-black text-rose-600 tabular-nums">{(amt as number).toLocaleString('en-US')}</span>
+                                <span className="text-[8px] font-black text-rose-400 uppercase">{curr}</span>
                              </div>
                            ))}
                         </div>
                      </div>
+                     <div className="mt-4 pt-4 border-t border-slate-50 relative z-10">
+                        <Button 
+                          onClick={() => { setFormData({...formData, workerId: w.id}); setIsPayDialogOpen(true); }}
+                          variant="ghost" 
+                          className="w-full h-9 rounded-xl text-[10px] font-black uppercase text-emerald-600 bg-emerald-50 hover:bg-emerald-600 hover:text-white transition-all gap-2"
+                        >
+                          <Wallet className="w-3.5 h-3.5" />
+                          {lang === 'ar' ? 'صرف المستحقات الآن' : 'Settle Now'}
+                        </Button>
+                     </div>
                   </div>
                 ))}
                 {workerBalances.length === 0 && (
-                   <div className="text-center py-10 opacity-50"><p className="text-[10px] font-bold">لا يوجد مستحقات حالية</p></div>
+                   <div className="col-span-full flex flex-col items-center justify-center py-32 bg-white rounded-3xl border border-dashed border-slate-200">
+                      <div className="p-5 bg-emerald-50 rounded-full mb-4"><CheckCircle2 className="w-10 h-10 text-emerald-300" /></div>
+                      <p className="text-sm font-black text-slate-400 uppercase tracking-widest">{lang === 'ar' ? 'لا توجد مستحقات معلقة حالياً' : 'All accounts are cleared'}</p>
+                   </div>
                 )}
              </div>
-          </div>
-
-          {/* RIGHT: PAYMENT LOG */}
-          <div className="xl:col-span-8">
-             <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                <div className="bg-slate-50 px-6 py-3 border-b border-slate-200">
-                   <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{lang === 'ar' ? 'أحدث سندات الصرف' : 'RECENT DISBURSEMENTS'}</h3>
+          </TabsContent>
+          
+          <TabsContent value="vouchers" className="flex-1 min-h-0 focus-visible:ring-0">
+             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden h-full flex flex-col">
+                <div className="flex-1 overflow-y-auto no-scrollbar">
+                   <Table className="text-right border-separate border-spacing-0">
+                      <TableHeader className="bg-slate-50 sticky top-0 z-10">
+                         <TableRow>
+                           <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase">{lang === 'ar' ? 'رقم السند' : 'REF #'}</TableHead>
+                           <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase">{lang === 'ar' ? 'التاريخ' : 'DATE'}</TableHead>
+                           <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase">{lang === 'ar' ? 'الموظف' : 'WORKER'}</TableHead>
+                           <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center">{lang === 'ar' ? 'المبلغ المصروف' : 'AMOUNT PAID'}</TableHead>
+                           <TableHead className="w-20"></TableHead>
+                         </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                         {paymentsLoading ? (
+                           <TableRow><TableCell colSpan={5} className="text-center py-20 font-bold text-slate-300 animate-pulse">جاري سحب الأرشيف...</TableCell></TableRow>
+                         ) : filteredPayments.length === 0 ? (
+                            <TableRow><TableCell colSpan={5} className="text-center py-32 text-slate-300 font-black uppercase">{lang === 'ar' ? 'الأرشيف فارغ' : 'Archive is empty'}</TableCell></TableRow>
+                         ) : filteredPayments.map(p => (
+                           <TableRow key={p.id} className="hover:bg-slate-50/50 border-b border-slate-100 transition-colors group">
+                              <TableCell className="px-6 py-3 font-black text-slate-900 text-xs tabular-nums">{p.voucherNumber}</TableCell>
+                              <TableCell className="px-6 py-3 font-bold text-slate-500 text-xs tabular-nums">{p.date}</TableCell>
+                              <TableCell className="px-6 py-3 font-bold text-slate-700 text-xs">{allWorkers?.find(w => w.id === p.workerId)?.fullName || '---'}</TableCell>
+                              <TableCell className="px-6 py-3 text-center">
+                                 <Badge variant="outline" className="bg-emerald-50 text-emerald-700 tabular-nums font-black border-emerald-100">
+                                   {p.totalAmount?.toLocaleString('en-US')} {p.currency}
+                                 </Badge>
+                              </TableCell>
+                              <TableCell className="px-6 py-3">
+                                 <Button variant="ghost" size="icon" onClick={() => setPrintingVoucher(p)} className="h-8 w-8 text-slate-400 hover:text-emerald-600 transition-colors">
+                                    <Eye className="w-4 h-4" />
+                                 </Button>
+                              </TableCell>
+                           </TableRow>
+                         ))}
+                      </TableBody>
+                   </Table>
                 </div>
-                <Table className="text-right border-separate border-spacing-0">
-                   <TableHeader className="bg-white">
-                      <TableRow>
-                        <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase">{lang === 'ar' ? 'رقم السند' : 'REF #'}</TableHead>
-                        <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase">{lang === 'ar' ? 'التاريخ' : 'DATE'}</TableHead>
-                        <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase">{lang === 'ar' ? 'الموظف' : 'WORKER'}</TableHead>
-                        <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center">{lang === 'ar' ? 'المبلغ' : 'PAID'}</TableHead>
-                        <TableHead className="w-20"></TableHead>
-                      </TableRow>
-                   </TableHeader>
-                   <TableBody>
-                      {paymentsLoading ? (
-                        <TableRow><TableCell colSpan={5} className="text-center py-20 font-bold text-slate-300 animate-pulse">جاري التحميل...</TableCell></TableRow>
-                      ) : filteredPayments.map(p => (
-                        <TableRow key={p.id} className="hover:bg-slate-50/50 border-b border-slate-100 transition-colors group">
-                           <TableCell className="px-6 py-3 font-black text-slate-900 text-xs tabular-nums">{p.voucherNumber}</TableCell>
-                           <TableCell className="px-6 py-3 font-bold text-slate-500 text-xs tabular-nums">{p.date}</TableCell>
-                           <TableCell className="px-6 py-3 font-bold text-slate-700 text-xs">{allWorkers?.find(w => w.id === p.workerId)?.fullName || '---'}</TableCell>
-                           <TableCell className="px-6 py-3 text-center">
-                              <Badge variant="outline" className="bg-emerald-50 text-emerald-700 tabular-nums font-black border-emerald-100">
-                                {p.totalAmount?.toLocaleString('en-US')} {p.currency}
-                              </Badge>
-                           </TableCell>
-                           <TableCell className="px-6 py-3">
-                              <Button variant="ghost" size="icon" onClick={() => setPrintingVoucher(p)} className="h-8 w-8 text-slate-400 hover:text-emerald-600 transition-colors">
-                                 <Eye className="w-4 h-4" />
-                              </Button>
-                           </TableCell>
-                        </TableRow>
-                      ))}
-                   </TableBody>
-                </Table>
              </div>
-          </div>
-
-        </div>
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* NEW PAYMENT DIALOG */}
