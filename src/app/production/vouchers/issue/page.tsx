@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
@@ -31,7 +30,8 @@ import {
   X,
   MoreVertical,
   History,
-  ArrowRight
+  ArrowRight,
+  Download
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -76,6 +76,7 @@ import {
 import { useSearchParams } from 'next/navigation';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { toPng } from 'html-to-image';
 
 export default function MaterialIssuePage() {
   const { lang, dir } = useTranslation();
@@ -88,6 +89,7 @@ export default function MaterialIssuePage() {
   const [deletingVoucher, setDeletingVoucher] = useState<any | null>(null);
   const [printingVoucher, setPrintingVoucher] = useState<any | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [showWorkerDropdown, setShowWorkerDropdown] = useState(false);
   const [search, setSearch] = useState('');
   const workerDropdownRef = useRef<HTMLDivElement>(null);
@@ -335,8 +337,28 @@ export default function MaterialIssuePage() {
     setFormData({ date: new Date().toISOString().split('T')[0], orderId: '', workerId: '', notes: '', items: [] });
   };
 
-  const handlePrint = () => {
-    window.print();
+  const handleDownloadImage = async () => {
+    const element = document.getElementById('printable-voucher');
+    if (!element || !printingVoucher) return;
+    
+    setIsDownloading(true);
+    try {
+      const dataUrl = await toPng(element, { 
+        quality: 1, 
+        backgroundColor: '#ffffff',
+        pixelRatio: 2 // High quality
+      });
+      const link = document.createElement('a');
+      link.download = `MaterialIssue-${printingVoucher.voucherNumber}.png`;
+      link.href = dataUrl;
+      link.click();
+      toast({ title: lang === 'ar' ? "تم تحميل السند كصورة" : "Voucher downloaded as image" });
+    } catch (err) {
+      console.error('Download error:', err);
+      toast({ variant: "destructive", title: lang === 'ar' ? "فشل التحميل" : "Download Failed" });
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   return (
@@ -695,7 +717,7 @@ export default function MaterialIssuePage() {
         </DialogContent>
       </Dialog>
 
-      {/* PRINT PREVIEW DIALOG */}
+      {/* PRINT/IMAGE PREVIEW DIALOG */}
       <Dialog open={!!printingVoucher} onOpenChange={(open) => !open && setPrintingVoucher(null)}>
         <DialogContent className="sm:max-w-[700px] p-0 overflow-hidden border-none bg-white">
           <DialogHeader className="sr-only">
@@ -705,16 +727,22 @@ export default function MaterialIssuePage() {
           </DialogHeader>
           
           <ScrollArea className="max-h-[75vh]">
-            <div className="p-10 print:p-0 bg-white" id="printable-voucher">
+            <div className="p-10 bg-white relative z-0" id="printable-voucher">
               {printingVoucher && (
-                <div className="flex flex-col h-full text-slate-900 font-sans" dir="rtl">
+                <div className="flex flex-col h-full text-slate-900 font-sans relative overflow-hidden" dir="rtl">
+                  
+                  {/* WATERMARK LOGO */}
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 opacity-[0.04] pointer-events-none -z-10 select-none">
+                    <img src="/images/logo.png" alt="watermark" className="w-full h-full object-contain grayscale" />
+                  </div>
+
                   {/* PROFESSIONAL BILINGUAL HEADER */}
-                  <div className="grid grid-cols-3 items-center border-b-4 border-emerald-800 pb-6 mb-6">
-                    {/* ARABIC SIDE */}
-                    <div className="text-center space-y-0.5">
-                      <h2 className="text-base font-black text-emerald-900">جمعية الصناعات النسيجية</h2>
-                      <p className="text-xs font-bold text-slate-500">الروضة - محافظة شبوة - اليمن</p>
-                      <p className="text-[10px] font-bold text-slate-400 tabular-nums">0777 263 091 | nseeg202020@gmail.com</p>
+                  <div className="grid grid-cols-3 items-center border-b-4 border-emerald-800 pb-6 mb-6 relative z-10">
+                    {/* ENGLISH SIDE (NOW ON RIGHT AS PER PREVIOUS REQ) */}
+                    <div className="text-center space-y-0.5" dir="ltr">
+                      <h2 className="text-[11px] font-black text-emerald-900 uppercase">Textile Industries Association</h2>
+                      <p className="text-[10px] font-bold text-slate-500">Al-Rawdah - Shabwa - Yemen</p>
+                      <p className="text-[9px] font-bold text-slate-400 tabular-nums">0777 263 091 | nseeg202020@gmail.com</p>
                     </div>
 
                     {/* CENTER LOGO */}
@@ -724,17 +752,17 @@ export default function MaterialIssuePage() {
                       </div>
                     </div>
 
-                    {/* ENGLISH SIDE */}
-                    <div className="text-center space-y-0.5" dir="ltr">
-                      <h2 className="text-[11px] font-black text-emerald-900 uppercase">Textile Industries Association</h2>
-                      <p className="text-[10px] font-bold text-slate-500">Al-Rawdah - Shabwa - Yemen</p>
-                      <p className="text-[9px] font-bold text-slate-400 tabular-nums">0777 263 091 | nseeg202020@gmail.com</p>
+                    {/* ARABIC SIDE (NOW ON LEFT AS PER PREVIOUS REQ) */}
+                    <div className="text-center space-y-0.5">
+                      <h2 className="text-base font-black text-emerald-900">جمعية الصناعات النسيجية</h2>
+                      <p className="text-xs font-bold text-slate-500">الروضة - محافظة شبوة - اليمن</p>
+                      <p className="text-[10px] font-bold text-slate-400 tabular-nums">0777 263 091 | nseeg202020@gmail.com</p>
                     </div>
                   </div>
 
                   {/* VOUCHER TITLE BAR */}
-                  <div className="text-center mb-6">
-                    <div className="inline-block border-2 border-emerald-800 px-8 py-1 rounded-full">
+                  <div className="text-center mb-6 relative z-10">
+                    <div className="inline-block border-2 border-emerald-800 px-8 py-1 rounded-full bg-white shadow-sm">
                       <h3 className="text-lg font-black text-emerald-900 uppercase tracking-widest">
                         {lang === 'ar' ? 'سند صرف مواد خام' : 'Material Issue Voucher'}
                       </h3>
@@ -742,7 +770,7 @@ export default function MaterialIssuePage() {
                   </div>
 
                   {/* DATA GRID - 3 COLUMNS */}
-                  <div className="grid grid-cols-3 gap-x-6 gap-y-4 mb-6 bg-slate-50/50 p-4 rounded-xl border border-slate-100">
+                  <div className="grid grid-cols-3 gap-x-6 gap-y-4 mb-6 bg-slate-50/70 p-4 rounded-xl border border-slate-100 relative z-10">
                     <div className="space-y-3">
                       <div className="flex justify-between items-center border-b border-slate-200 pb-1">
                         <span className="text-[9px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'اسم المستلم' : 'Recipient'}</span>
@@ -780,7 +808,7 @@ export default function MaterialIssuePage() {
                   </div>
 
                   {/* ITEMS TABLE */}
-                  <div className="mb-8">
+                  <div className="mb-8 relative z-10">
                     <Table className="text-right border-2 border-emerald-900/10">
                       <TableHeader className="bg-emerald-900/5">
                         <TableRow>
@@ -791,7 +819,7 @@ export default function MaterialIssuePage() {
                       </TableHeader>
                       <TableBody>
                         {printingVoucher.items.map((item: any, i: number) => (
-                          <TableRow key={i} className="border-b border-slate-100">
+                          <TableRow key={i} className="border-b border-slate-100 bg-white/40">
                             <TableCell className="font-bold text-sm py-3 text-slate-800">{item.nameAr}</TableCell>
                             <TableCell className="text-center font-black text-sm tabular-nums py-3 text-emerald-700">{item.qty}</TableCell>
                             <TableCell className="text-center text-xs font-bold text-slate-500 uppercase py-3">{item.unit}</TableCell>
@@ -802,7 +830,7 @@ export default function MaterialIssuePage() {
                   </div>
 
                   {/* SIGNATURES SECTION - COMPACT AND ATTACHED */}
-                  <div className="grid grid-cols-3 gap-4 pt-6 border-t border-slate-200 text-center">
+                  <div className="grid grid-cols-3 gap-4 pt-6 border-t border-slate-200 text-center relative z-10">
                     <div className="space-y-8">
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{lang === 'ar' ? 'أمين المستودع' : 'Store Keeper'}</p>
                       <div className="h-px bg-slate-300 w-3/4 mx-auto" />
@@ -821,7 +849,7 @@ export default function MaterialIssuePage() {
                   </div>
 
                   {/* PRINT FOOTER */}
-                  <div className="mt-12 text-center text-[7px] font-black text-slate-300 uppercase tracking-[0.4em]">
+                  <div className="mt-12 text-center text-[7px] font-black text-slate-300 uppercase tracking-[0.4em] relative z-10">
                     Generated by TIA Production System - {new Date().toLocaleString()}
                   </div>
                 </div>
@@ -830,11 +858,23 @@ export default function MaterialIssuePage() {
           </ScrollArea>
 
           <DialogFooter className="p-6 bg-slate-50 border-t border-slate-100 print:hidden">
-            <Button onClick={handlePrint} className="premium-gradient font-black gap-2 h-12 px-8 rounded-xl shadow-lg">
-              <Printer className="w-5 h-5" />
-              {lang === 'ar' ? 'تأكيد الطباعة الآن' : 'Print Invoice Now'}
+            <Button 
+              onClick={handleDownloadImage} 
+              disabled={isDownloading}
+              className="premium-gradient font-black gap-2 h-12 px-8 rounded-xl shadow-lg"
+            >
+              {isDownloading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
+              {lang === 'ar' ? 'تحميل السند كصورة' : 'Download as Image'}
             </Button>
-            <Button variant="outline" onClick={() => setPrintingVoucher(null)} className="font-black h-12 px-6 rounded-xl border-slate-200">
+            <Button 
+              variant="outline" 
+              onClick={() => window.print()} 
+              className="font-black h-12 px-6 rounded-xl border-slate-200"
+            >
+              <Printer className="w-4 h-4 me-2" />
+              {lang === 'ar' ? 'طباعة مباشرة' : 'Direct Print'}
+            </Button>
+            <Button variant="ghost" onClick={() => setPrintingVoucher(null)} className="font-black h-12 px-6 rounded-xl">
               {lang === 'ar' ? 'إغلاق' : 'Close'}
             </Button>
           </DialogFooter>
@@ -892,6 +932,8 @@ export default function MaterialIssuePage() {
             width: 100%;
             padding: 0;
             margin: 0;
+            box-shadow: none;
+            border: none;
           }
           .print\:hidden {
             display: none !important;
