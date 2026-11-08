@@ -37,7 +37,8 @@ import {
   Loader2,
   Image as ImageIcon,
   ArrowUp01,
-  ArrowDown10
+  ArrowDown10,
+  Coins
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -111,6 +112,7 @@ export default function MaterialsPage() {
     currentQty: 0,
     minQty: 0,
     price: 0,
+    currency: 'YER',
     photoUrl: '',
     status: 'active'
   });
@@ -145,6 +147,12 @@ export default function MaterialsPage() {
     { value: 'box', labelAr: 'صندوق (Box)', labelEn: 'Box' },
     { value: 'carton', labelAr: 'كرتون (Ctn)', labelEn: 'Carton' },
     { value: 'gram', labelAr: 'جرام (G)', labelEn: 'Gram' },
+  ];
+
+  const currencies = [
+    { value: 'YER', labelAr: 'ريال يمني', labelEn: 'YER' },
+    { value: 'SAR', labelAr: 'ريال سعودي', labelEn: 'SAR' },
+    { value: 'USD', labelAr: 'دولار أمريكي', labelEn: 'USD' },
   ];
 
   const filtered = useMemo(() => {
@@ -202,6 +210,7 @@ export default function MaterialsPage() {
       currentQty: 0, 
       minQty: 0, 
       price: 0,
+      currency: 'YER',
       photoUrl: '',
       status: 'active' 
     });
@@ -259,6 +268,7 @@ export default function MaterialsPage() {
       currentQty: Number(formData.currentQty),
       minQty: Number(formData.minQty),
       price: Number(formData.price),
+      currency: formData.currency || 'YER',
       updatedAt: serverTimestamp(),
     };
 
@@ -302,6 +312,7 @@ export default function MaterialsPage() {
       currentQty: mat.currentQty || 0,
       minQty: mat.minQty || 0,
       price: mat.price || 0,
+      currency: mat.currency || 'YER',
       photoUrl: mat.photoUrl || '',
       status: mat.status || 'active'
     });
@@ -317,7 +328,8 @@ export default function MaterialsPage() {
       'Unit',
       'Qty',
       'Min Level',
-      'Price'
+      'Price',
+      'Currency'
     ];
 
     const escapeCSV = (val: any) => {
@@ -338,7 +350,8 @@ export default function MaterialsPage() {
         escapeCSV(m.unit),
         m.currentQty || 0,
         m.minQty || 0,
-        m.price || 0
+        m.price || 0,
+        m.currency || 'YER'
       ];
     });
 
@@ -553,9 +566,12 @@ export default function MaterialsPage() {
                         </div>
                       </TableCell>
                       <TableCell className="px-6 py-3 text-center">
-                        <div className="inline-flex items-center gap-1 text-xs font-black text-emerald-700 tabular-nums">
-                          <Wallet className="w-3 h-3 opacity-30" />
-                          {(mat.price || 0).toLocaleString('en-US')}
+                        <div className="inline-flex flex-col items-center gap-0.5">
+                          <div className="flex items-center gap-1 text-xs font-black text-emerald-700 tabular-nums">
+                            <Wallet className="w-3 h-3 opacity-30" />
+                            {(mat.price || 0).toLocaleString('en-US')}
+                          </div>
+                          <span className="text-[8px] font-bold text-slate-400 uppercase leading-none">{mat.currency || 'YER'}</span>
                         </div>
                       </TableCell>
                       <TableCell className="px-6 py-3 text-center">
@@ -651,20 +667,29 @@ export default function MaterialsPage() {
               <Input value={formData.nameAr} onChange={(e) => setFormData({...formData, nameAr: e.target.value})} className="h-10 font-bold text-xs bg-slate-50" required />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
                   <Scale className="w-3 h-3 text-emerald-600" />
-                  {lang === 'ar' ? 'وحدة القياس' : 'UNIT'}
+                  {lang === 'ar' ? 'الوحدة' : 'UNIT'}
                 </Label>
-                <select value={formData.unit} onChange={(e) => setFormData({...formData, unit: e.target.value})} className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none">
+                <select value={formData.unit} onChange={(e) => setFormData({...formData, unit: e.target.value})} className="w-full h-10 px-2 bg-slate-50 border border-slate-200 rounded-md text-[10px] font-bold outline-none">
                   {units.map(u => <option key={u.value} value={u.value}>{lang === 'ar' ? u.labelAr : u.labelEn}</option>)}
                 </select>
               </div>
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
+                  <Coins className="w-3 h-3 text-emerald-600" />
+                  {lang === 'ar' ? 'العملة' : 'CURR.'}
+                </Label>
+                <select value={formData.currency} onChange={(e) => setFormData({...formData, currency: e.target.value})} className="w-full h-10 px-2 bg-slate-50 border border-slate-200 rounded-md text-[10px] font-bold outline-none">
+                  {currencies.map(c => <option key={c.value} value={c.value}>{lang === 'ar' ? c.labelAr : c.labelEn}</option>)}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
                   <Wallet className="w-3 h-3 text-emerald-600" />
-                  {lang === 'ar' ? 'سعر الوحدة' : 'UNIT PRICE'}
+                  {lang === 'ar' ? 'سعر الوحدة' : 'PRICE'}
                 </Label>
                 <Input type="number" value={formData.price} onChange={(e) => setFormData({...formData, price: Number(e.target.value)})} className="h-10 font-bold text-xs bg-slate-50 tabular-nums" />
               </div>
