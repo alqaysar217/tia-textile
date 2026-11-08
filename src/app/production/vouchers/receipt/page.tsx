@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
@@ -145,7 +144,7 @@ export default function ProductionReceiptPage() {
   const relevantWorkers = useMemo(() => {
     if (!formData.orderId || !allWorkers || !allMIVs) return [];
     const workerIdsWithOpenIssues = allMIVs
-      .filter(m => m.orderId === formData.orderId && m.status === 'posted')
+      .filter(m => m.orderId === formData.orderId && (m.status === 'posted' || m.status === 'settled'))
       .map(m => m.workerId);
     return allWorkers.filter(w => workerIdsWithOpenIssues.includes(w.id));
   }, [formData.orderId, allWorkers, allMIVs]);
@@ -209,6 +208,35 @@ export default function ProductionReceiptPage() {
       return sortOrder === 'asc' ? String(a[sortBy]).localeCompare(String(b[sortBy])) : String(b[sortBy]).localeCompare(String(a[sortBy]));
     });
   }, [vouchers, allOrders, allWorkers, search, batchFilter, sortBy, sortOrder]);
+
+  const handleDownloadImage = async () => {
+    const element = document.getElementById('printable-voucher');
+    if (!element || !printingVoucher) return;
+    
+    setIsDownloading(true);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 800));
+      const dataUrl = await toPng(element, { 
+        backgroundColor: '#ffffff',
+        pixelRatio: 2,
+        cacheBust: true,
+        fontEmbedCSS: '', 
+        filter: (node) => node.tagName !== 'SCRIPT'
+      });
+      
+      const link = document.createElement('a');
+      link.download = `Receipt-${printingVoucher.voucherNumber}.png`;
+      link.href = dataUrl;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast({ title: lang === 'ar' ? "تم تحميل السند" : "Voucher Downloaded" });
+    } catch (err) {
+      console.error('Download error:', err);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   const handleSaveVoucher = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -396,8 +424,8 @@ export default function ProductionReceiptPage() {
                   <TableCell className="px-6 py-3 font-black text-slate-900 text-xs tabular-nums">{v.voucherNumber}</TableCell>
                   <TableCell className="px-6 py-3 text-slate-500 text-xs tabular-nums">{v.date}</TableCell>
                   <TableCell className="px-6 py-3 font-bold text-slate-700 text-xs">{allWorkers?.find(w => w.id === v.workerId)?.fullName || '---'}</TableCell>
-                  <TableCell className="px-6 py-3 text-center"><Badge variant="outline" className="bg-emerald-50 text-emerald-700 tabular-nums font-black">{v.qtyAccepted.toLocaleString('en-US')} قطعة</Badge></TableCell>
-                  <TableCell className="px-6 py-3 text-center font-black text-slate-900 tabular-nums">{v.wageAmount?.toLocaleString('en-US')} {v.currency}</TableCell>
+                  <TableCell className="px-6 py-3 text-center"><Badge variant="outline" className="bg-emerald-50 text-emerald-700 tabular-nums font-black">{(v.qtyAccepted || 0).toLocaleString('en-US')} قطعة</Badge></TableCell>
+                  <TableCell className="px-6 py-3 text-center font-black text-slate-900 tabular-nums">{(v.wageAmount || 0).toLocaleString('en-US')} {v.currency}</TableCell>
                   <TableCell className="px-6 py-3 text-center">
                     <div className="flex items-center justify-center gap-1">
                       <Button variant="ghost" size="icon" onClick={() => setPrintingVoucher(v)} className="h-8 w-8 text-slate-400"><Eye className="w-4 h-4" /></Button>
@@ -546,7 +574,7 @@ export default function ProductionReceiptPage() {
                          {formData.returnedItems.map((item, idx) => (
                             <TableRow key={idx} className="border-b border-blue-50">
                                <TableCell className="text-xs font-bold">{item.nameAr}</TableCell>
-                               <TableCell className="text-center font-black tabular-nums">{item.qty.toLocaleString('en-US')} {item.unit}</TableCell>
+                               <TableCell className="text-center font-black tabular-nums">{(item.qty || 0).toLocaleString('en-US')} {item.unit}</TableCell>
                                <TableCell><button type="button" onClick={() => setFormData({...formData, returnedItems: formData.returnedItems.filter((_, i) => i !== idx)})} className="text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button></TableCell>
                             </TableRow>
                          ))}
@@ -587,7 +615,6 @@ export default function ProductionReceiptPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* REMAINDER OF DIALOGS (PRINT PREVIEW) UNCHANGED */}
       <Dialog open={!!printingVoucher} onOpenChange={(open) => !open && setPrintingVoucher(null)}>
         <DialogContent className="sm:max-w-[750px] p-0 overflow-hidden border-none bg-white">
           <DialogHeader className="sr-only"><DialogTitle>Preview</DialogTitle></DialogHeader>
@@ -627,7 +654,7 @@ export default function ProductionReceiptPage() {
                     </div>
                     <div className="space-y-2 text-left">
                        <p className="text-[9px] font-black text-slate-400 uppercase">الاستحقاق المالي</p>
-                       <p className="text-lg font-black text-emerald-700 tabular-nums">{printingVoucher.wageAmount?.toLocaleString('en-US')} {printingVoucher.currency}</p>
+                       <p className="text-lg font-black text-emerald-700 tabular-nums">{(printingVoucher.wageAmount || 0).toLocaleString('en-US')} {printingVoucher.currency}</p>
                     </div>
                   </div>
                   <div className="mb-8 space-y-6">
@@ -644,9 +671,9 @@ export default function ProductionReceiptPage() {
                       <TableBody>
                         <TableRow className="bg-white/40">
                           <TableCell className="font-bold text-sm py-3">{allProducts?.find(p => p.id === allOrders?.find(o => o.id === printingVoucher.orderId)?.productId)?.nameAr}</TableCell>
-                          <TableCell className="text-center font-black text-sm text-emerald-700 tabular-nums">{printingVoucher.qtyAccepted.toLocaleString('en-US')} قطعة</TableCell>
-                          <TableCell className="text-center font-bold text-sm tabular-nums">{printingVoucher.wageRate.toLocaleString('en-US')}</TableCell>
-                          <TableCell className="text-center font-black text-sm tabular-nums text-emerald-900">{printingVoucher.wageAmount?.toLocaleString('en-US')}</TableCell>
+                          <TableCell className="text-center font-black text-sm text-emerald-700 tabular-nums">{(printingVoucher.qtyAccepted || 0).toLocaleString('en-US')} قطعة</TableCell>
+                          <TableCell className="text-center font-bold text-sm tabular-nums">{(printingVoucher.wageRate || 0).toLocaleString('en-US')}</TableCell>
+                          <TableCell className="text-center font-black text-sm tabular-nums text-emerald-900">{(printingVoucher.wageAmount || 0).toLocaleString('en-US')}</TableCell>
                         </TableRow>
                       </TableBody>
                     </Table>
@@ -672,4 +699,3 @@ export default function ProductionReceiptPage() {
     </div>
   );
 }
-
