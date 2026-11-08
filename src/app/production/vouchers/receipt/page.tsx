@@ -101,8 +101,8 @@ export default function ProductionReceiptPage() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [search, setSearch] = useState('');
   
-  // Filtering & Sorting
-  const [sortBy, setSortBy] = useState<'voucherNumber' | 'date' | 'totalQty'>('date');
+  // Filtering & Sorting State
+  const [sortBy, setSortBy] = useState<'voucherNumber' | 'date' | 'qtyAccepted'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [batchFilter, setBatchFilter] = useState<string>('all');
 
@@ -163,7 +163,7 @@ export default function ProductionReceiptPage() {
     
     const pool: Record<string, { nameAr: string; qty: number; unit: string }> = {};
     
-    // 1. Calculate Gross Issued (sum of all selected MIVs)
+    // 1. Calculate Gross Issued
     formData.linkedMIVs.forEach(mivId => {
       const miv = allMIVs.find(m => m.id === mivId);
       if (miv && miv.items) {
@@ -176,11 +176,9 @@ export default function ProductionReceiptPage() {
       }
     });
 
-    // 2. Subtract what was ALREADY returned in previous PRVs (Settlements)
+    // 2. Subtract what was ALREADY returned
     vouchers.forEach(v => {
-      // Ignore current edit, deleted items, and PRVs not linked to these MIVs
       if (v.id === editingVoucherId || v.status === 'deleted' || v.type !== 'production_receipt') return;
-      
       const sharesAnyMIV = v.linkedMIVs?.some((id: string) => formData.linkedMIVs.includes(id));
       if (sharesAnyMIV && v.returnedItems) {
         v.returnedItems.forEach((ret: any) => {
@@ -193,7 +191,7 @@ export default function ProductionReceiptPage() {
 
     return Object.entries(pool)
       .map(([id, data]) => ({ id, ...data }))
-      .filter(item => item.qty > 0); // Only show items worker actually has left
+      .filter(item => item.qty > 0); 
   }, [formData.linkedMIVs, allMIVs, vouchers, editingVoucherId]);
 
   const selectedOrder = useMemo(() => allOrders?.find(o => o.id === formData.orderId), [allOrders, formData.orderId]);
@@ -212,6 +210,8 @@ export default function ProductionReceiptPage() {
   const filteredVouchers = useMemo(() => {
     if (!vouchers) return [];
     let result = vouchers.filter(v => v.status !== 'deleted');
+    
+    // Search filter
     if (search) {
       const s = search.toLowerCase();
       result = result.filter(v => {
@@ -222,12 +222,31 @@ export default function ProductionReceiptPage() {
                worker?.fullName?.toLowerCase().includes(s);
       });
     }
-    if (batchFilter !== 'all') result = result.filter(v => v.orderId === batchFilter);
     
+    // Batch filter
+    if (batchFilter !== 'all') {
+      result = result.filter(v => v.orderId === batchFilter);
+    }
+    
+    // Sorting
     return result.sort((a, b) => {
-      const format = { numeric: true, sensitivity: 'base' };
-      if (sortBy === 'date') return sortOrder === 'asc' ? new Date(a.date).getTime() - new Date(b.date).getTime() : new Date(b.date).getTime() - new Date(a.date).getTime();
-      return sortOrder === 'asc' ? String(a[sortBy]).localeCompare(String(b[sortBy]), 'en', format) : String(b[sortBy]).localeCompare(String(a[sortBy]), 'en', format);
+      let valA = a[sortBy] ?? '';
+      let valB = b[sortBy] ?? '';
+
+      if (sortBy === 'date') {
+        const timeA = new Date(valA).getTime();
+        const timeB = new Date(valB).getTime();
+        return sortOrder === 'asc' ? timeA - timeB : timeB - timeA;
+      }
+
+      if (sortBy === 'qtyAccepted') {
+        const numA = Number(valA);
+        const numB = Number(valB);
+        return sortOrder === 'asc' ? numA - numB : numB - numA;
+      }
+
+      const comp = String(valA).localeCompare(String(valB), 'en', { numeric: true });
+      return sortOrder === 'asc' ? comp : -comp;
     });
   }, [vouchers, allOrders, allWorkers, search, batchFilter, sortBy, sortOrder]);
 
@@ -253,6 +272,54 @@ export default function ProductionReceiptPage() {
       toast({ title: lang === 'ar' ? "تم تحميل السند" : "Voucher Downloaded" });
     } finally {
       setIsDownloading(false);
+    }
+  };
+
+  const handleExportCSV = () => {
+    const headers = [
+      lang === 'ar' ? 'رقم السند' : 'Voucher No',
+      lang === 'ar' ? 'التاريخ' : 'Date',
+      lang === 'ar' ? 'الموظف' : 'Worker',
+      lang === 'ar' ? 'أمر الإنتاج' : 'Order',
+      lang === 'ar' ? 'الكمية المستلمة' : 'Qty Accepted',
+      lang === 'ar' ? 'أجر القطعة' : 'Wage Rate',
+      lang === 'ar' ? 'إجمالي الأجر' : 'Total Wage',
+      lang === 'ar' ? 'العملة' : 'Currency'
+    ];
+
+    const rows = filteredVouchers.map(v => {
+      const worker = allWorkers?.find(w => w.id === v.workerId);
+      const order = allOrders?.find(o => o.id === v.orderId);
+      return [
+        v.voucherNumber,
+        v.date,
+        worker?.fullName || '---',
+        order?.orderNumber || '---',
+        v.qtyAccepted || 0,
+        v.wageRate || 0,
+        v.wageAmount || 0,
+        v.currency || 'YER'
+      ];
+    });
+
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `ProductionReceipts_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast({ title: lang === 'ar' ? "تم تصدير البيانات" : "Data Exported" });
+  };
+
+  const toggleSort = (field: typeof sortBy) => {
+    if (sortBy === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(field);
+      setSortOrder('asc');
     }
   };
 
@@ -282,7 +349,6 @@ export default function ProductionReceiptPage() {
         const oldVSnap = await getDoc(doc(db, 'vouchers', editingVoucherId));
         const oldV = oldVSnap.data();
         if (oldV) {
-          // Revert old effects
           const orderRef = doc(db, 'productionOrders', oldV.orderId);
           const oSnap = await getDoc(orderRef);
           batch.update(orderRef, { completedQty: Math.max(0, (oSnap.data()?.completedQty || 0) - oldV.qtyAccepted) });
@@ -299,7 +365,6 @@ export default function ProductionReceiptPage() {
         batch.set(doc(collection(db, 'vouchers')), { ...voucherData, voucherNumber, createdAt: serverTimestamp() });
       }
 
-      // Apply new effects
       const orderRef = doc(db, 'productionOrders', formData.orderId);
       const oSnap = await getDoc(orderRef);
       batch.update(orderRef, { completedQty: (oSnap.data()?.completedQty || 0) + Number(formData.qtyAccepted) });
@@ -331,7 +396,7 @@ export default function ProductionReceiptPage() {
       toast({ 
         variant: "destructive", 
         title: lang === 'ar' ? "تنبيه" : "Validation", 
-        description: lang === 'ar' ? `الكمية المدخلة تتجاوز الرصيد المتبقي بالعهدة (${issued.qty})` : `Qty exceeds remaining balance (${issued.qty})` 
+        description: lang === 'ar' ? `الكمية المدخلة تتجاوز الرصيد المتبقي بالعهدة (${issued.qty.toLocaleString('en-US')})` : `Qty exceeds remaining balance (${issued.qty.toLocaleString('en-US')})` 
       });
       return;
     }
@@ -341,23 +406,6 @@ export default function ProductionReceiptPage() {
       returnedItems: [...prev.returnedItems.filter(i => i.id !== currentItem.id), { ...issued, qty: currentItem.qty }]
     }));
     setCurrentItem({ id: '', qty: 0 });
-  };
-
-  const handleEditVoucher = (v: any) => {
-    setEditingVoucherId(v.id);
-    setFormData({
-      date: v.date,
-      orderId: v.orderId,
-      workerId: v.workerId,
-      linkedMIVs: v.linkedMIVs || [],
-      isFinalSettlement: v.isFinalSettlement ?? true,
-      notes: v.notes || '',
-      qtyAccepted: v.qtyAccepted || 0,
-      wageRate: v.wageRate || 0,
-      currency: v.currency || 'YER',
-      returnedItems: v.returnedItems || []
-    });
-    setIsAddDialogOpen(true);
   };
 
   const resetDialog = () => {
@@ -394,6 +442,8 @@ export default function ProductionReceiptPage() {
 
   return (
     <div className="flex flex-col h-full bg-[#f8fafc] overflow-hidden">
+      
+      {/* ERP HUB - HEADER */}
       <div className="flex-none bg-white border-b border-slate-200 z-30 px-6 py-4 shadow-sm">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div className="flex items-center gap-4">
@@ -407,11 +457,67 @@ export default function ProductionReceiptPage() {
               <h1 className="text-xl font-black text-slate-900 leading-tight">{lang === 'ar' ? 'إغلاق عهدة واستلام المنجز' : 'Settlement Vouchers'}</h1>
             </div>
           </div>
+
           <div className="flex items-center gap-3">
             <div className="relative">
               <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400`} />
-              <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={lang === 'ar' ? 'بحث...' : 'Search...'} className="h-10 w-64 bg-slate-50 border-slate-200 text-xs font-bold" />
+              <Input 
+                value={search} 
+                onChange={(e) => setSearch(e.target.value)} 
+                placeholder={lang === 'ar' ? 'بحث...' : 'Search...'} 
+                className={`${dir === 'rtl' ? 'pr-10' : 'pl-10'} h-10 w-64 bg-slate-50 border-slate-200 text-xs font-bold`} 
+              />
             </div>
+
+            <div className="flex items-center gap-1.5 px-1.5 border-x border-slate-100">
+              <Button onClick={handleExportCSV} variant="ghost" className="h-10 px-3 rounded-lg text-xs font-bold gap-2 text-slate-600 hover:bg-slate-50 border border-transparent">
+                <FileDown className="w-4 h-4 text-emerald-600" />
+                {lang === 'ar' ? 'تصدير' : 'Export'}
+              </Button>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="h-10 px-3 rounded-lg text-xs font-bold gap-2 text-slate-600 hover:bg-slate-50 border border-transparent">
+                    <Filter className="w-4 h-4" />
+                    {lang === 'ar' ? 'تصفية' : 'Filter'}
+                    {(batchFilter !== 'all' || sortOrder !== 'desc' || sortBy !== 'date') && (
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="w-64 rounded-xl border-slate-200 shadow-xl">
+                  <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'ترتيب النتائج' : 'SORTING'}</DropdownMenuLabel>
+                  <DropdownMenuItem onClick={() => toggleSort('date')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2.5">
+                    <div className="flex items-center gap-2"><Calendar className="w-3.5 h-3.5 text-slate-400" /> {lang === 'ar' ? 'حسب التاريخ' : 'By Date'}</div>
+                    {sortBy === 'date' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => toggleSort('voucherNumber')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2.5">
+                    <div className="flex items-center gap-2"><Hash className="w-3.5 h-3.5 text-slate-400" /> {lang === 'ar' ? 'حسب رقم السند' : 'By Reference'}</div>
+                    {sortBy === 'voucherNumber' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => toggleSort('qtyAccepted')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2.5">
+                    <div className="flex items-center gap-2"><Activity className="w-3.5 h-3.5 text-slate-400" /> {lang === 'ar' ? 'حسب المنجز' : 'By Quantity'}</div>
+                    {sortBy === 'qtyAccepted' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
+                  </DropdownMenuItem>
+
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'تصفية حسب الدفعة' : 'FILTER BY BATCH'}</DropdownMenuLabel>
+                  <ScrollArea className="h-40">
+                    <DropdownMenuItem onClick={() => setBatchFilter('all')} className="flex items-center justify-between text-xs font-bold cursor-pointer">
+                      {lang === 'ar' ? 'جميع الدفعات' : 'All Batches'}
+                      {batchFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                    </DropdownMenuItem>
+                    {activeOrders?.map(o => (
+                      <DropdownMenuItem key={o.id} onClick={() => setBatchFilter(o.id)} className="flex items-center justify-between text-xs font-bold cursor-pointer">
+                        <span className="truncate max-w-[180px]">{o.orderNumber} - {o.title}</span>
+                        {batchFilter === o.id && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                      </DropdownMenuItem>
+                    ))}
+                  </ScrollArea>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
             <Button onClick={() => setIsAddDialogOpen(true)} className="h-10 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 transition-all border-none">
               <Plus className="w-4 h-4" /> {lang === 'ar' ? 'تسوية جديدة' : 'New Settlement'}
             </Button>
@@ -421,15 +527,15 @@ export default function ProductionReceiptPage() {
 
       <div className="flex-1 min-h-0 overflow-auto p-4 md:p-6 no-scrollbar">
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <Table className="text-right">
+          <Table className="text-right border-separate border-spacing-0">
             <TableHeader className="bg-slate-50 sticky top-0 z-10">
               <TableRow>
-                <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase">{lang === 'ar' ? 'رقم السند' : 'REF #'}</TableHead>
-                <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase">{lang === 'ar' ? 'التاريخ' : 'DATE'}</TableHead>
-                <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase">{lang === 'ar' ? 'الموظف' : 'WORKER'}</TableHead>
-                <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center">{lang === 'ar' ? 'المنجز' : 'DONE'}</TableHead>
-                <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center">{lang === 'ar' ? 'الأجر' : 'WAGE'}</TableHead>
-                <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center">{lang === 'ar' ? 'العمليات' : 'ACTIONS'}</TableHead>
+                <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'رقم السند' : 'REF #'}</TableHead>
+                <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'التاريخ' : 'DATE'}</TableHead>
+                <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'الموظف' : 'WORKER'}</TableHead>
+                <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">{lang === 'ar' ? 'المنجز' : 'DONE'}</TableHead>
+                <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">{lang === 'ar' ? 'الأجر' : 'WAGE'}</TableHead>
+                <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">{lang === 'ar' ? 'العمليات' : 'ACTIONS'}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -438,21 +544,33 @@ export default function ProductionReceiptPage() {
               ) : filteredVouchers.length === 0 ? (
                 <TableRow><TableCell colSpan={6} className="text-center py-20 font-bold text-slate-300">لا توجد تسويات مسجلة</TableCell></TableRow>
               ) : filteredVouchers.map((v) => (
-                <TableRow key={v.id} className="hover:bg-slate-50/50 border-b border-slate-100">
-                  <TableCell className="px-6 py-3 font-black text-slate-900 text-xs tabular-nums">{v.voucherNumber}</TableCell>
-                  <TableCell className="px-6 py-3 text-slate-500 text-xs tabular-nums">{v.date}</TableCell>
-                  <TableCell className="px-6 py-3 font-bold text-slate-700 text-xs">{allWorkers?.find(w => w.id === v.workerId)?.fullName || '---'}</TableCell>
-                  <TableCell className="px-6 py-3 text-center"><Badge variant="outline" className="bg-emerald-50 text-emerald-700 tabular-nums font-black">{(v.qtyAccepted || 0).toLocaleString('en-US')} قطعة</Badge></TableCell>
-                  <TableCell className="px-6 py-3 text-center font-black text-slate-900 tabular-nums">{(v.wageAmount || 0).toLocaleString('en-US')} {v.currency}</TableCell>
+                <TableRow key={v.id} className="hover:bg-slate-50/50 border-b border-slate-100 transition-colors group">
+                  <TableCell className={cn("px-6 py-3 font-black text-slate-900 text-xs tabular-nums", dir === 'rtl' ? "text-right" : "text-left")}>{v.voucherNumber}</TableCell>
+                  <TableCell className={cn("px-6 py-3 font-bold text-slate-500 text-xs tabular-nums", dir === 'rtl' ? "text-right" : "text-left")}>{v.date}</TableCell>
+                  <TableCell className={cn("px-6 py-3 font-bold text-slate-700 text-xs", dir === 'rtl' ? "text-right" : "text-left")}>{allWorkers?.find(w => w.id === v.workerId)?.fullName || '---'}</TableCell>
+                  <TableCell className="px-6 py-3 text-center">
+                    <Badge variant="outline" className="bg-emerald-50 text-emerald-700 tabular-nums font-black border-emerald-100">
+                      {(v.qtyAccepted || 0).toLocaleString('en-US')} {lang === 'ar' ? 'قطعة' : 'Pcs'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="px-6 py-3 text-center font-black text-slate-900 tabular-nums">
+                    {(v.wageAmount || 0).toLocaleString('en-US')} <span className="text-[10px] text-slate-400">{v.currency}</span>
+                  </TableCell>
                   <TableCell className="px-6 py-3 text-center">
                     <div className="flex items-center justify-center gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => setPrintingVoucher(v)} className="h-8 w-8 text-slate-400"><Eye className="w-4 h-4" /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => setPrintingVoucher(v)} className="h-8 w-8 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors">
+                        <Eye className="w-4 h-4" />
+                      </Button>
                       <DropdownMenu>
-                        <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="w-4 h-4 text-slate-400" /></Button></DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-44">
-                          <DropdownMenuItem onClick={() => handleEditVoucher(v)} className="gap-2 font-bold py-1.5"><Edit2 className="w-3.5 h-3.5 text-emerald-600" /> تعديل السند</DropdownMenuItem>
+                        <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-slate-100"><MoreVertical className="w-4 h-4 text-slate-400" /></Button></DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-44 rounded-xl shadow-xl">
+                          <DropdownMenuItem onClick={() => { setEditingVoucherId(v.id); setFormData({ ...v }); setIsAddDialogOpen(true); }} className="gap-2 font-bold py-2 cursor-pointer">
+                            <Edit2 className="w-3.5 h-3.5 text-emerald-600" /> {lang === 'ar' ? 'تعديل السند' : 'Edit Voucher'}
+                          </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => setDeletingVoucher(v)} className="gap-2 font-bold py-1.5 text-rose-600"><Trash2 className="w-3.5 h-3.5" /> نقل للمهملات</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setDeletingVoucher(v)} className="gap-2 font-bold py-2 text-rose-600 cursor-pointer">
+                            <Trash2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'نقل للمهملات' : 'Move to Trash'}
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
@@ -464,13 +582,14 @@ export default function ProductionReceiptPage() {
         </div>
       </div>
 
+      {/* NEW/EDIT VOUCHER DIALOG */}
       <Dialog open={isAddDialogOpen} onOpenChange={(open) => !open && resetDialog()}>
         <DialogContent className="sm:max-w-[900px] rounded-lg p-0 overflow-hidden border-none shadow-2xl">
           <div className="premium-gradient p-6 text-white">
             <DialogHeader className="text-right rtl:text-right ltr:text-left">
               <DialogTitle className="text-xl font-black flex items-center gap-3">
                 <ShieldCheck className="w-5 h-5 text-emerald-300" />
-                {editingVoucherId ? 'تعديل سند تسوية' : 'إغلاق عهدة واستلام إنتاج'}
+                {editingVoucherId ? (lang === 'ar' ? 'تعديل سند تسوية' : 'Edit Settlement') : (lang === 'ar' ? 'إغلاق عهدة واستلام إنتاج' : 'New Production Settlement')}
               </DialogTitle>
               <DialogDescription className="text-emerald-100/70 font-bold text-[10px] uppercase tracking-widest mt-1">Full closure of material cycle and wage calculation</DialogDescription>
             </DialogHeader>
@@ -479,21 +598,21 @@ export default function ProductionReceiptPage() {
           <form onSubmit={handleSaveVoucher} className="p-6 space-y-6 bg-white max-h-[85vh] overflow-y-auto no-scrollbar">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2"><Workflow className="w-3 h-3 text-emerald-600" /> أمر الإنتاج</Label>
+                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2"><Workflow className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'أمر الإنتاج' : 'BATCH'}</Label>
                 <select value={formData.orderId} onChange={(e) => setFormData({...formData, orderId: e.target.value, workerId: '', linkedMIVs: []})} className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none" required>
-                  <option value="">-- اختر أمر الإنتاج --</option>
+                  <option value="">{lang === 'ar' ? '-- اختر أمر الإنتاج --' : '-- Select Batch --'}</option>
                   {activeOrders?.map(o => <option key={o.id} value={o.id}>{o.orderNumber} - {o.title}</option>)}
                 </select>
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2"><UserCheck className="w-3 h-3 text-emerald-600" /> الموظف (الذي عليه عهدة)</Label>
+                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2"><UserCheck className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'الموظف (الذي عليه عهدة)' : 'PERSONNEL'}</Label>
                 <select value={formData.workerId} onChange={(e) => setFormData({...formData, workerId: e.target.value, linkedMIVs: []})} disabled={!formData.orderId} className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none disabled:opacity-50" required>
-                  <option value="">-- اختر الموظف --</option>
+                  <option value="">{lang === 'ar' ? '-- اختر الموظف --' : '-- Select Person --'}</option>
                   {relevantWorkers.map(w => <option key={w.id} value={w.id}>{w.fullName}</option>)}
                 </select>
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2"><Calendar className="w-3 h-3 text-emerald-600" /> تاريخ التسوية</Label>
+                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2"><Calendar className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'تاريخ التسوية' : 'DATE'}</Label>
                 <Input type="date" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} className="h-11 font-bold bg-slate-50 tabular-nums" required />
               </div>
             </div>
@@ -501,10 +620,10 @@ export default function ProductionReceiptPage() {
             {openMIVs.length > 0 && (
               <div className="p-4 bg-amber-50/50 border border-amber-100 rounded-xl space-y-3">
                 <div className="flex items-center justify-between">
-                   <h3 className="text-[10px] font-black text-amber-700 uppercase tracking-widest flex items-center gap-2"><Hash className="w-3.5 h-3.5" /> سندات الصرف المفتوحة لهذا الموظف</h3>
+                   <h3 className="text-[10px] font-black text-amber-700 uppercase tracking-widest flex items-center gap-2"><Hash className="w-3.5 h-3.5" /> {lang === 'ar' ? 'سندات الصرف المفتوحة (التي سيتم تسويتها)' : 'Open Issue Vouchers (Liability)'}</h3>
                    <div className="flex items-center gap-2 bg-white px-3 py-1 rounded-lg border border-amber-200">
                       <Checkbox id="finalSettlement" checked={formData.isFinalSettlement} onCheckedChange={(val) => setFormData({...formData, isFinalSettlement: !!val})} />
-                      <label htmlFor="finalSettlement" className="text-[10px] font-black text-slate-600 cursor-pointer">إغلاق السندات المختارة نهائياً</label>
+                      <label htmlFor="finalSettlement" className="text-[10px] font-black text-slate-600 cursor-pointer">{lang === 'ar' ? 'إغلاق السندات المختارة نهائياً' : 'Final Closure'}</label>
                    </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -514,7 +633,7 @@ export default function ProductionReceiptPage() {
                       setFormData({ ...formData, linkedMIVs: exists ? formData.linkedMIVs.filter(id => id !== m.id) : [...formData.linkedMIVs, m.id], returnedItems: [] });
                     }} className={cn("px-3 py-1.5 rounded-lg border text-[10px] font-black transition-all flex items-center gap-2", formData.linkedMIVs.includes(m.id) ? "bg-emerald-600 text-white border-emerald-700 shadow-md" : "bg-white text-slate-600 border-slate-200 hover:border-amber-300")}>
                       {formData.linkedMIVs.includes(m.id) ? <CheckCircle2 className="w-3 h-3" /> : <FileText className="w-3 h-3" />}
-                      {m.voucherNumber} ({(m.items?.length || 0).toLocaleString('en-US')} أصناف)
+                      {m.voucherNumber} ({(m.items?.length || 0).toLocaleString('en-US')} {lang === 'ar' ? 'أصناف' : 'Items'})
                     </button>
                   ))}
                 </div>
@@ -524,35 +643,35 @@ export default function ProductionReceiptPage() {
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
               <div className="md:col-span-4 space-y-4">
                 <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl text-center space-y-3">
-                   <Label className="text-[10px] font-black text-slate-400 uppercase">المنتج المستلم</Label>
+                   <Label className="text-[10px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'المنتج المستلم' : 'PRODUCED ITEM'}</Label>
                    <div className="w-24 h-24 mx-auto bg-white rounded-xl border border-slate-100 shadow-sm flex items-center justify-center overflow-hidden">
                       <img src={targetProduct?.image || 'https://placehold.co/100'} className="w-full h-full object-cover" alt="product" />
                    </div>
                    <p className="text-xs font-black text-slate-900">{targetProduct?.nameAr || '---'}</p>
                    <div className="flex items-center justify-center gap-2 text-[10px] font-bold text-slate-500">
                       <Target className="w-3 h-3" />
-                      المنجز: {(selectedOrder?.completedQty || 0).toLocaleString('en-US')} / {selectedOrder?.targetQty || 0}
+                      {lang === 'ar' ? 'المنجز:' : 'Done:'} {(selectedOrder?.completedQty || 0).toLocaleString('en-US')} / {(selectedOrder?.targetQty || 0).toLocaleString('en-US')}
                    </div>
                 </div>
               </div>
               <div className="md:col-span-8 flex flex-col gap-6">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <Label className="text-[10px] font-black text-emerald-700 uppercase">الكمية المستلمة (صالحة)</Label>
-                    <Input type="number" step="any" value={formData.qtyAccepted} onChange={(e) => setFormData({...formData, qtyAccepted: Number(e.target.value)})} className="h-14 font-black text-center text-2xl text-emerald-700 bg-emerald-50 border-emerald-200 tabular-nums" required min="0.01" />
+                    <Label className="text-[10px] font-black text-emerald-700 uppercase">{lang === 'ar' ? 'الكمية المستلمة (صالحة)' : 'ACCEPTED QTY'}</Label>
+                    <Input type="number" step="any" value={formData.qtyAccepted || ''} onChange={(e) => setFormData({...formData, qtyAccepted: Number(e.target.value)})} className="h-14 font-black text-center text-2xl text-emerald-700 bg-emerald-50 border-emerald-200 tabular-nums" required min="0.01" />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-[10px] font-black text-slate-400 uppercase">ملاحظات الفحص</Label>
-                    <Input value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} className="h-14 bg-slate-50 text-xs font-bold" placeholder="جودة النسيج، النظافة..." />
+                    <Label className="text-[10px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'ملاحظات الفحص' : 'QC NOTES'}</Label>
+                    <Input value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} className="h-14 bg-slate-50 text-xs font-bold" placeholder={lang === 'ar' ? 'جودة النسيج، النظافة...' : 'Quality, cleanliness...'} />
                   </div>
                 </div>
                 <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-white rounded-lg text-emerald-600 shadow-sm"><Wallet className="w-5 h-5" /></div>
                     <div className="flex flex-col gap-1">
-                      <p className="text-[9px] font-black text-emerald-800 uppercase">أجر القطعة الواحدة</p>
+                      <p className="text-[9px] font-black text-emerald-800 uppercase">{lang === 'ar' ? 'أجر القطعة الواحد' : 'WAGE PER PIECE'}</p>
                       <div className="flex items-center gap-2">
-                        <Input type="number" step="any" value={formData.wageRate} onChange={(e) => setFormData({...formData, wageRate: Number(e.target.value)})} className="h-8 w-24 text-xs font-black tabular-nums" required min="0.01" />
+                        <Input type="number" step="any" value={formData.wageRate || ''} onChange={(e) => setFormData({...formData, wageRate: Number(e.target.value)})} className="h-8 w-24 text-xs font-black tabular-nums" required min="0.01" />
                         <select value={formData.currency} onChange={(e) => setFormData({...formData, currency: e.target.value})} className="h-8 px-2 bg-white border border-emerald-200 rounded text-[9px] font-black">
                           <option value="YER">YER</option><option value="SAR">SAR</option><option value="USD">USD</option>
                         </select>
@@ -560,7 +679,7 @@ export default function ProductionReceiptPage() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-[9px] font-black text-emerald-800 uppercase">إجمالي المستحق للسند</p>
+                    <p className="text-[9px] font-black text-emerald-800 uppercase">{lang === 'ar' ? 'إجمالي المستحق لهذا السند' : 'TOTAL SETTLEMENT'}</p>
                     <p className="text-xl font-black text-emerald-700 tabular-nums">{(formData.qtyAccepted * formData.wageRate).toLocaleString('en-US')} <span className="text-[10px]">{formData.currency}</span></p>
                   </div>
                 </div>
@@ -568,27 +687,25 @@ export default function ProductionReceiptPage() {
             </div>
 
             <div className="p-4 bg-blue-50/30 border border-blue-100 rounded-2xl space-y-4">
-              <h3 className="text-[10px] font-black text-blue-700 uppercase tracking-widest flex items-center gap-2"><RefreshCcw className="w-3.5 h-3.5" /> استرجاع المواد المتبقية (تصفية عهدة السندات المختارة)</h3>
+              <h3 className="text-[10px] font-black text-blue-700 uppercase tracking-widest flex items-center gap-2"><RefreshCcw className="w-3.5 h-3.5" /> {lang === 'ar' ? 'استرجاع المواد الخام المتبقية (تصفية عهدة)' : 'RETURN REMAINING RAW MATERIALS (LIABILITY)'}</h3>
               <div className="flex flex-col md:flex-row gap-3 items-end">
                 <div className="flex-1 space-y-1.5">
-                  <Label className="text-[9px] font-bold text-slate-500">الصنف من العهدة المفتوحة</Label>
+                  <Label className="text-[9px] font-bold text-slate-500">{lang === 'ar' ? 'الصنف من العهدة' : 'ITEM FROM LIABILITY'}</Label>
                   <select 
-                    id="matSelect" 
                     disabled={formData.linkedMIVs.length === 0} 
                     className="w-full h-10 px-3 bg-white border border-blue-200 rounded-md text-xs font-bold outline-none"
                     value={currentItem.id}
                     onChange={(e) => setCurrentItem({ ...currentItem, id: e.target.value })}
                   >
-                    <option value="">-- اختر مادة من عهدة العامل --</option>
+                    <option value="">{lang === 'ar' ? '-- اختر مادة لإعادتها للمخزن --' : '-- Select Item to Return --'}</option>
                     {issuedMaterialsPool.map(m => (
-                      <option key={m.id} value={m.id}>{m.nameAr} (الرصيد المتبقي لديه: {m.qty.toLocaleString('en-US')} {m.unit})</option>
+                      <option key={m.id} value={m.id}>{m.nameAr} ({lang === 'ar' ? 'الرصيد لديه:' : 'In hand:'} {m.qty.toLocaleString('en-US')} {m.unit})</option>
                     ))}
                   </select>
                 </div>
                 <div className="w-32 space-y-1.5">
-                  <Label className="text-[9px] font-bold text-slate-500">الكمية المرتجعة</Label>
+                  <Label className="text-[9px] font-bold text-slate-500">{lang === 'ar' ? 'الكمية المرتجعة' : 'RETURN QTY'}</Label>
                   <Input 
-                    id="qtySelect" 
                     type="number" 
                     step="any" 
                     value={currentItem.qty || ''} 
@@ -596,18 +713,24 @@ export default function ProductionReceiptPage() {
                     className="h-10 bg-white font-bold tabular-nums" 
                   />
                 </div>
-                <Button type="button" onClick={handleReturnItem} className="h-10 bg-blue-600 text-white font-black text-xs px-6">إدراج في السند</Button>
+                <Button type="button" onClick={handleReturnItem} className="h-10 bg-blue-600 text-white font-black text-xs px-6 rounded-md shadow-md">{lang === 'ar' ? 'إدراج الاسترجاع' : 'Insert Return'}</Button>
               </div>
               {formData.returnedItems.length > 0 && (
                 <div className="border border-blue-100 rounded-xl overflow-hidden shadow-sm">
                    <Table className="text-right bg-white/50">
-                      <TableHeader className="bg-blue-50/50"><TableRow><TableHead className="text-right text-[9px] font-black text-blue-500 uppercase">المادة المستلمة</TableHead><TableHead className="text-center text-[9px] font-black text-blue-500 uppercase">الكمية المرجعة</TableHead><TableHead className="w-10"></TableHead></TableRow></TableHeader>
+                      <TableHeader className="bg-blue-50/50">
+                        <TableRow>
+                          <TableHead className="text-right text-[9px] font-black text-blue-500 uppercase">{lang === 'ar' ? 'المادة المستلمة' : 'MATERIAL'}</TableHead>
+                          <TableHead className="text-center text-[9px] font-black text-blue-500 uppercase">{lang === 'ar' ? 'الكمية المرجعة' : 'QTY'}</TableHead>
+                          <TableHead className="w-10"></TableHead>
+                        </TableRow>
+                      </TableHeader>
                       <TableBody>
                          {formData.returnedItems.map((item, idx) => (
                             <TableRow key={idx} className="border-b border-blue-50">
                                <TableCell className="text-xs font-bold">{item.nameAr}</TableCell>
                                <TableCell className="text-center font-black tabular-nums">{(item.qty || 0).toLocaleString('en-US')} {item.unit}</TableCell>
-                               <TableCell><button type="button" onClick={() => setFormData({...formData, returnedItems: formData.returnedItems.filter((_, i) => i !== idx)})} className="text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button></TableCell>
+                               <TableCell><button type="button" onClick={() => setFormData({...formData, returnedItems: formData.returnedItems.filter((_, i) => i !== idx)})} className="text-rose-400 hover:text-rose-600 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button></TableCell>
                             </TableRow>
                          ))}
                       </TableBody>
@@ -619,34 +742,17 @@ export default function ProductionReceiptPage() {
             <div className="flex gap-3 pt-4 border-t border-slate-100">
               <Button type="submit" disabled={isSubmitting || !formData.workerId || !formData.orderId || formData.linkedMIVs.length === 0 || formData.qtyAccepted <= 0 || formData.wageRate <= 0} className="flex-1 h-14 premium-gradient text-white rounded-xl font-black text-base shadow-xl">
                 {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin me-2" /> : <CheckCircle2 className="w-5 h-5 me-2" />}
-                {editingVoucherId ? 'تحديث السند والمخازن' : 'ترحيل التسوية وتحديث المخازن والإنجاز'}
+                {editingVoucherId ? (lang === 'ar' ? 'تحديث السند والمخازن' : 'Update Voucher & WMS') : (lang === 'ar' ? 'ترحيل التسوية وتحديث المخازن والإنجاز' : 'Post Settlement & Update Assets')}
               </Button>
-              <Button type="button" variant="outline" onClick={resetDialog} className="px-8 h-14 font-black text-slate-400 rounded-xl border-slate-200">إلغاء</Button>
+              <Button type="button" variant="outline" onClick={resetDialog} className="px-8 h-14 font-black text-slate-400 rounded-xl border-slate-200">
+                {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+              </Button>
             </div>
           </form>
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={!!deletingVoucher} onOpenChange={(open) => !open && setDeletingVoucher(null)}>
-        <AlertDialogContent className="max-w-[400px] rounded-lg border-none shadow-2xl p-0 overflow-hidden">
-          <div className="bg-slate-950 p-8 text-center">
-            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20 shadow-inner">
-              <History className="w-8 h-8 text-red-500" />
-            </div>
-            <AlertDialogTitle className="text-white text-xl font-black">نقل للمهملات وعكس التأثير</AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-400 font-bold mt-2 text-xs leading-relaxed">
-              تحذير: سيتم خصم المنجز من أمر الإنتاج وإعادة فتح عهدة المواد للعامل وسحب المرتجع من المخزن تلقائياً.
-            </AlertDialogDescription>
-          </div>
-          <div className="bg-white p-6 flex gap-3">
-            <AlertDialogAction onClick={handleDeleteRequest} disabled={isSubmitting} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-md font-black">
-              {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "تأكيد الحذف"}
-            </AlertDialogAction>
-            <AlertDialogCancel onClick={() => setDeletingVoucher(null)} className="flex-1 h-11 bg-slate-50 border-slate-200 text-slate-400 rounded-md font-black">تراجع</AlertDialogCancel>
-          </div>
-        </AlertDialogContent>
-      </AlertDialog>
-
+      {/* PRINT/IMAGE PREVIEW DIALOG */}
       <Dialog open={!!printingVoucher} onOpenChange={(open) => !open && setPrintingVoucher(null)}>
         <DialogContent className="sm:max-w-[750px] p-0 overflow-hidden border-none bg-white">
           <DialogHeader className="sr-only">
@@ -656,12 +762,10 @@ export default function ProductionReceiptPage() {
             <div className="p-10 bg-white relative z-0" id="printable-voucher">
               {printingVoucher && (
                 <div className="flex flex-col h-full text-slate-900 font-sans relative overflow-hidden" dir="rtl">
-                  {/* WATERMARK LOGO */}
                   <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 opacity-[0.04] pointer-events-none -z-10 select-none">
                     <img src="/images/logo.png" alt="watermark" className="w-full h-full object-contain grayscale" />
                   </div>
 
-                  {/* PROFESSIONAL BILINGUAL HEADER (Identical to MIV) */}
                   <div className="grid grid-cols-3 items-center border-b-4 border-emerald-800 pb-6 mb-6 relative z-10">
                     <div className="text-center space-y-0.5">
                       <h2 className="text-base font-black text-emerald-900">جمعية الصناعات النسيجية</h2>
@@ -682,7 +786,6 @@ export default function ProductionReceiptPage() {
                     </div>
                   </div>
 
-                  {/* VOUCHER TITLE BAR (Identical to MIV) */}
                   <div className="text-center mb-6 relative z-10">
                     <div className="inline-block border-2 border-emerald-800 px-8 py-1 rounded-full bg-white shadow-sm">
                       <h3 className="text-lg font-black text-emerald-900 uppercase tracking-widest">
@@ -691,7 +794,6 @@ export default function ProductionReceiptPage() {
                     </div>
                   </div>
 
-                  {/* DATA GRID - 3 COLUMNS (Aligned with MIV) */}
                   <div className="grid grid-cols-3 gap-x-6 gap-y-4 mb-6 bg-slate-50/70 p-4 rounded-xl border border-slate-100 relative z-10">
                     <div className="space-y-3">
                       <div className="flex justify-between items-center border-b border-slate-200 pb-1">
@@ -729,7 +831,6 @@ export default function ProductionReceiptPage() {
                     </div>
                   </div>
 
-                  {/* SECTION 1: PRODUCTION OUTPUTS */}
                   <div className="mb-6 space-y-3 relative z-10">
                     <h4 className="text-[10px] font-black text-emerald-900 border-r-4 border-emerald-600 pr-3 uppercase">
                       {lang === 'ar' ? 'أولاً: مخرجات الإنتاج المنجزة' : 'I. FINISHED PRODUCTION OUTPUTS'}
@@ -762,7 +863,6 @@ export default function ProductionReceiptPage() {
                     </Table>
                   </div>
 
-                  {/* SECTION 2: RETURNED MATERIALS */}
                   {printingVoucher.returnedItems?.length > 0 && (
                     <div className="mb-8 space-y-3 relative z-10">
                       <h4 className="text-[10px] font-black text-blue-900 border-r-4 border-blue-600 pr-3 uppercase">
@@ -791,7 +891,6 @@ export default function ProductionReceiptPage() {
                     </div>
                   )}
 
-                  {/* SIGNATURES SECTION (Identical to MIV) */}
                   <div className="grid grid-cols-3 gap-4 pt-6 border-t border-slate-200 text-center relative z-10">
                     <div className="space-y-8">
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{lang === 'ar' ? 'أمين المستودع' : 'Store Keeper'}</p>
@@ -810,7 +909,6 @@ export default function ProductionReceiptPage() {
                     </div>
                   </div>
 
-                  {/* PRINT FOOTER (Identical to MIV) */}
                   <div className="mt-12 text-center text-[7px] font-black text-slate-300 uppercase tracking-[0.4em] relative z-10">
                     Generated by TIA Production System - {new Date().toLocaleString('en-US')}
                   </div>
@@ -829,6 +927,26 @@ export default function ProductionReceiptPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!deletingVoucher} onOpenChange={(open) => !open && setDeletingVoucher(null)}>
+        <AlertDialogContent className="max-w-[400px] rounded-lg border-none shadow-2xl p-0 overflow-hidden">
+          <div className="bg-slate-950 p-8 text-center">
+            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20 shadow-inner">
+              <History className="w-8 h-8 text-red-500" />
+            </div>
+            <AlertDialogTitle className="text-white text-xl font-black">{lang === 'ar' ? 'نقل للمهملات وعكس التأثير' : 'Move to Trash & Reverse'}</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400 font-bold mt-2 text-xs leading-relaxed">
+              {lang === 'ar' ? 'تحذير: سيتم خصم المنجز من أمر الإنتاج وإعادة فتح عهدة المواد للعامل وسحب المرتجع من المخزن تلقائياً.' : 'Warning: Progress will be deducted, liabilities reopened, and returns removed from stock.'}
+            </AlertDialogDescription>
+          </div>
+          <div className="bg-white p-6 flex gap-3">
+            <AlertDialogAction onClick={handleDeleteRequest} disabled={isSubmitting} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-md font-black">
+              {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : (lang === 'ar' ? "تأكيد الحذف" : "Confirm")}
+            </AlertDialogAction>
+            <AlertDialogCancel onClick={() => setDeletingVoucher(null)} className="flex-1 h-11 bg-slate-50 border-slate-200 text-slate-400 rounded-md font-black">{lang === 'ar' ? 'تراجع' : 'Cancel'}</AlertDialogCancel>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
