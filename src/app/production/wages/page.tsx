@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
@@ -84,7 +83,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {
   Tabs,
-  TabsContent,
   TabsList,
   TabsTrigger,
 } from '@/components/ui/tabs';
@@ -113,7 +111,7 @@ export default function PayrollManagementPage() {
 
   // Payment Form State
   const [formData, setFormData] = useState({
-    date: new Date().toISOString().split('T')[0],
+    date: new Date().toISOString().split('T', 1)[0],
     workerId: '',
     amount: 0,
     currency: 'YER',
@@ -138,16 +136,18 @@ export default function PayrollManagementPage() {
 
   const loading = workersLoading || receiptsLoading || paymentsLoading;
 
-  // LOGIC: Reset selection when worker or currency changes to prevent cross-currency mistakes
+  // Reset selection when worker or currency changes
   useEffect(() => {
-    setFormData(prev => ({
-      ...prev,
-      linkedReceipts: [],
-      amount: 0
-    }));
-  }, [formData.workerId, formData.currency]);
+    if (!editingVoucherId) {
+      setFormData(prev => ({
+        ...prev,
+        linkedReceipts: [],
+        amount: 0
+      }));
+    }
+  }, [formData.workerId, formData.currency, editingVoucherId]);
 
-  // LOGIC: Filter unpaid receipts by selected worker AND selected currency
+  // Filter unpaid receipts by selected worker AND selected currency
   const unpaidReceipts = useMemo(() => {
     if (!formData.workerId || !allReceipts) return [];
     
@@ -156,7 +156,6 @@ export default function PayrollManagementPage() {
 
     const paidReceiptIds = new Set<string>();
     activePayments.forEach(p => {
-      // If we are editing, don't treat the receipts linked to the current edit-voucher as paid
       if (p.id === editingVoucherId) return;
       p.linkedReceipts?.forEach((id: string) => paidReceiptIds.add(id));
     });
@@ -168,7 +167,7 @@ export default function PayrollManagementPage() {
     );
   }, [formData.workerId, formData.currency, allReceipts, allPayments, editingVoucherId]);
 
-  // LOGIC: Calculate flat balances per worker per currency
+  // Calculate flat balances per worker per currency
   const flattenedBalances = useMemo(() => {
     if (!allWorkers || !allReceipts) return [];
     
@@ -323,7 +322,14 @@ export default function PayrollManagementPage() {
     setIsDownloading(true);
     try {
       await new Promise(resolve => setTimeout(resolve, 800));
-      const dataUrl = await toPng(element, { backgroundColor: '#ffffff', pixelRatio: 2, cacheBust: true });
+      // Fix for 'trim' error: fontEmbedCSS: '' and a proper filter
+      const dataUrl = await toPng(element, { 
+        backgroundColor: '#ffffff', 
+        pixelRatio: 2, 
+        cacheBust: true,
+        fontEmbedCSS: '',
+        filter: (node) => node.tagName !== 'SCRIPT'
+      });
       const link = document.createElement('a');
       link.download = `Payment-${printingVoucher.voucherNumber}.png`;
       link.href = dataUrl;
@@ -332,7 +338,8 @@ export default function PayrollManagementPage() {
       document.body.removeChild(link);
       toast({ title: lang === 'ar' ? "تم تحميل السند" : "Voucher Downloaded" });
     } catch (err) {
-      console.error(err);
+      console.error('Image capture failed:', err);
+      toast({ variant: 'destructive', title: lang === 'ar' ? 'فشل تحميل الصورة' : 'Image download failed' });
     } finally {
       setIsDownloading(false);
     }
@@ -410,7 +417,7 @@ export default function PayrollManagementPage() {
               value={search} 
               onChange={(e) => setSearch(e.target.value)} 
               placeholder={lang === 'ar' ? 'بحث باسم الموظف أو رقم السند...' : 'Search...'} 
-              className={`${dir === 'rtl' ? 'pr-10' : 'pl-10'} h-9 bg-white border-slate-200 text-xs font-bold tabular-nums`} 
+              className={`${dir === 'rtl' ? 'pr-10' : 'pl-10'} h-9 bg-white border-slate-200 text-xs font-bold tabular-nums text-right`} 
             />
           </div>
           <div className="flex items-center gap-1.5 px-1.5 border-l border-slate-200">
@@ -422,7 +429,7 @@ export default function PayrollManagementPage() {
       {/* MAIN CONTENT AREA */}
       <div className="flex-1 min-h-0 flex flex-col p-4 md:p-6 no-scrollbar">
         <Tabs value={activeTab} onValueChange={setActiveTab} dir={dir} className="w-full h-full flex flex-col">
-          <div className="flex items-center justify-between mb-4 bg-white p-2 rounded-xl border border-slate-200 shadow-sm">
+          <div className="flex flex-row-reverse items-center justify-between mb-4 bg-white p-2 rounded-xl border border-slate-200 shadow-sm">
             <div className="px-4 hidden md:flex items-center gap-4 text-[10px] font-bold text-slate-400">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-emerald-500" />
@@ -666,8 +673,8 @@ export default function PayrollManagementPage() {
                                  <Checkbox 
                                    checked={formData.linkedReceipts.includes(r.id)} 
                                    onCheckedChange={(val) => {
-                                      const e = { stopPropagation: () => {} } as React.MouseEvent;
-                                      toggleReceiptSelection(r.id, e);
+                                      const dummyEvent = { stopPropagation: () => {} } as unknown as React.MouseEvent;
+                                      toggleReceiptSelection(r.id, dummyEvent);
                                    }} 
                                  />
                               </TableCell>
@@ -740,7 +747,7 @@ export default function PayrollManagementPage() {
 
       {/* PRINT PREVIEW DIALOG */}
       <Dialog open={!!printingVoucher} onOpenChange={(open) => !open && setPrintingVoucher(null)}>
-        <DialogContent className="sm:max-w-[800px] p-0 overflow-hidden border-none bg-white">
+        <DialogContent className="sm:max-w-[800px] p-0 overflow-hidden border-none bg-white shadow-2xl">
           <DialogHeader className="sr-only"><DialogTitle>سند صرف مالي</DialogTitle></DialogHeader>
           <ScrollArea className="max-h-[85vh]">
             <div className="p-10 bg-white" id="printable-payment">
