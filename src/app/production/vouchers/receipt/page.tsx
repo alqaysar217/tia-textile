@@ -34,7 +34,12 @@ import {
   Activity,
   Target,
   AlertTriangle,
-  Users2
+  Users2,
+  Wallet,
+  Coins,
+  Scale,
+  RefreshCcw,
+  Tag
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -79,6 +84,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
 import { toPng } from 'html-to-image';
 
 export default function ProductionReceiptPage() {
@@ -98,43 +104,76 @@ export default function ProductionReceiptPage() {
   const [sortBy, setSortBy] = useState<'voucherNumber' | 'date' | 'totalQty'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [batchFilter, setBatchFilter] = useState<string>('all');
-  const [deptFilter, setDeptFilter] = useState<string>('all');
 
   const workerDropdownRef = useRef<HTMLDivElement>(null);
   
   // Selection state
-  const [selectedDeptId, setSelectedDeptId] = useState<string>('');
   const [workerSearch, setWorkerSearch] = useState('');
 
-  // Form State
+  // Form State for "Smart Settlement"
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     orderId: '',
     workerId: '',
-    supervisorId: '', // Accountability
+    linkedMIVs: [] as string[], // Vouchers being settled
     notes: '',
     qtyAccepted: 0,
     qtyRejected: 0,
-    qtyWaste: 0
+    qtyWaste: 0,
+    wageRate: 0,
+    currency: 'YER',
+    returnedItems: [] as any[] // Materials coming back to warehouse
   });
 
   // Fetch Data
   const ordersQuery = useMemo(() => !db ? null : collection(db, 'productionOrders'), [db]);
   const workersQuery = useMemo(() => !db ? null : collection(db, 'workers'), [db]);
-  const deptsQuery = useMemo(() => !db ? null : collection(db, 'departments'), [db]);
+  const materialsQuery = useMemo(() => !db ? null : collection(db, 'materials'), [db]);
+  const productsQuery = useMemo(() => !db ? null : collection(db, 'products'), [db]);
+  const mivQuery = useMemo(() => !db ? null : query(collection(db, 'vouchers'), where('type', '==', 'material_issue')), [db]);
   const vouchersQuery = useMemo(() => !db ? null : query(collection(db, 'vouchers'), where('type', '==', 'production_receipt')), [db]);
 
   const { data: allOrders } = useCollection<any>(ordersQuery);
   const { data: allWorkers } = useCollection<any>(workersQuery);
-  const { data: allDepartments } = useCollection<any>(deptsQuery);
+  const { data: allMaterials } = useCollection<any>(materialsQuery);
+  const { data: allProducts } = useCollection<any>(productsQuery);
+  const { data: allMIVs } = useCollection<any>(mivQuery);
   const { data: vouchers, loading: vouchersLoading } = useCollection<any>(vouchersQuery);
 
   const activeOrders = useMemo(() => (allOrders || []).filter(o => o.status === 'active'), [allOrders]);
-  const activeDepartments = useMemo(() => (allDepartments || []).filter(d => d.status === 'active'), [allDepartments]);
+  
+  // Logic: Only show workers who have open material issues for the selected order
+  const relevantWorkers = useMemo(() => {
+    if (!formData.orderId || !allWorkers || !allMIVs) return [];
+    const workerIdsWithIssues = allMIVs
+      .filter(m => m.orderId === formData.orderId && m.status === 'posted')
+      .map(m => m.workerId);
+    return allWorkers.filter(w => workerIdsWithIssues.includes(w.id));
+  }, [formData.orderId, allWorkers, allMIVs]);
+
+  // Logic: Show open MIVs for the selected worker/order
+  const openMIVs = useMemo(() => {
+    if (!formData.orderId || !formData.workerId || !allMIVs) return [];
+    return allMIVs.filter(m => m.orderId === formData.orderId && m.workerId === formData.workerId && m.status === 'posted');
+  }, [formData.orderId, formData.workerId, allMIVs]);
+
+  const selectedOrder = useMemo(() => allOrders?.find(o => o.id === formData.orderId), [allOrders, formData.orderId]);
+  const targetProduct = useMemo(() => allProducts?.find(p => p.id === selectedOrder?.productId), [allProducts, selectedOrder]);
+  const selectedWorker = useMemo(() => allWorkers?.find(w => w.id === formData.workerId), [allWorkers, formData.workerId]);
+
+  // Auto-set wage rate when order changes
+  useEffect(() => {
+    if (targetProduct) {
+      setFormData(prev => ({ 
+        ...prev, 
+        wageRate: targetProduct.wageRate || 0,
+        currency: targetProduct.currency || 'YER'
+      }));
+    }
+  }, [targetProduct]);
 
   const filteredVouchers = useMemo(() => {
     if (!vouchers) return [];
-    
     let result = vouchers.filter(v => {
       if (v.status === 'deleted') return false;
       const order = allOrders?.find(o => o.id === v.orderId);
@@ -144,123 +183,95 @@ export default function ProductionReceiptPage() {
                            order?.orderNumber?.toLowerCase().includes(s) ||
                            worker?.fullName?.toLowerCase().includes(s);
       const matchesBatch = batchFilter === 'all' || v.orderId === batchFilter;
-      const matchesDept = deptFilter === 'all' || worker?.departmentId === deptFilter;
-      return matchesSearch && matchesBatch && matchesDept;
+      return matchesSearch && matchesBatch;
     });
-
     return result.sort((a, b) => {
-      let valA = a[sortBy] ?? '';
-      let valB = b[sortBy] ?? '';
-      if (sortBy === 'date') return sortOrder === 'asc' ? new Date(valA).getTime() - new Date(valB).getTime() : new Date(valB).getTime() - new Date(valA).getTime();
-      const comp = String(valA).localeCompare(String(valB), undefined, { numeric: true });
-      return sortOrder === 'asc' ? comp : -comp;
+      if (sortBy === 'date') return sortOrder === 'asc' ? new Date(a.date).getTime() - new Date(b.date).getTime() : new Date(b.date).getTime() - new Date(a.date).getTime();
+      return sortOrder === 'asc' ? String(a[sortBy]).localeCompare(String(b[sortBy])) : String(b[sortBy]).localeCompare(String(a[sortBy]));
     });
-  }, [vouchers, allOrders, allWorkers, search, batchFilter, deptFilter, sortBy, sortOrder]);
-
-  const filteredWorkers = useMemo(() => {
-    if (!allWorkers) return [];
-    return allWorkers.filter(w => {
-      if (w.status === 'deleted') return false;
-      const matchesDept = selectedDeptId ? w.departmentId === selectedDeptId : true;
-      const matchesSearch = (w.fullName || '').toLowerCase().includes(workerSearch.toLowerCase());
-      return matchesDept && matchesSearch && (w.active !== false);
-    });
-  }, [allWorkers, selectedDeptId, workerSearch]);
-
-  const selectedWorker = useMemo(() => allWorkers?.find(w => w.id === formData.workerId), [allWorkers, formData.workerId]);
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (workerDropdownRef.current && !workerDropdownRef.current.contains(event.target as Node)) {
-        setShowWorkerDropdown(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  }, [vouchers, allOrders, allWorkers, search, batchFilter, sortBy, sortOrder]);
 
   const handleSaveVoucher = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!db || isSubmitting || !formData.workerId || !formData.orderId || formData.qtyAccepted < 0) return;
+    if (!db || isSubmitting || !formData.workerId || !formData.orderId) return;
 
     setIsSubmitting(true);
     const batch = writeBatch(db);
     
     const totalQty = Number(formData.qtyAccepted) + Number(formData.qtyRejected) + Number(formData.qtyWaste);
+    const wageAmount = Number(formData.qtyAccepted) * Number(formData.wageRate);
+    
     const voucherData = {
       ...formData,
-      supervisorId: selectedWorker?.supervisorId || '', // Capture supervisor for accountability
       qtyAccepted: Number(formData.qtyAccepted),
       qtyRejected: Number(formData.qtyRejected),
       qtyWaste: Number(formData.qtyWaste),
-      type: 'production_receipt',
+      wageAmount,
       totalQty,
+      type: 'production_receipt',
       status: 'posted',
       updatedAt: serverTimestamp()
     };
 
     try {
-      if (editingVoucherId) {
-        const oldVoucherSnap = await getDoc(doc(db, 'vouchers', editingVoucherId));
-        const oldVoucher = oldVoucherSnap.data();
-        const orderRef = doc(db, 'productionOrders', formData.orderId);
-        const orderSnap = await getDoc(orderRef);
-        const orderData = orderSnap.data();
+      const voucherNumber = `PRV-${Date.now().toString().slice(-6)}`;
+      const voucherRef = doc(collection(db, 'vouchers'));
+      batch.set(voucherRef, { ...voucherData, voucherNumber, createdAt: serverTimestamp() });
 
-        const diff = Number(formData.qtyAccepted) - (oldVoucher?.qtyAccepted || 0);
-        batch.update(orderRef, {
-          completedQty: (orderData?.completedQty || 0) + diff
-        });
+      // 1. Update Order Progress
+      const orderRef = doc(db, 'productionOrders', formData.orderId);
+      const orderSnap = await getDoc(orderRef);
+      batch.update(orderRef, {
+        completedQty: (orderSnap.data()?.completedQty || 0) + Number(formData.qtyAccepted)
+      });
 
-        batch.update(doc(db, 'vouchers', editingVoucherId), voucherData);
-      } else {
-        const voucherNumber = `PRV-${Date.now().toString().slice(-6)}`;
-        const voucherRef = doc(collection(db, 'vouchers'));
-        batch.set(voucherRef, { ...voucherData, voucherNumber, createdAt: serverTimestamp() });
-
-        const orderRef = doc(db, 'productionOrders', formData.orderId);
-        const orderSnap = await getDoc(orderRef);
-        batch.update(orderRef, {
-          completedQty: (orderSnap.data()?.completedQty || 0) + Number(formData.qtyAccepted)
-        });
-      }
+      // 2. Return Materials to Inventory
+      formData.returnedItems.forEach(item => {
+        const matRef = doc(db, 'materials', item.id);
+        const material = allMaterials?.find(m => m.id === item.id);
+        if (material) {
+          batch.update(matRef, {
+            currentQty: (material.currentQty || 0) + Number(item.qty),
+            updatedAt: serverTimestamp()
+          });
+        }
+      });
 
       await batch.commit();
-      toast({ title: lang === 'ar' ? "تم استلام الإنتاج بنجاح" : "Production Received Successfully" });
+      toast({ title: lang === 'ar' ? "تم التسوية والاستلام بنجاح" : "Settlement & Receipt Successful" });
       resetDialog();
     } catch (error) {
       console.error(error);
-      toast({ variant: "destructive", title: "Error saving voucher" });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleDeleteVoucher = async () => {
-    if (!db || !deletingVoucher) return;
-    setIsSubmitting(true);
-    const batch = writeBatch(db);
-    try {
-      const orderRef = doc(db, 'productionOrders', deletingVoucher.orderId);
-      const orderSnap = await getDoc(orderRef);
-      batch.update(orderRef, {
-        completedQty: Math.max(0, (orderSnap.data()?.completedQty || 0) - deletingVoucher.qtyAccepted)
-      });
-      batch.update(doc(db, 'vouchers', deletingVoucher.id), { status: 'deleted', deletedAt: serverTimestamp() });
-      await batch.commit();
-      toast({ title: lang === 'ar' ? "تم إلغاء السند وتحديث الإنجاز" : "Voucher deleted and progress updated" });
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setIsSubmitting(false);
-      setDeletingVoucher(null);
-    }
+  const handleReturnItem = (matId: string, qty: number, condition: string) => {
+    const material = allMaterials?.find(m => m.id === matId);
+    if (!material) return;
+    setFormData(prev => ({
+      ...prev,
+      returnedItems: [...prev.returnedItems, { id: matId, nameAr: material.nameAr, qty, condition, unit: material.unit }]
+    }));
   };
 
   const resetDialog = () => {
     setIsAddDialogOpen(false);
     setEditingVoucherId(null);
-    setFormData({ date: new Date().toISOString().split('T')[0], orderId: '', workerId: '', supervisorId: '', notes: '', qtyAccepted: 0, qtyRejected: 0, qtyWaste: 0 });
+    setFormData({ 
+      date: new Date().toISOString().split('T')[0], 
+      orderId: '', 
+      workerId: '', 
+      linkedMIVs: [], 
+      notes: '', 
+      qtyAccepted: 0, 
+      qtyRejected: 0, 
+      qtyWaste: 0,
+      wageRate: 0,
+      currency: 'YER',
+      returnedItems: []
+    });
   };
 
   const handleDownloadImage = async () => {
@@ -269,19 +280,12 @@ export default function ProductionReceiptPage() {
     setIsDownloading(true);
     try {
       await new Promise(r => setTimeout(r, 800));
-      const dataUrl = await toPng(element, { 
-        backgroundColor: '#ffffff', 
-        pixelRatio: 2, 
-        fontEmbedCSS: '',
-        cacheBust: true
-      });
+      const dataUrl = await toPng(element, { backgroundColor: '#ffffff', pixelRatio: 2 });
       const link = document.createElement('a');
-      link.download = `Receipt-${printingVoucher.voucherNumber}.png`;
+      link.download = `Settlement-${printingVoucher.voucherNumber}.png`;
       link.href = dataUrl;
       link.click();
-    } finally {
-      setIsDownloading(false);
-    }
+    } finally { setIsDownloading(false); }
   };
 
   return (
@@ -292,16 +296,16 @@ export default function ProductionReceiptPage() {
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div className="flex items-center gap-4">
             <div className="p-2.5 bg-slate-900 rounded-lg text-white shadow-lg">
-              <FileOutput className="w-5 h-5 text-emerald-400" />
+              <RefreshCcw className="w-5 h-5 text-emerald-400" />
             </div>
             <div>
               <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                 <span>{lang === 'ar' ? 'الإنتاج' : 'Production'}</span>
                 <ChevronRight className={`w-3 h-3 ${dir === 'rtl' ? 'rotate-180' : ''}`} />
-                <span className="text-emerald-600">{lang === 'ar' ? 'استلام الإنتاج' : 'Production Receipt'}</span>
+                <span className="text-emerald-600">{lang === 'ar' ? 'استلام وتسوية' : 'Settlement & Receipt'}</span>
               </div>
               <h1 className="text-xl font-black text-slate-900 leading-tight">
-                {lang === 'ar' ? 'توثيق مخرجات العمل اليومي' : 'Production Receipt Vouchers'}
+                {lang === 'ar' ? 'إغلاق العهدة واستلام المنجز' : 'Production Settlement Vouchers'}
               </h1>
             </div>
           </div>
@@ -318,13 +322,13 @@ export default function ProductionReceiptPage() {
             </div>
             <Button onClick={() => setIsAddDialogOpen(true)} className="h-10 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 transition-all border-none">
               <Plus className="w-4 h-4" />
-              {lang === 'ar' ? 'استلام جديد' : 'New Receipt'}
+              {lang === 'ar' ? 'استلام جديد' : 'New Settlement'}
             </Button>
           </div>
         </div>
       </div>
 
-      {/* LIST */}
+      {/* VOUCHERS LIST */}
       <div className="flex-1 min-h-0 overflow-auto p-4 md:p-6 no-scrollbar">
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <Table className="text-right">
@@ -332,36 +336,42 @@ export default function ProductionReceiptPage() {
               <TableRow>
                 <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'رقم السند' : 'REF #'}</TableHead>
                 <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'التاريخ' : 'DATE'}</TableHead>
-                <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'المستلم / المشرف' : 'RECIPIENT / SUP'}</TableHead>
-                <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center">{lang === 'ar' ? 'المقبول' : 'ACCEPTED'}</TableHead>
+                <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'الموظف' : 'WORKER'}</TableHead>
+                <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center">{lang === 'ar' ? 'المنجز' : 'DONE'}</TableHead>
+                <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center">{lang === 'ar' ? 'الأجر المستحق' : 'WAGE'}</TableHead>
                 <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center">{lang === 'ar' ? 'العمليات' : 'ACTIONS'}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {vouchersLoading ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-20 font-bold text-slate-400 animate-pulse">جاري التحميل...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center py-20 font-bold text-slate-400 animate-pulse">جاري التحميل...</TableCell></TableRow>
               ) : filteredVouchers.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-20 font-bold text-slate-300">لا توجد سجلات</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center py-20 font-bold text-slate-300">لا توجد تسويات مسجلة</TableCell></TableRow>
               ) : filteredVouchers.map((v) => {
                 const worker = allWorkers?.find(w => w.id === v.workerId);
-                const supervisor = allWorkers?.find(w => w.id === v.supervisorId);
                 return (
                   <TableRow key={v.id} className="hover:bg-slate-50/50 border-b border-slate-100 group">
                     <TableCell className={cn("px-6 py-3", dir === 'rtl' ? "text-right" : "text-left")}>
                       <div className="flex items-center gap-2">
-                        <FileOutput className="w-3.5 h-3.5 text-emerald-600" />
-                        <span className="font-black text-slate-900 text-xs">{v.voucherNumber}</span>
+                        <RefreshCcw className="w-3.5 h-3.5 text-emerald-600" />
+                        <span className="font-black text-slate-900 text-xs tabular-nums">{v.voucherNumber}</span>
                       </div>
                     </TableCell>
-                    <TableCell className={cn("px-6 py-3 text-slate-500 text-xs", dir === 'rtl' ? "text-right" : "text-left")}>{v.date}</TableCell>
+                    <TableCell className={cn("px-6 py-3 text-slate-500 text-xs tabular-nums", dir === 'rtl' ? "text-right" : "text-left")}>{v.date}</TableCell>
                     <TableCell className={cn("px-6 py-3", dir === 'rtl' ? "text-right" : "text-left")}>
-                      <div className="flex flex-col">
-                         <span className="font-bold text-slate-700 text-xs">{worker?.fullName || '---'}</span>
-                         {supervisor && <span className="text-[9px] font-black text-emerald-600">بمسؤولية: {supervisor.fullName}</span>}
+                      <div className="flex items-center gap-2">
+                        <Avatar className="h-6 w-6"><AvatarImage src={worker?.photoUrl} /><AvatarFallback>{worker?.fullName?.charAt(0)}</AvatarFallback></Avatar>
+                        <span className="font-bold text-slate-700 text-xs">{worker?.fullName || '---'}</span>
                       </div>
                     </TableCell>
                     <TableCell className="px-6 py-3 text-center">
-                      <span className="inline-block px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded text-[10px] font-black tabular-nums">{v.qtyAccepted}</span>
+                      <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-100 tabular-nums font-black">{v.qtyAccepted} قطعة</Badge>
+                    </TableCell>
+                    <TableCell className="px-6 py-3 text-center">
+                      <div className="flex flex-col items-center">
+                        <span className="text-xs font-black text-slate-900 tabular-nums">{v.wageAmount?.toLocaleString()}</span>
+                        <span className="text-[8px] font-bold text-slate-400 uppercase">{v.currency}</span>
+                      </div>
                     </TableCell>
                     <TableCell className="px-6 py-3 text-center">
                       <div className="flex items-center justify-center gap-1">
@@ -369,7 +379,7 @@ export default function ProductionReceiptPage() {
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="w-4 h-4 text-slate-400" /></Button></DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-44">
-                            <DropdownMenuItem onClick={() => setPrintingVoucher(v)} className="gap-2 font-bold py-1.5"><Eye className="w-3.5 h-3.5" /> عرض السند</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setPrintingVoucher(v)} className="gap-2 font-bold py-1.5"><Eye className="w-3.5 h-3.5" /> عرض التفاصيل</DropdownMenuItem>
                             <DropdownMenuItem onClick={() => setDeletingVoucher(v)} className="gap-2 font-bold py-1.5 text-rose-600"><Trash2 className="w-3.5 h-3.5" /> حذف السند</DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -383,94 +393,220 @@ export default function ProductionReceiptPage() {
         </div>
       </div>
 
-      {/* FORM DIALOG */}
+      {/* SETTLEMENT DIALOG */}
       <Dialog open={isAddDialogOpen} onOpenChange={(open) => !open && resetDialog()}>
-        <DialogContent className="sm:max-w-[700px] rounded-lg p-0 overflow-hidden border-none shadow-2xl">
+        <DialogContent className="sm:max-w-[900px] rounded-lg p-0 overflow-hidden border-none shadow-2xl">
           <div className="premium-gradient p-6 text-white">
             <DialogHeader className="text-right rtl:text-right ltr:text-left">
               <DialogTitle className="text-xl font-black flex items-center gap-3">
                 <FileOutput className="w-5 h-5 text-emerald-300" />
-                {lang === 'ar' ? 'استلام إنتاج من عامل' : 'New Production Receipt'}
+                {lang === 'ar' ? 'إغلاق عهدة واستلام إنتاج' : 'Settlement & Production Receipt'}
               </DialogTitle>
-              <p className="text-emerald-100/70 font-bold text-[10px] uppercase tracking-widest mt-1">Recording finished pieces and accountability</p>
+              <p className="text-emerald-100/70 font-bold text-[10px] uppercase tracking-widest mt-1">Full closure of material cycle and wage calculation</p>
             </DialogHeader>
           </div>
 
           <form onSubmit={handleSaveVoucher} className="p-6 space-y-6 bg-white max-h-[85vh] overflow-y-auto no-scrollbar">
-            <div className="grid grid-cols-2 gap-6">
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2"><Calendar className="w-3 h-3 text-emerald-600" /> تاريخ التسليم</Label>
-                <Input type="date" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} className="h-12 font-bold bg-slate-50" required />
-              </div>
+            
+            {/* STEP 1: SELECT ORDER & WORKER */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2"><Workflow className="w-3 h-3 text-emerald-600" /> أمر الإنتاج</Label>
-                <select value={formData.orderId} onChange={(e) => setFormData({...formData, orderId: e.target.value})} className="w-full h-12 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none" required>
+                <select 
+                  value={formData.orderId} 
+                  onChange={(e) => setFormData({...formData, orderId: e.target.value, workerId: '', linkedMIVs: []})} 
+                  className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none" required
+                >
                   <option value="">-- اختر أمر الإنتاج --</option>
                   {activeOrders?.map(o => <option key={o.id} value={o.id}>{o.orderNumber} - {o.title}</option>)}
                 </select>
               </div>
+
+              <div className="space-y-1.5 relative">
+                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2"><UserCheck className="w-3 h-3 text-emerald-600" /> الموظف (الذي عليه عهدة)</Label>
+                <select 
+                  value={formData.workerId} 
+                  onChange={(e) => setFormData({...formData, workerId: e.target.value, linkedMIVs: []})}
+                  disabled={!formData.orderId}
+                  className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none disabled:opacity-50" required
+                >
+                  <option value="">-- اختر الموظف --</option>
+                  {relevantWorkers.map(w => <option key={w.id} value={w.id}>{w.fullName}</option>)}
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2"><Calendar className="w-3 h-3 text-emerald-600" /> تاريخ التسوية</Label>
+                <Input type="date" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} className="h-11 font-bold bg-slate-50" required />
+              </div>
             </div>
 
-            <div className="space-y-1.5 relative" ref={workerDropdownRef}>
-              <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2"><UserCheck className="w-3 h-3 text-emerald-600" /> الموظف المسلم</Label>
-              <button type="button" onClick={() => setShowWorkerDropdown(!showWorkerDropdown)} className="flex h-12 w-full items-center justify-between rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-bold">
-                {selectedWorker ? selectedWorker.fullName : <span className="text-slate-400">-- اختر العامل --</span>}
-                <ChevronDown className={cn("h-4 w-4 opacity-50 transition-transform", showWorkerDropdown && "rotate-180")} />
-              </button>
-              {showWorkerDropdown && (
-                <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden">
-                  <div className="p-2 bg-slate-50 border-b border-slate-100">
-                    <Input value={workerSearch} onChange={(e) => setWorkerSearch(e.target.value)} placeholder="بحث باسم العامل..." className="h-9 bg-white text-xs" />
+            {/* STEP 2: LINK OPEN VOUCHERS */}
+            {openMIVs.length > 0 && (
+              <div className="p-4 bg-amber-50/50 border border-amber-100 rounded-xl space-y-3">
+                <h3 className="text-[10px] font-black text-amber-700 uppercase tracking-widest flex items-center gap-2">
+                  <Hash className="w-3.5 h-3.5" /> سندات الصرف المفتوحة لهذا الموظف
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {openMIVs.map(m => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => {
+                        const exists = formData.linkedMIVs.includes(m.id);
+                        setFormData({
+                          ...formData,
+                          linkedMIVs: exists ? formData.linkedMIVs.filter(id => id !== m.id) : [...formData.linkedMIVs, m.id]
+                        });
+                      }}
+                      className={cn(
+                        "px-3 py-1.5 rounded-lg border text-[10px] font-black transition-all flex items-center gap-2",
+                        formData.linkedMIVs.includes(m.id) 
+                          ? "bg-emerald-600 text-white border-emerald-700 shadow-md" 
+                          : "bg-white text-slate-600 border-slate-200 hover:border-amber-300"
+                      )}
+                    >
+                      {formData.linkedMIVs.includes(m.id) ? <CheckCircle2 className="w-3 h-3" /> : <FileText className="w-3 h-3" />}
+                      {m.voucherNumber} ({m.items?.length} أصناف)
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* STEP 3: PRODUCTION RECEIPT (FINISHED GOODS) */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+              <div className="md:col-span-4 space-y-4">
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl text-center space-y-3">
+                   <Label className="text-[10px] font-black text-slate-400 uppercase">المنتج المستلم</Label>
+                   <div className="w-24 h-24 mx-auto bg-white rounded-xl border border-slate-100 shadow-sm flex items-center justify-center overflow-hidden">
+                      <img src={targetProduct?.image || 'https://placehold.co/100'} className="w-full h-full object-cover" alt="product" />
+                   </div>
+                   <p className="text-xs font-black text-slate-900">{targetProduct?.nameAr || '---'}</p>
+                   <Badge variant="outline" className="bg-white">{targetProduct?.category}</Badge>
+                </div>
+              </div>
+
+              <div className="md:col-span-8 grid grid-cols-3 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-black text-emerald-700">الكمية المقبولة</Label>
+                  <Input type="number" value={formData.qtyAccepted} onChange={(e) => setFormData({...formData, qtyAccepted: Number(e.target.value)})} className="h-12 font-black text-center text-lg text-emerald-700" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-black text-amber-700">الكمية المرفوضة</Label>
+                  <Input type="number" value={formData.qtyRejected} onChange={(e) => setFormData({...formData, qtyRejected: Number(e.target.value)})} className="h-12 font-black text-center text-lg text-amber-700" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-black text-rose-700">الكمية التالفة</Label>
+                  <Input type="number" value={formData.qtyWaste} onChange={(e) => setFormData({...formData, qtyWaste: Number(e.target.value)})} className="h-12 font-black text-center text-lg text-rose-700" />
+                </div>
+                
+                <div className="col-span-3 p-4 bg-emerald-50 rounded-xl border border-emerald-100 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-white rounded-lg text-emerald-600 shadow-sm"><Wallet className="w-5 h-5" /></div>
+                    <div>
+                      <p className="text-[9px] font-black text-emerald-800 uppercase">أجر الموظف لكل قطعة مقبولة</p>
+                      <div className="flex items-center gap-2">
+                        <Input 
+                          type="number" 
+                          value={formData.wageRate} 
+                          onChange={(e) => setFormData({...formData, wageRate: Number(e.target.value)})}
+                          className="h-8 w-24 text-xs font-black bg-white border-emerald-200" 
+                        />
+                        <select value={formData.currency} onChange={(e) => setFormData({...formData, currency: e.target.value})} className="h-8 px-2 bg-white border border-emerald-200 rounded text-[9px] font-black">
+                          <option value="YER">YER</option>
+                          <option value="SAR">SAR</option>
+                          <option value="USD">USD</option>
+                        </select>
+                      </div>
+                    </div>
                   </div>
-                  <ScrollArea className="h-[200px]">
-                    {filteredWorkers.map(w => (
-                      <button key={w.id} type="button" onClick={() => { setFormData({...formData, workerId: w.id}); setShowWorkerDropdown(false); }} className="flex items-center gap-3 w-full p-2.5 hover:bg-slate-50 text-right border-b border-slate-50">
-                        <Avatar className="h-7 w-7"><AvatarImage src={w.photoUrl} /><AvatarFallback>{w.fullName?.charAt(0)}</AvatarFallback></Avatar>
-                        <div className="flex flex-col">
-                           <span className="text-xs font-bold text-slate-700">{w.fullName}</span>
-                           <span className="text-[8px] text-slate-400 uppercase">{w.workerId}</span>
-                        </div>
-                      </button>
-                    ))}
-                  </ScrollArea>
+                  <div className="text-right">
+                    <p className="text-[9px] font-black text-emerald-800 uppercase">إجمالي المستحق للسند</p>
+                    <p className="text-xl font-black text-emerald-700 tabular-nums">
+                      {(formData.qtyAccepted * formData.wageRate).toLocaleString()} <span className="text-[10px]">{formData.currency}</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* STEP 4: RETURNED MATERIALS (WASTE/EXCESS) */}
+            <div className="p-4 bg-blue-50/30 border border-blue-100 rounded-2xl space-y-4">
+              <h3 className="text-[10px] font-black text-blue-700 uppercase tracking-widest flex items-center gap-2">
+                <RefreshCcw className="w-3.5 h-3.5" /> استرجاع المواد الخام المتبقية للمخزن
+              </h3>
+              
+              <div className="flex gap-2 mb-4">
+                <select 
+                  id="matSelect"
+                  className="flex-1 h-10 px-3 bg-white border border-blue-200 rounded-md text-xs font-bold"
+                >
+                  <option value="">-- اختر مادة لإعادتها --</option>
+                  {allMaterials?.map(m => <option key={m.id} value={m.id}>{m.nameAr} ({m.unit})</option>)}
+                </select>
+                <select id="condSelect" className="w-32 h-10 px-3 bg-white border border-blue-200 rounded-md text-xs font-bold">
+                  <option value="full">كاملة</option>
+                  <option value="half">نصف</option>
+                  <option value="quarter">ربع</option>
+                </select>
+                <Input id="qtySelect" type="number" placeholder="الكمية" className="w-24 h-10 bg-white" />
+                <Button 
+                  type="button" 
+                  onClick={() => {
+                    const id = (document.getElementById('matSelect') as HTMLSelectElement).value;
+                    const cond = (document.getElementById('condSelect') as HTMLSelectElement).value;
+                    const qty = Number((document.getElementById('qtySelect') as HTMLInputElement).value);
+                    if (id && qty > 0) handleReturnItem(id, qty, cond);
+                  }}
+                  className="h-10 bg-blue-600 hover:bg-blue-500 text-white font-black text-xs"
+                >
+                  إضافة
+                </Button>
+              </div>
+
+              {formData.returnedItems.length > 0 && (
+                <div className="border border-blue-100 rounded-xl overflow-hidden shadow-sm">
+                   <Table className="text-right bg-white/50">
+                      <TableHeader className="bg-blue-50/50">
+                         <TableRow>
+                            <TableHead className="text-right text-[9px] font-black text-blue-500 uppercase">المادة</TableHead>
+                            <TableHead className="text-center text-[9px] font-black text-blue-500 uppercase">الكمية</TableHead>
+                            <TableHead className="text-center text-[9px] font-black text-blue-500 uppercase">الحالة</TableHead>
+                            <TableHead className="w-10"></TableHead>
+                         </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                         {formData.returnedItems.map((item, idx) => (
+                            <TableRow key={idx} className="border-b border-blue-50">
+                               <TableCell className="text-xs font-bold">{item.nameAr}</TableCell>
+                               <TableCell className="text-center font-black tabular-nums">{item.qty} {item.unit}</TableCell>
+                               <TableCell className="text-center text-[10px] font-black text-blue-600 uppercase">{item.condition}</TableCell>
+                               <TableCell>
+                                  <button type="button" onClick={() => setFormData({...formData, returnedItems: formData.returnedItems.filter((_, i) => i !== idx)})} className="text-rose-400 hover:text-rose-600"><Trash2 className="w-3.5 h-3.5" /></button>
+                               </TableCell>
+                            </TableRow>
+                         ))}
+                      </TableBody>
+                   </Table>
                 </div>
               )}
             </div>
 
-            {selectedWorker && (
-               <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center gap-3">
-                  <ShieldCheck className="w-5 h-5 text-emerald-600" />
-                  <div>
-                     <p className="text-[10px] font-black text-emerald-800 uppercase">المشرف الضامن للعهدة</p>
-                     <p className="text-xs font-bold text-emerald-700">{allWorkers?.find(w => w.id === selectedWorker.supervisorId)?.fullName || 'لم يعين مشرف'}</p>
-                  </div>
-               </div>
-            )}
-
-            <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200 grid grid-cols-3 gap-6">
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-black text-emerald-700 uppercase">الكمية المقبولة</Label>
-                <Input type="number" value={formData.qtyAccepted} onChange={(e) => setFormData({...formData, qtyAccepted: Number(e.target.value)})} className="h-12 font-black text-center text-lg text-emerald-700 bg-white border-emerald-200" required />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-black text-amber-700 uppercase">الكمية المرفوضة</Label>
-                <Input type="number" value={formData.qtyRejected} onChange={(e) => setFormData({...formData, qtyRejected: Number(e.target.value)})} className="h-12 font-black text-center text-lg text-amber-700 bg-white border-amber-200" />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-black text-rose-700 uppercase">الكمية التالفة</Label>
-                <Input type="number" value={formData.qtyWaste} onChange={(e) => setFormData({...formData, qtyWaste: Number(e.target.value)})} className="h-12 font-black text-center text-lg text-rose-700 bg-white border-rose-200" />
-              </div>
-            </div>
-
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase text-slate-400">ملاحظات الجودة / الفحص</Label>
-              <textarea value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} className="w-full min-h-[80px] p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium resize-none outline-none focus:bg-white focus:border-emerald-500" placeholder="أدخل أي ملاحظات فنية حول القطع المستلمة..." />
+              <Label className="text-[10px] font-black uppercase text-slate-400">ملاحظات الجودة / إغلاق العهدة</Label>
+              <textarea 
+                value={formData.notes} 
+                onChange={(e) => setFormData({...formData, notes: e.target.value})} 
+                className="w-full min-h-[80px] p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium resize-none outline-none focus:bg-white focus:border-emerald-500" 
+                placeholder="أدخل أي ملاحظات فنية حول القطع المستلمة أو حالة المواد المرتجعة..." 
+              />
             </div>
 
             <div className="flex gap-3 pt-4 border-t border-slate-100">
               <Button type="submit" disabled={isSubmitting || !formData.workerId || !formData.orderId} className="flex-1 h-14 premium-gradient text-white rounded-xl font-black text-base shadow-xl">
                 {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin me-2" /> : <CheckCircle2 className="w-5 h-5 me-2" />}
-                ترحيل السند وتحديث الإنجاز
+                ترحيل التسوية وتحديث المخازن
               </Button>
               <Button type="button" variant="outline" onClick={resetDialog} className="px-8 h-14 font-black text-slate-400 rounded-xl">إلغاء</Button>
             </div>
@@ -478,11 +614,10 @@ export default function ProductionReceiptPage() {
         </DialogContent>
       </Dialog>
 
-      {/* VIEW/PRINT DIALOG (PNG PREVIEW) */}
+      {/* VIEW/PRINT DIALOG (BILINGUAL DESIGN) */}
       <Dialog open={!!printingVoucher} onOpenChange={(open) => !open && setPrintingVoucher(null)}>
-        <DialogContent className="sm:max-w-[700px] p-0 overflow-hidden border-none bg-white">
-          <DialogHeader className="sr-only"><DialogTitle>معاينة سند استلام إنتاج</DialogTitle></DialogHeader>
-          <ScrollArea className="max-h-[75vh]">
+        <DialogContent className="sm:max-w-[750px] p-0 overflow-hidden border-none bg-white">
+          <ScrollArea className="max-h-[80vh]">
             <div className="p-10 bg-white relative z-0" id="printable-voucher">
               {printingVoucher && (
                 <div className="flex flex-col h-full text-slate-900 font-sans relative overflow-hidden" dir="rtl">
@@ -493,69 +628,92 @@ export default function ProductionReceiptPage() {
                   <div className="grid grid-cols-3 items-center border-b-4 border-emerald-800 pb-6 mb-6">
                     <div className="text-center space-y-0.5">
                       <h2 className="text-base font-black text-emerald-900">جمعية الصناعات النسيجية</h2>
-                      <p className="text-[10px] font-bold text-slate-500">الروضة - محافظة شبوة - اليمن</p>
+                      <p className="text-[10px] font-bold text-slate-500">الروضة - شبوة - اليمن</p>
                     </div>
                     <div className="flex justify-center"><img src="/images/logo.png" alt="Logo" className="w-20 h-20 object-contain" /></div>
                     <div className="text-center space-y-0.5" dir="ltr">
-                      <h2 className="text-[11px] font-black text-emerald-900 uppercase">TIA Production</h2>
-                      <p className="text-[9px] font-bold text-slate-500">Al-Rawdah - Shabwa - Yemen</p>
+                      <h2 className="text-[11px] font-black text-emerald-900 uppercase">TIA Settlement</h2>
+                      <p className="text-[9px] font-bold text-slate-500">Production Receipt</p>
                     </div>
                   </div>
 
                   <div className="text-center mb-6">
                     <div className="inline-block border-2 border-emerald-800 px-8 py-1 rounded-full bg-white shadow-sm">
-                      <h3 className="text-lg font-black text-emerald-900 uppercase tracking-widest">سند استلام إنتاج تام</h3>
+                      <h3 className="text-lg font-black text-emerald-900 uppercase tracking-widest">سند تسوية واستلام منجز</h3>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-4 mb-6 bg-slate-50/70 p-4 rounded-xl border border-slate-100">
+                  <div className="grid grid-cols-3 gap-6 mb-8 bg-slate-50/70 p-4 rounded-xl border border-slate-100">
                     <div className="space-y-2">
-                       <p className="text-[9px] font-black text-slate-400 uppercase">رقم السند</p>
-                       <p className="text-xs font-black text-emerald-900 tabular-nums">{printingVoucher.voucherNumber}</p>
-                       <p className="text-[9px] font-black text-slate-400 uppercase mt-2">تاريخ الاستلام</p>
-                       <p className="text-xs font-black text-slate-700 tabular-nums">{printingVoucher.date}</p>
+                       <p className="text-[9px] font-black text-slate-400 uppercase">بيانات السند</p>
+                       <p className="text-xs font-black text-emerald-900 tabular-nums">REF: {printingVoucher.voucherNumber}</p>
+                       <p className="text-[10px] font-bold text-slate-700 tabular-nums">{printingVoucher.date}</p>
                     </div>
-                    <div className="space-y-2">
-                       <p className="text-[9px] font-black text-slate-400 uppercase">اسم المسلم</p>
+                    <div className="space-y-2 text-center">
+                       <p className="text-[9px] font-black text-slate-400 uppercase">الموظف المسؤول</p>
                        <p className="text-xs font-black text-slate-700">{allWorkers?.find(w => w.id === printingVoucher.workerId)?.fullName}</p>
-                       <p className="text-[9px] font-black text-slate-400 uppercase mt-2">أمر الإنتاج</p>
-                       <p className="text-xs font-black text-slate-700 truncate">{allOrders?.find(o => o.id === printingVoucher.orderId)?.orderNumber}</p>
+                       <p className="text-[9px] font-bold text-slate-400 uppercase">{allOrders?.find(o => o.id === printingVoucher.orderId)?.orderNumber}</p>
                     </div>
-                    <div className="space-y-2">
-                       <p className="text-[9px] font-black text-slate-400 uppercase">المشرف المسؤول</p>
-                       <p className="text-xs font-black text-slate-700">{allWorkers?.find(w => w.id === printingVoucher.supervisorId)?.fullName || '---'}</p>
+                    <div className="space-y-2 text-left">
+                       <p className="text-[9px] font-black text-slate-400 uppercase">الاستحقاق المالي</p>
+                       <p className="text-lg font-black text-emerald-700 tabular-nums">{printingVoucher.wageAmount?.toLocaleString()} {printingVoucher.currency}</p>
                     </div>
                   </div>
 
-                  <div className="mb-8">
+                  <div className="mb-8 space-y-6">
+                    <h4 className="text-[10px] font-black text-emerald-900 border-r-4 border-emerald-600 pr-3 uppercase">أولاً: مخرجات الإنتاج (المنجز)</h4>
                     <Table className="text-right border-2 border-emerald-900/10">
                       <TableHeader className="bg-emerald-900/5">
                         <TableRow>
-                          <TableHead className="text-center font-black text-xs py-3 text-emerald-900 border-b-2 border-emerald-900/20">الحالة التشغيلية</TableHead>
-                          <TableHead className="text-center font-black text-xs py-3 text-emerald-900 border-b-2 border-emerald-900/20">الكمية (قطعة)</TableHead>
+                          <TableHead className="text-right font-black text-xs py-3 text-emerald-900">نوع المعوز</TableHead>
+                          <TableHead className="text-center font-black text-xs py-3 text-emerald-900">مقبول</TableHead>
+                          <TableHead className="text-center font-black text-xs py-3 text-emerald-900">مرفوض</TableHead>
+                          <TableHead className="text-center font-black text-xs py-3 text-emerald-900">تالف</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        <TableRow className="border-b border-slate-100 bg-white/40">
-                          <TableCell className="text-center font-bold text-sm py-3 text-emerald-700">كمية مقبولة (صالحة)</TableCell>
-                          <TableCell className="text-center font-black text-sm tabular-nums py-3">{printingVoucher.qtyAccepted}</TableCell>
-                        </TableRow>
-                        <TableRow className="border-b border-slate-100 bg-white/40">
-                          <TableCell className="text-center font-bold text-sm py-3 text-amber-700">كمية مرفوضة (تحتاج تعديل)</TableCell>
-                          <TableCell className="text-center font-black text-sm tabular-nums py-3">{printingVoucher.qtyRejected}</TableCell>
-                        </TableRow>
-                        <TableRow className="border-b border-slate-100 bg-white/40">
-                          <TableCell className="text-center font-bold text-sm py-3 text-rose-700">كمية تالفة (هالك صناعي)</TableCell>
-                          <TableCell className="text-center font-black text-sm tabular-nums py-3">{printingVoucher.qtyWaste}</TableCell>
+                        <TableRow className="bg-white/40">
+                          <TableCell className="font-bold text-sm py-3">{allProducts?.find(p => p.id === allOrders?.find(o => o.id === printingVoucher.orderId)?.productId)?.nameAr}</TableCell>
+                          <TableCell className="text-center font-black text-sm text-emerald-700">{printingVoucher.qtyAccepted}</TableCell>
+                          <TableCell className="text-center font-black text-sm text-amber-600">{printingVoucher.qtyRejected}</TableCell>
+                          <TableCell className="text-center font-black text-sm text-rose-600">{printingVoucher.qtyWaste}</TableCell>
                         </TableRow>
                       </TableBody>
                     </Table>
+
+                    {printingVoucher.returnedItems?.length > 0 && (
+                      <>
+                        <h4 className="text-[10px] font-black text-blue-900 border-r-4 border-blue-600 pr-3 uppercase">ثانياً: المواد المرجعة للمخازن</h4>
+                        <Table className="text-right border-2 border-blue-900/10">
+                          <TableHeader className="bg-blue-900/5">
+                            <TableRow>
+                              <TableHead className="text-right font-black text-xs py-3 text-blue-900">المادة الخام</TableHead>
+                              <TableHead className="text-center font-black text-xs py-3 text-blue-900">الكمية</TableHead>
+                              <TableHead className="text-center font-black text-xs py-3 text-blue-900">الحالة</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {printingVoucher.returnedItems.map((item: any, i: number) => (
+                              <TableRow key={i} className="bg-white/40 border-b border-blue-50">
+                                <TableCell className="font-bold text-sm py-3 text-slate-800">{item.nameAr}</TableCell>
+                                <TableCell className="text-center font-black text-sm text-blue-700">{item.qty} {item.unit}</TableCell>
+                                <TableCell className="text-center text-[10px] font-black text-blue-500 uppercase">{item.condition}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-3 gap-4 pt-6 border-t border-slate-200 text-center">
-                    <div className="space-y-8"><p className="text-[10px] font-black text-slate-400">أمين المستودع</p><div className="h-px bg-slate-300 w-3/4 mx-auto" /></div>
-                    <div className="space-y-8"><p className="text-[10px] font-black text-slate-400">توقيع الموظف</p><div className="h-px bg-slate-300 w-3/4 mx-auto" /></div>
-                    <div className="space-y-8"><p className="text-[10px] font-black text-slate-400">اعتماد المدير / المشرف</p><div className="h-px bg-slate-300 w-3/4 mx-auto" /></div>
+                    <div className="space-y-6"><p className="text-[10px] font-black text-slate-400">أمين المستودع</p><div className="h-px bg-slate-200 w-2/3 mx-auto" /></div>
+                    <div className="space-y-6"><p className="text-[10px] font-black text-slate-400">الموظف (المسلم)</p><div className="h-px bg-slate-200 w-2/3 mx-auto" /></div>
+                    <div className="space-y-6"><p className="text-[10px] font-black text-slate-400">المدير / المشرف</p><div className="h-px bg-slate-200 w-2/3 mx-auto" /></div>
+                  </div>
+                  
+                  <div className="mt-12 text-center text-[7px] font-black text-slate-300 uppercase tracking-[0.4em]">
+                    GENERATED BY TIA SYSTEM - ACCOUNTABILITY PROTOCOL ACTIVE
                   </div>
                 </div>
               )}
@@ -564,27 +722,12 @@ export default function ProductionReceiptPage() {
           <DialogFooter className="p-6 bg-slate-50 border-t border-slate-100">
             <Button onClick={handleDownloadImage} disabled={isDownloading} className="premium-gradient font-black gap-2 h-12 px-8 rounded-xl shadow-lg">
               {isDownloading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
-              تحميل كصورة PNG
+              تحميل السند كصورة PNG
             </Button>
             <Button variant="ghost" onClick={() => setPrintingVoucher(null)} className="font-black h-12 px-6 rounded-xl border border-slate-200">إغلاق</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* DELETE DIALOG */}
-      <AlertDialog open={!!deletingVoucher} onOpenChange={(o) => !o && setDeletingVoucher(null)}>
-        <AlertDialogContent className="max-w-[400px] rounded-lg border-none shadow-2xl p-0 overflow-hidden">
-          <div className="bg-slate-950 p-8 text-center">
-            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20"><History className="w-8 h-8 text-red-500" /></div>
-            <AlertDialogTitle className="text-white text-xl font-black">إلغاء سند استلام</AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-400 font-bold mt-2 text-xs leading-relaxed">حذف السند سيؤدي لخصم الكميات من الإنجاز المحقق لأمر الإنتاج تلقائياً وتصفير أي أجر مستحق عنه.</AlertDialogDescription>
-          </div>
-          <div className="bg-white p-6 flex gap-3">
-            <AlertDialogAction onClick={handleDeleteVoucher} disabled={isSubmitting} className="flex-1 h-11 bg-red-600 font-black">تأكيد الحذف</AlertDialogAction>
-            <AlertDialogCancel onClick={() => setDeletingVoucher(null)} className="flex-1 h-11 bg-slate-50 font-black">تراجع</AlertDialogCancel>
-          </div>
-        </AlertDialogContent>
-      </AlertDialog>
 
     </div>
   );
