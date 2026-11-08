@@ -85,7 +85,7 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/components/ui/tabs';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -184,17 +184,33 @@ export default function PayrollManagementPage() {
   const toggleReceiptSelection = useCallback((receiptId: string) => {
     setFormData(prev => {
       const isSelected = prev.linkedReceipts.includes(receiptId);
-      const newSelection = isSelected ? prev.linkedReceipts.filter(id => id !== receiptId) : [...prev.linkedReceipts, receiptId];
+      const newSelection = isSelected 
+        ? prev.linkedReceipts.filter(id => id !== receiptId) 
+        : [...prev.linkedReceipts, receiptId];
+      
       const selectedVouchers = allReceipts?.filter(r => newSelection.includes(r.id)) || [];
       const total = selectedVouchers.reduce((sum, v) => sum + (v.wageAmount || 0), 0);
       const primaryCurrency = selectedVouchers[0]?.currency || prev.currency;
-      return { ...prev, linkedReceipts: newSelection, amount: total, currency: primaryCurrency };
+      
+      return { 
+        ...prev, 
+        linkedReceipts: newSelection, 
+        amount: total, 
+        currency: primaryCurrency 
+      };
     });
   }, [allReceipts]);
 
   const resetDialog = useCallback(() => {
     setIsPayDialogOpen(false);
-    setFormData({ date: new Date().toISOString().split('T')[0], workerId: '', amount: 0, currency: 'YER', notes: '', linkedReceipts: [] });
+    setFormData({ 
+      date: new Date().toISOString().split('T')[0], 
+      workerId: '', 
+      amount: 0, 
+      currency: 'YER', 
+      notes: '', 
+      linkedReceipts: [] 
+    });
   }, []);
 
   const handleSavePayment = async (e: React.FormEvent) => {
@@ -346,19 +362,7 @@ export default function PayrollManagementPage() {
         <Tabs value={activeTab} onValueChange={setActiveTab} dir={dir} className="w-full h-full flex flex-col">
           <div className="flex items-center justify-between mb-4 bg-white p-2 rounded-xl border border-slate-200 shadow-sm">
             
-            {/* Tabs List - Right in RTL */}
-            <TabsList className="grid grid-cols-2 w-[360px] h-9">
-              <TabsTrigger value="balances" className="font-black text-xs">
-                <Users2 className="w-3.5 h-3.5 me-2" />
-                {lang === 'ar' ? 'الأرصدة المستحقة' : 'Outstanding'}
-              </TabsTrigger>
-              <TabsTrigger value="vouchers" className="font-black text-xs">
-                <Receipt className="w-3.5 h-3.5 me-2" />
-                {lang === 'ar' ? 'أرشيف الصرف' : 'Archive'}
-              </TabsTrigger>
-            </TabsList>
-
-            {/* Stats - Left in RTL */}
+            {/* Stats - Right in RTL */}
             <div className="px-4 hidden md:flex items-center gap-4 text-[10px] font-bold text-slate-400">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-emerald-500" />
@@ -370,6 +374,18 @@ export default function PayrollManagementPage() {
                 {lang === 'ar' ? 'كشوف نشطة:' : 'Active Ledgers:'} <span className="text-slate-900 tabular-nums">{(flattenedBalances.length).toLocaleString('en-US')}</span>
               </div>
             </div>
+
+            {/* Tabs List - Left in RTL */}
+            <TabsList className="grid grid-cols-2 w-[360px] h-9">
+              <TabsTrigger value="balances" className="font-black text-xs">
+                <Users2 className="w-3.5 h-3.5 me-2" />
+                {lang === 'ar' ? 'الأرصدة المستحقة' : 'Outstanding'}
+              </TabsTrigger>
+              <TabsTrigger value="vouchers" className="font-black text-xs">
+                <Receipt className="w-3.5 h-3.5 me-2" />
+                {lang === 'ar' ? 'أرشيف الصرف' : 'Archive'}
+              </TabsTrigger>
+            </TabsList>
           </div>
 
           <TabsContent value="balances" className="flex-1 min-h-0 focus-visible:ring-0">
@@ -380,7 +396,7 @@ export default function PayrollManagementPage() {
                 </div>
              ) : (
                <div className="h-full flex flex-col space-y-4">
-                <div className="p-4 bg-emerald-50/50 border border-emerald-100 rounded-xl flex items-center justify-between">
+                <div className="p-4 bg-emerald-50/50 border border-emerald-100 rounded-xl flex items-center justify-between flex-row-reverse">
                    <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center text-white shadow-md"><Info className="w-5 h-5" /></div>
                       <p className="text-xs font-bold text-emerald-800 leading-tight">
@@ -408,7 +424,7 @@ export default function PayrollManagementPage() {
                           return (
                             <TableRow key={`${w.id}-${w.displayCurrency}-${idx}`} className="hover:bg-slate-50/50 border-b border-slate-100 transition-colors group">
                               <TableCell className="px-6 py-3">
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-3 justify-start">
                                   <Avatar className="h-10 w-10 border-2 border-white shadow-sm shrink-0 rounded-xl">
                                     <AvatarImage src={w.photoUrl} className="object-cover" />
                                     <AvatarFallback className="bg-slate-100 text-slate-400 text-[10px] font-black uppercase">{w.fullName?.charAt(0)}</AvatarFallback>
@@ -548,9 +564,12 @@ export default function PayrollManagementPage() {
                       </TableHeader>
                       <TableBody>
                         {unpaidReceipts.map(r => (
-                          <TableRow key={r.id} className="hover:bg-emerald-50/30 transition-colors cursor-pointer" onClick={() => toggleReceiptSelection(r.id)}>
+                          <TableRow key={r.id} className="bg-white border-b border-slate-50 hover:bg-emerald-50/20 transition-colors">
                             <TableCell className="px-4">
-                               <Checkbox checked={formData.linkedReceipts.includes(r.id)} onCheckedChange={() => toggleReceiptSelection(r.id)} />
+                               <Checkbox 
+                                 checked={formData.linkedReceipts.includes(r.id)} 
+                                 onCheckedChange={() => toggleReceiptSelection(r.id)} 
+                               />
                             </TableCell>
                             <TableCell className="px-4 py-2 text-xs font-black text-slate-700 tabular-nums">{r.voucherNumber}</TableCell>
                             <TableCell className="px-4 py-2 text-xs font-bold text-slate-400 tabular-nums">{r.date}</TableCell>
@@ -679,4 +698,3 @@ export default function PayrollManagementPage() {
     </div>
   );
 }
-
