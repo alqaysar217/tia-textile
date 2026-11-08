@@ -31,7 +31,9 @@ import {
   Target,
   Layers,
   ArrowUpRight,
-  FileInput
+  FileInput,
+  ShieldCheck,
+  Users2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -93,10 +95,12 @@ export default function ProductionOrdersPage() {
   const productsQuery = useMemo(() => !db ? null : collection(db, 'products'), [db]);
   const ordersQuery = useMemo(() => !db ? null : collection(db, 'productionOrders'), [db]);
   const deptsQuery = useMemo(() => !db ? null : collection(db, 'departments'), [db]);
+  const workersQuery = useMemo(() => !db ? null : collection(db, 'workers'), [db]);
 
   const { data: products, loading: productsLoading } = useCollection<any>(productsQuery);
   const { data: orders, loading: ordersLoading } = useCollection<any>(ordersQuery);
   const { data: departments } = useCollection<any>(deptsQuery);
+  const { data: workers } = useCollection<any>(workersQuery);
 
   const filteredOrders = useMemo(() => {
     if (!orders) return [];
@@ -198,7 +202,7 @@ export default function ProductionOrdersPage() {
   return (
     <div className="flex flex-col h-full bg-[#f8fafc] overflow-hidden">
       
-      {/* ERP HUB - COMPACT HEADER */}
+      {/* ERP HUB - HEADER */}
       <div className="flex-none bg-white border-b border-slate-200 z-30 px-6 py-4 shadow-sm">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div className="flex items-center gap-4">
@@ -251,6 +255,10 @@ export default function ProductionOrdersPage() {
         ) : filteredOrders.map((order) => {
           const product = products?.find(p => p.id === order.productId);
           const stage = departments?.find(d => d.id === order.currentStageId);
+          
+          // Find any supervisor in this stage for info (This will be improved as assignments get more granular)
+          const stageSupervisor = workers?.find(w => w.departmentId === order.currentStageId && w.isSupervisor && w.active);
+          
           const progress = Math.round((order.completedQty / order.targetQty) * 100) || 0;
           const priorityColor = order.priority === 'high' ? 'bg-rose-500' : order.priority === 'normal' ? 'bg-emerald-500' : 'bg-slate-400';
 
@@ -308,16 +316,24 @@ export default function ProductionOrdersPage() {
                 </div>
 
                 {/* 2. PROGRESS & METRICS */}
-                <div className="flex-1 p-3 space-y-2 bg-slate-50/30">
+                <div className="flex-1 p-3 space-y-3 bg-slate-50/30">
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
                       <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
                         <Layers className="w-2.5 h-2.5 text-emerald-600" />
-                        {lang === 'ar' ? 'المرحلة التشغيلية' : 'OPERATIONAL PHASE'}
+                        {lang === 'ar' ? 'المرحلة والمسؤولية' : 'PHASE & ACCOUNTABILITY'}
                       </p>
-                      <p className="text-[11px] font-black text-slate-800">
-                        {stage?.nameAr || (lang === 'ar' ? 'بانتظار البدء' : 'PENDING')}
-                      </p>
+                      <div className="flex items-center gap-3">
+                        <p className="text-[11px] font-black text-slate-800">
+                          {stage?.nameAr || (lang === 'ar' ? 'بانتظار البدء' : 'PENDING')}
+                        </p>
+                        {stageSupervisor && (
+                          <div className="flex items-center gap-1.5 px-2 py-0.5 bg-white border border-slate-100 rounded-md shadow-sm animate-in fade-in zoom-in-95">
+                            <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                            <span className="text-[9px] font-black text-slate-600">{lang === 'ar' ? 'بإشراف:' : 'Lead:'} {stageSupervisor.fullName}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                     <div className="text-right">
                       <div className="flex items-center gap-1 justify-end">
@@ -327,37 +343,37 @@ export default function ProductionOrdersPage() {
                     </div>
                   </div>
 
-                  <Progress value={progress} className="h-1 bg-slate-100" />
+                  <Progress value={progress} className="h-1.5 bg-slate-200/50" />
 
                   <div className="grid grid-cols-3 gap-2">
-                    <div className="space-y-0.5">
+                    <div className="space-y-0.5 bg-white/40 p-1.5 rounded-lg border border-slate-100">
                       <p className="text-[8px] font-bold text-slate-400 uppercase">{lang === 'ar' ? 'المستهدف' : 'TARGET'}</p>
                       <p className="text-[11px] font-black text-slate-700 tabular-nums">{order.targetQty}</p>
                     </div>
-                    <div className="space-y-0.5">
-                      <p className="text-[8px] font-bold text-slate-400 uppercase">{lang === 'ar' ? 'المستلم' : 'ACTUAL'}</p>
+                    <div className="space-y-0.5 bg-white/40 p-1.5 rounded-lg border border-slate-100">
+                      <p className="text-[8px] font-bold text-slate-400 uppercase">{lang === 'ar' ? 'تم الاستلام' : 'RECEIVED'}</p>
                       <p className="text-[11px] font-black text-amber-600 tabular-nums">{order.completedQty}</p>
                     </div>
-                    <div className="space-y-0.5">
-                      <p className="text-[8px] font-bold text-slate-400 uppercase">{lang === 'ar' ? 'المتبقي' : 'REMAIN'}</p>
+                    <div className="space-y-0.5 bg-emerald-50/50 p-1.5 rounded-lg border border-emerald-100/50">
+                      <p className="text-[8px] font-bold text-emerald-600 uppercase">{lang === 'ar' ? 'قيد العمل' : 'REMAINING'}</p>
                       <p className="text-[11px] font-black text-emerald-700 tabular-nums">{order.targetQty - order.completedQty}</p>
                     </div>
                   </div>
                 </div>
 
                 {/* 3. QUICK ACTIONS HUB */}
-                <div className="w-full lg:w-32 p-2 flex flex-row lg:flex-col gap-1.5 border-r border-slate-100 bg-white items-center justify-center">
+                <div className="w-full lg:w-36 p-2.5 flex flex-row lg:flex-col gap-2 border-r border-slate-100 bg-white items-center justify-center">
                   <Button 
                     onClick={() => router.push(`/production/vouchers/issue?orderId=${order.id}`)}
                     variant="outline" 
-                    className="flex-1 lg:w-full h-8 rounded-lg text-[8px] font-black gap-1 border-slate-200 hover:bg-slate-50 transition-all uppercase"
+                    className="flex-1 lg:w-full h-9 rounded-lg text-[9px] font-black gap-1.5 border-slate-200 hover:bg-slate-50 transition-all uppercase"
                   >
-                    <FileText className="w-3 h-3 text-emerald-600" />
+                    <FileText className="w-3.5 h-3.5 text-emerald-600" />
                     {lang === 'ar' ? 'سندات الأمر' : 'Vouchers'}
                   </Button>
-                  <Button className="flex-1 lg:w-full h-8 premium-gradient rounded-lg text-[8px] font-black gap-1 border-none shadow-md hover:opacity-90 uppercase">
-                    {lang === 'ar' ? 'إدارة المرحلة' : 'Manage Stage'}
-                    <ChevronRight className={cn("w-3 h-3", dir === 'rtl' && "rotate-180")} />
+                  <Button className="flex-1 lg:w-full h-9 premium-gradient rounded-lg text-[9px] font-black gap-1.5 border-none shadow-md hover:opacity-90 uppercase">
+                    <Users2 className="w-3.5 h-3.5" />
+                    {lang === 'ar' ? 'إدارة الفرق' : 'Manage Teams'}
                   </Button>
                 </div>
 
@@ -502,8 +518,8 @@ export default function ProductionOrdersPage() {
         <div className="w-5 h-5 rounded bg-white/5 flex items-center justify-center"><AlertCircle className="w-2.5 h-2.5" /></div>
         <p className="text-[9px] font-bold">
           {lang === 'ar' 
-            ? 'ملاحظة: البيانات المالية وتكاليف المواد يتم احتسابها فور إغلاق كل مرحلة برمجياً.' 
-            : 'Note: Financials and material costs are recalculated upon phase closure.'}
+            ? 'بروتوكول الرقابة: يتم ربط كل مرحلة بالمشرف المسؤول لضمان جودة المخرجات والالتزام بالجدول الزمني.' 
+            : 'Audit Protocol: Each stage is linked to a responsible supervisor for quality and timeline assurance.'}
         </p>
       </div>
 

@@ -120,6 +120,7 @@ export default function MaterialIssuePage() {
     date: new Date().toISOString().split('T')[0],
     orderId: filterOrderId || '',
     workerId: '',
+    supervisorId: '', // Added to store accountability
     notes: '',
     items: [] as any[]
   });
@@ -207,6 +208,11 @@ export default function MaterialIssuePage() {
     return allWorkers?.find(w => w.id === formData.workerId);
   }, [allWorkers, formData.workerId]);
 
+  const selectedSupervisor = useMemo(() => {
+    if (!selectedWorker) return null;
+    return allWorkers?.find(w => w.id === selectedWorker.supervisorId);
+  }, [allWorkers, selectedWorker]);
+
   // Click outside listener for the custom dropdown
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -268,6 +274,7 @@ export default function MaterialIssuePage() {
       date: voucher.date,
       orderId: voucher.orderId,
       workerId: voucher.workerId,
+      supervisorId: voucher.supervisorId || '',
       notes: voucher.notes || '',
       items: [...voucher.items]
     });
@@ -288,6 +295,7 @@ export default function MaterialIssuePage() {
     const totalAmount = formData.items.reduce((acc, item) => acc + (item.qty * item.price), 0);
     const voucherData = {
       ...formData,
+      supervisorId: selectedWorker?.supervisorId || '', // Capture supervisor at time of issue
       type: 'material_issue',
       totalAmount,
       status: 'posted',
@@ -374,7 +382,7 @@ export default function MaterialIssuePage() {
     setSelectedDeptId('');
     setWorkerSearch('');
     setShowWorkerDropdown(false);
-    setFormData({ date: new Date().toISOString().split('T')[0], orderId: '', workerId: '', notes: '', items: [] });
+    setFormData({ date: new Date().toISOString().split('T')[0], orderId: '', workerId: '', supervisorId: '', notes: '', items: [] });
   };
 
   const handleDownloadImage = async () => {
@@ -412,19 +420,20 @@ export default function MaterialIssuePage() {
       lang === 'ar' ? 'التاريخ' : 'Date',
       lang === 'ar' ? 'أمر الإنتاج' : 'Order',
       lang === 'ar' ? 'المستلم' : 'Recipient',
-      lang === 'ar' ? 'عدد المواد' : 'Items Count',
+      lang === 'ar' ? 'المشرف المسؤول' : 'Supervisor',
       lang === 'ar' ? 'القيمة الإجمالية' : 'Total Value'
     ];
 
     const rows = filteredVouchers.map(v => {
       const order = allOrders?.find(o => o.id === v.orderId);
       const worker = allWorkers?.find(w => w.id === v.workerId);
+      const supervisor = allWorkers?.find(w => w.id === v.supervisorId);
       return [
         v.voucherNumber,
         v.date,
         order?.orderNumber || '---',
         worker?.fullName || '---',
-        v.items?.length || 0,
+        supervisor?.fullName || '---',
         v.totalAmount || 0
       ];
     });
@@ -563,7 +572,7 @@ export default function MaterialIssuePage() {
                 <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'رقم السند' : 'REF #'}</TableHead>
                 <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'التاريخ' : 'DATE'}</TableHead>
                 <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'أمر الإنتاج' : 'ORDER'}</TableHead>
-                <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'العامل' : 'WORKER'}</TableHead>
+                <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'العامل / المشرف' : 'RECIPIENT / SUP'}</TableHead>
                 <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">{lang === 'ar' ? 'الأصناف' : 'ITEMS'}</TableHead>
                 <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">{lang === 'ar' ? 'العمليات' : 'ACTIONS'}</TableHead>
               </TableRow>
@@ -576,6 +585,7 @@ export default function MaterialIssuePage() {
               ) : filteredVouchers.map((v) => {
                 const order = allOrders?.find(o => o.id === v.orderId);
                 const worker = allWorkers?.find(w => w.id === v.workerId);
+                const supervisor = allWorkers?.find(w => w.id === v.supervisorId);
                 return (
                   <TableRow key={v.id} className="hover:bg-slate-50/50 border-b border-slate-100 transition-colors group">
                     <TableCell className={cn("px-6 py-3", dir === 'rtl' ? "text-right" : "text-left")}>
@@ -592,7 +602,15 @@ export default function MaterialIssuePage() {
                       </div>
                     </TableCell>
                     <TableCell className={cn("px-6 py-3", dir === 'rtl' ? "text-right" : "text-left")}>
-                      <span className="font-bold text-slate-700 text-xs">{worker?.fullName || '---'}</span>
+                      <div className="flex flex-col">
+                        <span className="font-bold text-slate-700 text-xs">{worker?.fullName || '---'}</span>
+                        {supervisor && (
+                          <span className="text-[9px] font-black text-emerald-600 flex items-center gap-1">
+                            <ShieldCheck className="w-2 h-2" />
+                            {lang === 'ar' ? 'بمسؤولية:' : 'Under:'} {supervisor.fullName}
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="px-6 py-3 text-center">
                       <span className="inline-block px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[10px] font-black tabular-nums">
@@ -646,7 +664,7 @@ export default function MaterialIssuePage() {
                 {editingVoucherId ? (lang === 'ar' ? 'تعديل سند صرف مواد' : 'Update Material Issue') : (lang === 'ar' ? 'إنشاء سند صرف مواد للإنتاج' : 'New Material Issue')}
               </DialogTitle>
               <p className="text-emerald-100/70 font-bold text-[10px] uppercase tracking-widest mt-1">
-                Allocating raw materials to specific workers & work centers
+                Allocating raw materials to specific workers & accountability groups
               </p>
             </DialogHeader>
           </div>
@@ -745,6 +763,28 @@ export default function MaterialIssuePage() {
                 )}
               </div>
             </div>
+
+            {/* SUPERVISOR INFO BAR */}
+            {selectedWorker && (
+              <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center justify-between animate-in slide-in-from-top-2">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-emerald-600 shadow-sm">
+                    <ShieldCheck className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black text-emerald-800 uppercase tracking-widest">{lang === 'ar' ? 'المشرف الضامن للعهدة' : 'ACCOUNTABLE SUPERVISOR'}</p>
+                    <p className="text-xs font-bold text-emerald-700">
+                      {selectedSupervisor ? selectedSupervisor.fullName : (lang === 'ar' ? 'لم يعين مشرف (مسؤولية الموظف مباشرة)' : 'No supervisor assigned')}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-[9px] font-black bg-emerald-100 text-emerald-800 px-2 py-1 rounded uppercase">
+                    {lang === 'ar' ? 'مراقبة جودة' : 'QC Active'}
+                  </span>
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
               <div className="space-y-1.5">
@@ -947,8 +987,8 @@ export default function MaterialIssuePage() {
                         <span className="text-xs font-black text-slate-700 tabular-nums">{printingVoucher.date}</span>
                       </div>
                       <div className="flex justify-between items-center border-b border-slate-200 pb-1">
-                        <span className="text-[9px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'أمر الإنتاج' : 'Batch No.'}</span>
-                        <span className="text-xs font-black text-slate-700 tabular-nums">{allOrders?.find(o => o.id === printingVoucher.orderId)?.orderNumber}</span>
+                        <span className="text-[9px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'المشرف المسؤول' : 'Supervisor'}</span>
+                        <span className="text-xs font-black text-slate-700">{allWorkers?.find(w => w.id === printingVoucher.supervisorId)?.fullName || '---'}</span>
                       </div>
                     </div>
                   </div>
@@ -988,7 +1028,7 @@ export default function MaterialIssuePage() {
                       <p className="text-[8px] font-bold text-slate-400 uppercase">Signature / التاريخ</p>
                     </div>
                     <div className="space-y-8">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{lang === 'ar' ? 'اعتماد المدير' : 'Manager Approval'}</p>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{lang === 'ar' ? 'اعتماد المدير / المشرف' : 'Manager / Sup Approval'}</p>
                       <div className="h-px bg-slate-300 w-3/4 mx-auto" />
                       <p className="text-[8px] font-bold text-slate-400 uppercase">Authorized Signature</p>
                     </div>
@@ -1049,12 +1089,11 @@ export default function MaterialIssuePage() {
         <div className="w-6 h-6 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500"><ShieldCheck className="w-3.5 h-3.5" /></div>
         <p className="text-[10px] font-bold tracking-tight">
           {lang === 'ar' 
-            ? 'بروتوكول الأمان: ترحيل السند يؤدي إلى تقييد المواد فوراً كـ "عهدة" على العامل وتكاليف على أمر الإنتاج.' 
-            : 'Security Protocol: Posting instantly assigns materials as worker liability and applies costs to the manufacturing order.'}
+            ? 'بروتوكول الأمان: ترحيل السند يؤدي إلى تقييد المواد فوراً كـ "عهدة" على العامل وتكاليف على أمر الإنتاج تحت إشراف المشرف المباشر.' 
+            : 'Security Protocol: Posting instantly assigns materials as worker liability under direct supervisor oversight.'}
         </p>
       </div>
 
     </div>
   );
 }
-
