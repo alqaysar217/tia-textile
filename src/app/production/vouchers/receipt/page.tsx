@@ -518,7 +518,7 @@ export default function ProductionReceiptPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <Label className="text-[10px] font-black text-emerald-700 uppercase">الكمية المستلمة (صالحة)</Label>
-                    <Input type="number" value={formData.qtyAccepted} onChange={(e) => setFormData({...formData, qtyAccepted: Number(e.target.value)})} className="h-14 font-black text-center text-2xl text-emerald-700 bg-emerald-50 border-emerald-200 tabular-nums" required min="1" />
+                    <Input type="number" step="any" value={formData.qtyAccepted} onChange={(e) => setFormData({...formData, qtyAccepted: Number(e.target.value)})} className="h-14 font-black text-center text-2xl text-emerald-700 bg-emerald-50 border-emerald-200 tabular-nums" required min="0.01" />
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-[10px] font-black text-slate-400 uppercase">ملاحظات الفحص</Label>
@@ -531,7 +531,7 @@ export default function ProductionReceiptPage() {
                     <div className="flex flex-col gap-1">
                       <p className="text-[9px] font-black text-emerald-800 uppercase">أجر القطعة</p>
                       <div className="flex items-center gap-2">
-                        <Input type="number" value={formData.wageRate} onChange={(e) => setFormData({...formData, wageRate: Number(e.target.value)})} className="h-8 w-24 text-xs font-black tabular-nums" required min="0.1" />
+                        <Input type="number" step="any" value={formData.wageRate} onChange={(e) => setFormData({...formData, wageRate: Number(e.target.value)})} className="h-8 w-24 text-xs font-black tabular-nums" required />
                         <select value={formData.currency} onChange={(e) => setFormData({...formData, currency: e.target.value})} className="h-8 px-2 bg-white border border-emerald-200 rounded text-[9px] font-black">
                           <option value="YER">YER</option><option value="SAR">SAR</option><option value="USD">USD</option>
                         </select>
@@ -558,7 +558,7 @@ export default function ProductionReceiptPage() {
                 </div>
                 <div className="w-32 space-y-1.5">
                   <Label className="text-[9px] font-bold text-slate-500">الكمية المرتجعة</Label>
-                  <Input id="qtySelect" type="number" step="0.01" className="h-10 bg-white font-bold tabular-nums" />
+                  <Input id="qtySelect" type="number" step="any" className="h-10 bg-white font-bold tabular-nums" />
                 </div>
                 <Button type="button" onClick={() => {
                   const id = (document.getElementById('matSelect') as HTMLSelectElement).value;
