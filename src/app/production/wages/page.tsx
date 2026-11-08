@@ -33,7 +33,8 @@ import {
   HandCoins,
   Receipt,
   AlertCircle,
-  Info
+  Info,
+  Building2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -114,22 +115,23 @@ export default function PayrollManagementPage() {
     linkedReceipts: [] as string[]
   });
 
-  // Fetch Data - Simplified queries to avoid Index errors (status filtering moved to client side filtering)
+  // Fetch Data - Simplified queries to avoid Index errors
   const workersQuery = useMemo(() => !db ? null : collection(db, 'workers'), [db]);
+  const deptsQuery = useMemo(() => !db ? null : collection(db, 'departments'), [db]);
   const receiptsQuery = useMemo(() => !db ? null : query(collection(db, 'vouchers'), where('type', '==', 'production_receipt')), [db]);
   const paymentsQuery = useMemo(() => !db ? null : query(collection(db, 'vouchers'), where('type', '==', 'wage_payment')), [db]);
 
   const { data: allWorkers, loading: workersLoading } = useCollection<any>(workersQuery);
+  const { data: allDepartments } = useCollection<any>(deptsQuery);
   const { data: allReceipts, loading: receiptsLoading } = useCollection<any>(receiptsQuery);
   const { data: allPayments, loading: paymentsLoading } = useCollection<any>(paymentsQuery);
 
   const loading = workersLoading || receiptsLoading || paymentsLoading;
 
-  // LOGIC: Filter unpaid receipts (Client-side filtering for status)
+  // LOGIC: Filter unpaid receipts
   const unpaidReceipts = useMemo(() => {
     if (!formData.workerId || !allReceipts) return [];
     
-    // Filter active items here to bypass Firebase Index requirements
     const activePayments = (allPayments || []).filter(p => p.status !== 'deleted');
     const activeReceipts = (allReceipts || []).filter(r => r.status !== 'deleted');
 
@@ -347,8 +349,8 @@ export default function PayrollManagementPage() {
                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest">{lang === 'ar' ? 'جاري سحب الأرصدة المستحقة...' : 'Calculating Outstanding Balances...'}</p>
                 </div>
              ) : (
-               <>
-                <div className="mb-4 p-4 bg-emerald-50/50 border border-emerald-100 rounded-xl flex items-center gap-3">
+               <div className="h-full flex flex-col space-y-4">
+                <div className="p-4 bg-emerald-50/50 border border-emerald-100 rounded-xl flex items-center gap-3">
                    <Info className="w-5 h-5 text-emerald-600" />
                    <p className="text-xs font-bold text-emerald-800 leading-tight">
                       {lang === 'ar' 
@@ -357,55 +359,74 @@ export default function PayrollManagementPage() {
                    </p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 overflow-y-auto h-[calc(100%-80px)] pr-2 no-scrollbar">
-                    {workerBalances.map(w => (
-                      <div key={w.id} className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm hover:border-emerald-500 hover:shadow-lg transition-all duration-300 group relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-20 h-20 bg-emerald-50/50 rounded-full -mr-10 -mt-10 group-hover:scale-150 transition-transform duration-500" />
-                        <div className="relative z-10 flex items-center gap-4 mb-4">
-                            <Avatar className="h-12 w-12 border-2 border-white shadow-md">
-                              <AvatarImage src={w.photoUrl} className="object-cover" />
-                              <AvatarFallback className="bg-slate-50 text-slate-400 text-xs font-black">{w.fullName?.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 min-w-0 text-right">
-                              <p className="text-sm font-black text-slate-900 truncate">{w.fullName}</p>
-                              <p className="text-[10px] font-bold text-slate-400 tabular-nums uppercase tracking-widest">{w.workerId}</p>
-                            </div>
-                        </div>
-                        <div className="relative z-10 space-y-2">
-                            <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 uppercase border-b border-slate-50 pb-1">
-                              <span>{lang === 'ar' ? 'الرصيد المستحق' : 'Balance Due'}</span>
-                              <TrendingUp className="w-3 h-3 text-rose-400" />
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                              {Object.entries(w.balances).map(([curr, amt]) => (
-                                <div key={curr} className="flex items-baseline gap-1 bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-100">
-                                    <span className="text-sm font-black text-rose-600 tabular-nums">{(amt as number).toLocaleString('en-US')}</span>
-                                    <span className="text-[8px] font-black text-rose-400 uppercase">{curr}</span>
+                <div className="flex-1 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+                  <div className="flex-1 overflow-y-auto no-scrollbar">
+                    <Table className="text-right border-separate border-spacing-0">
+                      <TableHeader className="bg-slate-50 sticky top-0 z-10">
+                        <TableRow>
+                          <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase">{lang === 'ar' ? 'الموظف' : 'WORKER'}</TableHead>
+                          <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase">{lang === 'ar' ? 'القسم' : 'DEPT'}</TableHead>
+                          <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center">{lang === 'ar' ? 'الرصيد المستحق' : 'BALANCE DUE'}</TableHead>
+                          <TableHead className="w-40 px-6 py-4 text-center"></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {workerBalances.map(w => {
+                          const dept = allDepartments?.find(d => d.id === w.departmentId);
+                          return (
+                            <TableRow key={w.id} className="hover:bg-slate-50/50 border-b border-slate-100 transition-colors group">
+                              <TableCell className="px-6 py-3">
+                                <div className="flex items-center gap-3">
+                                  <Avatar className="h-9 w-9 border-2 border-white shadow-sm">
+                                    <AvatarImage src={w.photoUrl} className="object-cover" />
+                                    <AvatarFallback className="bg-slate-50 text-slate-400 text-[10px] font-black">{w.fullName?.charAt(0)}</AvatarFallback>
+                                  </Avatar>
+                                  <div className="flex flex-col">
+                                    <span className="font-black text-slate-900 text-xs">{w.fullName}</span>
+                                    <span className="text-[10px] text-emerald-700 font-bold tabular-nums tracking-widest uppercase">{w.workerId}</span>
+                                  </div>
                                 </div>
-                              ))}
-                            </div>
-                        </div>
-                        <div className="mt-4 pt-4 border-t border-slate-50 relative z-10">
-                            <Button 
-                              onClick={() => { setFormData({...formData, workerId: w.id}); setIsPayDialogOpen(true); }}
-                              variant="ghost" 
-                              className="w-full h-9 rounded-xl text-[10px] font-black uppercase text-emerald-600 bg-emerald-50 hover:bg-emerald-600 hover:text-white transition-all gap-2"
-                            >
-                              <Wallet className="w-3.5 h-3.5" />
-                              {lang === 'ar' ? 'صرف المستحقات الآن' : 'Settle Now'}
-                            </Button>
-                        </div>
-                      </div>
-                    ))}
-                    {workerBalances.length === 0 && (
-                      <div className="col-span-full flex flex-col items-center justify-center py-32 bg-white rounded-3xl border border-dashed border-slate-200">
-                          <div className="p-5 bg-emerald-50 rounded-full mb-4"><CheckCircle2 className="w-10 h-10 text-emerald-300" /></div>
-                          <p className="text-sm font-black text-slate-400 uppercase tracking-widest">{lang === 'ar' ? 'لا توجد مستحقات معلقة حالياً' : 'All accounts are cleared'}</p>
-                          <p className="text-[10px] font-bold text-slate-300 mt-2">{lang === 'ar' ? 'سيظهر العمال هنا بمجرد تسليمهم للإنتاج في صفحة "استلام وتسوية".' : 'Workers will appear here after production receipts are posted.'}</p>
-                      </div>
-                    )}
+                              </TableCell>
+                              <TableCell className="px-6 py-3">
+                                <span className="font-bold text-slate-600 text-xs">{dept ? (lang === 'ar' ? dept.nameAr : dept.nameEn) : '---'}</span>
+                              </TableCell>
+                              <TableCell className="px-6 py-3 text-center">
+                                <div className="flex flex-wrap justify-center gap-2">
+                                  {Object.entries(w.balances).map(([curr, amt]) => (
+                                    <Badge key={curr} variant="outline" className="bg-rose-50 text-rose-700 tabular-nums font-black border-rose-100 py-1">
+                                      {(amt as number).toLocaleString('en-US')} <span className="ms-1 text-[9px] opacity-60 uppercase">{curr}</span>
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </TableCell>
+                              <TableCell className="px-6 py-3 text-center">
+                                <Button 
+                                  onClick={() => { setFormData({...formData, workerId: w.id}); setIsPayDialogOpen(true); }}
+                                  variant="outline" 
+                                  className="h-9 px-4 rounded-xl text-[10px] font-black uppercase text-emerald-600 border-emerald-100 hover:bg-emerald-600 hover:text-white transition-all gap-2"
+                                >
+                                  <Wallet className="w-3.5 h-3.5" />
+                                  {lang === 'ar' ? 'صرف الآن' : 'Settle'}
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                        {workerBalances.length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={4} className="text-center py-24">
+                              <div className="flex flex-col items-center justify-center">
+                                <div className="p-4 bg-slate-50 rounded-full mb-3"><CheckCircle2 className="w-8 h-8 text-slate-200" /></div>
+                                <p className="text-sm font-black text-slate-400 uppercase tracking-widest">{lang === 'ar' ? 'لا توجد مستحقات معلقة' : 'All accounts are cleared'}</p>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </div>
-               </>
+               </div>
              )}
           </TabsContent>
           
