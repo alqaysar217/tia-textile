@@ -117,12 +117,12 @@ export default function ProductionReceiptPage() {
     workerId: '',
     linkedMIVs: [] as string[], // Vouchers being settled
     notes: '',
-    qtyAccepted: 0, // Used as the main "Produced Quantity"
+    qtyAccepted: 0, 
     qtyRejected: 0,
     qtyWaste: 0,
     wageRate: 0,
     currency: 'YER',
-    returnedItems: [] as any[] // Materials coming back to warehouse
+    returnedItems: [] as any[] 
   });
 
   // Fetch Data
@@ -142,7 +142,6 @@ export default function ProductionReceiptPage() {
 
   const activeOrders = useMemo(() => (allOrders || []).filter(o => o.status === 'active'), [allOrders]);
   
-  // Logic: Only show workers who have open material issues for the selected order
   const relevantWorkers = useMemo(() => {
     if (!formData.orderId || !allWorkers || !allMIVs) return [];
     const workerIdsWithIssues = allMIVs
@@ -151,17 +150,36 @@ export default function ProductionReceiptPage() {
     return allWorkers.filter(w => workerIdsWithIssues.includes(w.id));
   }, [formData.orderId, allWorkers, allMIVs]);
 
-  // Logic: Show open MIVs for the selected worker/order
   const openMIVs = useMemo(() => {
     if (!formData.orderId || !formData.workerId || !allMIVs) return [];
     return allMIVs.filter(m => m.orderId === formData.orderId && m.workerId === formData.workerId && m.status === 'posted');
   }, [formData.orderId, formData.workerId, allMIVs]);
 
+  // SMART LOGIC: Build a pool of materials issued in the selected MIVs
+  const issuedMaterialsPool = useMemo(() => {
+    if (!formData.linkedMIVs.length || !allMIVs) return [];
+    
+    const pool: Record<string, { nameAr: string; qty: number; unit: string }> = {};
+    
+    formData.linkedMIVs.forEach(mivId => {
+      const miv = allMIVs.find(m => m.id === mivId);
+      if (miv && miv.items) {
+        miv.items.forEach((item: any) => {
+          if (!pool[item.id]) {
+            pool[item.id] = { nameAr: item.nameAr, qty: 0, unit: item.unit };
+          }
+          pool[item.id].qty += item.qty;
+        });
+      }
+    });
+    
+    return Object.entries(pool).map(([id, data]) => ({ id, ...data }));
+  }, [formData.linkedMIVs, allMIVs]);
+
   const selectedOrder = useMemo(() => allOrders?.find(o => o.id === formData.orderId), [allOrders, formData.orderId]);
   const targetProduct = useMemo(() => allProducts?.find(p => p.id === selectedOrder?.productId), [allProducts, selectedOrder]);
   const selectedWorker = useMemo(() => allWorkers?.find(w => w.id === formData.workerId), [allWorkers, formData.workerId]);
 
-  // Auto-set wage rate when order changes
   useEffect(() => {
     if (targetProduct) {
       setFormData(prev => ({ 
@@ -217,14 +235,12 @@ export default function ProductionReceiptPage() {
       const voucherRef = doc(collection(db, 'vouchers'));
       batch.set(voucherRef, { ...voucherData, voucherNumber, createdAt: serverTimestamp() });
 
-      // 1. Update Order Progress
       const orderRef = doc(db, 'productionOrders', formData.orderId);
       const orderSnap = await getDoc(orderRef);
       batch.update(orderRef, {
         completedQty: (orderSnap.data()?.completedQty || 0) + Number(formData.qtyAccepted)
       });
 
-      // 2. Return Materials to Inventory
       formData.returnedItems.forEach(item => {
         const matRef = doc(db, 'materials', item.id);
         const material = allMaterials?.find(m => m.id === item.id);
@@ -247,11 +263,24 @@ export default function ProductionReceiptPage() {
   };
 
   const handleReturnItem = (matId: string, qty: number) => {
-    const material = allMaterials?.find(m => m.id === matId);
-    if (!material) return;
+    const issuedItem = issuedMaterialsPool.find(m => m.id === matId);
+    if (!issuedItem) return;
+
+    // VALIDATION: Prevent returning more than issued
+    if (qty > issuedItem.qty) {
+      toast({ 
+        variant: "destructive", 
+        title: lang === 'ar' ? "كمية غير منطقية" : "Invalid Quantity",
+        description: lang === 'ar' 
+          ? `لا يمكن إرجاع ${qty} بينما إجمالي ما استلمه العامل هو ${issuedItem.qty}` 
+          : `Cannot return ${qty} when only ${issuedItem.qty} was issued.`
+      });
+      return;
+    }
+
     setFormData(prev => ({
       ...prev,
-      returnedItems: [...prev.returnedItems, { id: matId, nameAr: material.nameAr, qty, unit: material.unit }]
+      returnedItems: [...prev.returnedItems.filter(i => i.id !== matId), { id: matId, nameAr: issuedItem.nameAr, qty, unit: issuedItem.unit }]
     }));
   };
 
@@ -455,7 +484,8 @@ export default function ProductionReceiptPage() {
                         const exists = formData.linkedMIVs.includes(m.id);
                         setFormData({
                           ...formData,
-                          linkedMIVs: exists ? formData.linkedMIVs.filter(id => id !== m.id) : [...formData.linkedMIVs, m.id]
+                          linkedMIVs: exists ? formData.linkedMIVs.filter(id => id !== m.id) : [...formData.linkedMIVs, m.id],
+                          returnedItems: [] // Reset returned items when pool changes
                         });
                       }}
                       className={cn(
@@ -474,7 +504,7 @@ export default function ProductionReceiptPage() {
               </div>
             )}
 
-            {/* STEP 3: PRODUCTION RECEIPT (FINISHED GOODS) */}
+            {/* STEP 3: PRODUCTION RECEIPT */}
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
               <div className="md:col-span-4 space-y-4">
                 <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl text-center space-y-3">
@@ -540,23 +570,35 @@ export default function ProductionReceiptPage() {
               </div>
             </div>
 
-            {/* STEP 4: RETURNED MATERIALS (WASTE/EXCESS) */}
+            {/* STEP 4: SMART RETURNED MATERIALS */}
             <div className="p-4 bg-blue-50/30 border border-blue-100 rounded-2xl space-y-4">
               <h3 className="text-[10px] font-black text-blue-700 uppercase tracking-widest flex items-center gap-2">
-                <RefreshCcw className="w-3.5 h-3.5" /> استرجاع المواد الخام المتبقية للمخزن (تصفية عهدة)
+                <RefreshCcw className="w-3.5 h-3.5" /> استرجاع المواد الخام المتبقية (إغلاق عهدة السندات المختارة)
               </h3>
               
-              <div className="flex gap-2 mb-4">
-                <select 
-                  id="matSelect"
-                  className="flex-1 h-10 px-3 bg-white border border-blue-200 rounded-md text-xs font-bold"
-                >
-                  <option value="">-- اختر مادة لإعادتها للمخزن --</option>
-                  {allMaterials?.map(m => <option key={m.id} value={m.id}>{m.nameAr} ({m.unit})</option>)}
-                </select>
-                <Input id="qtySelect" type="number" step="0.01" placeholder="الكمية المرتجعة" className="w-40 h-10 bg-white font-bold" />
+              <div className="flex flex-col md:flex-row gap-3 items-end">
+                <div className="flex-1 space-y-1.5">
+                  <Label className="text-[9px] font-bold text-slate-500">{lang === 'ar' ? 'الصنف من العهدة' : 'ISSUED MATERIAL'}</Label>
+                  <select 
+                    id="matSelect"
+                    disabled={formData.linkedMIVs.length === 0}
+                    className="w-full h-10 px-3 bg-white text-slate-900 border border-blue-200 rounded-md text-xs font-bold outline-none disabled:opacity-50"
+                  >
+                    <option value="">{formData.linkedMIVs.length === 0 ? '-- اختر سندات الصرف أولاً --' : '-- اختر مادة من العهدة لاسترجاعها --'}</option>
+                    {issuedMaterialsPool.map(m => (
+                      <option key={m.id} value={m.id} className="text-slate-900">
+                        {m.nameAr} ({lang === 'ar' ? 'العهدة الكلية:' : 'Total Issued:'} {m.qty} {m.unit})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="w-32 space-y-1.5">
+                  <Label className="text-[9px] font-bold text-slate-500">{lang === 'ar' ? 'الكمية المرتجعة' : 'RETURN QTY'}</Label>
+                  <Input id="qtySelect" type="number" step="0.01" placeholder="0.00" className="h-10 bg-white font-bold" />
+                </div>
                 <Button 
                   type="button" 
+                  disabled={formData.linkedMIVs.length === 0}
                   onClick={() => {
                     const id = (document.getElementById('matSelect') as HTMLSelectElement).value;
                     const qty = Number((document.getElementById('qtySelect') as HTMLInputElement).value);
@@ -565,7 +607,7 @@ export default function ProductionReceiptPage() {
                       (document.getElementById('qtySelect') as HTMLInputElement).value = '';
                     }
                   }}
-                  className="h-10 bg-blue-600 hover:bg-blue-500 text-white font-black text-xs px-6"
+                  className="h-10 bg-blue-600 hover:bg-blue-500 text-white font-black text-xs px-6 shadow-md"
                 >
                   إدراج الاسترجاع
                 </Button>
@@ -577,7 +619,7 @@ export default function ProductionReceiptPage() {
                       <TableHeader className="bg-blue-50/50">
                          <TableRow>
                             <TableHead className="text-right text-[9px] font-black text-blue-500 uppercase">المادة المستلمة</TableHead>
-                            <TableHead className="text-center text-[9px] font-black text-blue-500 uppercase">الكمية الصافية</TableHead>
+                            <TableHead className="text-center text-[9px] font-black text-blue-500 uppercase">الكمية المرتجعة</TableHead>
                             <TableHead className="text-center text-[9px] font-black text-blue-500 uppercase">الوحدة</TableHead>
                             <TableHead className="w-10"></TableHead>
                          </TableRow>
