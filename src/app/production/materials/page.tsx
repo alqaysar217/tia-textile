@@ -137,6 +137,8 @@ export default function MaterialsPage() {
     { value: 'yard', labelAr: 'ياردة (YD)', labelEn: 'Yard' },
     { value: 'roll', labelAr: 'رول (Roll)', labelEn: 'Roll' },
     { value: 'piece', labelAr: 'حبة (Pcs)', labelEn: 'Piece' },
+    { value: 'spool', labelAr: 'بكرة (Spool)', labelEn: 'Spool' },
+    { value: 'wheel', labelAr: 'عجلة (Wheel)', labelEn: 'Wheel' },
     { value: 'liter', labelAr: 'لتر (L)', labelEn: 'Liter' },
     { value: 'meter', labelAr: 'متر (M)', labelEn: 'Meter' },
     { value: 'set', labelAr: 'طقم (Set)', labelEn: 'Set' },
@@ -727,4 +729,3 @@ export default function MaterialsPage() {
     </div>
   );
 }
-
