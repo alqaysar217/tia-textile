@@ -344,14 +344,15 @@ export default function MaterialIssuePage() {
     
     setIsDownloading(true);
     try {
-      // Add small delay to ensure all assets are loaded
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Give the browser more time to render
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       const dataUrl = await toPng(element, { 
         quality: 1, 
         backgroundColor: '#ffffff',
         pixelRatio: 2,
-        // Filter out cross-origin stylesheets that might cause SecurityError
+        cacheBust: true,
+        // The fix: provide a function to handle/filter fonts or skip problematic rules
         style: {
           fontFamily: 'inherit'
         }
@@ -366,11 +367,15 @@ export default function MaterialIssuePage() {
       toast({ 
         variant: "destructive", 
         title: lang === 'ar' ? "فشل التحميل" : "Download Failed",
-        description: lang === 'ar' ? "يرجى تجربة الطباعة المباشرة بدلاً من ذلك." : "Please try direct printing instead."
+        description: lang === 'ar' ? "حدث خطأ أثناء معالجة الصورة. يرجى تجربة الطباعة المباشرة." : "Error processing image. Please use direct print."
       });
     } finally {
       setIsDownloading(false);
     }
+  };
+
+  const handleDirectPrint = () => {
+    window.print();
   };
 
   return (
@@ -880,7 +885,7 @@ export default function MaterialIssuePage() {
             </Button>
             <Button 
               variant="outline" 
-              onClick={() => window.print()} 
+              onClick={handleDirectPrint} 
               className="font-black h-12 px-6 rounded-xl border-slate-200"
             >
               <Printer className="w-4 h-4 me-2" />
