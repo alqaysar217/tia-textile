@@ -85,7 +85,7 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/components/ui/tabs';
-import { Avatar, AvatarFallback, AvatarImage } from '@/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -362,7 +362,19 @@ export default function PayrollManagementPage() {
         <Tabs value={activeTab} onValueChange={setActiveTab} dir={dir} className="w-full h-full flex flex-col">
           <div className="flex items-center justify-between mb-4 bg-white p-2 rounded-xl border border-slate-200 shadow-sm">
             
-            {/* Stats - Right in RTL */}
+            {/* Tabs List - Right in RTL (Primary Navigation) */}
+            <TabsList className="grid grid-cols-2 w-[360px] h-9">
+              <TabsTrigger value="balances" className="font-black text-xs">
+                <Users2 className="w-3.5 h-3.5 me-2" />
+                {lang === 'ar' ? 'الأرصدة المستحقة' : 'Outstanding'}
+              </TabsTrigger>
+              <TabsTrigger value="vouchers" className="font-black text-xs">
+                <Receipt className="w-3.5 h-3.5 me-2" />
+                {lang === 'ar' ? 'أرشيف الصرف' : 'Archive'}
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Stats - Left in RTL (Secondary Info) */}
             <div className="px-4 hidden md:flex items-center gap-4 text-[10px] font-bold text-slate-400">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-emerald-500" />
@@ -374,18 +386,6 @@ export default function PayrollManagementPage() {
                 {lang === 'ar' ? 'كشوف نشطة:' : 'Active Ledgers:'} <span className="text-slate-900 tabular-nums">{(flattenedBalances.length).toLocaleString('en-US')}</span>
               </div>
             </div>
-
-            {/* Tabs List - Left in RTL */}
-            <TabsList className="grid grid-cols-2 w-[360px] h-9">
-              <TabsTrigger value="balances" className="font-black text-xs">
-                <Users2 className="w-3.5 h-3.5 me-2" />
-                {lang === 'ar' ? 'الأرصدة المستحقة' : 'Outstanding'}
-              </TabsTrigger>
-              <TabsTrigger value="vouchers" className="font-black text-xs">
-                <Receipt className="w-3.5 h-3.5 me-2" />
-                {lang === 'ar' ? 'أرشيف الصرف' : 'Archive'}
-              </TabsTrigger>
-            </TabsList>
           </div>
 
           <TabsContent value="balances" className="flex-1 min-h-0 focus-visible:ring-0">
@@ -396,10 +396,10 @@ export default function PayrollManagementPage() {
                 </div>
              ) : (
                <div className="h-full flex flex-col space-y-4">
-                <div className="p-4 bg-emerald-50/50 border border-emerald-100 rounded-xl flex items-center justify-between flex-row-reverse">
+                <div className="p-4 bg-emerald-50/50 border border-emerald-100 rounded-xl flex items-center justify-between">
                    <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center text-white shadow-md"><Info className="w-5 h-5" /></div>
-                      <p className="text-xs font-bold text-emerald-800 leading-tight">
+                      <p className="text-xs font-bold text-emerald-800 leading-tight text-right">
                          {lang === 'ar' 
                            ? 'تظهر الأرصدة هنا آلياً بناءً على "سندات استلام الإنتاج" الموثقة. يتم تسوية الرصيد فور ترحيل سند الصرف المالي.' 
                            : 'Balances are generated from posted Production Receipts. Posting a payment clears the balance.'}
@@ -409,7 +409,7 @@ export default function PayrollManagementPage() {
 
                 <div className="flex-1 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
                   <div className="flex-1 overflow-y-auto no-scrollbar">
-                    <Table className="text-right">
+                    <Table className="text-right border-separate border-spacing-0">
                       <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
                         <TableRow>
                           <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'الموظف الحرفي' : 'PERSONNEL'}</TableHead>
@@ -423,7 +423,7 @@ export default function PayrollManagementPage() {
                           const dept = allDepartments?.find(d => d.id === w.departmentId);
                           return (
                             <TableRow key={`${w.id}-${w.displayCurrency}-${idx}`} className="hover:bg-slate-50/50 border-b border-slate-100 transition-colors group">
-                              <TableCell className="px-6 py-3">
+                              <TableCell className="px-6 py-3 text-right">
                                 <div className="flex items-center gap-3 justify-start">
                                   <Avatar className="h-10 w-10 border-2 border-white shadow-sm shrink-0 rounded-xl">
                                     <AvatarImage src={w.photoUrl} className="object-cover" />
@@ -435,7 +435,7 @@ export default function PayrollManagementPage() {
                                   </div>
                                 </div>
                               </TableCell>
-                              <TableCell className="px-6 py-3">
+                              <TableCell className="px-6 py-3 text-right">
                                 <span className="font-bold text-slate-600 text-xs">{dept ? (lang === 'ar' ? dept.nameAr : dept.nameEn) : '---'}</span>
                               </TableCell>
                               <TableCell className="px-6 py-3 text-center">
@@ -477,7 +477,7 @@ export default function PayrollManagementPage() {
           <TabsContent value="vouchers" className="flex-1 min-h-0 focus-visible:ring-0">
              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden h-full flex flex-col">
                 <div className="flex-1 overflow-y-auto no-scrollbar">
-                   <Table className="text-right">
+                   <Table className="text-right border-separate border-spacing-0">
                       <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
                          <TableRow>
                            <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'رقم السند' : 'REF #'}</TableHead>
@@ -494,9 +494,9 @@ export default function PayrollManagementPage() {
                             <TableRow><TableCell colSpan={5} className="text-center py-32 text-slate-300 font-black uppercase tracking-widest">{lang === 'ar' ? 'الأرشيف المالي فارغ' : 'Archive is empty'}</TableCell></TableRow>
                          ) : filteredPayments.map(p => (
                            <TableRow key={p.id} className="hover:bg-slate-50/50 border-b border-slate-100 transition-colors group">
-                              <TableCell className="px-6 py-3 font-black text-slate-900 text-xs tabular-nums">{p.voucherNumber}</TableCell>
-                              <TableCell className="px-6 py-3 font-bold text-slate-500 text-xs tabular-nums">{p.date}</TableCell>
-                              <TableCell className="px-6 py-3 font-bold text-slate-700 text-xs">{allWorkers?.find(w => w.id === p.workerId)?.fullName || '---'}</TableCell>
+                              <TableCell className="px-6 py-3 font-black text-slate-900 text-xs tabular-nums text-right">{p.voucherNumber}</TableCell>
+                              <TableCell className="px-6 py-3 font-bold text-slate-500 text-xs tabular-nums text-right">{p.date}</TableCell>
+                              <TableCell className="px-6 py-3 font-bold text-slate-700 text-xs text-right">{allWorkers?.find(w => w.id === p.workerId)?.fullName || '---'}</TableCell>
                               <TableCell className="px-6 py-3 text-center">
                                  <Badge variant="outline" className="bg-emerald-50 text-emerald-700 tabular-nums font-black border-emerald-100 py-1 px-3">
                                    {(p.totalAmount || 0).toLocaleString('en-US')} <span className="ms-1 uppercase opacity-60">{p.currency}</span>
@@ -518,7 +518,7 @@ export default function PayrollManagementPage() {
       </div>
 
       {/* NEW PAYMENT DIALOG */}
-      <Dialog open={isPayDialogOpen} onOpenChange={setIsPayDialogOpen}>
+      <Dialog open={isPayDialogOpen} onOpenChange={(open) => !open && resetDialog()}>
         <DialogContent className="sm:max-w-[800px] rounded-lg p-0 overflow-hidden border-none shadow-2xl">
           <div className="premium-gradient p-6 text-white">
             <DialogHeader className="text-right rtl:text-right ltr:text-left">
@@ -553,7 +553,7 @@ export default function PayrollManagementPage() {
                   <Receipt className="w-3.5 h-3.5 text-emerald-600" /> {lang === 'ar' ? 'سندات الإنجاز المستحقة (اختر للسداد)' : 'UNPAID PRODUCTION RECEIPTS'}
                 </h3>
                 <div className="border border-slate-100 rounded-xl overflow-hidden shadow-sm">
-                   <Table className="text-right">
+                   <Table className="text-right border-separate border-spacing-0">
                       <TableHeader className="bg-slate-50">
                         <TableRow>
                           <TableHead className="w-10 px-4"></TableHead>
@@ -571,8 +571,8 @@ export default function PayrollManagementPage() {
                                  onCheckedChange={() => toggleReceiptSelection(r.id)} 
                                />
                             </TableCell>
-                            <TableCell className="px-4 py-2 text-xs font-black text-slate-700 tabular-nums">{r.voucherNumber}</TableCell>
-                            <TableCell className="px-4 py-2 text-xs font-bold text-slate-400 tabular-nums">{r.date}</TableCell>
+                            <TableCell className="px-4 py-2 text-xs font-black text-slate-700 tabular-nums text-right">{r.voucherNumber}</TableCell>
+                            <TableCell className="px-4 py-2 text-xs font-bold text-slate-400 tabular-nums text-right">{r.date}</TableCell>
                             <TableCell className="px-4 py-2 text-center">
                                <span className="text-sm font-black text-emerald-700 tabular-nums">{(r.wageAmount || 0).toLocaleString('en-US')}</span>
                                <span className="text-[9px] font-black text-slate-400 ms-1 uppercase">{r.currency}</span>
@@ -698,3 +698,4 @@ export default function PayrollManagementPage() {
     </div>
   );
 }
+
