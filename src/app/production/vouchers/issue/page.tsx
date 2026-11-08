@@ -307,8 +307,7 @@ export default function MaterialIssuePage() {
         const material = materials?.find(m => m.id === item.id);
         if (material) {
           batch.update(doc(db, 'materials', item.id), {
-            currentQty: (material.currentQty || 0) + item.qty,
-            updatedAt: serverTimestamp()
+            currentQty: (material.currentQty || 0) + item.qty
           });
         }
       });
@@ -340,42 +339,47 @@ export default function MaterialIssuePage() {
 
   const handleDownloadImage = async () => {
     const element = document.getElementById('printable-voucher');
-    if (!element || !printingVoucher) return;
+    if (!element || !printingVoucher) {
+      toast({ variant: "destructive", title: lang === 'ar' ? "خطأ في العنصر" : "Element not found" });
+      return;
+    }
     
     setIsDownloading(true);
     try {
-      // Give the browser more time to render
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Wait a bit more for fonts and layout to settle
+      await new Promise(resolve => setTimeout(resolve, 800));
       
       const dataUrl = await toPng(element, { 
-        quality: 1, 
         backgroundColor: '#ffffff',
         pixelRatio: 2,
         cacheBust: true,
-        // The fix: provide a function to handle/filter fonts or skip problematic rules
-        style: {
-          fontFamily: 'inherit'
+        skipFonts: false, // Keep fonts as we moved to local
+        // Skip problematic style extraction to prevent TypeError/SecurityError
+        fontEmbedCSS: '', 
+        filter: (node) => {
+          // Exclude any script or non-visible tags that might be picked up
+          return node.tagName !== 'SCRIPT';
         }
       });
+      
       const link = document.createElement('a');
       link.download = `MaterialIssue-${printingVoucher.voucherNumber}.png`;
       link.href = dataUrl;
+      document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
+      
       toast({ title: lang === 'ar' ? "تم تحميل السند كصورة" : "Voucher downloaded as image" });
     } catch (err: any) {
       console.error('Download error:', err);
       toast({ 
         variant: "destructive", 
         title: lang === 'ar' ? "فشل التحميل" : "Download Failed",
-        description: lang === 'ar' ? "حدث خطأ أثناء معالجة الصورة. يرجى تجربة الطباعة المباشرة." : "Error processing image. Please use direct print."
+        description: lang === 'ar' ? "حدث خطأ تقني في معالجة الصورة." : "Technical error processing image."
       });
     } finally {
       setIsDownloading(false);
     }
-  };
-
-  const handleDirectPrint = () => {
-    window.print();
   };
 
   return (
@@ -755,7 +759,7 @@ export default function MaterialIssuePage() {
 
                   {/* PROFESSIONAL BILINGUAL HEADER */}
                   <div className="grid grid-cols-3 items-center border-b-4 border-emerald-800 pb-6 mb-6 relative z-10">
-                    {/* ARABIC SIDE (NOW ON LEFT AS PER PREVIOUS REQ) */}
+                    {/* ARABIC SIDE */}
                     <div className="text-center space-y-0.5">
                       <h2 className="text-base font-black text-emerald-900">جمعية الصناعات النسيجية</h2>
                       <p className="text-xs font-bold text-slate-500">الروضة - محافظة شبوة - اليمن</p>
@@ -769,7 +773,7 @@ export default function MaterialIssuePage() {
                       </div>
                     </div>
 
-                    {/* ENGLISH SIDE (NOW ON RIGHT AS PER PREVIOUS REQ) */}
+                    {/* ENGLISH SIDE */}
                     <div className="text-center space-y-0.5" dir="ltr">
                       <h2 className="text-[11px] font-black text-emerald-900 uppercase">Textile Industries Association</h2>
                       <p className="text-[10px] font-bold text-slate-500">Al-Rawdah - Shabwa - Yemen</p>
@@ -846,7 +850,7 @@ export default function MaterialIssuePage() {
                     </Table>
                   </div>
 
-                  {/* SIGNATURES SECTION - COMPACT AND ATTACHED */}
+                  {/* SIGNATURES SECTION */}
                   <div className="grid grid-cols-3 gap-4 pt-6 border-t border-slate-200 text-center relative z-10">
                     <div className="space-y-8">
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{lang === 'ar' ? 'أمين المستودع' : 'Store Keeper'}</p>
@@ -883,15 +887,7 @@ export default function MaterialIssuePage() {
               {isDownloading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
               {lang === 'ar' ? 'تحميل السند كصورة' : 'Download as Image'}
             </Button>
-            <Button 
-              variant="outline" 
-              onClick={handleDirectPrint} 
-              className="font-black h-12 px-6 rounded-xl border-slate-200"
-            >
-              <Printer className="w-4 h-4 me-2" />
-              {lang === 'ar' ? 'طباعة مباشرة' : 'Direct Print'}
-            </Button>
-            <Button variant="ghost" onClick={() => setPrintingVoucher(null)} className="font-black h-12 px-6 rounded-xl">
+            <Button variant="ghost" onClick={() => setPrintingVoucher(null)} className="font-black h-12 px-6 rounded-xl border border-slate-200">
               {lang === 'ar' ? 'إغلاق' : 'Close'}
             </Button>
           </DialogFooter>
@@ -933,31 +929,7 @@ export default function MaterialIssuePage() {
         </p>
       </div>
 
-      {/* PRINT STYLES */}
-      <style jsx global>{`
-        @media print {
-          body * {
-            visibility: hidden;
-          }
-          #printable-voucher, #printable-voucher * {
-            visibility: visible;
-          }
-          #printable-voucher {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            padding: 0;
-            margin: 0;
-            box-shadow: none;
-            border: none;
-          }
-          .print\:hidden {
-            display: none !important;
-          }
-        }
-      `}</style>
-
     </div>
   );
 }
+
