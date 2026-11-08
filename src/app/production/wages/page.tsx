@@ -339,7 +339,17 @@ export default function PayrollManagementPage() {
       <div className="flex-1 min-h-0 flex flex-col p-4 md:p-6 no-scrollbar">
         <Tabs defaultValue="balances" dir={dir} className="w-full h-full flex flex-col" onValueChange={setActiveTab}>
           <div className="flex items-center justify-between mb-4 bg-white p-2 rounded-xl border border-slate-200 shadow-sm">
-            {/* Swapped order: Stats first (Right side in RTL), Tabs second (Left side in RTL) */}
+            <TabsList className="grid grid-cols-2 w-[400px] h-10">
+              <TabsTrigger value="balances" className="font-black text-xs h-8">
+                <Users2 className="w-3.5 h-3.5 me-2" />
+                {lang === 'ar' ? 'الأرصدة المستحقة للعمال' : 'Outstanding Balances'}
+              </TabsTrigger>
+              <TabsTrigger value="vouchers" className="font-black text-xs h-8">
+                <Receipt className="w-3.5 h-3.5 me-2" />
+                {lang === 'ar' ? 'أرشيف سندات الصرف' : 'Payment Archive'}
+              </TabsTrigger>
+            </TabsList>
+
             <div className="px-4 hidden md:flex items-center gap-4 text-[10px] font-bold text-slate-400">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-emerald-500" />
@@ -351,17 +361,6 @@ export default function PayrollManagementPage() {
                 {lang === 'ar' ? 'حسابات نشطة:' : 'Active Accounts:'} <span className="text-slate-900 tabular-nums">{(flattenedBalances.length).toLocaleString('en-US')}</span>
               </div>
             </div>
-
-            <TabsList className="grid grid-cols-2 w-[400px] h-10">
-              <TabsTrigger value="balances" className="font-black text-xs h-8">
-                <Users2 className="w-3.5 h-3.5 me-2" />
-                {lang === 'ar' ? 'الأرصدة المستحقة للعمال' : 'Outstanding Balances'}
-              </TabsTrigger>
-              <TabsTrigger value="vouchers" className="font-black text-xs h-8">
-                <Receipt className="w-3.5 h-3.5 me-2" />
-                {lang === 'ar' ? 'أرشيف سندات الصرف' : 'Payment Archive'}
-              </TabsTrigger>
-            </TabsList>
           </div>
 
           <TabsContent value="balances" className="flex-1 min-h-0 focus-visible:ring-0">
@@ -383,11 +382,11 @@ export default function PayrollManagementPage() {
 
                 <div className="flex-1 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
                   <div className="flex-1 overflow-y-auto no-scrollbar">
-                    <Table className={cn("border-separate border-spacing-0", dir === 'rtl' ? "text-left" : "text-right")}>
+                    <Table className="border-separate border-spacing-0">
                       <TableHeader className="bg-slate-50 sticky top-0 z-10">
                         <TableRow>
-                          <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-left" : "text-right")}>{lang === 'ar' ? 'الموظف' : 'WORKER'}</TableHead>
-                          <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-left" : "text-right")}>{lang === 'ar' ? 'القسم' : 'DEPT'}</TableHead>
+                          <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'الموظف' : 'WORKER'}</TableHead>
+                          <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'القسم' : 'DEPT'}</TableHead>
                           <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center">{lang === 'ar' ? 'الرصيد المستحق' : 'BALANCE DUE'}</TableHead>
                           <TableHead className="w-40 px-6 py-4 text-center"></TableHead>
                         </TableRow>
@@ -397,19 +396,19 @@ export default function PayrollManagementPage() {
                           const dept = allDepartments?.find(d => d.id === w.departmentId);
                           return (
                             <TableRow key={`${w.id}-${w.displayCurrency}-${idx}`} className="hover:bg-slate-50/50 border-b border-slate-100 transition-colors group">
-                              <TableCell className={cn("px-6 py-3", dir === 'rtl' ? "text-left" : "text-right")}>
-                                <div className={cn("flex items-center gap-3", dir === 'rtl' ? "justify-start flex-row-reverse" : "justify-start")}>
-                                  <div className={cn("flex flex-col", dir === 'rtl' ? "text-left" : "text-right")}>
-                                    <span className="font-black text-slate-900 text-xs">{w.fullName}</span>
-                                    <span className="text-[10px] text-emerald-700 font-bold tabular-nums tracking-widest uppercase">{w.workerId}</span>
-                                  </div>
-                                  <Avatar className="h-9 w-9 border-2 border-white shadow-sm">
+                              <TableCell className={cn("px-6 py-3", dir === 'rtl' ? "text-right" : "text-left")}>
+                                <div className="flex items-center gap-3">
+                                  <Avatar className="h-9 w-9 border-2 border-white shadow-sm shrink-0">
                                     <AvatarImage src={w.photoUrl} className="object-cover" />
                                     <AvatarFallback className="bg-slate-50 text-slate-400 text-[10px] font-black">{w.fullName?.charAt(0)}</AvatarFallback>
                                   </Avatar>
+                                  <div className="flex flex-col">
+                                    <span className="font-black text-slate-900 text-xs">{w.fullName}</span>
+                                    <span className="text-[10px] text-emerald-700 font-bold tabular-nums tracking-widest uppercase">{w.workerId}</span>
+                                  </div>
                                 </div>
                               </TableCell>
-                              <TableCell className={cn("px-6 py-3", dir === 'rtl' ? "text-left" : "text-right")}>
+                              <TableCell className={cn("px-6 py-3", dir === 'rtl' ? "text-right" : "text-left")}>
                                 <span className="font-bold text-slate-600 text-xs">{dept ? (lang === 'ar' ? dept.nameAr : dept.nameEn) : '---'}</span>
                               </TableCell>
                               <TableCell className="px-6 py-3 text-center">
@@ -451,12 +450,12 @@ export default function PayrollManagementPage() {
           <TabsContent value="vouchers" className="flex-1 min-h-0 focus-visible:ring-0">
              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden h-full flex flex-col">
                 <div className="flex-1 overflow-y-auto no-scrollbar">
-                   <Table className={cn("border-separate border-spacing-0", dir === 'rtl' ? "text-left" : "text-right")}>
+                   <Table>
                       <TableHeader className="bg-slate-50 sticky top-0 z-10">
                          <TableRow>
-                           <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-left" : "text-right")}>{lang === 'ar' ? 'رقم السند' : 'REF #'}</TableHead>
-                           <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-left" : "text-right")}>{lang === 'ar' ? 'التاريخ' : 'DATE'}</TableHead>
-                           <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-left" : "text-right")}>{lang === 'ar' ? 'الموظف' : 'WORKER'}</TableHead>
+                           <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'رقم السند' : 'REF #'}</TableHead>
+                           <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'التاريخ' : 'DATE'}</TableHead>
+                           <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'الموظف' : 'WORKER'}</TableHead>
                            <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center">{lang === 'ar' ? 'المبلغ المصروف' : 'AMOUNT PAID'}</TableHead>
                            <TableHead className="w-20"></TableHead>
                          </TableRow>
@@ -468,9 +467,9 @@ export default function PayrollManagementPage() {
                             <TableRow><TableCell colSpan={5} className="text-center py-32 text-slate-300 font-black uppercase">{lang === 'ar' ? 'الأرشيف فارغ' : 'Archive is empty'}</TableCell></TableRow>
                          ) : filteredPayments.map(p => (
                            <TableRow key={p.id} className="hover:bg-slate-50/50 border-b border-slate-100 transition-colors group">
-                              <TableCell className={cn("px-6 py-3 font-black text-slate-900 text-xs tabular-nums", dir === 'rtl' ? "text-left" : "text-right")}>{p.voucherNumber}</TableCell>
-                              <TableCell className={cn("px-6 py-3 font-bold text-slate-500 text-xs tabular-nums", dir === 'rtl' ? "text-left" : "text-right")}>{p.date}</TableCell>
-                              <TableCell className={cn("px-6 py-3 font-bold text-slate-700 text-xs", dir === 'rtl' ? "text-left" : "text-right")}>{allWorkers?.find(w => w.id === p.workerId)?.fullName || '---'}</TableCell>
+                              <TableCell className={cn("px-6 py-3 font-black text-slate-900 text-xs tabular-nums", dir === 'rtl' ? "text-right" : "text-left")}>{p.voucherNumber}</TableCell>
+                              <TableCell className={cn("px-6 py-3 font-bold text-slate-500 text-xs tabular-nums", dir === 'rtl' ? "text-right" : "text-left")}>{p.date}</TableCell>
+                              <TableCell className={cn("px-6 py-3 font-bold text-slate-700 text-xs", dir === 'rtl' ? "text-right" : "text-left")}>{allWorkers?.find(w => w.id === p.workerId)?.fullName || '---'}</TableCell>
                               <TableCell className="px-6 py-3 text-center">
                                  <Badge variant="outline" className="bg-emerald-50 text-emerald-700 tabular-nums font-black border-emerald-100">
                                    {(p.totalAmount || 0).toLocaleString('en-US')} {p.currency}
@@ -527,12 +526,12 @@ export default function PayrollManagementPage() {
                   <Receipt className="w-3.5 h-3.5 text-emerald-600" /> {lang === 'ar' ? 'سندات استحقاق غير مدفوعة (اختر للسداد)' : 'UNPAID ENTITLEMENTS (SELECT TO PAY)'}
                 </h3>
                 <div className="border border-slate-100 rounded-xl overflow-hidden shadow-sm">
-                   <Table className={cn("text-right", dir === 'rtl' ? "text-left" : "text-right")}>
+                   <Table className="text-right">
                       <TableHeader className="bg-slate-50">
                         <TableRow>
                           <TableHead className="w-10 px-4"></TableHead>
-                          <TableHead className={cn("px-4 py-2 text-[10px] font-black text-slate-500 uppercase", dir === 'rtl' ? "text-left" : "text-right")}>{lang === 'ar' ? 'رقم سند الاستلام' : 'REF #'}</TableHead>
-                          <TableHead className={cn("px-4 py-2 text-[10px] font-black text-slate-500 uppercase", dir === 'rtl' ? "text-left" : "text-right")}>{lang === 'ar' ? 'التاريخ' : 'DATE'}</TableHead>
+                          <TableHead className={cn("px-4 py-2 text-[10px] font-black text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'رقم سند الاستلام' : 'REF #'}</TableHead>
+                          <TableHead className={cn("px-4 py-2 text-[10px] font-black text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'التاريخ' : 'DATE'}</TableHead>
                           <TableHead className="px-4 py-2 text-center text-[10px] font-black text-slate-500 uppercase">{lang === 'ar' ? 'المبلغ المستحق' : 'DUE'}</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -542,8 +541,8 @@ export default function PayrollManagementPage() {
                             <TableCell className="px-4">
                                <Checkbox checked={formData.linkedReceipts.includes(r.id)} onCheckedChange={() => toggleReceiptSelection(r.id)} />
                             </TableCell>
-                            <TableCell className={cn("px-4 py-2 text-xs font-black text-slate-700 tabular-nums", dir === 'rtl' ? "text-left" : "text-right")}>{r.voucherNumber}</TableCell>
-                            <TableCell className={cn("px-4 py-2 text-xs font-bold text-slate-400 tabular-nums", dir === 'rtl' ? "text-left" : "text-right")}>{r.date}</TableCell>
+                            <TableCell className={cn("px-4 py-2 text-xs font-black text-slate-700 tabular-nums", dir === 'rtl' ? "text-right" : "text-left")}>{r.voucherNumber}</TableCell>
+                            <TableCell className={cn("px-4 py-2 text-xs font-bold text-slate-400 tabular-nums", dir === 'rtl' ? "text-right" : "text-left")}>{r.date}</TableCell>
                             <TableCell className="px-4 py-2 text-center">
                                <span className="text-sm font-black text-emerald-700 tabular-nums">{(r.wageAmount || 0).toLocaleString('en-US')}</span>
                                <span className="text-[9px] font-black text-slate-400 ms-1 uppercase">{r.currency}</span>
@@ -575,7 +574,7 @@ export default function PayrollManagementPage() {
                     className="h-14 font-black text-2xl text-center tabular-nums bg-emerald-50 border-emerald-200 text-emerald-700 focus:bg-white" 
                     required 
                   />
-                  <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2 rtl:left-auto rtl:right-4">
                      <select value={formData.currency} onChange={(e) => setFormData({...formData, currency: e.target.value})} className="h-9 px-3 bg-white border border-emerald-100 rounded-lg text-xs font-black shadow-sm outline-none">
                         <option value="YER">YER</option><option value="SAR">SAR</option><option value="USD">USD</option>
                      </select>
