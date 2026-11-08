@@ -33,7 +33,14 @@ import {
   History,
   ArrowRight,
   Download,
-  Eye
+  Eye,
+  FileDown,
+  Filter,
+  SortAsc,
+  SortDesc,
+  ArrowUpDown,
+  Hash,
+  Wallet
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -74,6 +81,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
+  DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 import { useSearchParams } from 'next/navigation';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -94,6 +102,13 @@ export default function MaterialIssuePage() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [showWorkerDropdown, setShowWorkerDropdown] = useState(false);
   const [search, setSearch] = useState('');
+  
+  // Advanced Filtering & Sorting State
+  const [sortBy, setSortBy] = useState<'voucherNumber' | 'date' | 'totalAmount'>('date');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [batchFilter, setBatchFilter] = useState<string>('all');
+  const [deptFilter, setDeptFilter] = useState<string>('all');
+
   const workerDropdownRef = useRef<HTMLDivElement>(null);
   
   // Selection filtering state
@@ -133,18 +148,49 @@ export default function MaterialIssuePage() {
 
   const filteredVouchers = useMemo(() => {
     if (!vouchers) return [];
-    return vouchers.filter(v => {
+    
+    let result = vouchers.filter(v => {
       if (v.status === 'deleted') return false;
+      
       const order = allOrders?.find(o => o.id === v.orderId);
       const worker = allWorkers?.find(w => w.id === v.workerId);
+      
+      // Text Search
       const s = search.toLowerCase();
-      return (
-        v.voucherNumber?.toLowerCase().includes(s) ||
-        order?.orderNumber?.toLowerCase().includes(s) ||
-        worker?.fullName?.toLowerCase().includes(s)
-      );
-    }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [vouchers, allOrders, allWorkers, search]);
+      const matchesSearch = v.voucherNumber?.toLowerCase().includes(s) ||
+                           order?.orderNumber?.toLowerCase().includes(s) ||
+                           worker?.fullName?.toLowerCase().includes(s);
+      
+      // Batch Filter
+      const matchesBatch = batchFilter === 'all' || v.orderId === batchFilter;
+      
+      // Department Filter
+      const matchesDept = deptFilter === 'all' || worker?.departmentId === deptFilter;
+
+      return matchesSearch && matchesBatch && matchesDept;
+    });
+
+    // Sorting
+    return result.sort((a, b) => {
+      let valA = a[sortBy] ?? '';
+      let valB = b[sortBy] ?? '';
+
+      if (sortBy === 'date') {
+        const timeA = new Date(valA).getTime();
+        const timeB = new Date(valB).getTime();
+        return sortOrder === 'asc' ? timeA - timeB : timeB - timeA;
+      }
+
+      if (sortBy === 'totalAmount') {
+        const numA = Number(valA);
+        const numB = Number(valB);
+        return sortOrder === 'asc' ? numA - numB : numB - numA;
+      }
+
+      const comp = String(valA).localeCompare(String(valB), undefined, { numeric: true });
+      return sortOrder === 'asc' ? comp : -comp;
+    });
+  }, [vouchers, allOrders, allWorkers, search, batchFilter, deptFilter, sortBy, sortOrder]);
 
   const filteredWorkers = useMemo(() => {
     if (!allWorkers) return [];
@@ -250,11 +296,9 @@ export default function MaterialIssuePage() {
 
     try {
       if (editingVoucherId) {
-        // Handle Edit: Need to reconcile stock
         const oldVoucherSnap = await getDoc(doc(db, 'vouchers', editingVoucherId));
         const oldVoucher = oldVoucherSnap.data();
         
-        // 1. Return old quantities to stock
         oldVoucher?.items.forEach((oldItem: any) => {
           const material = materials?.find(m => m.id === oldItem.id);
           if (material) {
@@ -264,16 +308,13 @@ export default function MaterialIssuePage() {
           }
         });
 
-        // 2. Subtract new quantities from stock
         batch.update(doc(db, 'vouchers', editingVoucherId), voucherData);
       } else {
-        // Handle New
         const voucherNumber = `MIV-${Date.now().toString().slice(-6)}`;
         const voucherRef = doc(collection(db, 'vouchers'));
         batch.set(voucherRef, { ...voucherData, voucherNumber, createdAt: serverTimestamp() });
       }
 
-      // Re-apply stock deductions for current items
       formData.items.forEach(item => {
         const material = materials?.find(m => m.id === item.id);
         if (material) {
@@ -303,7 +344,6 @@ export default function MaterialIssuePage() {
     const batch = writeBatch(db);
 
     try {
-      // 1. Return items to stock
       deletingVoucher.items.forEach((item: any) => {
         const material = materials?.find(m => m.id === item.id);
         if (material) {
@@ -313,7 +353,6 @@ export default function MaterialIssuePage() {
         }
       });
 
-      // 2. Mark voucher as deleted
       batch.update(doc(db, 'vouchers', deletingVoucher.id), {
         status: 'deleted',
         deletedAt: serverTimestamp()
@@ -340,43 +379,74 @@ export default function MaterialIssuePage() {
 
   const handleDownloadImage = async () => {
     const element = document.getElementById('printable-voucher');
-    if (!element || !printingVoucher) {
-      toast({ variant: "destructive", title: lang === 'ar' ? "خطأ في العنصر" : "Element not found" });
-      return;
-    }
+    if (!element || !printingVoucher) return;
     
     setIsDownloading(true);
     try {
       await new Promise(resolve => setTimeout(resolve, 800));
-      
       const dataUrl = await toPng(element, { 
         backgroundColor: '#ffffff',
         pixelRatio: 2,
         cacheBust: true,
-        skipFonts: false,
         fontEmbedCSS: '', 
-        filter: (node) => {
-          return node.tagName !== 'SCRIPT';
-        }
+        filter: (node) => node.tagName !== 'SCRIPT'
       });
       
       const link = document.createElement('a');
-      link.download = `MaterialIssue-${printingVoucher.voucherNumber}.png`;
+      link.download = `Issue-${printingVoucher.voucherNumber}.png`;
       link.href = dataUrl;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
-      toast({ title: lang === 'ar' ? "تم تحميل السند كصورة" : "Voucher downloaded as image" });
-    } catch (err: any) {
+      toast({ title: lang === 'ar' ? "تم تحميل السند" : "Voucher Downloaded" });
+    } catch (err) {
       console.error('Download error:', err);
-      toast({ 
-        variant: "destructive", 
-        title: lang === 'ar' ? "فشل التحميل" : "Download Failed",
-        description: lang === 'ar' ? "حدث خطأ تقني في معالجة الصورة." : "Technical error processing image."
-      });
     } finally {
       setIsDownloading(false);
+    }
+  };
+
+  const handleExportCSV = () => {
+    const headers = [
+      lang === 'ar' ? 'رقم السند' : 'Voucher No',
+      lang === 'ar' ? 'التاريخ' : 'Date',
+      lang === 'ar' ? 'أمر الإنتاج' : 'Order',
+      lang === 'ar' ? 'المستلم' : 'Recipient',
+      lang === 'ar' ? 'عدد المواد' : 'Items Count',
+      lang === 'ar' ? 'القيمة الإجمالية' : 'Total Value'
+    ];
+
+    const rows = filteredVouchers.map(v => {
+      const order = allOrders?.find(o => o.id === v.orderId);
+      const worker = allWorkers?.find(w => w.id === v.workerId);
+      return [
+        v.voucherNumber,
+        v.date,
+        order?.orderNumber || '---',
+        worker?.fullName || '---',
+        v.items?.length || 0,
+        v.totalAmount || 0
+      ];
+    });
+
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `MaterialIssues_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast({ title: lang === 'ar' ? "تم تصدير البيانات" : "Data Exported" });
+  };
+
+  const toggleSort = (field: typeof sortBy) => {
+    if (sortBy === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(field);
+      setSortOrder('asc');
     }
   };
 
@@ -384,7 +454,7 @@ export default function MaterialIssuePage() {
     <div className="flex flex-col h-full bg-[#f8fafc] overflow-hidden">
       
       {/* ERP HEADER */}
-      <div className="flex-none bg-white border-b border-slate-200 z-30 px-6 py-4 shadow-sm print:hidden">
+      <div className="flex-none bg-white border-b border-slate-200 z-30 px-6 py-4 shadow-sm">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div className="flex items-center gap-4">
             <div className="p-2.5 bg-slate-900 rounded-lg text-white shadow-lg">
@@ -412,6 +482,70 @@ export default function MaterialIssuePage() {
                 className={`${dir === 'rtl' ? 'pr-10' : 'pl-10'} h-10 w-64 bg-slate-50 border-slate-200 text-xs font-bold`}
               />
             </div>
+
+            <div className="flex items-center gap-1.5 px-1.5 border-x border-slate-100">
+              <Button onClick={handleExportCSV} variant="ghost" className="h-10 px-3 rounded-lg text-xs font-bold gap-2 text-slate-600 hover:bg-slate-50 border border-transparent">
+                <FileDown className="w-4 h-4 text-emerald-600" />
+                {lang === 'ar' ? 'تصدير' : 'Export'}
+              </Button>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="h-10 px-3 rounded-lg text-xs font-bold gap-2 text-slate-600 hover:bg-slate-50 border border-transparent">
+                    <Filter className="w-4 h-4" />
+                    {lang === 'ar' ? 'تصفية' : 'Filter'}
+                    {(batchFilter !== 'all' || deptFilter !== 'all' || sortOrder !== 'desc') && (
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="w-64 rounded-xl border-slate-200 shadow-xl">
+                  <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'ترتيب النتائج' : 'SORTING'}</DropdownMenuLabel>
+                  <DropdownMenuItem onClick={() => toggleSort('date')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2.5">
+                    <div className="flex items-center gap-2"><Calendar className="w-3.5 h-3.5 text-slate-400" /> {lang === 'ar' ? 'حسب التاريخ' : 'By Date'}</div>
+                    {sortBy === 'date' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => toggleSort('voucherNumber')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2.5">
+                    <div className="flex items-center gap-2"><Hash className="w-3.5 h-3.5 text-slate-400" /> {lang === 'ar' ? 'حسب رقم السند' : 'By Reference'}</div>
+                    {sortBy === 'voucherNumber' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => toggleSort('totalAmount')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2.5">
+                    <div className="flex items-center gap-2"><Wallet className="w-3.5 h-3.5 text-slate-400" /> {lang === 'ar' ? 'حسب القيمة' : 'By Total'}</div>
+                    {sortBy === 'totalAmount' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
+                  </DropdownMenuItem>
+
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'تصفية حسب الدفعة' : 'FILTER BY BATCH'}</DropdownMenuLabel>
+                  <ScrollArea className="h-40">
+                    <DropdownMenuItem onClick={() => setBatchFilter('all')} className="flex items-center justify-between text-xs font-bold cursor-pointer">
+                      {lang === 'ar' ? 'جميع الدفعات' : 'All Batches'}
+                      {batchFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                    </DropdownMenuItem>
+                    {activeOrders?.map(o => (
+                      <DropdownMenuItem key={o.id} onClick={() => setBatchFilter(o.id)} className="flex items-center justify-between text-xs font-bold cursor-pointer">
+                        <span className="truncate max-w-[180px]">{o.orderNumber} - {o.title}</span>
+                        {batchFilter === o.id && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                      </DropdownMenuItem>
+                    ))}
+                  </ScrollArea>
+
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'حسب القسم' : 'BY DEPARTMENT'}</DropdownMenuLabel>
+                  {activeDepartments?.map(d => (
+                    <DropdownMenuItem key={d.id} onClick={() => setDeptFilter(d.id)} className="flex items-center justify-between text-xs font-bold cursor-pointer">
+                      {lang === 'ar' ? d.nameAr : d.nameEn}
+                      {deptFilter === d.id && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                    </DropdownMenuItem>
+                  ))}
+                  {deptFilter !== 'all' && (
+                    <DropdownMenuItem onClick={() => setDeptFilter('all')} className="text-xs font-bold text-rose-500 cursor-pointer text-center justify-center border-t border-slate-50 mt-1">
+                      {lang === 'ar' ? 'إلغاء فلتر الأقسام' : 'Clear Dept Filter'}
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
             <Button onClick={() => setIsAddDialogOpen(true)} className="h-10 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 transition-all border-none">
               <Plus className="w-4 h-4" />
               {lang === 'ar' ? 'سند جديد' : 'New Issue'}
@@ -421,7 +555,7 @@ export default function MaterialIssuePage() {
       </div>
 
       {/* LIST OF VOUCHERS */}
-      <div className="flex-1 min-h-0 overflow-auto p-4 md:p-6 no-scrollbar print:hidden">
+      <div className="flex-1 min-h-0 overflow-auto p-4 md:p-6 no-scrollbar">
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <Table className="text-right border-separate border-spacing-0">
             <TableHeader className="bg-slate-50 sticky top-0 z-10">
@@ -753,21 +887,18 @@ export default function MaterialIssuePage() {
 
                   {/* PROFESSIONAL BILINGUAL HEADER */}
                   <div className="grid grid-cols-3 items-center border-b-4 border-emerald-800 pb-6 mb-6 relative z-10">
-                    {/* ARABIC SIDE */}
                     <div className="text-center space-y-0.5">
                       <h2 className="text-base font-black text-emerald-900">جمعية الصناعات النسيجية</h2>
                       <p className="text-xs font-bold text-slate-500">الروضة - محافظة شبوة - اليمن</p>
                       <p className="text-[10px] font-bold text-slate-400 tabular-nums">0777 263 091 | nseeg202020@gmail.com</p>
                     </div>
 
-                    {/* CENTER LOGO */}
                     <div className="flex justify-center">
                       <div className="w-20 h-20 bg-white border border-slate-100 rounded-full flex items-center justify-center p-1 shadow-md">
                         <img src="/images/logo.png" alt="Logo" className="w-full h-full object-contain" />
                       </div>
                     </div>
 
-                    {/* ENGLISH SIDE */}
                     <div className="text-center space-y-0.5" dir="ltr">
                       <h2 className="text-[11px] font-black text-emerald-900 uppercase">Textile Industries Association</h2>
                       <p className="text-[10px] font-bold text-slate-500">Al-Rawdah - Shabwa - Yemen</p>
@@ -926,3 +1057,4 @@ export default function MaterialIssuePage() {
     </div>
   );
 }
+
