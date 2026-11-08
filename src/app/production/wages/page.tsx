@@ -35,13 +35,16 @@ import {
   AlertCircle,
   Info,
   Building2,
-  User as UserIcon
+  User as UserIcon,
+  Edit2,
+  Trash2,
+  RefreshCcw
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useTranslation } from '@/components/LanguageProvider';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, addDoc, updateDoc, doc, serverTimestamp, query, where } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc, serverTimestamp, query, where, getDoc, writeBatch } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import {
@@ -96,6 +99,8 @@ export default function PayrollManagementPage() {
   const db = useFirestore();
 
   const [isPayDialogOpen, setIsPayDialogOpen] = useState(false);
+  const [editingVoucherId, setEditingVoucherId] = useState<string | null>(null);
+  const [deletingVoucher, setDeletingVoucher] = useState<any | null>(null);
   const [printingVoucher, setPrintingVoucher] = useState<any | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -129,6 +134,15 @@ export default function PayrollManagementPage() {
 
   const loading = workersLoading || receiptsLoading || paymentsLoading;
 
+  // LOGIC: Reset selection when worker or currency changes to prevent cross-currency mistakes
+  useEffect(() => {
+    setFormData(prev => ({
+      ...prev,
+      linkedReceipts: [],
+      amount: 0
+    }));
+  }, [formData.workerId, formData.currency]);
+
   // LOGIC: Filter unpaid receipts by selected worker AND selected currency
   const unpaidReceipts = useMemo(() => {
     if (!formData.workerId || !allReceipts) return [];
@@ -138,16 +152,17 @@ export default function PayrollManagementPage() {
 
     const paidReceiptIds = new Set<string>();
     activePayments.forEach(p => {
+      // If we are editing, don't treat the receipts linked to the current edit-voucher as paid
+      if (p.id === editingVoucherId) return;
       p.linkedReceipts?.forEach((id: string) => paidReceiptIds.add(id));
     });
 
-    // Filter by worker AND matching currency to prevent cross-currency payment vouchers
     return activeReceipts.filter(r => 
       r.workerId === formData.workerId && 
       !paidReceiptIds.has(r.id) && 
       (r.currency || 'YER') === formData.currency
     );
-  }, [formData.workerId, formData.currency, allReceipts, allPayments]);
+  }, [formData.workerId, formData.currency, allReceipts, allPayments, editingVoucherId]);
 
   // LOGIC: Calculate flat balances per worker per currency
   const flattenedBalances = useMemo(() => {
@@ -186,7 +201,8 @@ export default function PayrollManagementPage() {
     return list;
   }, [allWorkers, allReceipts, allPayments]);
 
-  const toggleReceiptSelection = useCallback((receiptId: string) => {
+  const toggleReceiptSelection = useCallback((receiptId: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // CRITICAL: Stop event bubbling to fix the recursive depth error
     setFormData(prev => {
       const isSelected = prev.linkedReceipts.includes(receiptId);
       const newSelection = isSelected 
@@ -206,6 +222,7 @@ export default function PayrollManagementPage() {
 
   const resetDialog = useCallback(() => {
     setIsPayDialogOpen(false);
+    setEditingVoucherId(null);
     setFormData({ 
       date: new Date().toISOString().split('T')[0], 
       workerId: '', 
@@ -216,6 +233,19 @@ export default function PayrollManagementPage() {
     });
   }, []);
 
+  const handleEditVoucher = (p: any) => {
+    setEditingVoucherId(p.id);
+    setFormData({
+      date: p.date,
+      workerId: p.workerId,
+      amount: p.totalAmount,
+      currency: p.currency || 'YER',
+      notes: p.notes || '',
+      linkedReceipts: [...(p.linkedReceipts || [])]
+    });
+    setIsPayDialogOpen(true);
+  };
+
   const handleSavePayment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!db || isSubmitting || !formData.workerId || formData.amount <= 0 || formData.linkedReceipts.length === 0) {
@@ -223,25 +253,47 @@ export default function PayrollManagementPage() {
        return;
     }
     setIsSubmitting(true);
-    const voucherNumber = `PAY-${Date.now().toString().slice(-6)}`;
+    
     const paymentData = { 
       ...formData, 
-      voucherNumber, 
       type: 'wage_payment', 
       totalAmount: Number(formData.amount), 
       status: 'posted', 
-      createdAt: serverTimestamp(), 
       updatedAt: serverTimestamp() 
     };
+
     try {
-      await addDoc(collection(db, 'vouchers'), paymentData);
-      toast({ title: lang === 'ar' ? "تم تسجيل سند الصرف بنجاح" : "Payment Voucher Recorded" });
+      if (editingVoucherId) {
+        await updateDoc(doc(db, 'vouchers', editingVoucherId), paymentData);
+        toast({ title: lang === 'ar' ? "تم تحديث السند بنجاح" : "Voucher Updated" });
+      } else {
+        const voucherNumber = `PAY-${Date.now().toString().slice(-6)}`;
+        await addDoc(collection(db, 'vouchers'), { ...paymentData, voucherNumber, createdAt: serverTimestamp() });
+        toast({ title: lang === 'ar' ? "تم تسجيل سند الصرف بنجاح" : "Payment Voucher Recorded" });
+      }
       resetDialog();
     } catch (error) {
       console.error(error);
       toast({ variant: "destructive", title: "Error saving voucher" });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDeletePayment = async () => {
+    if (!db || !deletingVoucher || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      // Just move to trash by setting status deleted
+      // The unpaidReceipts memo logic automatically accounts for deleted status of payments
+      await updateDoc(doc(db, 'vouchers', deletingVoucher.id), {
+        status: 'deleted',
+        deletedAt: serverTimestamp()
+      });
+      toast({ title: lang === 'ar' ? "تم إلغاء السند وإرجاع المستحقات" : "Voucher reversed successfully" });
+    } finally {
+      setIsSubmitting(false);
+      setDeletingVoucher(null);
     }
   };
 
@@ -320,7 +372,7 @@ export default function PayrollManagementPage() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#f8fafc] overflow-hidden">
+    <div className="flex flex-col h-full bg-[#f8fafc] overflow-hidden" dir={dir}>
       
       {/* ERP HEADER */}
       <div className="flex-none bg-white border-b border-slate-200 z-30 px-6 py-4 shadow-sm">
@@ -365,19 +417,7 @@ export default function PayrollManagementPage() {
         <Tabs value={activeTab} onValueChange={setActiveTab} dir={dir} className="w-full h-full flex flex-col">
           <div className="flex items-center justify-between mb-4 bg-white p-2 rounded-xl border border-slate-200 shadow-sm">
             
-            {/* Tabs List */}
-            <TabsList className="grid grid-cols-2 w-[360px] h-9">
-              <TabsTrigger value="balances" className="font-black text-xs">
-                <Users2 className="w-3.5 h-3.5 me-2" />
-                {lang === 'ar' ? 'الأرصدة المستحقة' : 'Outstanding'}
-              </TabsTrigger>
-              <TabsTrigger value="vouchers" className="font-black text-xs">
-                <Receipt className="w-3.5 h-3.5 me-2" />
-                {lang === 'ar' ? 'أرشيف الصرف' : 'Archive'}
-              </TabsTrigger>
-            </TabsList>
-
-            {/* Stats */}
+            {/* Stats (Now on Left for Arabic) */}
             <div className="px-4 hidden md:flex items-center gap-4 text-[10px] font-bold text-slate-400">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-emerald-500" />
@@ -389,6 +429,18 @@ export default function PayrollManagementPage() {
                 {lang === 'ar' ? 'كشوف نشطة:' : 'Active Ledgers:'} <span className="text-slate-900 tabular-nums">{(flattenedBalances.length).toLocaleString('en-US')}</span>
               </div>
             </div>
+
+            {/* Tabs List (Now on Right for Arabic) */}
+            <TabsList className="grid grid-cols-2 w-[360px] h-9">
+              <TabsTrigger value="balances" className="font-black text-xs">
+                <Users2 className="w-3.5 h-3.5 me-2" />
+                {lang === 'ar' ? 'الأرصدة المستحقة' : 'Outstanding'}
+              </TabsTrigger>
+              <TabsTrigger value="vouchers" className="font-black text-xs">
+                <Receipt className="w-3.5 h-3.5 me-2" />
+                {lang === 'ar' ? 'أرشيف الصرف' : 'Archive'}
+              </TabsTrigger>
+            </TabsList>
           </div>
 
           <TabsContent value="balances" className="flex-1 min-h-0 focus-visible:ring-0">
@@ -402,9 +454,9 @@ export default function PayrollManagementPage() {
                 <div className="p-4 bg-emerald-50/50 border border-emerald-100 rounded-xl flex items-center justify-between">
                    <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center text-white shadow-md"><Info className="w-5 h-5" /></div>
-                      <p className="text-xs font-bold text-emerald-800 leading-tight text-right">
+                      <p className="text-xs font-bold text-emerald-800 leading-tight">
                          {lang === 'ar' 
-                           ? 'تظهر الأرصدة هنا آلياً بناءً على "سندات استلام الإنتاج" الموثقة. يتم تسوية الرصيد فور ترحيل سند الصرف المالي.' 
+                           ? 'تظهر الأرصدة هنا آلياً بناءً على "سندات استلام الإنتاج" التي تم ترحيلها ولم تُدفع بعد. بمجرد ترحيل سند صرف، يتم تسوية الرصيد.' 
                            : 'Balances are generated from posted Production Receipts. Posting a payment clears the balance.'}
                       </p>
                    </div>
@@ -415,7 +467,7 @@ export default function PayrollManagementPage() {
                     <Table className="text-right border-separate border-spacing-0">
                       <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
                         <TableRow>
-                          <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'الموظف الحرفي' : 'PERSONNEL'}</TableHead>
+                          <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'الموظف' : 'PERSONNEL'}</TableHead>
                           <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'القسم' : 'UNIT'}</TableHead>
                           <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center">{lang === 'ar' ? 'الرصيد المستحق' : 'DUE BALANCE'}</TableHead>
                           <TableHead className="w-40 px-6 py-4 text-center"></TableHead>
@@ -427,12 +479,12 @@ export default function PayrollManagementPage() {
                           return (
                             <TableRow key={`${w.id}-${w.displayCurrency}-${idx}`} className="hover:bg-slate-50/50 border-b border-slate-100 transition-colors group">
                               <TableCell className="px-6 py-3 text-right">
-                                <div className="flex items-center gap-3 justify-start">
+                                <div className="flex items-center gap-3">
                                   <Avatar className="h-10 w-10 border-2 border-white shadow-sm shrink-0 rounded-xl">
                                     <AvatarImage src={w.photoUrl} className="object-cover" />
                                     <AvatarFallback className="bg-slate-100 text-slate-400 text-[10px] font-black uppercase">{w.fullName?.charAt(0)}</AvatarFallback>
                                   </Avatar>
-                                  <div className="flex flex-col items-start text-right">
+                                  <div className="flex flex-col text-right">
                                     <span className="font-black text-slate-900 text-xs">{w.fullName}</span>
                                     <span className="text-[10px] text-emerald-700 font-bold tabular-nums tracking-widest uppercase">{w.workerId}</span>
                                   </div>
@@ -453,7 +505,7 @@ export default function PayrollManagementPage() {
                                   className="h-10 px-6 rounded-xl text-[10px] font-black uppercase text-emerald-600 border-emerald-100 hover:bg-emerald-600 hover:text-white transition-all gap-2 shadow-sm"
                                 >
                                   <Wallet className="w-3.5 h-3.5" />
-                                  {lang === 'ar' ? 'صرف مالي' : 'Disburse'}
+                                  {lang === 'ar' ? 'صرف الآن' : 'Disburse'}
                                 </Button>
                               </TableCell>
                             </TableRow>
@@ -487,7 +539,7 @@ export default function PayrollManagementPage() {
                            <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'تاريخ الصرف' : 'DATE'}</TableHead>
                            <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'المستلم' : 'WORKER'}</TableHead>
                            <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center">{lang === 'ar' ? 'المبلغ المصروف' : 'PAID AMOUNT'}</TableHead>
-                           <TableHead className="w-20 px-6 py-4"></TableHead>
+                           <TableHead className="w-24 px-6 py-4 text-center">{lang === 'ar' ? 'العمليات' : 'ACTIONS'}</TableHead>
                          </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -506,9 +558,25 @@ export default function PayrollManagementPage() {
                                  </Badge>
                               </TableCell>
                               <TableCell className="px-6 py-3 text-center">
-                                 <Button variant="ghost" size="icon" onClick={() => setPrintingVoucher(p)} className="h-9 w-9 text-slate-400 hover:text-emerald-600 transition-all rounded-lg">
-                                    <Eye className="w-4 h-4" />
-                                 </Button>
+                                 <div className="flex items-center justify-center gap-1">
+                                    <Button variant="ghost" size="icon" onClick={() => setPrintingVoucher(p)} className="h-8 w-8 text-slate-400 hover:text-emerald-600 transition-all rounded-lg">
+                                       <Eye className="w-4 h-4" />
+                                    </Button>
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-slate-100 rounded-lg"><MoreVertical className="w-4 h-4 text-slate-400" /></Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end" className="w-44 rounded-xl shadow-xl">
+                                        <DropdownMenuItem onClick={() => handleEditVoucher(p)} className="gap-2 font-bold py-2 cursor-pointer text-xs">
+                                          <Edit2 className="w-3.5 h-3.5 text-emerald-600" /> {lang === 'ar' ? 'تعديل السند' : 'Edit Voucher'}
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem onClick={() => setDeletingVoucher(p)} className="gap-2 font-bold py-2 text-rose-600 cursor-pointer text-xs">
+                                          <Trash2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'إلغاء السند' : 'Reverse Voucher'}
+                                        </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                 </div>
                               </TableCell>
                            </TableRow>
                          ))}
@@ -520,14 +588,14 @@ export default function PayrollManagementPage() {
         </Tabs>
       </div>
 
-      {/* NEW PAYMENT DIALOG */}
+      {/* NEW/EDIT PAYMENT DIALOG */}
       <Dialog open={isPayDialogOpen} onOpenChange={(open) => !open && resetDialog()}>
         <DialogContent className="sm:max-w-[800px] rounded-lg p-0 overflow-hidden border-none shadow-2xl">
           <div className="premium-gradient p-6 text-white">
             <DialogHeader className="text-right rtl:text-right ltr:text-left">
               <DialogTitle className="text-xl font-black flex items-center gap-3 text-white">
                 <Wallet className="w-5 h-5 text-emerald-300" />
-                {lang === 'ar' ? 'صرف مستحقات العمال' : 'Personnel Wage Payment'}
+                {editingVoucherId ? (lang === 'ar' ? 'تعديل سند الصرف' : 'Edit Payment Voucher') : (lang === 'ar' ? 'صرف مستحقات العمال' : 'Personnel Wage Payment')}
               </DialogTitle>
               <DialogDescription className="text-emerald-100/70 font-bold text-[10px] uppercase tracking-widest mt-1">Settlement of production receipts and cash release</DialogDescription>
             </DialogHeader>
@@ -536,8 +604,8 @@ export default function PayrollManagementPage() {
           <form onSubmit={handleSavePayment} className="p-6 space-y-5 bg-white max-h-[80vh] overflow-y-auto no-scrollbar">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5 text-right">
-                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2 justify-start"><Users2 className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'اختيار الموظف' : 'WORKER'}</Label>
-                <select value={formData.workerId} onChange={(e) => setFormData(prev => ({...prev, workerId: e.target.value, amount: 0, linkedReceipts: []}))} className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none" required>
+                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2 justify-start">{lang === 'ar' ? 'اختيار الموظف' : 'WORKER'}</Label>
+                <select value={formData.workerId} onChange={(e) => setFormData(prev => ({...prev, workerId: e.target.value}))} className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none" required>
                    <option value="">-- اختر الموظف --</option>
                    {allWorkers?.filter(w => w.status !== 'deleted' && w.active).map(w => (
                      <option key={w.id} value={w.id}>{w.fullName}</option>
@@ -545,7 +613,7 @@ export default function PayrollManagementPage() {
                 </select>
               </div>
               <div className="space-y-1.5 text-right">
-                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2 justify-start"><Calendar className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'تاريخ العملية' : 'DATE'}</Label>
+                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2 justify-start">{lang === 'ar' ? 'تاريخ العملية' : 'DATE'}</Label>
                 <Input type="date" value={formData.date} onChange={(e) => setFormData(prev => ({...prev, date: e.target.value}))} className="h-11 font-bold bg-slate-50 tabular-nums text-right" required />
               </div>
             </div>
@@ -553,11 +621,11 @@ export default function PayrollManagementPage() {
             <div className="p-4 bg-emerald-50/30 border border-emerald-100 rounded-xl space-y-4">
               <div className="flex items-center justify-between">
                 <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2 justify-start">
-                  <Coins className="w-3.5 h-3.5 text-emerald-600" /> {lang === 'ar' ? 'عملة الصرف (تصفية سندات بنفس العملة)' : 'PAYMENT CURRENCY'}
+                  <Coins className="w-3.5 h-3.5 text-emerald-600" /> {lang === 'ar' ? 'عملة الصرف المعتمدة (يجب أن تطابق سندات الإنجاز)' : 'APPROVED CURRENCY'}
                 </Label>
                 <select 
                   value={formData.currency} 
-                  onChange={(e) => setFormData(prev => ({...prev, currency: e.target.value, amount: 0, linkedReceipts: []}))} 
+                  onChange={(e) => setFormData(prev => ({...prev, currency: e.target.value}))} 
                   className="h-9 px-3 bg-white border border-emerald-200 rounded-lg text-[10px] font-black shadow-sm outline-none"
                 >
                   <option value="YER">YER - ريال يمني</option>
@@ -585,12 +653,19 @@ export default function PayrollManagementPage() {
                           {unpaidReceipts.map(r => (
                             <TableRow 
                               key={r.id} 
-                              className="bg-white border-b border-slate-50 hover:bg-emerald-50/40 transition-colors"
+                              className={cn(
+                                "bg-white border-b border-slate-50 transition-colors",
+                                formData.linkedReceipts.includes(r.id) ? "bg-emerald-50/40" : "hover:bg-slate-50/50"
+                              )}
                             >
                               <TableCell className="px-4">
                                  <Checkbox 
                                    checked={formData.linkedReceipts.includes(r.id)} 
-                                   onCheckedChange={() => toggleReceiptSelection(r.id)} 
+                                   onCheckedChange={(val) => {
+                                      // Create pseudo-event to use existing toggle function
+                                      const e = { stopPropagation: () => {} } as React.MouseEvent;
+                                      toggleReceiptSelection(r.id, e);
+                                   }} 
                                  />
                               </TableCell>
                               <TableCell className="px-4 py-2 text-xs font-black text-slate-700 tabular-nums text-right">{r.voucherNumber}</TableCell>
@@ -650,7 +725,7 @@ export default function PayrollManagementPage() {
             <div className="flex gap-3 pt-4 border-t border-slate-100">
               <Button type="submit" disabled={isSubmitting || formData.amount <= 0 || formData.linkedReceipts.length === 0} className="flex-1 h-14 premium-gradient text-white rounded-xl font-black text-base shadow-xl">
                 {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin me-2" /> : <Save className="w-5 h-5 me-2" />}
-                {lang === 'ar' ? 'تأكيد الترحيل المالي' : 'Confirm & Post Payment'}
+                {lang === 'ar' ? (editingVoucherId ? 'حفظ التعديلات' : 'تأكيد الترحيل المالي') : (editingVoucherId ? 'Save Changes' : 'Confirm & Post Payment')}
               </Button>
               <Button type="button" variant="outline" onClick={resetDialog} className="px-8 h-14 font-black text-slate-400 rounded-xl border-slate-200">
                 {lang === 'ar' ? 'إلغاء' : 'Cancel'}
@@ -708,13 +783,38 @@ export default function PayrollManagementPage() {
         </DialogContent>
       </Dialog>
 
+      {/* DELETE CONFIRMATION */}
+      <AlertDialog open={!!deletingVoucher} onOpenChange={(open) => !open && setDeletingVoucher(null)}>
+        <AlertDialogContent className="max-w-[400px] rounded-lg border-none shadow-2xl p-0 overflow-hidden">
+          <div className="bg-slate-950 p-8 text-center">
+            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20 shadow-inner">
+              <RefreshCcw className="w-8 h-8 text-red-500" />
+            </div>
+            <AlertDialogTitle className="text-white text-xl font-black">{lang === 'ar' ? 'إلغاء سند الصرف' : 'Reverse Payment'}</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400 font-bold mt-2 text-xs leading-relaxed">
+              {lang === 'ar' 
+                ? 'سيتم إلغاء هذا السند وإعادته للمهملات. ستظهر المبالغ المرتبطة به مجدداً كأرصدة مستحقة للموظف في كشوف الأجور.' 
+                : 'This voucher will be canceled. Linked receipts will reappear as outstanding balances for the personnel.'}
+            </AlertDialogDescription>
+          </div>
+          <div className="bg-white p-6 flex gap-3">
+            <AlertDialogAction onClick={handleDeletePayment} disabled={isSubmitting} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-md font-black">
+              {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : (lang === 'ar' ? 'تأكيد الإلغاء' : 'Confirm')}
+            </AlertDialogAction>
+            <AlertDialogCancel onClick={() => setDeletingVoucher(null)} className="flex-1 h-11 bg-slate-50 border-slate-200 text-slate-400 rounded-md font-black">
+              {lang === 'ar' ? 'تراجع' : 'Cancel'}
+            </AlertDialogCancel>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* FOOTER PROTOCOL */}
       <div className="flex-none p-2.5 bg-slate-900 text-white/40 flex items-center justify-center gap-3">
         <div className="w-6 h-6 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500"><ShieldCheck className="w-3.5 h-3.5" /></div>
         <p className="text-[10px] font-bold tracking-tight">
           {lang === 'ar' 
-            ? 'بروتوكول مالي: يتم إغلاق ذمم سندات الاستلام آلياً بمجرد ربطها بسند صرف مالي مصدق.' 
-            : 'Fiscal Protocol: Receipt liabilities are automatically settled when linked to a validated disbursement voucher.'}
+            ? 'بروتوكول مالي: يتم إغلاق ذمم سندات الاستلام آلياً بمجرد ربطها بسند صرف مالي مصدق. لا يمكن خلط العملات في السند الواحد.' 
+            : 'Fiscal Protocol: Receipt liabilities are automatically settled when linked to a payment voucher. Mixed currencies are prohibited.'}
         </p>
       </div>
 
