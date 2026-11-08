@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
@@ -107,7 +108,7 @@ export default function PayrollManagementPage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [activeTab, setActiveTab] = useState('balances');
   
-  // New filtering state
+  // Advanced filtering state
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [workerFilter, setWorkerFilter] = useState('all');
@@ -140,7 +141,7 @@ export default function PayrollManagementPage() {
 
   const loading = workersLoading || receiptsLoading || paymentsLoading;
 
-  // Reset selection when worker or currency changes in FORM
+  // Reset selection when worker or currency changes in FORM to prevent currency mixing
   useEffect(() => {
     if (!editingVoucherId) {
       setFormData(prev => ({
@@ -315,23 +316,11 @@ export default function PayrollManagementPage() {
       });
     }
 
-    // Worker filter
-    if (workerFilter !== 'all') {
-      result = result.filter(p => p.workerId === workerFilter);
-    }
-
-    // Currency filter
-    if (currencyFilter !== 'all') {
-      result = result.filter(p => p.currency === currencyFilter);
-    }
-
-    // Date range filter
-    if (dateFrom) {
-      result = result.filter(p => p.date >= dateFrom);
-    }
-    if (dateTo) {
-      result = result.filter(p => p.date <= dateTo);
-    }
+    // Advanced filters
+    if (workerFilter !== 'all') result = result.filter(p => p.workerId === workerFilter);
+    if (currencyFilter !== 'all') result = result.filter(p => p.currency === currencyFilter);
+    if (dateFrom) result = result.filter(p => p.date >= dateFrom);
+    if (dateTo) result = result.filter(p => p.date <= dateTo);
 
     // Sorting (Defaults to latest first)
     return result.sort((a, b) => {
@@ -360,7 +349,7 @@ export default function PayrollManagementPage() {
         backgroundColor: '#ffffff', 
         pixelRatio: 2, 
         cacheBust: true,
-        fontEmbedCSS: '', // Critical fix for trim/font error
+        fontEmbedCSS: '', 
         filter: (node) => node.tagName !== 'SCRIPT'
       });
       const link = document.createElement('a');
@@ -427,11 +416,11 @@ export default function PayrollManagementPage() {
             <div className="p-2.5 bg-slate-900 rounded-lg text-white shadow-lg"><HandCoins className="w-5 h-5 text-emerald-400" /></div>
             <div>
               <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                <span>{lang === 'ar' ? 'السندات المالية' : 'Financial Vouchers'}</span>
+                <span>{lang === 'ar' ? 'المالية' : 'Accounting'}</span>
                 <ChevronRight className={`w-3 h-3 ${dir === 'rtl' ? 'rotate-180' : ''}`} />
-                <span className="text-emerald-600">{lang === 'ar' ? 'صرف الأجور' : 'Wage Disbursements'}</span>
+                <span className="text-emerald-600">{lang === 'ar' ? 'صرف الأجور' : 'Wage Payments'}</span>
               </div>
-              <h1 className="text-xl font-black text-slate-900 leading-tight">{lang === 'ar' ? 'إدارة مدفوعات العمال' : 'Personnel Payments'}</h1>
+              <h1 className="text-xl font-black text-slate-900 leading-tight">{lang === 'ar' ? 'إدارة ذمم ومدفوعات العمال' : 'Personnel Payroll Management'}</h1>
             </div>
           </div>
 
@@ -442,77 +431,51 @@ export default function PayrollManagementPage() {
           </div>
         </div>
 
+        {/* SEARCH & FILTER BAR */}
         <div className="mt-4 flex flex-col md:flex-row items-center gap-3 bg-slate-50 p-2 rounded-xl border border-slate-200">
           <div className="relative flex-1 w-full">
             <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400`} />
             <Input 
               value={search} 
               onChange={(e) => setSearch(e.target.value)} 
-              placeholder={lang === 'ar' ? 'بحث باسم الموظف أو رقم السند...' : 'Search...'} 
-              className={`${dir === 'rtl' ? 'pr-10' : 'pl-10'} h-10 bg-white border-slate-200 text-xs font-bold tabular-nums text-right`} 
+              placeholder={lang === 'ar' ? 'بحث سريع...' : 'Quick search...'} 
+              className={`${dir === 'rtl' ? 'pr-10' : 'pl-10'} h-10 bg-white border-slate-200 text-xs font-bold`} 
             />
           </div>
           
           <div className="flex items-center gap-2 w-full md:w-auto">
              <div className="flex items-center gap-2 px-3 bg-white rounded-lg border border-slate-200 h-10">
                 <CalendarDays className="w-3.5 h-3.5 text-slate-400" />
-                <Input 
-                  type="date" 
-                  value={dateFrom} 
-                  onChange={(e) => setDateFrom(e.target.value)} 
-                  className="h-8 border-none shadow-none text-[10px] w-28 font-bold tabular-nums"
-                />
+                <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-7 border-none shadow-none text-[10px] w-28 font-bold tabular-nums" />
                 <span className="text-[10px] font-black text-slate-300">→</span>
-                <Input 
-                  type="date" 
-                  value={dateTo} 
-                  onChange={(e) => setDateTo(e.target.value)} 
-                  className="h-8 border-none shadow-none text-[10px] w-28 font-bold tabular-nums"
-                />
+                <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-7 border-none shadow-none text-[10px] w-28 font-bold tabular-nums" />
              </div>
 
              <div className="flex items-center gap-1.5 px-1.5 border-r border-slate-200">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="h-10 px-3 rounded-lg text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent hover:border-slate-200">
+                    <Button variant="ghost" className="h-10 px-3 rounded-lg text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent">
                       <Filter className="w-4 h-4" />
                       {lang === 'ar' ? 'تصفية' : 'Filter'}
-                      {(workerFilter !== 'all' || currencyFilter !== 'all' || dateFrom || dateTo) && (
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                      )}
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="w-64 rounded-xl border-slate-200 shadow-xl">
-                    <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'فلترة حسب الموظف' : 'FILTER BY WORKER'}</DropdownMenuLabel>
+                    <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'الموظف' : 'PERSONNEL'}</DropdownMenuLabel>
                     <ScrollArea className="h-40">
-                       <DropdownMenuItem onClick={() => setWorkerFilter('all')} className="flex items-center justify-between text-xs font-bold cursor-pointer">
-                          {lang === 'ar' ? 'جميع الموظفين' : 'All Personnel'}
-                          {workerFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
-                       </DropdownMenuItem>
+                       <DropdownMenuItem onClick={() => setWorkerFilter('all')} className="text-xs font-bold cursor-pointer">{lang === 'ar' ? 'الكل' : 'All'}</DropdownMenuItem>
                        {allWorkers?.filter(w => w.status !== 'deleted').map(w => (
-                         <DropdownMenuItem key={w.id} onClick={() => setWorkerFilter(w.id)} className="flex items-center justify-between text-xs font-bold cursor-pointer">
-                            {w.fullName}
-                            {workerFilter === w.id && <Check className="w-3.5 h-3.5 text-emerald-600" />}
-                         </DropdownMenuItem>
+                         <DropdownMenuItem key={w.id} onClick={() => setWorkerFilter(w.id)} className="text-xs font-bold cursor-pointer">{w.fullName}</DropdownMenuItem>
                        ))}
                     </ScrollArea>
                     <DropdownMenuSeparator />
                     <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'العملة' : 'CURRENCY'}</DropdownMenuLabel>
-                    <DropdownMenuItem onClick={() => setCurrencyFilter('all')} className="flex items-center justify-between text-xs font-bold cursor-pointer">
-                       {lang === 'ar' ? 'الكل' : 'All Currencies'}
-                       {currencyFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setCurrencyFilter('YER')} className="flex items-center justify-between text-xs font-bold cursor-pointer">YER{currencyFilter === 'YER' && <Check className="w-3.5 h-3.5 text-emerald-600" />}</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setCurrencyFilter('SAR')} className="flex items-center justify-between text-xs font-bold cursor-pointer">SAR{currencyFilter === 'SAR' && <Check className="w-3.5 h-3.5 text-emerald-600" />}</DropdownMenuItem>
-                    
-                    <DropdownMenuSeparator />
-                    <button onClick={() => { setWorkerFilter('all'); setCurrencyFilter('all'); setDateFrom(''); setDateTo(''); }} className="w-full text-center py-2 text-[10px] font-black text-rose-500 hover:bg-rose-50 transition-colors uppercase">
-                       {lang === 'ar' ? 'إعادة ضبط الفلاتر' : 'Reset All Filters'}
-                    </button>
+                    <DropdownMenuItem onClick={() => setCurrencyFilter('all')} className="text-xs font-bold">الكل</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setCurrencyFilter('YER')} className="text-xs font-bold">YER</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setCurrencyFilter('SAR')} className="text-xs font-bold">SAR</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
 
-                <Button onClick={handleExportCSV} variant="ghost" className="h-10 px-3 rounded-lg text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent hover:border-slate-200">
+                <Button onClick={handleExportCSV} variant="ghost" className="h-10 px-3 rounded-lg text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent">
                   <FileDown className="w-4 h-4 text-emerald-600" />
                   {lang === 'ar' ? 'تصدير' : 'Export'}
                 </Button>
@@ -521,7 +484,7 @@ export default function PayrollManagementPage() {
         </div>
       </div>
 
-      {/* MAIN CONTENT AREA */}
+      {/* MAIN CONTENT */}
       <div className="flex-1 min-h-0 flex flex-col p-4 md:p-6 no-scrollbar">
         <Tabs value={activeTab} onValueChange={setActiveTab} dir={dir} className="w-full h-full flex flex-col">
           <div className="flex items-center justify-between mb-4 bg-white p-2 rounded-xl border border-slate-200 shadow-sm">
@@ -550,13 +513,7 @@ export default function PayrollManagementPage() {
           </div>
 
           <TabsContent value="balances" className="flex-1 min-h-0 focus-visible:ring-0">
-             {loading ? (
-                <div className="flex flex-col items-center justify-center h-64 bg-white rounded-2xl border border-slate-100 shadow-sm animate-pulse">
-                   <Loader2 className="w-10 h-10 animate-spin text-emerald-600 mb-4" />
-                   <p className="text-xs font-black text-slate-400 uppercase tracking-widest">{lang === 'ar' ? 'جاري جلب الأرصدة...' : 'Calculating Balances...'}</p>
-                </div>
-             ) : (
-               <div className="h-full flex flex-col space-y-4">
+             <div className="h-full flex flex-col space-y-4">
                 <div className="p-4 bg-emerald-50/50 border border-emerald-100 rounded-xl flex items-center gap-3">
                    <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center text-white shadow-md shrink-0"><Info className="w-5 h-5" /></div>
                    <p className="text-xs font-bold text-emerald-800 leading-tight">
@@ -629,8 +586,7 @@ export default function PayrollManagementPage() {
                     </Table>
                   </div>
                 </div>
-               </div>
-             )}
+             </div>
           </TabsContent>
           
           <TabsContent value="vouchers" className="flex-1 min-h-0 focus-visible:ring-0">
@@ -740,7 +696,7 @@ export default function PayrollManagementPage() {
             <div className="p-4 bg-emerald-50/30 border border-emerald-100 rounded-xl space-y-4">
               <div className="flex items-center justify-between">
                 <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2 justify-start">
-                  <Coins className="w-3.5 h-3.5 text-emerald-600" /> {lang === 'ar' ? 'عملة الصرف المعتمدة (يجب أن تطابق سندات الإنجاز)' : 'APPROVED CURRENCY'}
+                  <Coins className="w-3.5 h-3.5 text-emerald-600" /> {lang === 'ar' ? 'عملة الصرف المعتمدة' : 'APPROVED CURRENCY'}
                 </Label>
                 <select 
                   value={formData.currency} 
@@ -773,19 +729,15 @@ export default function PayrollManagementPage() {
                             <TableRow 
                               key={r.id} 
                               className={cn(
-                                "bg-white border-b border-slate-50 transition-colors cursor-pointer",
+                                "bg-white border-b border-slate-50 transition-colors",
                                 formData.linkedReceipts.includes(r.id) ? "bg-emerald-50/40" : "hover:bg-slate-50/50"
                               )}
-                              onClick={(e) => toggleReceiptSelection(r.id, e as any)}
                             >
                               <TableCell className="px-4">
                                  <Checkbox 
                                    checked={formData.linkedReceipts.includes(r.id)} 
-                                   onCheckedChange={(val) => {
-                                      const dummyEvent = { stopPropagation: () => {} } as unknown as React.MouseEvent;
-                                      toggleReceiptSelection(r.id, dummyEvent);
-                                   }} 
-                                   onClick={(e) => e.stopPropagation()}
+                                   onCheckedChange={() => {}} 
+                                   onClick={(e) => toggleReceiptSelection(r.id, e as any)}
                                  />
                               </TableCell>
                               <TableCell className="px-4 py-2 text-xs font-black text-slate-700 tabular-nums text-right">{r.voucherNumber}</TableCell>
