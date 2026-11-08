@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
@@ -464,7 +463,7 @@ export default function ProductionReceiptPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2"><Calendar className="w-3 h-3 text-emerald-600" /> تاريخ التسوية</Label>
+                <Label className="text-[10px) font-black uppercase text-slate-400 flex items-center gap-2"><Calendar className="w-3 h-3 text-emerald-600" /> تاريخ التسوية</Label>
                 <Input type="date" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} className="h-11 font-bold bg-slate-50" required />
               </div>
             </div>
@@ -655,6 +654,11 @@ export default function ProductionReceiptPage() {
       {/* VIEW/PRINT DIALOG */}
       <Dialog open={!!printingVoucher} onOpenChange={(open) => !open && setPrintingVoucher(null)}>
         <DialogContent className="sm:max-w-[750px] p-0 overflow-hidden border-none bg-white">
+          <DialogHeader className="sr-only">
+            <DialogTitle>
+              {lang === 'ar' ? 'معاينة طباعة سند التسوية' : 'Production Settlement Print Preview'}
+            </DialogTitle>
+          </DialogHeader>
           <ScrollArea className="max-h-[80vh]">
             <div className="p-10 bg-white relative z-0" id="printable-voucher">
               {printingVoucher && (
