@@ -58,14 +58,23 @@ export default function ProductionMonitoringPage() {
   }, [allOrders, search]);
 
   const monitoringStats = useMemo(() => {
-    if (!allOrders) return null;
+    if (!allOrders || !allDepartments || !allReceipts) return null;
     const active = allOrders.filter(o => o.status === 'active');
+    
+    // Final stage is the indicator of true "Finished Goods"
+    const finalStage = allDepartments[allDepartments.length - 1];
+    
     const totalTarget = active.reduce((acc, curr) => acc + (curr.targetQty || 0), 0);
-    const totalDone = active.reduce((acc, curr) => acc + (curr.completedQty || 0), 0);
-    const avgProgress = active.length > 0 ? Math.round((totalDone / totalTarget) * 100) : 0;
+    
+    // We only sum receipts that belong to the FINAL STAGE
+    const totalFinished = allReceipts
+      .filter(r => r.type === 'production_receipt' && r.status !== 'deleted' && r.currentStageId === finalStage?.id)
+      .reduce((acc, curr) => acc + (curr.qtyAccepted || 0), 0);
 
-    return { totalTarget, totalDone, avgProgress, activeCount: active.length };
-  }, [allOrders]);
+    const avgProgress = totalTarget > 0 ? Math.round((totalFinished / totalTarget) * 100) : 0;
+
+    return { totalTarget, totalFinished, avgProgress, activeCount: active.length };
+  }, [allOrders, allDepartments, allReceipts]);
 
   return (
     <div className="flex flex-col h-full bg-[#f8fafc] overflow-hidden" dir={dir}>
@@ -97,7 +106,7 @@ export default function ProductionMonitoringPage() {
                 </div>
                 <div className="w-px h-6 bg-slate-200 self-center" />
                 <div className="px-3 py-1 text-center">
-                   <p className="text-[8px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'متوسط الإنجاز' : 'AVG %'}</p>
+                   <p className="text-[8px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'إجمالي الجاهز' : 'READY'}</p>
                    <p className="text-sm font-black text-slate-700 tabular-nums">{monitoringStats?.avgProgress}%</p>
                 </div>
              </div>
@@ -121,10 +130,12 @@ export default function ProductionMonitoringPage() {
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
             {filteredOrders.map(order => {
               const product = allProducts?.find(p => p.id === order.productId);
-              const progress = Math.round(((order.completedQty || 0) / (order.targetQty || 1)) * 100);
               
-              // Get stage specific data from receipts
-              const stageReceipts = allReceipts?.filter(r => r.orderId === order.id && r.status !== 'deleted') || [];
+              // Calculate TRUE completion (only final stage)
+              const finalStage = allDepartments?.[allDepartments.length - 1];
+              const finalReceipts = allReceipts?.filter(r => r.orderId === order.id && r.currentStageId === finalStage?.id && r.status !== 'deleted') || [];
+              const finalDone = finalReceipts.reduce((sum, r) => sum + (r.qtyAccepted || 0), 0);
+              const progress = Math.round((finalDone / (order.targetQty || 1)) * 100);
               
               return (
                 <Card key={order.id} className="p-6 rounded-[2rem] border-slate-200 shadow-sm hover:shadow-md transition-all group overflow-hidden relative">
@@ -143,9 +154,9 @@ export default function ProductionMonitoringPage() {
                         <h3 className="text-xl font-black text-slate-900 group-hover:text-emerald-700 transition-colors">{order.title}</h3>
                       </div>
                       <div className="text-right">
-                         <p className="text-[10px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'الإنجاز الكلي' : 'OVERALL DONE'}</p>
+                         <p className="text-[10px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'جاهز نهائي' : 'FINISHED GOOD'}</p>
                          <div className="flex items-baseline justify-end gap-1">
-                            <span className="text-3xl font-black text-slate-900 tabular-nums">{progress}%</span>
+                            <span className="text-3xl font-black text-emerald-600 tabular-nums">{progress}%</span>
                          </div>
                       </div>
                     </div>
@@ -154,16 +165,16 @@ export default function ProductionMonitoringPage() {
                     <div className="space-y-2">
                        <Progress value={progress} className="h-3 bg-slate-100" />
                        <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-slate-400 tabular-nums">
-                          <span>{(order.completedQty || 0).toLocaleString('en-US')} {lang === 'ar' ? 'منجز' : 'DONE'}</span>
+                          <span>{(finalDone).toLocaleString('en-US')} {lang === 'ar' ? 'جاهز' : 'READY'}</span>
                           <span>{(order.targetQty || 0).toLocaleString('en-US')} {lang === 'ar' ? 'المستهدف' : 'TARGET'}</span>
                        </div>
                     </div>
 
-                    {/* DEPARTMENT BREAKDOWN */}
+                    {/* DEPARTMENT BREAKDOWN (WIP Tracking) */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                       {allDepartments?.slice(0, 4).map((dept, i) => {
-                          const doneInDept = stageReceipts
-                            .filter(r => r.currentStageId === dept.id)
+                       {allDepartments?.slice(0, 4).map((dept) => {
+                          const doneInDept = (allReceipts || [])
+                            .filter(r => r.orderId === order.id && r.currentStageId === dept.id && r.status !== 'deleted')
                             .reduce((sum, r) => sum + (r.qtyAccepted || 0), 0);
                           
                           return (
@@ -185,7 +196,7 @@ export default function ProductionMonitoringPage() {
                           {lang === 'ar' ? 'تاريخ البدء:' : 'Started:'} {order.startDate}
                        </div>
                        <Button variant="ghost" size="sm" className="h-8 text-[10px] font-black text-emerald-600 gap-2 hover:bg-emerald-50">
-                          {lang === 'ar' ? 'عرض التفاصيل' : 'Full Track'}
+                          {lang === 'ar' ? 'تحليل المسار الكامل' : 'Full Pipeline Trace'}
                           <ArrowUpRight className="w-3 h-3" />
                        </Button>
                     </div>
@@ -202,8 +213,8 @@ export default function ProductionMonitoringPage() {
         <div className="w-6 h-6 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500"><Activity className="w-3.5 h-3.5" /></div>
         <p className="text-[10px] font-bold tracking-tight">
           {lang === 'ar' 
-            ? 'بروتوكول المراقبة المباشرة: يتم تحديث البيانات فور ترحيل أي "سند استلام إنتاج" من الميدان.' 
-            : 'Live Monitoring Protocol: Updates trigger instantly upon posting any "Production Receipt" from the floor.'}
+            ? 'بروتوكول الفرز: يتم حساب الجاهزية النهائية بناءً على مخرجات المرحلة الأخيرة فقط لضمان دقة المخازن.' 
+            : 'Sorting Protocol: Readiness is calculated solely on final stage output for inventory accuracy.'}
         </p>
       </div>
 

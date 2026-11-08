@@ -68,7 +68,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc, serverTimestamp, query, where } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
@@ -107,11 +107,13 @@ export default function ProductionOrdersPage() {
   const ordersQuery = useMemo(() => !db ? null : collection(db, 'productionOrders'), [db]);
   const deptsQuery = useMemo(() => !db ? null : collection(db, 'departments'), [db]);
   const workersQuery = useMemo(() => !db ? null : collection(db, 'workers'), [db]);
+  const vouchersQuery = useMemo(() => !db ? null : query(collection(db, 'vouchers'), where('type', '==', 'production_receipt')), [db]);
 
   const { data: products, loading: productsLoading } = useCollection<any>(productsQuery);
   const { data: orders, loading: ordersLoading } = useCollection<any>(ordersQuery);
   const { data: departments } = useCollection<any>(deptsQuery);
   const { data: workers } = useCollection<any>(workersQuery);
+  const { data: allReceipts } = useCollection<any>(vouchersQuery);
 
   const filteredOrders = useMemo(() => {
     if (!orders) return [];
@@ -221,11 +223,13 @@ export default function ProductionOrdersPage() {
   const handleDeleteOrder = async () => {
     if (!db || !deletingOrder) return;
     
-    if (deletingOrder.completedQty > 0) {
+    // Only delete if NO receipts exist for this order at all
+    const hasReceipts = allReceipts?.some(r => r.orderId === deletingOrder.id && r.status !== 'deleted');
+    if (hasReceipts) {
       toast({ 
         variant: "destructive", 
         title: lang === 'ar' ? "فشل الحذف" : "Deletion Failed",
-        description: lang === 'ar' ? "لا يمكن حذف أمر إنتاج يحتوي على كميات مستلمة." : "Cannot delete order with completed items."
+        description: lang === 'ar' ? "لا يمكن حذف أمر إنتاج بدأت فيه العمليات الميدانية." : "Cannot delete order with existing receipts."
       });
       setDeletingOrder(null);
       return;
@@ -300,10 +304,22 @@ export default function ProductionOrdersPage() {
         ) : filteredOrders.map((order) => {
           const product = products?.find(p => p.id === order.productId);
           const stage = departments?.find(d => d.id === order.currentStageId);
-          
           const stageSupervisor = workers?.find(w => w.departmentId === order.currentStageId && w.isSupervisor && w.active);
           
-          const progress = Math.round((order.completedQty / order.targetQty) * 100) || 0;
+          // DYNAMIC PROGRESS CALCULATION: 
+          // We calculate completion based on the LAST defined stage in the department list
+          // Simple logic: if multiple stages exist, the order's "Final Progress" is its performance in the latest stage it reached.
+          const finalStage = departments?.[departments.length - 1];
+          const finalStageReceipts = allReceipts?.filter(r => r.orderId === order.id && r.currentStageId === finalStage?.id && r.status !== 'deleted') || [];
+          const finalCompletedQty = finalStageReceipts.reduce((acc, curr) => acc + (curr.qtyAccepted || 0), 0);
+          
+          // WIP Tracking (Current Stage Progress)
+          const currentStageReceipts = allReceipts?.filter(r => r.orderId === order.id && r.currentStageId === order.currentStageId && r.status !== 'deleted') || [];
+          const currentStageDone = currentStageReceipts.reduce((acc, curr) => acc + (curr.qtyAccepted || 0), 0);
+
+          const progress = Math.round((finalCompletedQty / order.targetQty) * 100) || 0;
+          const currentStageProgress = Math.round((currentStageDone / order.targetQty) * 100) || 0;
+          
           const priorityColor = order.priority === 'high' ? 'bg-rose-500' : order.priority === 'normal' ? 'bg-emerald-500' : 'bg-slate-400';
 
           return (
@@ -330,7 +346,7 @@ export default function ProductionOrdersPage() {
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem onClick={() => setDeletingOrder(order)} className="gap-2 font-bold py-1.5 text-rose-600 cursor-pointer text-xs">
-                            <Trash2 className="w-3 h-3" /> {lang === 'ar' ? 'أرشفة الأمر' : 'Archive Order'}
+                            <Trash2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'أرشفة الأمر' : 'Archive Order'}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -365,7 +381,7 @@ export default function ProductionOrdersPage() {
                     <div className="space-y-0.5">
                       <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
                         <Layers className="w-2.5 h-2.5 text-emerald-600" />
-                        {lang === 'ar' ? 'المرحلة والمسؤولية' : 'PHASE & ACCOUNTABILITY'}
+                        {lang === 'ar' ? 'المرحلة الحالية والمسؤولية' : 'CURRENT PHASE & LEAD'}
                       </p>
                       <div className="flex items-center gap-3">
                         <p className="text-[11px] font-black text-slate-800">
@@ -380,27 +396,36 @@ export default function ProductionOrdersPage() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="flex items-center gap-1 justify-end">
-                        <span className="text-base font-black text-slate-900 tabular-nums">{progress}%</span>
-                        <div className="p-0.5 bg-emerald-50 rounded text-emerald-600"><TrendingUp className="w-2.5 h-2.5" /></div>
+                      <div className="flex flex-col items-end">
+                        <div className="flex items-center gap-1">
+                          <span className="text-base font-black text-slate-900 tabular-nums">{progress}%</span>
+                          <div className="p-0.5 bg-emerald-50 rounded text-emerald-600"><CheckCircle2 className="w-2.5 h-2.5" /></div>
+                        </div>
+                        <p className="text-[7px] font-black text-slate-400 uppercase tracking-tighter">{lang === 'ar' ? 'جاهز نهائي' : 'FINISHED'}</p>
                       </div>
                     </div>
                   </div>
 
-                  <Progress value={progress} className="h-1.5 bg-slate-200/50" />
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-center text-[7px] font-bold text-slate-400 uppercase">
+                      <span>{lang === 'ar' ? 'إنجاز المرحلة الحالية' : 'STAGE PROGRESS'}</span>
+                      <span className="tabular-nums">{currentStageProgress}%</span>
+                    </div>
+                    <Progress value={currentStageProgress} className="h-1 bg-slate-200/50" />
+                  </div>
 
                   <div className="grid grid-cols-3 gap-2">
-                    <div className="space-y-0.5 bg-white/40 p-1.5 rounded-lg border border-slate-100">
-                      <p className="text-[8px] font-bold text-slate-400 uppercase">{lang === 'ar' ? 'المستهدف' : 'TARGET'}</p>
+                    <div className="space-y-0.5 bg-white/40 p-1.5 rounded-lg border border-slate-100 text-center">
+                      <p className="text-[8px] font-bold text-slate-400 uppercase">{lang === 'ar' ? 'المستهدف الكلي' : 'TOTAL TARGET'}</p>
                       <p className="text-[11px] font-black text-slate-700 tabular-nums">{order.targetQty}</p>
                     </div>
-                    <div className="space-y-0.5 bg-white/40 p-1.5 rounded-lg border border-slate-100">
-                      <p className="text-[8px] font-bold text-slate-400 uppercase">{lang === 'ar' ? 'تم الاستلام' : 'RECEIVED'}</p>
-                      <p className="text-[11px] font-black text-amber-600 tabular-nums">{order.completedQty}</p>
+                    <div className="space-y-0.5 bg-white/40 p-1.5 rounded-lg border border-slate-100 text-center">
+                      <p className="text-[8px] font-bold text-slate-400 uppercase">{lang === 'ar' ? 'منجز في المرحلة' : 'DONE IN STAGE'}</p>
+                      <p className="text-[11px] font-black text-emerald-600 tabular-nums">{currentStageDone}</p>
                     </div>
-                    <div className="space-y-0.5 bg-emerald-50/50 p-1.5 rounded-lg border border-emerald-100/50">
-                      <p className="text-[8px] font-bold text-emerald-600 uppercase">{lang === 'ar' ? 'قيد العمل' : 'REMAINING'}</p>
-                      <p className="text-[11px] font-black text-emerald-700 tabular-nums">{order.targetQty - order.completedQty}</p>
+                    <div className="space-y-0.5 bg-emerald-50/50 p-1.5 rounded-lg border border-emerald-100/50 text-center">
+                      <p className="text-[8px] font-bold text-emerald-600 uppercase">{lang === 'ar' ? 'الجاهز للبيع' : 'READY TO SELL'}</p>
+                      <p className="text-[11px] font-black text-emerald-700 tabular-nums">{finalCompletedQty}</p>
                     </div>
                   </div>
                 </div>
@@ -630,8 +655,8 @@ export default function ProductionOrdersPage() {
             <AlertDialogTitle className="text-white text-xl font-black">{lang === 'ar' ? 'أرشفة أمر الإنتاج' : 'Archive Order'}</AlertDialogTitle>
             <AlertDialogDescription className="text-slate-400 font-bold mt-2 text-xs leading-relaxed">
               {lang === 'ar' 
-                ? 'سيتم نقل هذا الأمر للأرشيف. لا يمكن الحذف في حال وجود كميات منجزة.' 
-                : 'Order will be moved to archive. Deletion is blocked if production started.'}
+                ? 'سيتم نقل هذا الأمر للأرشيف. لا يمكن الحذف في حال وجود أي سندات استلام مسجلة منعاً لتضارب الحسابات.' 
+                : 'Order will be moved to archive. Deletion is blocked if any production receipts exist.'}
             </AlertDialogDescription>
           </div>
           <div className="bg-white p-6 flex gap-3">
@@ -650,8 +675,8 @@ export default function ProductionOrdersPage() {
         <div className="w-5 h-5 rounded bg-white/5 flex items-center justify-center"><AlertCircle className="w-2.5 h-2.5" /></div>
         <p className="text-[9px] font-bold">
           {lang === 'ar' 
-            ? 'بروتوكول الرقابة: يتم ربط كل مرحلة بالمشرف المسؤول لضمان جودة المخرجات والالتزام بالجدول الزمني.' 
-            : 'Audit Protocol: Each stage is linked to a responsible supervisor for quality and timeline assurance.'}
+            ? 'بروتوكول الرقابة: العداد النهائي يمثل القطع الجاهزة للبيع فقط. الكميات في المراحل البينية تظهر كإنجاز جزئي للمسار.' 
+            : 'Audit Protocol: Final counter represents finished goods only. Partial stages show WIP progress.'}
         </p>
       </div>
 
