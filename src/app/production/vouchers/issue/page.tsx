@@ -907,15 +907,15 @@ export default function MaterialIssuePage() {
 
       {/* PRINT/IMAGE PREVIEW DIALOG */}
       <Dialog open={!!printingVoucher} onOpenChange={(open) => !open && setPrintingVoucher(null)}>
-        <DialogContent className="sm:max-w-[700px] p-0 overflow-hidden border-none bg-white">
+        <DialogContent className="sm:max-w-[850px] p-0 overflow-hidden border-none bg-white">
           <DialogHeader className="sr-only">
             <DialogTitle>
               {lang === 'ar' ? 'معاينة طباعة سند الصرف' : 'Material Issue Voucher Print Preview'}
             </DialogTitle>
           </DialogHeader>
           
-          <ScrollArea className="max-h-[75vh]">
-            <div className="p-10 bg-white relative z-0" id="printable-voucher">
+          <ScrollArea className="max-h-[85vh]">
+            <div className="p-12 bg-white relative z-0" id="printable-voucher">
               {printingVoucher && (
                 <div className="flex flex-col h-full text-slate-900 font-sans relative overflow-hidden" dir="rtl">
                   
@@ -925,89 +925,89 @@ export default function MaterialIssuePage() {
                   </div>
 
                   {/* PROFESSIONAL BILINGUAL HEADER */}
-                  <div className="grid grid-cols-3 items-center border-b-4 border-emerald-800 pb-6 mb-6 relative z-10">
-                    <div className="text-center space-y-0.5">
-                      <h2 className="text-base font-black text-emerald-900">جمعية الصناعات النسيجية</h2>
+                  <div className="grid grid-cols-3 items-center border-b-[6px] border-emerald-800 pb-8 mb-8 relative z-10">
+                    <div className="text-right space-y-1">
+                      <h2 className="text-xl font-black text-emerald-900 leading-tight">جمعية الصناعات النسيجية</h2>
                       <p className="text-xs font-bold text-slate-500">الروضة - محافظة شبوة - اليمن</p>
-                      <p className="text-[10px] font-bold text-slate-400 tabular-nums">0777 263 091 | nseeg202020@gmail.com</p>
+                      <p className="text-[11px] font-bold text-slate-400 tabular-nums" dir="ltr">0777 263 091 | nseeg202020@gmail.com</p>
                     </div>
 
                     <div className="flex justify-center">
-                      <div className="w-20 h-20 bg-white border border-slate-100 rounded-full flex items-center justify-center p-1 shadow-md">
+                      <div className="w-24 h-24 bg-white border-2 border-emerald-800/10 rounded-full flex items-center justify-center p-2 shadow-sm relative overflow-hidden">
                         <img src="/images/logo.png" alt="Logo" className="w-full h-full object-contain" />
                       </div>
                     </div>
 
-                    <div className="text-center space-y-0.5" dir="ltr">
-                      <h2 className="text-[11px] font-black text-emerald-900 uppercase">Textile Industries Association</h2>
-                      <p className="text-[10px] font-bold text-slate-500">Al-Rawdah - Shabwa - Yemen</p>
-                      <p className="text-[9px] font-bold text-slate-400 tabular-nums">0777 263 091 | nseeg202020@gmail.com</p>
+                    <div className="text-left space-y-1" dir="ltr">
+                      <h2 className="text-[14px] font-black text-emerald-900 uppercase leading-tight tracking-tight">Textile Industries Association</h2>
+                      <p className="text-[11px] font-bold text-slate-500">Al-Rawdah - Shabwa - Yemen</p>
+                      <p className="text-[10px] font-bold text-slate-400 tabular-nums">0777 263 091 | nseeg202020@gmail.com</p>
                     </div>
                   </div>
 
                   {/* VOUCHER TITLE BAR */}
-                  <div className="text-center mb-6 relative z-10">
-                    <div className="inline-block border-2 border-emerald-800 px-8 py-1 rounded-full bg-white shadow-sm">
-                      <h3 className="text-lg font-black text-emerald-900 uppercase tracking-widest">
+                  <div className="text-center mb-10 relative z-10">
+                    <div className="inline-block border-[2.5px] border-emerald-800 px-12 py-2 rounded-full bg-white shadow-sm ring-4 ring-emerald-50">
+                      <h3 className="text-xl font-black text-emerald-900 uppercase tracking-widest">
                         {lang === 'ar' ? 'سند صرف مواد خام' : 'Material Issue Voucher'}
                       </h3>
                     </div>
                   </div>
 
                   {/* DATA GRID - 3 COLUMNS */}
-                  <div className="grid grid-cols-3 gap-x-6 gap-y-4 mb-6 bg-slate-50/70 p-4 rounded-xl border border-slate-100 relative z-10">
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center border-b border-slate-200 pb-1">
-                        <span className="text-[9px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'اسم المستلم' : 'Recipient'}</span>
-                        <span className="text-xs font-black text-slate-700">{allWorkers?.find(w => w.id === printingVoucher.workerId)?.fullName}</span>
+                  <div className="grid grid-cols-3 gap-x-8 gap-y-6 mb-10 bg-slate-50/50 p-8 rounded-[1.5rem] border border-slate-100 relative z-10">
+                    <div className="space-y-4">
+                      <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'اسم المستلم' : 'Recipient'}</span>
+                        <span className="text-sm font-black text-slate-900">{allWorkers?.find(w => w.id === printingVoucher.workerId)?.fullName}</span>
                       </div>
-                      <div className="flex justify-between items-center border-b border-slate-200 pb-1">
-                        <span className="text-[9px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'القسم / المسار' : 'Department'}</span>
-                        <span className="text-xs font-black text-slate-700">
+                      <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'القسم / المسار' : 'Department'}</span>
+                        <span className="text-sm font-black text-slate-700">
                            {allDepartments?.find(d => d.id === allWorkers?.find(w => w.id === printingVoucher.workerId)?.departmentId)?.nameAr}
                         </span>
                       </div>
                     </div>
 
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center border-b border-slate-200 pb-1">
-                        <span className="text-[9px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'رقم السند' : 'Voucher No.'}</span>
-                        <span className="text-xs font-black text-emerald-900 tabular-nums">{printingVoucher.voucherNumber}</span>
+                    <div className="space-y-4">
+                      <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'رقم السند' : 'Voucher No.'}</span>
+                        <span className="text-sm font-black text-emerald-900 tabular-nums tracking-wider">{printingVoucher.voucherNumber}</span>
                       </div>
-                      <div className="flex justify-between items-center border-b border-slate-200 pb-1">
-                        <span className="text-[9px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'الدفعة' : 'Batch Name'}</span>
-                        <span className="text-xs font-black text-slate-700 truncate max-w-[100px]">{allOrders?.find(o => o.id === printingVoucher.orderId)?.title}</span>
+                      <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'الدفعة' : 'Batch Name'}</span>
+                        <span className="text-sm font-black text-slate-700 truncate max-w-[150px]">{allOrders?.find(o => o.id === printingVoucher.orderId)?.title}</span>
                       </div>
                     </div>
 
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center border-b border-slate-200 pb-1">
-                        <span className="text-[9px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'تاريخ السند' : 'Issue Date'}</span>
-                        <span className="text-xs font-black text-slate-700 tabular-nums">{printingVoucher.date}</span>
+                    <div className="space-y-4">
+                      <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'تاريخ السند' : 'Issue Date'}</span>
+                        <span className="text-sm font-black text-slate-700 tabular-nums">{printingVoucher.date}</span>
                       </div>
-                      <div className="flex justify-between items-center border-b border-slate-200 pb-1">
-                        <span className="text-[9px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'المشرف المسؤول' : 'Supervisor'}</span>
-                        <span className="text-xs font-black text-slate-700">{allWorkers?.find(w => w.id === printingVoucher.supervisorId)?.fullName || '---'}</span>
+                      <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'المشرف المسؤول' : 'Supervisor'}</span>
+                        <span className="text-sm font-black text-slate-700">{allWorkers?.find(w => w.id === printingVoucher.supervisorId)?.fullName || '---'}</span>
                       </div>
                     </div>
                   </div>
 
                   {/* ITEMS TABLE */}
-                  <div className="mb-8 relative z-10">
+                  <div className="mb-12 relative z-10">
                     <Table className="text-right border-2 border-emerald-900/10">
                       <TableHeader className="bg-emerald-900/5">
-                        <TableRow>
-                          <TableHead className="text-right font-black text-xs py-3 text-emerald-900 border-b-2 border-emerald-900/20">{lang === 'ar' ? 'المادة الخام' : 'Raw Material'}</TableHead>
-                          <TableHead className="text-center font-black text-xs py-3 text-emerald-900 border-b-2 border-emerald-900/20">{lang === 'ar' ? 'الكمية' : 'Quantity'}</TableHead>
-                          <TableHead className="text-center font-black text-xs py-3 text-emerald-900 border-b-2 border-emerald-900/20">{lang === 'ar' ? 'الوحدة' : 'Unit'}</TableHead>
+                        <TableRow className="hover:bg-transparent border-b-2 border-emerald-900/20">
+                          <TableHead className="text-right font-black text-xs py-4 text-emerald-900">{lang === 'ar' ? 'المادة الخام المصروفة' : 'Raw Material'}</TableHead>
+                          <TableHead className="text-center font-black text-xs py-4 text-emerald-900">{lang === 'ar' ? 'الكمية' : 'Quantity'}</TableHead>
+                          <TableHead className="text-center font-black text-xs py-4 text-emerald-900">{lang === 'ar' ? 'الوحدة' : 'Unit'}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {printingVoucher.items.map((item: any, i: number) => (
                           <TableRow key={i} className="border-b border-slate-100 bg-white/40">
-                            <TableCell className="font-bold text-sm py-3 text-slate-800">{item.nameAr}</TableCell>
-                            <TableCell className="text-center font-black text-sm tabular-nums py-3 text-emerald-700">{item.qty}</TableCell>
-                            <TableCell className="text-center text-xs font-bold text-slate-500 uppercase py-3">{item.unit}</TableCell>
+                            <TableCell className="font-bold text-sm py-4 text-slate-800">{item.nameAr}</TableCell>
+                            <TableCell className="text-center font-black text-sm tabular-nums py-4 text-emerald-700">{item.qty}</TableCell>
+                            <TableCell className="text-center text-xs font-bold text-slate-500 uppercase py-4">{item.unit}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -1015,27 +1015,29 @@ export default function MaterialIssuePage() {
                   </div>
 
                   {/* SIGNATURES SECTION */}
-                  <div className="grid grid-cols-3 gap-4 pt-6 border-t border-slate-200 text-center relative z-10">
-                    <div className="space-y-8">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{lang === 'ar' ? 'أمين المستودع' : 'Store Keeper'}</p>
+                  <div className="grid grid-cols-3 gap-8 pt-10 border-t-2 border-slate-100 text-center relative z-10 mt-auto">
+                    <div className="space-y-12">
+                      <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">{lang === 'ar' ? 'أمين المستودع' : 'Store Keeper'}</p>
                       <div className="h-px bg-slate-300 w-3/4 mx-auto" />
-                      <p className="text-[8px] font-bold text-slate-400 uppercase">Signature / التاريخ</p>
+                      <p className="text-[8px] font-bold text-slate-300 uppercase tracking-widest">Signature / التاريخ</p>
                     </div>
-                    <div className="space-y-8">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{lang === 'ar' ? 'توقيع المستلم' : 'Recipient Sign'}</p>
+                    <div className="space-y-12">
+                      <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">{lang === 'ar' ? 'توقيع المستلم' : 'Recipient Sign'}</p>
                       <div className="h-px bg-slate-300 w-3/4 mx-auto" />
-                      <p className="text-[8px] font-bold text-slate-400 uppercase">Signature / التاريخ</p>
+                      <p className="text-[8px] font-bold text-slate-300 uppercase tracking-widest">Signature / التاريخ</p>
                     </div>
-                    <div className="space-y-8">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{lang === 'ar' ? 'اعتماد المدير / المشرف' : 'Manager / Sup Approval'}</p>
+                    <div className="space-y-12">
+                      <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">{lang === 'ar' ? 'اعتماد المدير / المشرف' : 'Auth. Approval'}</p>
                       <div className="h-px bg-slate-300 w-3/4 mx-auto" />
-                      <p className="text-[8px] font-bold text-slate-400 uppercase">Authorized Signature</p>
+                      <p className="text-[8px] font-bold text-slate-300 uppercase tracking-widest">Authorized Signature</p>
                     </div>
                   </div>
 
                   {/* PRINT FOOTER */}
-                  <div className="mt-12 text-center text-[7px] font-black text-slate-300 uppercase tracking-[0.4em] relative z-10">
-                    Generated by TIA Production System - {new Date().toLocaleString()}
+                  <div className="mt-14 pt-4 text-center border-t border-slate-50 relative z-10 flex items-center justify-center gap-4">
+                    <span className="text-[8px] font-black text-slate-200 uppercase tracking-[0.4em]">Generated by TIA Production System</span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-slate-100" />
+                    <span className="text-[8px] font-black text-slate-300 tabular-nums uppercase tracking-widest">{new Date().toLocaleString()}</span>
                   </div>
                 </div>
               )}
@@ -1046,12 +1048,12 @@ export default function MaterialIssuePage() {
             <Button 
               onClick={handleDownloadImage} 
               disabled={isDownloading}
-              className="premium-gradient font-black gap-2 h-12 px-8 rounded-xl shadow-lg"
+              className="premium-gradient font-black gap-2 h-12 px-10 rounded-xl shadow-xl hover:opacity-90 active:scale-95 transition-all"
             >
               {isDownloading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
               {lang === 'ar' ? 'تحميل السند كصورة' : 'Download as Image'}
             </Button>
-            <Button variant="ghost" onClick={() => setPrintingVoucher(null)} className="font-black h-12 px-6 rounded-xl border border-slate-200">
+            <Button variant="ghost" onClick={() => setPrintingVoucher(null)} className="font-black h-12 px-8 rounded-xl border border-slate-200 text-slate-500">
               {lang === 'ar' ? 'إغلاق' : 'Close'}
             </Button>
           </DialogFooter>
@@ -1096,3 +1098,4 @@ export default function MaterialIssuePage() {
     </div>
   );
 }
+
