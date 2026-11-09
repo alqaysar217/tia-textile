@@ -85,6 +85,7 @@ export default function OrderDetailsDashboard() {
   // Edit Form State
   const [editFormData, setEditFormDate] = useState({
     title: '',
+    productId: '',
     targetQty: 0,
     priority: 'normal',
     notes: ''
@@ -94,6 +95,7 @@ export default function OrderDetailsDashboard() {
     if (!order) return;
     setEditFormDate({
       title: order.title || '',
+      productId: order.productId || '',
       targetQty: order.targetQty || 0,
       priority: order.priority || 'normal',
       notes: order.notes || ''
@@ -311,7 +313,7 @@ export default function OrderDetailsDashboard() {
                         <LedgerRow label={lang === 'ar' ? 'تاريخ البدء التشغيلي' : 'LAUNCH DATE'} value={order.startDate} icon={<Calendar />} />
                         <LedgerRow label={lang === 'ar' ? 'عنوان الدفعة' : 'BATCH TITLE'} value={order.title} icon={<Type />} />
                         <LedgerRow label={lang === 'ar' ? 'المنتج المستهدف' : 'PRODUCT'} value={product?.nameAr} icon={<ShoppingBag />} />
-                        <LedgerRow label={lang === 'ar' ? 'القسم المسؤول حالياً' : 'WORK CENTER'} value={departments?.find(d => d.id === order.currentStageId)?.nameAr} icon={<Building2 />} />
+                        <LedgerRow label={lang === 'ar' ? 'القسم المسؤول حالياً' : 'WORK CENTER'} value={departments?.find(d => d.id === order.currentStageId)?.nameAr} icon={<Building2Icon />} />
                         <LedgerRow label={lang === 'ar' ? 'الكمية المستهدفة' : 'TARGET QTY'} value={`${order.targetQty} قطعة`} icon={<Target />} color="text-slate-900" />
                         <LedgerRow label={lang === 'ar' ? 'الجاهز النهائي الموثق' : 'FINISHED QTY'} value={`${finalCompletedQty} قطعة`} icon={<CheckCircle2 />} color="text-emerald-700" />
                         <LedgerRow label={lang === 'ar' ? 'قيد العمل الإجمالي' : 'WIP QTY'} value={`${order.targetQty - finalCompletedQty} قطعة`} icon={<Package />} color="text-blue-600" />
@@ -467,8 +469,23 @@ export default function OrderDetailsDashboard() {
 
           <form onSubmit={handleUpdateOrder} className="p-6 space-y-4 bg-white">
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase text-slate-400">{lang === 'ar' ? 'عنوان الدفعة' : 'BATCH TITLE'}</Label>
+              <Label className="text-[10px] font-black uppercase text-slate-400">{lang === 'ar' ? 'عنوان الطلب المميز' : 'BATCH TITLE'}</Label>
               <Input value={editFormData.title} onChange={(e) => setEditFormDate({...editFormData, title: e.target.value})} className="h-11 font-bold text-xs bg-slate-50" required />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-[10px] font-black uppercase text-slate-400">{lang === 'ar' ? 'نوع المعوز المستهدف' : 'PRODUCT TYPE'}</Label>
+              <select 
+                value={editFormData.productId} 
+                onChange={(e) => setEditFormDate({...editFormData, productId: e.target.value})}
+                className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold outline-none"
+                required
+              >
+                <option value="">{lang === 'ar' ? '-- اختر نوع المعوز --' : '-- Select Product --'}</option>
+                {products?.map(p => (
+                  <option key={p.id} value={p.id}>{p.nameAr}</option>
+                ))}
+              </select>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -487,7 +504,7 @@ export default function OrderDetailsDashboard() {
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase text-slate-400">{lang === 'ar' ? 'ملاحظات وتوجيهات' : 'NOTES'}</Label>
+              <Label className="text-[10px] font-black uppercase text-slate-400">{lang === 'ar' ? 'ملاحظات إضافية' : 'ADDITIONAL NOTES'}</Label>
               <Textarea value={editFormData.notes} onChange={(e) => setEditFormDate({...editFormData, notes: e.target.value})} className="min-h-[100px] text-xs font-medium bg-slate-50" />
             </div>
 
@@ -585,7 +602,7 @@ function MetricItem({ label, value, unit }: { label: string, value: any, unit?: 
   );
 }
 
-function Building2(props: any) {
+function Building2Icon(props: any) {
   return (
     <svg
       {...props}
