@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
@@ -262,8 +261,15 @@ export default function PayrollManagementPage() {
     }
     setIsSubmitting(true);
     
+    // CRITICAL: Capture Order context for the ledger. 
+    // We take the orderId and currentStageId from the first linked receipt for reporting purposes.
+    const firstReceiptId = formData.linkedReceipts[0];
+    const firstReceipt = allReceipts?.find(r => r.id === firstReceiptId);
+    
     const paymentData = { 
       ...formData, 
+      orderId: firstReceipt?.orderId || '',
+      currentStageId: firstReceipt?.currentStageId || '',
       type: 'wage_payment', 
       totalAmount: Number(formData.amount), 
       status: 'posted', 
@@ -349,8 +355,6 @@ export default function PayrollManagementPage() {
         backgroundColor: '#ffffff', 
         pixelRatio: 2, 
         cacheBust: true,
-        fontEmbedCSS: '', 
-        filter: (node) => node.tagName !== 'SCRIPT'
       });
       const link = document.createElement('a');
       link.download = `Payment-${printingVoucher.voucherNumber}.png`;
@@ -827,17 +831,12 @@ export default function PayrollManagementPage() {
                         <p className="text-xs font-bold text-slate-500">الروضة - محافظة شبوة - اليمن</p>
                         <p className="text-[10px] font-bold text-slate-400 tabular-nums">0777 263 091 | nseeg202020@gmail.com</p>
                       </div>
-
                       <div className="flex justify-center">
-                        <div className="w-20 h-20 bg-white border border-slate-100 rounded-full flex items-center justify-center p-1 shadow-md">
-                          <img src="/images/logo.png" alt="Logo" className="w-full h-full object-contain" />
-                        </div>
+                        <img src="/images/logo.png" alt="Logo" className="w-20 h-20 object-contain" />
                       </div>
-
                       <div className="text-center space-y-0.5" dir="ltr">
-                        <h2 className="text-[11px] font-black text-emerald-900 uppercase">Textile Industries Association</h2>
-                        <p className="text-[10px] font-bold text-slate-500">Al-Rawdah - Shabwa - Yemen</p>
-                        <p className="text-[9px] font-bold text-slate-400 tabular-nums">0777 263 091 | nseeg202020@gmail.com</p>
+                        <h2 className="text-[11px] font-black text-emerald-900 uppercase">TIA Cooperative</h2>
+                        <p className="text-[10px] font-bold text-slate-500">Al-Rawdah - Shabwa</p>
                       </div>
                     </div>
 

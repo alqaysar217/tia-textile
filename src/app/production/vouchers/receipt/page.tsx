@@ -260,8 +260,6 @@ export default function ProductionReceiptPage() {
         backgroundColor: '#ffffff', 
         pixelRatio: 2,
         cacheBust: true,
-        fontEmbedCSS: '',
-        filter: (node) => node.tagName !== 'SCRIPT'
       });
       const link = document.createElement('a');
       link.download = `Settlement-${printingVoucher.voucherNumber}.png`;
@@ -334,8 +332,12 @@ export default function ProductionReceiptPage() {
     const batch = writeBatch(db);
     const wageAmount = Number(formData.qtyAccepted) * Number(formData.wageRate);
     
+    // CRITICAL: Capture the current stage of the order to lock this receipt to a stage ledger
+    const currentStageId = selectedOrder?.currentStageId || '';
+
     const voucherData = {
       ...formData,
+      currentStageId, // Saving stage context
       qtyAccepted: Number(formData.qtyAccepted),
       wageAmount,
       totalQty: Number(formData.qtyAccepted),
@@ -587,7 +589,7 @@ export default function ProductionReceiptPage() {
         <DialogContent className="sm:max-w-[900px] rounded-lg p-0 overflow-hidden border-none shadow-2xl">
           <div className="premium-gradient p-6 text-white">
             <DialogHeader className="text-right rtl:text-right ltr:text-left">
-              <DialogTitle className="text-xl font-black flex items-center gap-3">
+              <DialogTitle className="text-xl font-black flex items-center gap-3 text-white">
                 <ShieldCheck className="w-5 h-5 text-emerald-300" />
                 {editingVoucherId ? (lang === 'ar' ? 'تعديل سند تسوية' : 'Edit Settlement') : (lang === 'ar' ? 'إغلاق عهدة واستلام إنتاج' : 'New Production Settlement')}
               </DialogTitle>
@@ -752,7 +754,7 @@ export default function ProductionReceiptPage() {
         </DialogContent>
       </Dialog>
 
-      {/* PRINT/IMAGE PREVIEW DIALOG */}
+      {/* PRINT PREVIEW DIALOG */}
       <Dialog open={!!printingVoucher} onOpenChange={(open) => !open && setPrintingVoucher(null)}>
         <DialogContent className="sm:max-w-[750px] p-0 overflow-hidden border-none bg-white">
           <DialogHeader className="sr-only">
@@ -772,67 +774,48 @@ export default function ProductionReceiptPage() {
                       <p className="text-xs font-bold text-slate-500">الروضة - محافظة شبوة - اليمن</p>
                       <p className="text-[10px] font-bold text-slate-400 tabular-nums">0777 263 091 | nseeg202020@gmail.com</p>
                     </div>
-
                     <div className="flex justify-center">
-                      <div className="w-20 h-20 bg-white border border-slate-100 rounded-full flex items-center justify-center p-1 shadow-md">
-                        <img src="/images/logo.png" alt="Logo" className="w-full h-full object-contain" />
-                      </div>
+                      <img src="/images/logo.png" alt="Logo" className="w-20 h-20 object-contain" />
                     </div>
-
                     <div className="text-center space-y-0.5" dir="ltr">
-                      <h2 className="text-[11px] font-black text-emerald-900 uppercase">Textile Industries Association</h2>
-                      <p className="text-[10px] font-bold text-slate-500">Al-Rawdah - Shabwa - Yemen</p>
-                      <p className="text-[9px] font-bold text-slate-400 tabular-nums">0777 263 091 | nseeg202020@gmail.com</p>
+                      <h2 className="text-[11px] font-black text-emerald-900 uppercase">TIA Cooperative</h2>
+                      <p className="text-[9px] font-bold text-slate-500">Al-Rawdah - Shabwa</p>
                     </div>
                   </div>
 
-                  <div className="text-center mb-6 relative z-10">
-                    <div className="inline-block border-2 border-emerald-800 px-8 py-1 rounded-full bg-white shadow-sm">
-                      <h3 className="text-lg font-black text-emerald-900 uppercase tracking-widest">
+                  <div className="text-center mb-8 relative z-10">
+                    <div className="inline-block border-2 border-emerald-800 px-10 py-1.5 rounded-full bg-white shadow-sm">
+                      <h3 className="text-xl font-black text-emerald-900 uppercase tracking-widest">
                         {lang === 'ar' ? 'سند تسوية واستلام منجز' : 'Settlement & Production Receipt'}
                       </h3>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-x-6 gap-y-4 mb-6 bg-slate-50/70 p-4 rounded-xl border border-slate-100 relative z-10">
-                    <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-4 mb-8 bg-slate-50/70 p-6 rounded-2xl border border-slate-100 relative z-10">
+                    <div className="space-y-4">
                       <div className="flex justify-between items-center border-b border-slate-200 pb-1">
-                        <span className="text-[9px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'الموظف المسلم' : 'Worker'}</span>
-                        <span className="text-xs font-black text-slate-700">{allWorkers?.find(w => w.id === printingVoucher.workerId)?.fullName}</span>
+                        <span className="text-[10px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'الموظف المسلم' : 'Worker'}</span>
+                        <span className="text-sm font-black text-slate-900">{allWorkers?.find(w => w.id === printingVoucher.workerId)?.fullName}</span>
                       </div>
                       <div className="flex justify-between items-center border-b border-slate-200 pb-1">
-                        <span className="text-[9px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'نوع المنتج' : 'Produced Item'}</span>
-                        <span className="text-xs font-black text-slate-700">
-                           {allProducts?.find(p => p.id === allOrders?.find(o => o.id === printingVoucher.orderId)?.productId)?.nameAr}
-                        </span>
+                        <span className="text-[10px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'رقم السند' : 'Voucher No.'}</span>
+                        <span className="text-sm font-black text-emerald-900 tabular-nums">{printingVoucher.voucherNumber}</span>
                       </div>
                     </div>
-
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                       <div className="flex justify-between items-center border-b border-slate-200 pb-1">
-                        <span className="text-[9px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'رقم السند' : 'Voucher No.'}</span>
-                        <span className="text-xs font-black text-emerald-900 tabular-nums">{printingVoucher.voucherNumber}</span>
+                        <span className="text-[10px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'تاريخ التسوية' : 'Settlement Date'}</span>
+                        <span className="text-sm font-black text-slate-700 tabular-nums">{printingVoucher.date}</span>
                       </div>
                       <div className="flex justify-between items-center border-b border-slate-200 pb-1">
-                        <span className="text-[9px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'أمر الإنتاج' : 'Order ID'}</span>
-                        <span className="text-xs font-black text-slate-700 tabular-nums">{allOrders?.find(o => o.id === printingVoucher.orderId)?.orderNumber}</span>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center border-b border-slate-200 pb-1">
-                        <span className="text-[9px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'تاريخ التسوية' : 'Settlement Date'}</span>
-                        <span className="text-xs font-black text-slate-700 tabular-nums">{printingVoucher.date}</span>
-                      </div>
-                      <div className="flex justify-between items-center border-b border-slate-200 pb-1">
-                        <span className="text-[9px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'الاستحقاق المالي' : 'Total Wage'}</span>
-                        <span className="text-xs font-black text-emerald-700 tabular-nums">{(printingVoucher.wageAmount || 0).toLocaleString('en-US')} {printingVoucher.currency}</span>
+                        <span className="text-[10px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'الاستحقاق المالي' : 'Total Wage'}</span>
+                        <span className="text-sm font-black text-emerald-700 tabular-nums">{(printingVoucher.wageAmount || 0).toLocaleString('en-US')} {printingVoucher.currency}</span>
                       </div>
                     </div>
                   </div>
 
                   <div className="mb-6 space-y-3 relative z-10">
-                    <h4 className="text-[10px] font-black text-emerald-900 border-r-4 border-emerald-600 pr-3 uppercase">
+                    <h4 className="text-[10px] font-black text-emerald-900 border-r-4 border-emerald-600 pr-3 mb-2 uppercase">
                       {lang === 'ar' ? 'أولاً: مخرجات الإنتاج المنجزة' : 'I. FINISHED PRODUCTION OUTPUTS'}
                     </h4>
                     <Table className="text-right border-2 border-emerald-900/10">
@@ -865,7 +848,7 @@ export default function ProductionReceiptPage() {
 
                   {printingVoucher.returnedItems?.length > 0 && (
                     <div className="mb-8 space-y-3 relative z-10">
-                      <h4 className="text-[10px] font-black text-blue-900 border-r-4 border-blue-600 pr-3 uppercase">
+                      <h4 className="text-[10px] font-black text-blue-900 border-r-4 border-blue-600 pr-3 mb-2 uppercase">
                         {lang === 'ar' ? 'ثانياً: المواد الخام المرتجعة للمخزن' : 'II. RETURNED RAW MATERIALS'}
                       </h4>
                       <Table className="text-right border-2 border-blue-900/10">
@@ -891,20 +874,20 @@ export default function ProductionReceiptPage() {
                     </div>
                   )}
 
-                  <div className="grid grid-cols-3 gap-4 pt-6 border-t border-slate-200 text-center relative z-10">
-                    <div className="space-y-8">
+                  <div className="grid grid-cols-3 gap-8 pt-10 border-t border-slate-200 text-center relative z-10">
+                    <div className="space-y-12">
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{lang === 'ar' ? 'أمين المستودع' : 'Store Keeper'}</p>
-                      <div className="h-px bg-slate-300 w-3/4 mx-auto" />
+                      <div className="h-px bg-slate-300 w-full mx-auto" />
                       <p className="text-[8px] font-bold text-slate-400 uppercase">Signature / التاريخ</p>
                     </div>
-                    <div className="space-y-8">
+                    <div className="space-y-12">
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{lang === 'ar' ? 'توقيع الموظف (المسلم)' : 'Worker Signature'}</p>
-                      <div className="h-px bg-slate-300 w-3/4 mx-auto" />
+                      <div className="h-px bg-slate-300 w-full mx-auto" />
                       <p className="text-[8px] font-bold text-slate-400 uppercase">Signature / التاريخ</p>
                     </div>
-                    <div className="space-y-8">
+                    <div className="space-y-12">
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{lang === 'ar' ? 'اعتماد المدير / المشرف' : 'Manager / Sup Approval'}</p>
-                      <div className="h-px bg-slate-300 w-3/4 mx-auto" />
+                      <div className="h-px bg-slate-300 w-full mx-auto" />
                       <p className="text-[8px] font-bold text-slate-400 uppercase">Authorized Signature</p>
                     </div>
                   </div>

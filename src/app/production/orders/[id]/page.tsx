@@ -180,22 +180,17 @@ export default function OrderDetailsDashboard() {
     return Math.round((finalCompletedQty / order.targetQty) * 100);
   }, [finalCompletedQty, order]);
 
+  // REFINED FILTERING LOGIC: Find vouchers by explicit currentStageId OR inferred worker department
   const filteredStageVouchers = useMemo(() => {
     if (!vouchers || activeTab === 'info' || activeTab === 'summary') return [];
     
     let list = vouchers.filter(v => {
       if (v.status === 'deleted') return false;
       
-      // Basic stage filtering
-      let isInStage = false;
-      if (v.type === 'production_receipt') {
-        // Direct link in PRVs
-        isInStage = v.currentStageId === activeTab;
-      } else {
-        // Indirect link via Worker's Dept for MIVs and PAYs
-        const worker = workers?.find(w => w.id === v.workerId);
-        isInStage = worker?.departmentId === activeTab;
-      }
+      // Stage matching strategy: 
+      // 1. Direct currentStageId field (preferred)
+      // 2. Fallback to worker department at time of issue
+      const isInStage = v.currentStageId === activeTab || (workers?.find(w => w.id === v.workerId)?.departmentId === activeTab);
       
       if (!isInStage) return false;
 
@@ -574,7 +569,7 @@ export default function OrderDetailsDashboard() {
                     </TableHeader>
                     <TableBody>
                       {departments?.map(d => {
-                        const stageReceipts = vouchers.filter(v => v.currentStageId === d.id && v.type === 'production_receipt' && v.status !== 'deleted');
+                        const stageReceipts = vouchers.filter(v => (v.currentStageId === d.id || workers?.find(w => w.id === v.workerId)?.departmentId === d.id) && v.type === 'production_receipt' && v.status !== 'deleted');
                         const done = stageReceipts.reduce((sum, v) => sum + (v.qtyAccepted || 0), 0);
                         const cost = stageReceipts.reduce((sum, v) => sum + (v.wageAmount || 0), 0);
                         const p = Math.round((done / (order.targetQty || 1)) * 100);
@@ -697,7 +692,7 @@ export default function OrderDetailsDashboard() {
                         )}
                         {viewingVoucher.type === 'wage_payment' && (
                           <TableRow className="bg-emerald-50/50">
-                            <TableCell className="text-xs font-black">{lang === 'ar' ? 'إجمالي الأجور المدفوعة' : 'Total Wages Paid'}</TableCell>
+                            <TableCell className="text-xs font-black">{lang === 'ar' ? 'إجمالي المبلغ المصروف' : 'Total Paid'}</TableCell>
                             <TableCell className="text-center font-black text-sm tabular-nums text-emerald-700">{viewingVoucher.totalAmount}</TableCell>
                             <TableCell className="text-center text-[10px] font-bold text-slate-400 uppercase">{viewingVoucher.currency}</TableCell>
                           </TableRow>
@@ -732,7 +727,7 @@ export default function OrderDetailsDashboard() {
                 {lang === 'ar' ? 'تحميل كصورة' : 'Download PNG'}
              </Button>
              <Button variant="ghost" onClick={() => setViewingVoucher(null)} className="h-11 px-6 rounded-xl border border-slate-200 font-black">
-               {lang === 'ar' ? 'إغلاق' : 'Close'}
+               {lang === 'ar' ? 'إإغلاق' : 'Close'}
              </Button>
           </DialogFooter>
         </DialogContent>
