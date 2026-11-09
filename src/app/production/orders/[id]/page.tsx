@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { 
   ArrowRight, 
@@ -43,7 +43,10 @@ import {
   ArrowUpDown,
   SortAsc,
   SortDesc,
-  Check
+  Check,
+  Eye,
+  Download,
+  Printer
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from '@/components/LanguageProvider';
@@ -60,6 +63,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -72,7 +76,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from '@/hooks/use-toast';
+import { toPng } from 'html-to-image';
 
 export default function OrderDetailsDashboard() {
   const { id } = useParams();
@@ -84,6 +90,8 @@ export default function OrderDetailsDashboard() {
   const [activeTab, setActiveTab] = useState<string>('info');
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [viewingVoucher, setViewingVoucher] = useState<any | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   // Stage View Local Filters
   const [stageSearch, setStageSearch] = useState('');
@@ -211,7 +219,6 @@ export default function OrderDetailsDashboard() {
   }, [vouchers, activeTab, workers, stageSearch, stageTypeFilter, stageSortOrder]);
 
   const stageMetrics = useMemo(() => {
-    // We calculate metrics based on ALL vouchers in the stage, not just filtered ones
     const baseList = vouchers?.filter(v => {
       if (v.status === 'deleted') return false;
       if (v.type === 'production_receipt') return v.currentStageId === activeTab;
@@ -224,18 +231,43 @@ export default function OrderDetailsDashboard() {
     const payments = baseList.filter(v => v.type === 'wage_payment');
     
     const qtyDone = receipts.reduce((sum, v) => sum + (v.qtyAccepted || 0), 0);
-    const qtyReturned = receipts.reduce((sum, v) => sum + (v.returnedItems?.length || 0), 0);
     const wagesPaid = payments.reduce((sum, v) => sum + (v.totalAmount || 0), 0);
     const progress = order?.targetQty ? Math.round((qtyDone / order.targetQty) * 100) : 0;
     
     return { 
       issuesCount: issues.length, 
       receiptsQty: qtyDone, 
-      returnedCount: qtyReturned,
       paymentsTotal: wagesPaid, 
       progress 
     };
   }, [vouchers, activeTab, workers, order]);
+
+  const handleDownloadImage = async () => {
+    const element = document.getElementById('printable-voucher');
+    if (!element || !viewingVoucher) return;
+    
+    setIsDownloading(true);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 800));
+      const dataUrl = await toPng(element, { 
+        backgroundColor: '#ffffff',
+        pixelRatio: 2,
+        cacheBust: true,
+      });
+      
+      const link = document.createElement('a');
+      link.download = `Voucher-${viewingVoucher.voucherNumber}.png`;
+      link.href = dataUrl;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast({ title: lang === 'ar' ? "تم تحميل السند بنجاح" : "Voucher Downloaded" });
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   if (orderLoading || deptsLoading) {
     return (
@@ -362,7 +394,7 @@ export default function OrderDetailsDashboard() {
       <div className="flex-1 min-h-0 overflow-auto p-4 no-scrollbar">
         <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden flex flex-col min-h-full">
           
-          {/* VIEW: BATCH DATA (EXTENDED LEDGER) */}
+          {/* VIEW: BATCH DATA */}
           {activeTab === 'info' && (
             <div className="flex-1 flex flex-col animate-in fade-in duration-300">
                <div className="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
@@ -400,17 +432,16 @@ export default function OrderDetailsDashboard() {
             </div>
           )}
 
-          {/* VIEW: STAGE LEDGER (TRANSACTIONS) */}
+          {/* VIEW: STAGE LEDGER */}
           {activeTab !== 'info' && activeTab !== 'summary' && (
             <div className="flex-1 flex flex-col animate-in fade-in duration-300 overflow-hidden">
-               {/* 2.1 METRICS BAR */}
                <div className="p-3 bg-emerald-900 text-white flex items-center justify-between gap-4 shadow-inner">
                   <div className="flex flex-1 items-center justify-around gap-2">
-                    <MetricItem label={lang === 'ar' ? 'صرف المواد' : 'MATERIAL ISSUE'} value={stageMetrics.issuesCount} />
+                    <MetricItem label={lang === 'ar' ? 'سند صرف المواد' : 'MATERIAL ISSUE'} value={stageMetrics.issuesCount} />
                     <div className="w-px h-6 bg-white/10" />
-                    <MetricItem label={lang === 'ar' ? 'استلام ومرتجع' : 'RECEIPT & RETURN'} value={stageMetrics.receiptsQty} unit="Pcs" />
+                    <MetricItem label={lang === 'ar' ? 'استلام انتاج ومواد مرتجعة' : 'RECEIPT & RETURN'} value={stageMetrics.receiptsQty} unit="Pcs" />
                     <div className="w-px h-6 bg-white/10" />
-                    <MetricItem label={lang === 'ar' ? 'صرف الأجور' : 'WAGE PAYMENT'} value={stageMetrics.paymentsTotal.toLocaleString('en-US')} unit="YER" />
+                    <MetricItem label={lang === 'ar' ? 'سند صرف أجور' : 'WAGE PAYMENT'} value={stageMetrics.paymentsTotal.toLocaleString('en-US')} unit="YER" />
                   </div>
                   <div className="w-px h-8 bg-white/20" />
                   <div className="flex items-center gap-4 px-4">
@@ -422,7 +453,6 @@ export default function OrderDetailsDashboard() {
                   </div>
                </div>
 
-               {/* 2.2 SEARCH & FILTER LOG BAR */}
                <div className="p-2 bg-slate-50 border-b border-slate-200 flex items-center gap-2">
                   <div className="relative flex-1">
                     <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400`} />
@@ -440,25 +470,23 @@ export default function OrderDetailsDashboard() {
                         <Button variant="outline" size="sm" className="h-9 px-3 text-[10px] font-black gap-2 border-slate-200 bg-white">
                           <Filter className="w-3.5 h-3.5" />
                           {lang === 'ar' ? 'تصفية العمليات' : 'Filter Types'}
-                          {stageTypeFilter !== 'all' && <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />}
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="w-56 rounded-xl shadow-xl">
-                        <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'نوع العملية' : 'VOUCHER TYPE'}</DropdownMenuLabel>
                         <DropdownMenuItem onClick={() => setStageTypeFilter('all')} className="text-xs font-bold flex justify-between cursor-pointer">
                           {lang === 'ar' ? 'الكل' : 'All Activities'}
                           {stageTypeFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setStageTypeFilter('material_issue')} className="text-xs font-bold flex justify-between cursor-pointer">
-                          {lang === 'ar' ? 'صرف المواد' : 'Material Issue'}
+                          {lang === 'ar' ? 'صرف مواد' : 'Material Issue'}
                           {stageTypeFilter === 'material_issue' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setStageTypeFilter('production_receipt')} className="text-xs font-bold flex justify-between cursor-pointer">
-                          {lang === 'ar' ? 'استلام الإنتاج' : 'Production Receipt'}
+                          {lang === 'ar' ? 'استلام انتاج' : 'Production Receipt'}
                           {stageTypeFilter === 'production_receipt' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setStageTypeFilter('wage_payment')} className="text-xs font-bold flex justify-between cursor-pointer">
-                          {lang === 'ar' ? 'صرف الأجور' : 'Wage Payment'}
+                          {lang === 'ar' ? 'صرف أجور' : 'Wage Payment'}
                           {stageTypeFilter === 'wage_payment' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -476,7 +504,6 @@ export default function OrderDetailsDashboard() {
                   </div>
                </div>
 
-               {/* 2.3 TRANSACTIONS TABLE */}
                <div className="flex-1 overflow-auto relative">
                   <Table className="text-right border-separate border-spacing-0">
                     <TableHeader className="bg-slate-100 sticky top-0 z-10 shadow-sm">
@@ -487,16 +514,14 @@ export default function OrderDetailsDashboard() {
                         <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right border-b border-slate-200">{lang === 'ar' ? 'المسؤول / العامل' : 'PERSONNEL'}</TableHead>
                         <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right border-b border-slate-200">{lang === 'ar' ? 'البيان' : 'MEMO'}</TableHead>
                         <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">{lang === 'ar' ? 'القيمة / الأثر' : 'IMPACT'}</TableHead>
+                        <TableHead className="px-6 py-3 border-b border-slate-200 w-16"></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredStageVouchers.length === 0 ? (
-                        <TableRow><TableCell colSpan={6} className="py-32 text-center text-slate-300 font-bold">
-                          <Zap className="w-12 h-12 mx-auto mb-4 opacity-10" />
-                          {lang === 'ar' ? 'لا توجد سجلات مطابقة للبحث' : 'No matching stage records'}
-                        </TableCell></TableRow>
+                        <TableRow><TableCell colSpan={7} className="py-32 text-center text-slate-300 font-bold">لا توجد سجلات مطابقة</TableCell></TableRow>
                       ) : filteredStageVouchers.map((v) => (
-                        <LedgerTransactionRow key={v.id} voucher={v} worker={workers?.find(w => w.id === v.workerId)} lang={lang} />
+                        <LedgerTransactionRow key={v.id} voucher={v} worker={workers?.find(w => w.id === v.workerId)} lang={lang} onView={(v) => setViewingVoucher(v)} />
                       ))}
                     </TableBody>
                   </Table>
@@ -515,9 +540,6 @@ export default function OrderDetailsDashboard() {
                       </div>
                     );
                   })()}
-                  <Button variant="ghost" size="sm" className="h-7 text-[9px] font-black text-emerald-700 hover:bg-emerald-50 rounded-md">
-                     {lang === 'ar' ? 'سجل التدقيق المالي للمرحلة' : 'View Audit Log'}
-                  </Button>
                </div>
             </div>
           )}
@@ -563,16 +585,6 @@ export default function OrderDetailsDashboard() {
                           </TableRow>
                         );
                       })}
-                      <TableRow className="bg-slate-900 text-white font-black">
-                        <TableCell className="px-6 py-5 text-sm uppercase">{lang === 'ar' ? 'إجمالي التكاليف التقريبية' : 'ESTIMATED COGS'}</TableCell>
-                        <TableCell className="px-6 py-5 text-center text-emerald-400 tabular-nums text-lg">
-                           {finalCompletedQty.toLocaleString('en-US')}
-                        </TableCell>
-                        <TableCell className="px-6 py-5 text-center text-emerald-400 tabular-nums text-lg" colSpan={2}>
-                           {vouchers?.filter(v => v.status !== 'deleted').reduce((sum, v) => sum + (v.wageAmount || 0) + (v.totalAmount || 0), 0).toLocaleString('en-US')}
-                           <span className="text-[10px] ms-2 uppercase">YER</span>
-                        </TableCell>
-                      </TableRow>
                     </TableBody>
                   </Table>
                </div>
@@ -581,6 +593,141 @@ export default function OrderDetailsDashboard() {
 
         </div>
       </div>
+
+      {/* VOUCHER PREVIEW DIALOG */}
+      <Dialog open={!!viewingVoucher} onOpenChange={(open) => !open && setViewingVoucher(null)}>
+        <DialogContent className="sm:max-w-[700px] p-0 overflow-hidden border-none bg-white shadow-2xl">
+          <DialogHeader className="sr-only"><DialogTitle>معاينة السند</DialogTitle></DialogHeader>
+          
+          <ScrollArea className="max-h-[80vh]">
+            <div className="p-10 bg-white relative z-0" id="printable-voucher">
+              {viewingVoucher && (
+                <div className="flex flex-col text-slate-900 font-sans relative" dir="rtl">
+                  {/* WATERMARK */}
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 opacity-[0.04] pointer-events-none -z-10 select-none">
+                    <img src="/images/logo.png" alt="watermark" className="w-full h-full object-contain grayscale" />
+                  </div>
+
+                  {/* HEADER */}
+                  <div className="grid grid-cols-3 items-center border-b-4 border-emerald-800 pb-6 mb-6">
+                    <div className="text-center space-y-0.5">
+                      <h2 className="text-base font-black text-emerald-900">جمعية الصناعات النسيجية</h2>
+                      <p className="text-xs font-bold text-slate-500">الروضة - محافظة شبوة</p>
+                    </div>
+                    <div className="flex justify-center">
+                      <img src="/images/logo.png" alt="Logo" className="w-16 h-16 object-contain" />
+                    </div>
+                    <div className="text-center space-y-0.5" dir="ltr">
+                      <h2 className="text-[11px] font-black text-emerald-900">TIA Cooperative</h2>
+                      <p className="text-[9px] font-bold text-slate-500">Shabwa - Yemen</p>
+                    </div>
+                  </div>
+
+                  <div className="text-center mb-6">
+                    <div className="inline-block border-2 border-emerald-800 px-8 py-1 rounded-full bg-white shadow-sm">
+                      <h3 className="text-base font-black text-emerald-900 uppercase">
+                        {viewingVoucher.type === 'material_issue' ? 'سند صرف مواد خام' : 
+                         viewingVoucher.type === 'production_receipt' ? 'سند استلام وتسوية' : 'سند صرف أجور مالي'}
+                      </h3>
+                    </div>
+                  </div>
+
+                  {/* INFO GRID */}
+                  <div className="grid grid-cols-2 gap-4 mb-6 bg-slate-50/70 p-4 rounded-xl border border-slate-100">
+                    <div className="space-y-2">
+                       <p className="text-[9px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'رقم السند' : 'REF #'}</p>
+                       <p className="text-sm font-black text-emerald-900 tabular-nums">{viewingVoucher.voucherNumber}</p>
+                    </div>
+                    <div className="space-y-2 text-left">
+                       <p className="text-[9px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'التاريخ' : 'DATE'}</p>
+                       <p className="text-sm font-black text-slate-700 tabular-nums">{viewingVoucher.date}</p>
+                    </div>
+                    <div className="space-y-2">
+                       <p className="text-[9px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'المستلم / العامل' : 'PERSONNEL'}</p>
+                       <p className="text-sm font-black text-slate-700">{workers?.find(w => w.id === viewingVoucher.workerId)?.fullName}</p>
+                    </div>
+                    <div className="space-y-2 text-left">
+                       <p className="text-[9px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'أمر الإنتاج' : 'BATCH'}</p>
+                       <p className="text-sm font-black text-slate-700">{order.orderNumber}</p>
+                    </div>
+                  </div>
+
+                  {/* DETAILS TABLE */}
+                  <div className="mb-8">
+                    <Table className="text-right border-2 border-slate-100">
+                      <TableHeader className="bg-slate-50">
+                        <TableRow>
+                          <TableHead className="font-black text-[10px] text-slate-500 py-2">{lang === 'ar' ? 'البيان / الصنف' : 'ITEM / MEMO'}</TableHead>
+                          <TableHead className="font-black text-[10px] text-slate-500 py-2 text-center">{lang === 'ar' ? 'الكمية / المبلغ' : 'QTY / AMT'}</TableHead>
+                          <TableHead className="font-black text-[10px] text-slate-500 py-2 text-center">{lang === 'ar' ? 'الوحدة' : 'UNIT'}</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {viewingVoucher.type === 'material_issue' && viewingVoucher.items?.map((item: any, i: number) => (
+                          <TableRow key={i} className="border-b border-slate-50">
+                            <TableCell className="text-xs font-bold">{item.nameAr}</TableCell>
+                            <TableCell className="text-center font-black text-xs tabular-nums">{item.qty}</TableCell>
+                            <TableCell className="text-center text-[10px] font-bold text-slate-400 uppercase">{item.unit}</TableCell>
+                          </TableRow>
+                        ))}
+                        {viewingVoucher.type === 'production_receipt' && (
+                          <>
+                            <TableRow className="border-b border-slate-50">
+                              <TableCell className="text-xs font-bold">{lang === 'ar' ? 'إنتاج مقبول (جاهز)' : 'Accepted Production'}</TableCell>
+                              <TableCell className="text-center font-black text-xs tabular-nums text-emerald-700">{viewingVoucher.qtyAccepted}</TableCell>
+                              <TableCell className="text-center text-[10px] font-bold text-slate-400 uppercase">Pcs</TableCell>
+                            </TableRow>
+                            {viewingVoucher.returnedItems?.map((item: any, i: number) => (
+                              <TableRow key={i} className="border-b border-slate-50 bg-blue-50/20">
+                                <TableCell className="text-xs font-bold text-blue-700">{item.nameAr} ({lang === 'ar' ? 'مرتجع' : 'Return'})</TableCell>
+                                <TableCell className="text-center font-black text-xs tabular-nums text-blue-700">{item.qty}</TableCell>
+                                <TableCell className="text-center text-[10px] font-bold text-blue-400 uppercase">{item.unit}</TableCell>
+                              </TableRow>
+                            ))}
+                          </>
+                        )}
+                        {viewingVoucher.type === 'wage_payment' && (
+                          <TableRow className="bg-emerald-50/50">
+                            <TableCell className="text-xs font-black">{lang === 'ar' ? 'إجمالي الأجور المدفوعة' : 'Total Wages Paid'}</TableCell>
+                            <TableCell className="text-center font-black text-sm tabular-nums text-emerald-700">{viewingVoucher.totalAmount}</TableCell>
+                            <TableCell className="text-center text-[10px] font-bold text-slate-400 uppercase">{viewingVoucher.currency}</TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  {/* SIGNATURES */}
+                  <div className="grid grid-cols-3 gap-4 pt-8 border-t border-slate-100 text-center">
+                    <div className="space-y-6">
+                      <p className="text-[9px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'توقيع المستلم' : 'Recipient'}</p>
+                      <div className="h-px bg-slate-200 w-full" />
+                    </div>
+                    <div className="space-y-6">
+                      <p className="text-[9px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'أمين المستودع' : 'Store Keeper'}</p>
+                      <div className="h-px bg-slate-200 w-full" />
+                    </div>
+                    <div className="space-y-6">
+                      <p className="text-[9px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'اعتماد المدير' : 'Approval'}</p>
+                      <div className="h-px bg-slate-200 w-full" />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+
+          <DialogFooter className="p-6 bg-slate-50 border-t border-slate-100 gap-3">
+             <Button onClick={handleDownloadImage} disabled={isDownloading} className="premium-gradient font-black gap-2 h-11 px-8 rounded-xl shadow-lg">
+                {isDownloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                {lang === 'ar' ? 'تحميل كصورة' : 'Download PNG'}
+             </Button>
+             <Button variant="ghost" onClick={() => setViewingVoucher(null)} className="h-11 px-6 rounded-xl border border-slate-200 font-black">
+               {lang === 'ar' ? 'إغلاق' : 'Close'}
+             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* EDIT ORDER DIALOG */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
@@ -651,16 +798,6 @@ export default function OrderDetailsDashboard() {
         </DialogContent>
       </Dialog>
 
-      {/* FOOTER */}
-      <div className="flex-none p-2 bg-slate-950 text-white/30 flex items-center justify-center gap-4">
-        <div className="w-5 h-5 rounded bg-emerald-500/10 flex items-center justify-center text-emerald-500"><History className="w-3 h-3" /></div>
-        <p className="text-[9px] font-bold tracking-widest uppercase">
-          {lang === 'ar' 
-            ? 'نظام السجلات الموحد: كافة البيانات هنا مرآة للسندات المالية والمخزنية المصدقة.' 
-            : 'Unified Ledger System: All data mirrors certified fiscal and inventory vouchers.'}
-        </p>
-      </div>
-
     </div>
   );
 }
@@ -679,10 +816,10 @@ function LedgerRow({ label, value, icon, color = "text-slate-900" }: { label: st
   );
 }
 
-function LedgerTransactionRow({ voucher, worker, lang }: { voucher: any, worker: any, lang: string }) {
+function LedgerTransactionRow({ voucher, worker, lang, onView }: { voucher: any, worker: any, lang: string, onView: (v: any) => void }) {
   const typeMap: any = {
     'material_issue': { labelAr: 'صرف مواد', icon: <FileInput className="w-3.5 h-3.5" />, color: 'text-amber-600 bg-amber-50 border-amber-100' },
-    'production_receipt': { labelAr: 'استلام إنتاج', icon: <FileOutput className="w-3.5 h-3.5" />, color: 'text-blue-600 bg-blue-50 border-blue-100' },
+    'production_receipt': { labelAr: 'استلام انتاج', icon: <FileOutput className="w-3.5 h-3.5" />, color: 'text-blue-600 bg-blue-50 border-blue-100' },
     'wage_payment': { labelAr: 'صرف أجور', icon: <HandCoins className="w-3.5 h-3.5" />, color: 'text-emerald-600 bg-emerald-50 border-emerald-100' }
   };
   const config = typeMap[voucher.type] || { labelAr: 'أخرى', icon: <FileText className="w-3.5 h-3.5" />, color: 'text-slate-500 bg-slate-50 border-slate-100' };
@@ -719,6 +856,11 @@ function LedgerTransactionRow({ voucher, worker, lang }: { voucher: any, worker:
               {voucher.type === 'production_receipt' ? (lang === 'ar' ? 'قطعة' : 'Pcs') : voucher.currency}
            </span>
         </div>
+      </TableCell>
+      <TableCell className="px-6 py-3 text-center">
+         <Button variant="ghost" size="icon" onClick={() => onView(voucher)} className="h-7 w-7 text-slate-400 hover:text-emerald-600 transition-colors">
+            <Eye className="w-4 h-4" />
+         </Button>
       </TableCell>
     </TableRow>
   );
