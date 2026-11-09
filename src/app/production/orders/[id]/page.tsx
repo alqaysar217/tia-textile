@@ -35,7 +35,15 @@ import {
   Activity,
   Layers,
   Save,
-  Tag
+  Tag,
+  Search,
+  Filter,
+  RefreshCcw,
+  Wallet,
+  ArrowUpDown,
+  SortAsc,
+  SortDesc,
+  Check
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from '@/components/LanguageProvider';
@@ -56,6 +64,14 @@ import {
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from '@/components/ui/dropdown-menu';
 import { toast } from '@/hooks/use-toast';
 
 export default function OrderDetailsDashboard() {
@@ -68,6 +84,11 @@ export default function OrderDetailsDashboard() {
   const [activeTab, setActiveTab] = useState<string>('info');
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Stage View Local Filters
+  const [stageSearch, setStageSearch] = useState('');
+  const [stageTypeFilter, setStageTypeFilter] = useState<'all' | 'material_issue' | 'production_receipt' | 'wage_payment'>('all');
+  const [stageSortOrder, setStageSortOrder] = useState<'asc' | 'desc'>('desc');
 
   // Fetch Data
   const orderRef = useMemo(() => !db ? null : doc(db, 'productionOrders', id as string), [db, id]);
@@ -148,26 +169,73 @@ export default function OrderDetailsDashboard() {
     return Math.round((finalCompletedQty / order.targetQty) * 100);
   }, [finalCompletedQty, order]);
 
-  const currentStageVouchers = useMemo(() => {
+  const filteredStageVouchers = useMemo(() => {
     if (!vouchers || activeTab === 'info' || activeTab === 'summary') return [];
-    return vouchers.filter(v => {
+    
+    let list = vouchers.filter(v => {
       if (v.status === 'deleted') return false;
-      if (v.type === 'production_receipt') return v.currentStageId === activeTab;
-      // For issues, check if the worker belongs to this department
-      const worker = workers?.find(w => w.id === v.workerId);
-      return worker?.departmentId === activeTab;
+      
+      // Basic stage filtering
+      let isInStage = false;
+      if (v.type === 'production_receipt') {
+        isInStage = v.currentStageId === activeTab;
+      } else {
+        // For issues and payments, check if the worker belongs to this department
+        const worker = workers?.find(w => w.id === v.workerId);
+        isInStage = worker?.departmentId === activeTab;
+      }
+      
+      if (!isInStage) return false;
+
+      // Type Filter
+      if (stageTypeFilter !== 'all' && v.type !== stageTypeFilter) return false;
+
+      // Search Filter
+      if (stageSearch) {
+        const s = stageSearch.toLowerCase();
+        const worker = workers?.find(w => w.id === v.workerId);
+        return v.voucherNumber?.toLowerCase().includes(s) || 
+               worker?.fullName?.toLowerCase().includes(s) ||
+               v.notes?.toLowerCase().includes(s);
+      }
+
+      return true;
     });
-  }, [vouchers, activeTab, workers]);
+
+    // Sorting
+    return list.sort((a, b) => {
+      const timeA = new Date(a.date || 0).getTime();
+      const timeB = new Date(b.date || 0).getTime();
+      return stageSortOrder === 'asc' ? timeA - timeB : timeB - timeA;
+    });
+  }, [vouchers, activeTab, workers, stageSearch, stageTypeFilter, stageSortOrder]);
 
   const stageMetrics = useMemo(() => {
-    const receipts = currentStageVouchers.filter(v => v.type === 'production_receipt');
-    const issues = currentStageVouchers.filter(v => v.type === 'material_issue');
-    const wages = receipts.reduce((sum, v) => sum + (v.wageAmount || 0), 0);
+    // We calculate metrics based on ALL vouchers in the stage, not just filtered ones
+    const baseList = vouchers?.filter(v => {
+      if (v.status === 'deleted') return false;
+      if (v.type === 'production_receipt') return v.currentStageId === activeTab;
+      const worker = workers?.find(w => w.id === v.workerId);
+      return worker?.departmentId === activeTab;
+    }) || [];
+
+    const receipts = baseList.filter(v => v.type === 'production_receipt');
+    const issues = baseList.filter(v => v.type === 'material_issue');
+    const payments = baseList.filter(v => v.type === 'wage_payment');
+    
     const qtyDone = receipts.reduce((sum, v) => sum + (v.qtyAccepted || 0), 0);
+    const qtyReturned = receipts.reduce((sum, v) => sum + (v.returnedItems?.length || 0), 0);
+    const wagesPaid = payments.reduce((sum, v) => sum + (v.totalAmount || 0), 0);
     const progress = order?.targetQty ? Math.round((qtyDone / order.targetQty) * 100) : 0;
     
-    return { issuesCount: issues.length, receiptsQty: qtyDone, wagesTotal: wages, progress };
-  }, [currentStageVouchers, order]);
+    return { 
+      issuesCount: issues.length, 
+      receiptsQty: qtyDone, 
+      returnedCount: qtyReturned,
+      paymentsTotal: wagesPaid, 
+      progress 
+    };
+  }, [vouchers, activeTab, workers, order]);
 
   if (orderLoading || deptsLoading) {
     return (
@@ -225,7 +293,7 @@ export default function OrderDetailsDashboard() {
                 <Edit2 className="w-3.5 h-3.5" />
                 {lang === 'ar' ? 'تعديل الأمر' : 'Edit Order'}
              </Button>
-             <Button className="h-9 px-5 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 border-none text-[11px]">
+             <Button onClick={() => router.push(`/production/vouchers/issue?orderId=${order.id}`)} className="h-9 px-5 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 border-none text-[11px]">
                 <Plus className="w-3.5 h-3.5" />
                 {lang === 'ar' ? 'عملية ميدانية' : 'New Transaction'}
              </Button>
@@ -237,7 +305,7 @@ export default function OrderDetailsDashboard() {
       <div className="flex-none bg-slate-900 z-20 shadow-lg">
         <div className="container mx-auto px-4 flex items-center h-12 gap-1 overflow-x-auto no-scrollbar scroll-smooth">
           <button
-            onClick={() => setActiveTab('info')}
+            onClick={() => { setActiveTab('info'); setStageSearch(''); }}
             className={cn(
               "flex items-center gap-2 px-5 h-full transition-all whitespace-nowrap font-black text-[10px] uppercase tracking-wider relative",
               activeTab === 'info' ? "bg-emerald-600 text-white shadow-[inset_0_-3px_0_white]" : "text-white/40 hover:text-white/70"
@@ -252,7 +320,7 @@ export default function OrderDetailsDashboard() {
           {departments?.map((dept, idx) => (
             <button
               key={dept.id}
-              onClick={() => setActiveTab(dept.id)}
+              onClick={() => { setActiveTab(dept.id); setStageSearch(''); }}
               className={cn(
                 "flex items-center gap-2 px-5 h-full transition-all whitespace-nowrap text-[10px] font-black uppercase tracking-wider relative group",
                 activeTab === dept.id 
@@ -278,7 +346,7 @@ export default function OrderDetailsDashboard() {
           <div className="h-4 w-px bg-white/10" />
 
           <button
-            onClick={() => setActiveTab('summary')}
+            onClick={() => { setActiveTab('summary'); setStageSearch(''); }}
             className={cn(
               "flex items-center gap-2 px-5 h-full transition-all whitespace-nowrap font-black text-[10px] uppercase tracking-wider relative",
               activeTab === 'summary' ? "bg-blue-600 text-white shadow-[inset_0_-3px_0_white]" : "text-white/40 hover:text-white/70"
@@ -309,17 +377,17 @@ export default function OrderDetailsDashboard() {
                <div className="flex-1 overflow-auto p-0">
                   <table className="w-full text-right border-separate border-spacing-0">
                      <tbody className="divide-y divide-slate-100">
-                        <LedgerRow label={lang === 'ar' ? 'رقم السجل الموحد' : 'REFERENCE'} value={order.orderNumber} icon={<Hash />} />
-                        <LedgerRow label={lang === 'ar' ? 'تاريخ البدء التشغيلي' : 'LAUNCH DATE'} value={order.startDate} icon={<Calendar />} />
-                        <LedgerRow label={lang === 'ar' ? 'عنوان الدفعة' : 'BATCH TITLE'} value={order.title} icon={<Type />} />
-                        <LedgerRow label={lang === 'ar' ? 'المنتج المستهدف' : 'PRODUCT'} value={product?.nameAr} icon={<ShoppingBag />} />
-                        <LedgerRow label={lang === 'ar' ? 'القسم المسؤول حالياً' : 'WORK CENTER'} value={departments?.find(d => d.id === order.currentStageId)?.nameAr} icon={<Building2Icon />} />
-                        <LedgerRow label={lang === 'ar' ? 'الكمية المستهدفة' : 'TARGET QTY'} value={`${order.targetQty} قطعة`} icon={<Target />} color="text-slate-900" />
-                        <LedgerRow label={lang === 'ar' ? 'الجاهز النهائي الموثق' : 'FINISHED QTY'} value={`${finalCompletedQty} قطعة`} icon={<CheckCircle2 />} color="text-emerald-700" />
-                        <LedgerRow label={lang === 'ar' ? 'قيد العمل الإجمالي' : 'WIP QTY'} value={`${order.targetQty - finalCompletedQty} قطعة`} icon={<Package />} color="text-blue-600" />
-                        <LedgerRow label={lang === 'ar' ? 'نسبة الإنجاز الكلية' : 'PROGRESS %'} value={`${totalProgress}%`} icon={<Activity />} color="text-emerald-600" />
-                        <LedgerRow label={lang === 'ar' ? 'الأولوية التنظيمية' : 'PRIORITY'} value={order.priority} icon={<ShieldCheck />} />
-                        <LedgerRow label={lang === 'ar' ? 'الحالة الحالية' : 'STATUS'} value={order.status} icon={<Tag />} />
+                        <LedgerRow label={lang === 'ar' ? 'رقم السجل الموحد' : 'REFERENCE'} value={order.orderNumber} icon={<Hash className="w-4 h-4" />} />
+                        <LedgerRow label={lang === 'ar' ? 'تاريخ البدء التشغيلي' : 'LAUNCH DATE'} value={order.startDate} icon={<Calendar className="w-4 h-4" />} />
+                        <LedgerRow label={lang === 'ar' ? 'عنوان الدفعة' : 'BATCH TITLE'} value={order.title} icon={<Type className="w-4 h-4" />} />
+                        <LedgerRow label={lang === 'ar' ? 'المنتج المستهدف' : 'PRODUCT'} value={product?.nameAr} icon={<ShoppingBag className="w-4 h-4" />} />
+                        <LedgerRow label={lang === 'ar' ? 'القسم المسؤول حالياً' : 'WORK CENTER'} value={departments?.find(d => d.id === order.currentStageId)?.nameAr} icon={<Workflow className="w-4 h-4" />} />
+                        <LedgerRow label={lang === 'ar' ? 'الكمية المستهدفة' : 'TARGET QTY'} value={`${order.targetQty} قطعة`} icon={<Target className="w-4 h-4" />} color="text-slate-900" />
+                        <LedgerRow label={lang === 'ar' ? 'الجاهز النهائي الموثق' : 'FINISHED QTY'} value={`${finalCompletedQty} قطعة`} icon={<CheckCircle2 className="w-4 h-4" />} color="text-emerald-700" />
+                        <LedgerRow label={lang === 'ar' ? 'قيد العمل الإجمالي' : 'WIP QTY'} value={`${order.targetQty - finalCompletedQty} قطعة`} icon={<Package className="w-4 h-4" />} color="text-blue-600" />
+                        <LedgerRow label={lang === 'ar' ? 'نسبة الإنجاز الكلية' : 'PROGRESS %'} value={`${totalProgress}%`} icon={<Activity className="w-4 h-4" />} color="text-emerald-600" />
+                        <LedgerRow label={lang === 'ar' ? 'الأولوية التنظيمية' : 'PRIORITY'} value={order.priority} icon={<ShieldCheck className="w-4 h-4" />} />
+                        <LedgerRow label={lang === 'ar' ? 'الحالة الحالية' : 'STATUS'} value={order.status} icon={<Tag className="w-4 h-4" />} />
                         {order.notes && (
                            <tr className="bg-slate-50/50">
                               <td className="px-6 py-5 w-72 font-black text-[10px] text-slate-400 uppercase border-l border-slate-100">{lang === 'ar' ? 'تعليمات وملاحظات' : 'INSTRUCTIONS'}</td>
@@ -335,37 +403,99 @@ export default function OrderDetailsDashboard() {
           {/* VIEW: STAGE LEDGER (TRANSACTIONS) */}
           {activeTab !== 'info' && activeTab !== 'summary' && (
             <div className="flex-1 flex flex-col animate-in fade-in duration-300 overflow-hidden">
-               <div className="p-2 bg-emerald-900 text-white flex items-center justify-around gap-2 shadow-inner">
-                  <MetricItem label={lang === 'ar' ? 'سندات صرف' : 'ISSUES'} value={stageMetrics.issuesCount} />
-                  <div className="w-px h-6 bg-white/10" />
-                  <MetricItem label={lang === 'ar' ? 'مخرجات المرحلة' : 'OUTPUT'} value={stageMetrics.receiptsQty} unit="Pcs" />
-                  <div className="w-px h-6 bg-white/10" />
-                  <MetricItem label={lang === 'ar' ? 'أجور مقيدة' : 'WAGES'} value={stageMetrics.wagesTotal.toLocaleString('en-US')} unit="YER" />
-                  <div className="w-px h-6 bg-white/10" />
-                  <div className="flex items-center gap-3">
-                     <span className="text-[8px] font-black text-emerald-300 uppercase">{lang === 'ar' ? 'إنجاز المرحلة' : 'PROGRESS'}</span>
-                     <span className="text-sm font-black tabular-nums">{stageMetrics.progress}%</span>
+               {/* 2.1 METRICS BAR */}
+               <div className="p-3 bg-emerald-900 text-white flex items-center justify-between gap-4 shadow-inner">
+                  <div className="flex flex-1 items-center justify-around gap-2">
+                    <MetricItem label={lang === 'ar' ? 'صرف المواد' : 'MATERIAL ISSUE'} value={stageMetrics.issuesCount} />
+                    <div className="w-px h-6 bg-white/10" />
+                    <MetricItem label={lang === 'ar' ? 'استلام ومرتجع' : 'RECEIPT & RETURN'} value={stageMetrics.receiptsQty} unit="Pcs" />
+                    <div className="w-px h-6 bg-white/10" />
+                    <MetricItem label={lang === 'ar' ? 'صرف الأجور' : 'WAGE PAYMENT'} value={stageMetrics.paymentsTotal.toLocaleString('en-US')} unit="YER" />
+                  </div>
+                  <div className="w-px h-8 bg-white/20" />
+                  <div className="flex items-center gap-4 px-4">
+                     <div className="text-right">
+                        <p className="text-[8px] font-black text-emerald-300 uppercase tracking-widest">{lang === 'ar' ? 'إنجاز المرحلة' : 'STAGE PROGRESS'}</p>
+                        <p className="text-lg font-black tabular-nums leading-none mt-1">{stageMetrics.progress}%</p>
+                     </div>
+                     <Progress value={stageMetrics.progress} className="w-24 h-1.5 bg-emerald-800" />
                   </div>
                </div>
 
+               {/* 2.2 SEARCH & FILTER LOG BAR */}
+               <div className="p-2 bg-slate-50 border-b border-slate-200 flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400`} />
+                    <Input 
+                      value={stageSearch}
+                      onChange={(e) => setStageSearch(e.target.value)}
+                      placeholder={lang === 'ar' ? 'بحث في سجل المرحلة...' : 'Search stage log...'}
+                      className={cn("h-9 bg-white text-xs font-bold border-slate-200", dir === 'rtl' ? "pr-9" : "pl-9")}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center gap-1.5">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-9 px-3 text-[10px] font-black gap-2 border-slate-200 bg-white">
+                          <Filter className="w-3.5 h-3.5" />
+                          {lang === 'ar' ? 'تصفية العمليات' : 'Filter Types'}
+                          {stageTypeFilter !== 'all' && <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="w-56 rounded-xl shadow-xl">
+                        <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'نوع العملية' : 'VOUCHER TYPE'}</DropdownMenuLabel>
+                        <DropdownMenuItem onClick={() => setStageTypeFilter('all')} className="text-xs font-bold flex justify-between cursor-pointer">
+                          {lang === 'ar' ? 'الكل' : 'All Activities'}
+                          {stageTypeFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setStageTypeFilter('material_issue')} className="text-xs font-bold flex justify-between cursor-pointer">
+                          {lang === 'ar' ? 'صرف المواد' : 'Material Issue'}
+                          {stageTypeFilter === 'material_issue' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setStageTypeFilter('production_receipt')} className="text-xs font-bold flex justify-between cursor-pointer">
+                          {lang === 'ar' ? 'استلام الإنتاج' : 'Production Receipt'}
+                          {stageTypeFilter === 'production_receipt' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setStageTypeFilter('wage_payment')} className="text-xs font-bold flex justify-between cursor-pointer">
+                          {lang === 'ar' ? 'صرف الأجور' : 'Wage Payment'}
+                          {stageTypeFilter === 'wage_payment' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setStageSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                      className="h-9 px-3 text-[10px] font-black gap-2 border-slate-200 bg-white"
+                    >
+                      {stageSortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5" /> : <SortDesc className="w-3.5 h-3.5" />}
+                      {lang === 'ar' ? 'ترتيب' : 'Sort'}
+                    </Button>
+                  </div>
+               </div>
+
+               {/* 2.3 TRANSACTIONS TABLE */}
                <div className="flex-1 overflow-auto relative">
                   <Table className="text-right border-separate border-spacing-0">
-                    <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
+                    <TableHeader className="bg-slate-100 sticky top-0 z-10 shadow-sm">
                       <TableRow>
                         <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right border-b border-slate-200">{lang === 'ar' ? 'التاريخ' : 'DATE'}</TableHead>
-                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right border-b border-slate-200">{lang === 'ar' ? 'نوع العملية' : 'TYPE'}</TableHead>
+                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right border-b border-slate-200">{lang === 'ar' ? 'رقم السند' : 'REF #'}</TableHead>
+                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right border-b border-slate-200">{lang === 'ar' ? 'نوع العملية' : 'ACTIVITY'}</TableHead>
                         <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right border-b border-slate-200">{lang === 'ar' ? 'المسؤول / العامل' : 'PERSONNEL'}</TableHead>
-                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right border-b border-slate-200">{lang === 'ar' ? 'التفاصيل' : 'REMARKS'}</TableHead>
-                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">{lang === 'ar' ? 'الأثر' : 'IMPACT'}</TableHead>
+                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right border-b border-slate-200">{lang === 'ar' ? 'البيان' : 'MEMO'}</TableHead>
+                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">{lang === 'ar' ? 'القيمة / الأثر' : 'IMPACT'}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {currentStageVouchers.length === 0 ? (
-                        <TableRow><TableCell colSpan={5} className="py-24 text-center text-slate-300 font-bold">
-                          <Zap className="w-10 h-10 mx-auto mb-3 opacity-10" />
-                          {lang === 'ar' ? 'لا توجد حركة مسجلة في هذا القسم' : 'No transactions in this stage'}
+                      {filteredStageVouchers.length === 0 ? (
+                        <TableRow><TableCell colSpan={6} className="py-32 text-center text-slate-300 font-bold">
+                          <Zap className="w-12 h-12 mx-auto mb-4 opacity-10" />
+                          {lang === 'ar' ? 'لا توجد سجلات مطابقة للبحث' : 'No matching stage records'}
                         </TableCell></TableRow>
-                      ) : currentStageVouchers.map((v) => (
+                      ) : filteredStageVouchers.map((v) => (
                         <LedgerTransactionRow key={v.id} voucher={v} worker={workers?.find(w => w.id === v.workerId)} lang={lang} />
                       ))}
                     </TableBody>
@@ -386,7 +516,7 @@ export default function OrderDetailsDashboard() {
                     );
                   })()}
                   <Button variant="ghost" size="sm" className="h-7 text-[9px] font-black text-emerald-700 hover:bg-emerald-50 rounded-md">
-                     {lang === 'ar' ? 'تقرير التكاليف التفصيلي للمرحلة' : 'View Stage Cost Analysis'}
+                     {lang === 'ar' ? 'سجل التدقيق المالي للمرحلة' : 'View Audit Log'}
                   </Button>
                </div>
             </div>
@@ -434,7 +564,7 @@ export default function OrderDetailsDashboard() {
                         );
                       })}
                       <TableRow className="bg-slate-900 text-white font-black">
-                        <TableCell className="px-6 py-5 text-sm uppercase">{lang === 'ar' ? 'إجمالي التكاليف (المواد والأجور)' : 'TOTAL ESTIMATED COST'}</TableCell>
+                        <TableCell className="px-6 py-5 text-sm uppercase">{lang === 'ar' ? 'إجمالي التكاليف التقريبية' : 'ESTIMATED COGS'}</TableCell>
                         <TableCell className="px-6 py-5 text-center text-emerald-400 tabular-nums text-lg">
                            {finalCompletedQty.toLocaleString('en-US')}
                         </TableCell>
@@ -551,15 +681,16 @@ function LedgerRow({ label, value, icon, color = "text-slate-900" }: { label: st
 
 function LedgerTransactionRow({ voucher, worker, lang }: { voucher: any, worker: any, lang: string }) {
   const typeMap: any = {
-    'material_issue': { labelAr: 'صرف مواد', icon: <FileInput className="w-3 h-3" />, color: 'text-amber-600 bg-amber-50 border-amber-100' },
-    'production_receipt': { labelAr: 'استلام مخرجات', icon: <FileOutput className="w-3 h-3" />, color: 'text-blue-600 bg-blue-50 border-blue-100' },
-    'wage_payment': { labelAr: 'صرف أجر', icon: <HandCoins className="w-3 h-3" />, color: 'text-emerald-600 bg-emerald-50 border-emerald-100' }
+    'material_issue': { labelAr: 'صرف مواد', icon: <FileInput className="w-3.5 h-3.5" />, color: 'text-amber-600 bg-amber-50 border-amber-100' },
+    'production_receipt': { labelAr: 'استلام إنتاج', icon: <FileOutput className="w-3.5 h-3.5" />, color: 'text-blue-600 bg-blue-50 border-blue-100' },
+    'wage_payment': { labelAr: 'صرف أجور', icon: <HandCoins className="w-3.5 h-3.5" />, color: 'text-emerald-600 bg-emerald-50 border-emerald-100' }
   };
-  const config = typeMap[voucher.type] || { labelAr: 'أخرى', icon: <FileText />, color: 'text-slate-500 bg-slate-50 border-slate-100' };
+  const config = typeMap[voucher.type] || { labelAr: 'أخرى', icon: <FileText className="w-3.5 h-3.5" />, color: 'text-slate-500 bg-slate-50 border-slate-100' };
 
   return (
     <TableRow className="hover:bg-slate-50/50 border-b border-slate-100 transition-colors group">
       <TableCell className="px-6 py-3 font-bold text-slate-400 text-[10px] tabular-nums">{voucher.date}</TableCell>
+      <TableCell className="px-6 py-3 font-black text-slate-900 text-[10px] tabular-nums tracking-wider">{voucher.voucherNumber}</TableCell>
       <TableCell className="px-6 py-3">
         <div className={cn("inline-flex items-center gap-2 px-2 py-0.5 rounded text-[9px] font-black uppercase border", config.color)}>
            {config.icon}
@@ -568,20 +699,20 @@ function LedgerTransactionRow({ voucher, worker, lang }: { voucher: any, worker:
       </TableCell>
       <TableCell className="px-6 py-3">
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded bg-slate-100 flex items-center justify-center text-[9px] font-black uppercase overflow-hidden">
-             {worker?.photoUrl ? <img src={worker.photoUrl} className="w-full h-full object-cover" /> : worker?.fullName?.charAt(0)}
+          <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center text-[10px] font-black uppercase overflow-hidden border border-slate-200">
+             {worker?.photoUrl ? <img src={worker.photoUrl} className="w-full h-full object-cover" /> : <User className="w-3.5 h-3.5 text-slate-400" />}
           </div>
           <div className="flex flex-col">
-             <span className="text-[11px] font-black text-slate-700">{worker?.fullName || 'System'}</span>
+             <span className="text-[11px] font-black text-slate-800">{worker?.fullName || '---'}</span>
           </div>
         </div>
       </TableCell>
-      <TableCell className="px-6 py-3 text-[11px] font-bold text-slate-500 max-w-[300px] truncate">
+      <TableCell className="px-6 py-3 text-[11px] font-bold text-slate-500 max-w-[200px] truncate">
         {voucher.notes || (voucher.items ? `${voucher.items.length} مواد مصروفة` : '---')}
       </TableCell>
       <TableCell className="px-6 py-3 text-center">
         <div className="flex flex-col items-center">
-           <span className="text-xs font-black text-slate-900 tabular-nums">
+           <span className={cn("text-xs font-black tabular-nums", voucher.type === 'material_issue' ? "text-amber-700" : "text-emerald-700")}>
               {voucher.type === 'production_receipt' ? (voucher.qtyAccepted || 0).toLocaleString('en-US') : (voucher.totalAmount || 0).toLocaleString('en-US')}
            </span>
            <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest">
@@ -600,28 +731,4 @@ function MetricItem({ label, value, unit }: { label: string, value: any, unit?: 
        <span className="text-xs font-black tabular-nums">{value} {unit && <span className="text-[8px] opacity-40 uppercase ms-1">{unit}</span>}</span>
     </div>
   );
-}
-
-function Building2Icon(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="w-4 h-4"
-    >
-      <path d="M6 22V4c0-.6.4-1 1-1h12c.6 0 1 .4 1 1v18" />
-      <path d="M6 18H4c-.6 0-1-.4-1-1v-4c0-.6.4-1 1-1h2" />
-      <path d="M10 8h4" />
-      <path d="M10 12h4" />
-      <path d="M10 16h4" />
-    </svg>
-  )
 }
