@@ -26,7 +26,10 @@ import {
   Users2,
   Building2,
   UserCheck,
-  FileText
+  FileText,
+  Eye,
+  Settings2,
+  ExternalLink
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -65,6 +68,7 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 export default function ProductionOrdersPage() {
   const { lang, dir } = useTranslation();
@@ -280,8 +284,8 @@ export default function ProductionOrdersPage() {
         </div>
       </div>
 
-      {/* MAIN ORDERS LIST */}
-      <div className="flex-1 min-h-0 overflow-auto p-4 md:p-6 space-y-3 no-scrollbar">
+      {/* MAIN ORDERS LIST - COMPACT VERSION */}
+      <div className="flex-1 min-h-0 overflow-auto p-4 md:p-6 space-y-2 no-scrollbar">
         {ordersLoading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-4">
             <Loader2 className="w-10 h-10 animate-spin text-emerald-600" />
@@ -291,126 +295,116 @@ export default function ProductionOrdersPage() {
           <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-300">
             <Boxes className="w-16 h-16 text-slate-200 mx-auto mb-4" />
             <h3 className="text-lg font-black text-slate-400">{lang === 'ar' ? 'لا توجد أوامر نشطة' : 'No active orders'}</h3>
-            <p className="text-slate-300 text-sm mt-1">{lang === 'ar' ? 'ابدأ بإضافة أول أمر تشغيل من الزر أعلاه.' : 'Add your first order to begin.'}</p>
           </div>
         ) : filteredOrders.map((order) => {
           const product = products?.find(p => p.id === order.productId);
-          const stage = departments?.find(d => d.id === order.currentStageId);
-          const stageSupervisor = workers?.find(w => w.departmentId === order.currentStageId && w.isSupervisor && w.active);
           
+          // Calculate stats
           const finalStage = departments?.[departments.length - 1];
           const finalStageReceipts = allReceipts?.filter(r => r.orderId === order.id && r.type === 'production_receipt' && r.currentStageId === finalStage?.id) || [];
           const finalCompletedQty = finalStageReceipts.reduce((acc, curr) => acc + (curr.qtyAccepted || 0), 0);
           
-          const currentStageReceipts = allReceipts?.filter(r => r.orderId === order.id && r.type === 'production_receipt' && r.currentStageId === order.currentStageId) || [];
-          const currentStageDone = currentStageReceipts.reduce((acc, curr) => acc + (curr.qtyAccepted || 0), 0);
-
           const progress = Math.round((finalCompletedQty / order.targetQty) * 100) || 0;
-          const currentStageProgress = Math.round((currentStageDone / order.targetQty) * 100) || 0;
+          const wip = Math.max(0, order.targetQty - finalCompletedQty);
           
           return (
-            <div key={order.id} onClick={() => router.push(`/production/orders/${order.id}`)} className="bg-white rounded-xl border border-slate-200 shadow-sm hover:border-emerald-200 hover:shadow-md transition-all duration-300 overflow-hidden group cursor-pointer">
-              <div className="flex flex-col lg:flex-row items-stretch">
+            <div 
+              key={order.id} 
+              onClick={() => router.push(`/production/orders/${order.id}`)}
+              className="bg-white rounded-xl border border-slate-200 shadow-sm hover:border-emerald-500/30 hover:shadow-md transition-all duration-300 overflow-hidden group cursor-pointer"
+            >
+              <div className="flex flex-row items-center h-16 px-4 gap-4">
                 
-                <div className="w-full lg:w-1/4 p-4 flex flex-col justify-between relative border-l border-slate-100">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] font-black rounded border border-slate-200 tabular-nums uppercase tracking-tight">
-                        {order.orderNumber}
-                      </span>
-                      <div className={cn("w-2 h-2 rounded-full", order.priority === 'high' ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500')} />
-                    </div>
+                {/* ID & DATE BLOCK */}
+                <div className="w-32 flex flex-col justify-center border-l border-slate-100 h-full">
+                  <span className="text-[10px] font-black text-emerald-700 tabular-nums uppercase leading-none">{order.orderNumber}</span>
+                  <span className="text-[9px] font-bold text-slate-400 tabular-nums mt-1">{order.startDate}</span>
+                </div>
 
-                    <div className="space-y-1">
-                      <h3 className="text-sm font-black text-slate-900 group-hover:text-emerald-700 transition-colors truncate">
-                        {order.title || (product?.nameAr || '---')}
-                      </h3>
-                      <div className="inline-flex items-center gap-1.5 text-[9px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded uppercase">
-                        <Tag className="w-2.5 h-2.5" />
-                        {product?.nameAr || '---'}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-3 flex items-center justify-between border-t border-slate-50 pt-2">
-                    <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-400 uppercase tabular-nums">
-                      <Calendar className="w-3 h-3" />
-                      {order.startDate}
-                    </div>
-                    <Badge variant="ghost" className="text-[8px] font-black text-slate-400 uppercase p-0">{order.priority}</Badge>
+                {/* TITLE & PRODUCT BLOCK */}
+                <div className="flex-1 flex flex-col justify-center min-w-0">
+                  <h3 className="text-xs font-black text-slate-900 group-hover:text-emerald-700 transition-colors truncate">
+                    {order.title}
+                  </h3>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <Tag className="w-2.5 h-2.5 text-slate-400" />
+                    <span className="text-[10px] font-bold text-slate-500 truncate">{product?.nameAr || '---'}</span>
                   </div>
                 </div>
 
-                <div className="flex-1 p-4 space-y-4 bg-slate-50/30">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-1">
-                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                        <Layers className="w-3 h-3 text-emerald-600" />
-                        {lang === 'ar' ? 'المرحلة والمسؤولية' : 'CURRENT PHASE'}
-                      </p>
-                      <div className="flex items-center gap-3">
-                        <p className="text-xs font-black text-slate-800">
-                          {stage?.nameAr || (lang === 'ar' ? 'بانتظار البدء' : 'PENDING')}
-                        </p>
-                        {stageSupervisor && (
-                          <div className="flex items-center gap-1.5 px-2 py-0.5 bg-white border border-slate-100 rounded-md shadow-sm">
-                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                            <span className="text-[10px] font-black text-slate-600">{lang === 'ar' ? 'بإشراف:' : 'Lead:'} {stageSupervisor.fullName}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="flex flex-col items-end">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-lg font-black text-slate-900 tabular-nums">{progress}%</span>
-                          <div className="p-0.5 bg-emerald-50 rounded text-emerald-600"><Target className="w-3.5 h-3.5" /></div>
-                        </div>
-                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-tighter">{lang === 'ar' ? 'جاهز نهائي' : 'FINISHED'}</p>
-                      </div>
-                    </div>
+                {/* PROGRESS BLOCK */}
+                <div className="w-48 flex flex-col justify-center gap-1.5 px-4 border-x border-slate-100 h-full">
+                  <div className="flex justify-between items-center text-[10px] font-black">
+                    <span className="text-slate-400 uppercase tracking-tighter">{lang === 'ar' ? 'الإنجاز' : 'PROGRESS'}</span>
+                    <span className="text-emerald-600 tabular-nums">{progress}%</span>
                   </div>
+                  <Progress value={progress} className="h-1.5 bg-slate-100" />
+                </div>
 
-                  <div className="space-y-1.5">
-                    <div className="flex justify-between items-center text-[9px] font-bold text-slate-400 uppercase">
-                      <span>{lang === 'ar' ? 'إنجاز المرحلة الحالية' : 'STAGE PROGRESS'}</span>
-                      <span className="tabular-nums">{currentStageProgress}%</span>
-                    </div>
-                    <Progress value={currentStageProgress} className="h-1.5 bg-slate-200/50" />
+                {/* STATS BLOCK */}
+                <div className="flex items-center gap-6 px-4">
+                  <div className="text-center">
+                    <p className="text-[8px] font-black text-slate-400 uppercase leading-none">{lang === 'ar' ? 'هدف' : 'TARGET'}</p>
+                    <p className="text-xs font-black text-slate-700 tabular-nums mt-1">{order.targetQty}</p>
                   </div>
-
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="space-y-1 bg-white/40 p-2 rounded-xl border border-slate-100 text-center">
-                      <p className="text-[9px] font-bold text-slate-400 uppercase">{lang === 'ar' ? 'المستهدف' : 'TARGET'}</p>
-                      <p className="text-xs font-black text-slate-700 tabular-nums">{order.targetQty}</p>
-                    </div>
-                    <div className="space-y-1 bg-white/40 p-2 rounded-xl border border-slate-100 text-center">
-                      <p className="text-[9px] font-bold text-slate-400 uppercase">{lang === 'ar' ? 'تم الاستلام' : 'RECEIVED'}</p>
-                      <p className="text-xs font-black text-emerald-600 tabular-nums">{currentStageDone}</p>
-                    </div>
-                    <div className="space-y-1 bg-emerald-50/50 p-2 rounded-xl border border-emerald-100/50 text-center">
-                      <p className="text-[9px] font-bold text-emerald-600 uppercase">{lang === 'ar' ? 'قيد العمل' : 'WIP'}</p>
-                      <p className="text-xs font-black text-emerald-700 tabular-nums">{order.targetQty - currentStageDone}</p>
-                    </div>
+                  <div className="text-center">
+                    <p className="text-[8px] font-black text-emerald-600 uppercase leading-none">{lang === 'ar' ? 'منجز' : 'READY'}</p>
+                    <p className="text-xs font-black text-emerald-700 tabular-nums mt-1">{finalCompletedQty}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-[8px] font-black text-rose-500 uppercase leading-none">{lang === 'ar' ? 'قيد العمل' : 'WIP'}</p>
+                    <p className="text-xs font-black text-rose-600 tabular-nums mt-1">{wip}</p>
                   </div>
                 </div>
 
-                <div className="w-full lg:w-40 p-4 flex flex-row lg:flex-col gap-2 border-r border-slate-100 bg-white items-center justify-center">
-                  <Button 
-                    onClick={(e) => { e.stopPropagation(); router.push(`/production/vouchers/issue?orderId=${order.id}`); }}
-                    variant="outline" 
-                    className="flex-1 lg:w-full h-10 rounded-xl text-[10px] font-black gap-2 border-slate-200 hover:bg-slate-50 transition-all uppercase"
-                  >
-                    <FileText className="w-4 h-4 text-emerald-600" />
-                    {lang === 'ar' ? 'سندات الأمر' : 'Vouchers'}
-                  </Button>
-                  <Button 
-                    onClick={(e) => handleManageTeams(order, e)}
-                    className="flex-1 lg:w-full h-10 premium-gradient rounded-xl text-[10px] font-black gap-2 border-none shadow-md hover:opacity-90 uppercase"
-                  >
-                    <Users2 className="w-4 h-4" />
-                    {lang === 'ar' ? 'إدارة الفرق' : 'Manage Teams'}
-                  </Button>
+                {/* ACTIONS BLOCK */}
+                <div className="flex items-center gap-2 border-r border-slate-100 h-full px-2">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all"
+                          onClick={(e) => { e.stopPropagation(); router.push(`/production/orders/${order.id}`); }}
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent><p className="text-[10px] font-bold">{lang === 'ar' ? 'عرض السجل الفني' : 'View Ledger'}</p></TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all"
+                          onClick={(e) => handleManageTeams(order, e)}
+                        >
+                          <Users2 className="w-4 h-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent><p className="text-[10px] font-bold">{lang === 'ar' ? 'تغيير المرحلة' : 'Move Stage'}</p></TooltipContent>
+                    </Tooltip>
+
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-slate-100" onClick={(e) => e.stopPropagation()}>
+                          <MoreVertical className="w-4 h-4 text-slate-400" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-40 rounded-xl shadow-xl">
+                        <DropdownMenuItem onClick={(e) => handleEditClick(order, e)} className="gap-2 font-bold text-xs">
+                          <Edit2 className="w-3.5 h-3.5 text-emerald-600" /> {lang === 'ar' ? 'تعديل البيانات' : 'Edit Specs'}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setDeletingOrder(order); }} className="gap-2 font-bold text-xs text-rose-600">
+                          <Trash2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'نقل للأرشيف' : 'Archive Order'}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TooltipProvider>
                 </div>
 
               </div>
@@ -428,30 +422,25 @@ export default function ProductionOrdersPage() {
                 <Workflow className="w-5 h-5 text-emerald-300" />
                 {editingOrderId ? (lang === 'ar' ? 'تعديل أمر الإنتاج' : 'Update Order') : (lang === 'ar' ? 'فتح أمر إنتاج جديد' : 'New Master Batch')}
               </DialogTitle>
-              <p className="text-emerald-100/70 font-bold text-[10px] uppercase tracking-widest mt-1">
-                Initiating manufacturing cycle & target metrics
-              </p>
             </DialogHeader>
           </div>
 
           <form onSubmit={handleSaveOrder} className="p-6 space-y-4 bg-white">
             <div className="space-y-1.5">
               <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
-                <Type className="w-3 h-3 text-emerald-600" />
-                {lang === 'ar' ? 'عنوان الطلب المميز' : 'BATCH TITLE'}
+                <Type className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'عنوان الطلب المميز' : 'BATCH TITLE'}
               </Label>
               <Input 
                 value={formData.title} 
                 onChange={(e) => setFormData({...formData, title: e.target.value})}
-                placeholder={lang === 'ar' ? 'مثال: طلبية معرض عتق - دفعة العيد' : 'e.g. Eid Batch - Main Branch'}
-                className="h-11 rounded-lg bg-slate-50 font-bold border-slate-200"
+                className="h-11 rounded-lg bg-slate-50 font-bold"
+                required
               />
             </div>
 
             <div className="space-y-1.5">
               <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
-                <ShoppingBag className="w-3 h-3 text-emerald-600" />
-                {lang === 'ar' ? 'نوع المعوز المستهدف' : 'PRODUCT SELECTION'}
+                <ShoppingBag className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'نوع المعوز المستهدف' : 'PRODUCT'}
               </Label>
               <select 
                 value={formData.productId} 
@@ -459,57 +448,35 @@ export default function ProductionOrdersPage() {
                 className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold outline-none"
                 required
               >
-                <option value="">{lang === 'ar' ? '-- اختر المعوز --' : '-- Select Item --'}</option>
-                {products?.map(p => (
-                  <option key={p.id} value={p.id}>{p.nameAr}</option>
-                ))}
+                <option value="">-- Select --</option>
+                {products?.map(p => <option key={p.id} value={p.id}>{p.nameAr}</option>)}
               </select>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-black uppercase text-slate-400">{lang === 'ar' ? 'الكمية المستهدفة' : 'TARGET QTY'}</Label>
-                <Input 
-                  type="number" 
-                  value={formData.targetQty} 
-                  onChange={(e) => setFormData({...formData, targetQty: Number(e.target.value)})}
-                  className="h-11 rounded-lg bg-slate-50 font-bold tabular-nums"
-                  required
-                />
+                <Input type="number" value={formData.targetQty} onChange={(e) => setFormData({...formData, targetQty: Number(e.target.value)})} className="h-11 font-bold tabular-nums" required />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-black uppercase text-slate-400">{lang === 'ar' ? 'الأولوية' : 'PRIORITY'}</Label>
-                <select 
-                  value={formData.priority} 
-                  onChange={(e) => setFormData({...formData, priority: e.target.value})}
-                  className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold outline-none"
-                >
-                  <option value="low">{lang === 'ar' ? 'عادية' : 'Normal'}</option>
-                  <option value="normal">{lang === 'ar' ? 'متوسطة' : 'Priority'}</option>
-                  <option value="high">{lang === 'ar' ? 'عاجلة' : 'Urgent'}</option>
+                <select value={formData.priority} onChange={(e) => setFormData({...formData, priority: e.target.value})} className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold">
+                  <option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option>
                 </select>
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
-                <FileText className="w-3 h-3 text-emerald-600" />
-                {lang === 'ar' ? 'ملاحظات إضافية' : 'ADDITIONAL NOTES'}
-              </Label>
-              <Textarea 
-                value={formData.notes} 
-                onChange={(e) => setFormData({...formData, notes: e.target.value})}
-                placeholder={lang === 'ar' ? 'أدخل أي تعليمات خاصة هنا...' : 'Enter any special instructions...'}
-                className="min-h-[80px] rounded-lg bg-slate-50 font-medium border-slate-200 resize-none text-xs"
-              />
+              <Label className="text-[10px] font-black uppercase text-slate-400">{lang === 'ar' ? 'ملاحظات إضافية' : 'NOTES'}</Label>
+              <Textarea value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} className="min-h-[80px] bg-slate-50 resize-none text-xs font-medium" />
             </div>
 
             <div className="flex gap-3 pt-4 border-t border-slate-100">
-              <Button type="submit" disabled={isSubmitting || products?.length === 0} className="flex-1 h-12 premium-gradient hover:opacity-90 text-white rounded-lg font-black text-sm border-none shadow-md">
+              <Button type="submit" disabled={isSubmitting} className="flex-1 h-12 premium-gradient text-white font-black">
                 {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : <Save className="w-4 h-4 me-2" />}
-                {lang === 'ar' ? (editingOrderId ? 'تحديث' : 'بدء الإنتاج') : (editingOrderId ? 'Update' : 'Launch Batch')}
+                {lang === 'ar' ? 'حفظ البيانات' : 'Commit'}
               </Button>
-              <Button type="button" variant="outline" onClick={resetForm} className="px-6 h-12 font-black text-slate-400 rounded-lg">
+              <Button type="button" variant="outline" onClick={resetForm} className="px-6 h-12 font-black text-slate-400">
                 {lang === 'ar' ? 'إلغاء' : 'Cancel'}
               </Button>
             </div>
@@ -520,66 +487,52 @@ export default function ProductionOrdersPage() {
       {/* MANAGE LOGISTICS DIALOG */}
       <Dialog open={isLogisticsDialogOpen} onOpenChange={(open) => !open && resetLogistics()}>
         <DialogContent className="sm:max-w-[500px] rounded-lg p-0 overflow-hidden border-none shadow-2xl">
-          <div className="bg-slate-900 p-6 text-white relative">
-            <div className="absolute top-0 right-0 p-6 opacity-10"><Users2 className="w-24 h-24" /></div>
-            <DialogHeader className="text-right rtl:text-right ltr:text-left relative z-10">
-              <DialogTitle className="text-xl font-black flex items-center gap-3 text-white">
+          <div className="bg-slate-900 p-6 text-white">
+            <DialogHeader className="text-right">
+              <DialogTitle className="text-xl font-black flex items-center gap-3">
                 <Building2 className="w-5 h-5 text-emerald-400" />
-                {lang === 'ar' ? 'إدارة الفرق واللوجستيات' : 'Order Logistics & Teams'}
+                {lang === 'ar' ? 'تحريك مسار الإنتاج' : 'Production Routing'}
               </DialogTitle>
-              <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest mt-1">
-                Routing batches through production work centers
-              </p>
             </DialogHeader>
           </div>
-
           <form onSubmit={handleUpdateLogistics} className="p-6 space-y-6 bg-white">
-            <div className="space-y-4">
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
-                  <Layers className="w-3 h-3 text-emerald-600" />
-                  {lang === 'ar' ? 'تغيير مرحلة الإنتاج الحالية' : 'MOVE TO STAGE'}
-                </Label>
-                <select 
-                  value={logisticsData.currentStageId} 
-                  onChange={(e) => setLogisticsData({...logisticsData, currentStageId: e.target.value})}
-                  className="w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-black outline-none focus:ring-2 focus:ring-emerald-500/20"
-                  required
-                >
-                  <option value="">{lang === 'ar' ? '-- اختر القسم --' : '-- Select Stage --'}</option>
-                  {departments?.filter(d => d.status === 'active').map(d => (
-                    <option key={d.id} value={d.id}>{d.nameAr}</option>
-                  ))}
-                </select>
-              </div>
-
-              {logisticsData.currentStageId && (
-                <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center gap-3 animate-in fade-in zoom-in-95">
-                  <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-emerald-600 shadow-sm">
-                    <UserCheck className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-black text-emerald-800 uppercase tracking-widest">{lang === 'ar' ? 'المشرف المسؤول في هذا القسم' : 'STAGE LEAD'}</p>
-                    <p className="text-xs font-bold text-emerald-700">
-                      {workers?.find(w => w.departmentId === logisticsData.currentStageId && w.isSupervisor && w.active)?.fullName || (lang === 'ar' ? 'لم يعين مشرف لهذا القسم' : 'No lead assigned')}
-                    </p>
-                  </div>
-                </div>
-              )}
+            <div className="space-y-1.5">
+              <Label className="text-[10px] font-black uppercase text-slate-400">{lang === 'ar' ? 'المرحلة التالية' : 'MOVE TO STAGE'}</Label>
+              <select 
+                value={logisticsData.currentStageId} 
+                onChange={(e) => setLogisticsData({...logisticsData, currentStageId: e.target.value})}
+                className="w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-black outline-none"
+                required
+              >
+                <option value="">-- Select Stage --</option>
+                {departments?.filter(d => d.status === 'active').map(d => <option key={d.id} value={d.id}>{d.nameAr}</option>)}
+              </select>
             </div>
-
-            <div className="flex gap-3 pt-4 border-t border-slate-100">
-              <Button type="submit" disabled={isSubmitting || !logisticsData.currentStageId} className="flex-1 h-12 premium-gradient hover:opacity-90 text-white rounded-xl font-black text-sm border-none shadow-xl">
-                {lang === 'ar' ? 'تحديث المرحلة' : 'Commit Stage Change'}
-              </Button>
-              <Button type="button" variant="outline" onClick={resetLogistics} className="px-6 h-12 font-black text-slate-400 rounded-xl">
-                {lang === 'ar' ? 'إلغاء' : 'Cancel'}
-              </Button>
+            <div className="flex gap-3">
+              <Button type="submit" disabled={isSubmitting} className="flex-1 h-12 premium-gradient text-white font-black">{lang === 'ar' ? 'تحديث المرحلة' : 'Commit'}</Button>
+              <Button type="button" variant="outline" onClick={resetLogistics} className="px-6 h-12 font-black text-slate-400">إلغاء</Button>
             </div>
           </form>
         </DialogContent>
       </Dialog>
 
+      {/* ARCHIVE DIALOG */}
+      <AlertDialog open={!!deletingOrder} onOpenChange={() => setDeletingOrder(null)}>
+        <AlertDialogContent className="rounded-lg p-0 overflow-hidden">
+           <div className="bg-slate-950 p-6 text-center">
+              <div className="w-16 h-16 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-rose-500/20"><Trash2 className="w-8 h-8 text-rose-500" /></div>
+              <AlertDialogTitle className="text-white text-xl font-black">{lang === 'ar' ? 'أرشفة أمر الإنتاج' : 'Confirm Archive'}</AlertDialogTitle>
+           </div>
+           <div className="bg-white p-6 flex gap-3">
+              <AlertDialogAction onClick={handleDeleteOrder} className="flex-1 h-11 bg-rose-600 hover:bg-rose-700 text-white font-black">أرشفة</AlertDialogAction>
+              <AlertDialogCancel className="flex-1 h-11 bg-slate-50 font-black">تراجع</AlertDialogCancel>
+           </div>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </div>
   );
 }
+
+// Re-defining Tooltip Components here as they might be needed and were imported
+import { TooltipProvider } from '@/components/ui/tooltip';
