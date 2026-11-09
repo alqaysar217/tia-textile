@@ -6,21 +6,17 @@ import {
   ArrowRight, 
   ArrowLeft, 
   Workflow, 
-  Layers, 
   History, 
   FileText, 
   FileOutput, 
   FileInput, 
   HandCoins, 
   ChevronRight, 
-  Activity, 
   Target, 
   Clock, 
-  User, 
   Package, 
   CheckCircle2, 
   AlertCircle,
-  TrendingUp,
   Hash,
   ShoppingBag,
   Info,
@@ -32,7 +28,9 @@ import {
   LayoutGrid,
   BarChart3,
   ClipboardList,
-  Type
+  Type,
+  User,
+  ArrowUpRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from '@/components/LanguageProvider';
@@ -42,7 +40,6 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Card } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 export default function OrderDetailsDashboard() {
@@ -84,7 +81,6 @@ export default function OrderDetailsDashboard() {
     return vouchers.filter(v => {
       if (v.status === 'deleted') return false;
       if (v.type === 'production_receipt') return v.currentStageId === activeTab;
-      // For issues and others, check if the worker belongs to this department
       const worker = workers?.find(w => w.id === v.workerId);
       return worker?.departmentId === activeTab;
     });
@@ -102,9 +98,9 @@ export default function OrderDetailsDashboard() {
 
   if (orderLoading || deptsLoading) {
     return (
-      <div className="h-full flex flex-col items-center justify-center gap-4 bg-slate-50">
-        <Loader2 className="w-12 h-12 animate-spin text-emerald-600" />
-        <p className="text-xs font-black text-slate-400 uppercase tracking-widest">جاري سحب بيانات الدفعة...</p>
+      <div className="h-full flex flex-col items-center justify-center gap-4 bg-[#f8fafc]">
+        <Loader2 className="w-10 h-10 animate-spin text-emerald-600" />
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">جاري فتح السجل الفني...</p>
       </div>
     );
   }
@@ -120,448 +116,342 @@ export default function OrderDetailsDashboard() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-[#f8fafc] overflow-hidden" dir={dir}>
+    <div className="flex flex-col h-full bg-[#f1f5f9] overflow-hidden" dir={dir}>
       
-      {/* 1. UNIFIED NAVIGATION BAR */}
-      <div className="flex-none bg-white border-b border-slate-200 shadow-sm z-30">
-        <div className="container mx-auto px-4 flex items-center h-20 gap-4 overflow-x-auto no-scrollbar">
-          
-          <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-xl border border-slate-100 h-10 w-10 shrink-0">
-            {dir === 'rtl' ? <ArrowRight className="w-5 h-5" /> : <ArrowLeft className="w-5 h-5" />}
-          </Button>
-
-          <div className="h-10 w-px bg-slate-200 shrink-0" />
-
-          {/* Tab 1: INFORMATION */}
-          <button
-            onClick={() => setActiveTab('info')}
-            className={cn(
-              "flex items-center gap-2 px-6 h-12 rounded-2xl transition-all whitespace-nowrap border shrink-0 font-black text-xs uppercase tracking-wide",
-              activeTab === 'info' ? "bg-slate-900 text-white shadow-lg border-slate-950" : "bg-slate-50 text-slate-400 hover:bg-white border-slate-100"
-            )}
-          >
-            <Info className="w-4 h-4" />
-            {lang === 'ar' ? 'معلومات الدفعة' : 'Information'}
-          </button>
-
-          {/* STAGES IN BETWEEN */}
-          <div className="flex items-center gap-2">
-            {departments?.map((dept, idx) => (
-              <button
-                key={dept.id}
-                onClick={() => setActiveTab(dept.id)}
-                className={cn(
-                  "flex items-center gap-3 px-6 h-12 rounded-2xl transition-all whitespace-nowrap border shrink-0 relative group",
-                  activeTab === dept.id 
-                    ? "bg-emerald-600 text-white shadow-lg border-emerald-700" 
-                    : order.currentStageId === dept.id 
-                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                      : "bg-slate-50 text-slate-400 hover:bg-white border-slate-100"
-                )}
-              >
-                <div className={cn(
-                  "w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black border",
-                  activeTab === dept.id ? "bg-emerald-500 border-white/20" : "bg-white border-slate-200"
-                )}>
-                  {idx + 1}
-                </div>
-                <span className="text-[11px] font-black uppercase tracking-wide">{dept.nameAr}</span>
-                {order.currentStageId === dept.id && activeTab !== dept.id && (
-                  <div className="w-2 h-2 rounded-full bg-emerald-500 absolute top-1 right-1 animate-pulse border-2 border-white" />
-                )}
-              </button>
-            ))}
+      {/* 1. ERP MASTER HEADER - COMPACT & FUNCTIONAL */}
+      <div className="flex-none bg-white border-b border-slate-200 z-30 px-6 py-3 shadow-sm">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" onClick={() => router.back()} className="h-9 w-9 rounded-lg border border-slate-100 hover:bg-slate-50 transition-colors">
+              {dir === 'rtl' ? <ArrowRight className="w-4 h-4" /> : <ArrowLeft className="w-4 h-4" />}
+            </Button>
+            <div className="h-8 w-px bg-slate-200" />
+            <div>
+              <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                <span>{lang === 'ar' ? 'أوامر الإنتاج' : 'Work Orders'}</span>
+                <ChevronRight className={`w-3 h-3 ${dir === 'rtl' ? 'rotate-180' : ''}`} />
+                <span className="text-emerald-600 tabular-nums">{order.orderNumber}</span>
+              </div>
+              <h1 className="text-lg font-black text-slate-900 leading-tight">{order.title}</h1>
+            </div>
           </div>
 
-          {/* Tab Final: SUMMARY */}
-          <button
-            onClick={() => setActiveTab('summary')}
-            className={cn(
-              "flex items-center gap-2 px-6 h-12 rounded-2xl transition-all whitespace-nowrap border shrink-0 font-black text-xs uppercase tracking-wide",
-              activeTab === 'summary' ? "bg-blue-600 text-white shadow-lg border-blue-700" : "bg-slate-50 text-slate-400 hover:bg-white border-slate-100"
-            )}
-          >
-            <LayoutGrid className="w-4 h-4" />
-            {lang === 'ar' ? 'الملخص الإحصائي' : 'Summary'}
-          </button>
-
-          <div className="flex-1" />
-
-          <div className="hidden md:flex flex-col items-end shrink-0">
-             <Badge className="bg-slate-900 text-white font-black text-[10px] tabular-nums uppercase">{order.orderNumber}</Badge>
-             <p className="text-[9px] font-bold text-slate-400 mt-1 uppercase">{product?.nameAr}</p>
+          <div className="flex items-center gap-3">
+             <div className="hidden lg:flex items-center gap-4 bg-slate-50 px-4 py-1.5 rounded-lg border border-slate-100">
+                <div className="text-center">
+                   <p className="text-[8px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'المستهدف' : 'TARGET'}</p>
+                   <p className="text-xs font-black text-slate-700 tabular-nums">{order.targetQty}</p>
+                </div>
+                <div className="w-px h-6 bg-slate-200" />
+                <div className="text-center">
+                   <p className="text-[8px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'الجاهز النهائي' : 'FINISHED'}</p>
+                   <p className="text-xs font-black text-emerald-600 tabular-nums">
+                     {vouchers?.filter(v => v.type === 'production_receipt' && v.currentStageId === departments?.[departments.length - 1]?.id && v.status !== 'deleted')
+                      .reduce((sum, v) => sum + (v.qtyAccepted || 0), 0)}
+                   </p>
+                </div>
+             </div>
+             <Button className="h-9 px-5 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 transition-all border-none text-[11px]">
+                <Plus className="w-3.5 h-3.5" />
+                {lang === 'ar' ? 'عملية ميدانية' : 'New Transaction'}
+             </Button>
           </div>
         </div>
       </div>
 
-      {/* 2. DYNAMIC CONTENT AREA */}
-      <div className="flex-1 min-h-0 overflow-auto no-scrollbar">
-        
-        {/* --- VIEW: INFORMATION --- */}
-        {activeTab === 'info' && (
-          <div className="container mx-auto px-4 py-8 max-w-4xl space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card className="p-8 space-y-6 rounded-[2.5rem] border-slate-200 shadow-sm relative overflow-hidden group">
-                <div className="absolute top-0 right-0 p-8 opacity-[0.03] group-hover:rotate-12 transition-transform duration-500"><Workflow className="w-40 h-40" /></div>
-                <div className="space-y-4">
-                  <h3 className="text-xl font-black text-slate-900">{lang === 'ar' ? 'بيانات أمر الإنتاج' : 'Order Details'}</h3>
-                  <div className="space-y-4 pt-4 border-t border-slate-50">
-                    <InfoItem icon={<Hash className="w-4 h-4 text-emerald-600" />} label={lang === 'ar' ? 'رقم السجل' : 'Reference'} value={order.orderNumber} />
-                    <InfoItem icon={<Type className="w-4 h-4 text-emerald-600" />} label={lang === 'ar' ? 'عنوان الدفعة' : 'Batch Title'} value={order.title} />
-                    <InfoItem icon={<ShoppingBag className="w-4 h-4 text-emerald-600" />} label={lang === 'ar' ? 'المنتج' : 'Product'} value={product?.nameAr} />
-                    <InfoItem icon={<Target className="w-4 h-4 text-emerald-600" />} label={lang === 'ar' ? 'الكمية المستهدفة' : 'Target Qty'} value={`${order.targetQty} قطعة`} />
-                  </div>
-                </div>
-              </Card>
-
-              <Card className="p-8 space-y-6 rounded-[2.5rem] border-slate-200 shadow-sm relative overflow-hidden group">
-                <div className="absolute top-0 right-0 p-8 opacity-[0.03] group-hover:scale-110 transition-transform duration-500"><Calendar className="w-40 h-40" /></div>
-                <div className="space-y-4">
-                  <h3 className="text-xl font-black text-slate-900">{lang === 'ar' ? 'الجدولة والأولوية' : 'Scheduling'}</h3>
-                  <div className="space-y-4 pt-4 border-t border-slate-50">
-                    <InfoItem icon={<Calendar className="w-4 h-4 text-emerald-600" />} label={lang === 'ar' ? 'تاريخ البدء' : 'Start Date'} value={order.startDate} />
-                    <InfoItem icon={<Activity className="w-4 h-4 text-emerald-600" />} label={lang === 'ar' ? 'الحالة الحالية' : 'Current Status'} value={order.status} isStatus />
-                    <InfoItem icon={<TrendingUp className="w-4 h-4 text-emerald-600" />} label={lang === 'ar' ? 'الأولوية' : 'Priority'} value={order.priority} />
-                  </div>
-                </div>
-              </Card>
-            </div>
-
-            {order.notes && (
-              <Card className="p-8 rounded-[2.5rem] bg-slate-900 text-white shadow-xl">
-                 <div className="flex items-center gap-3 mb-4">
-                    <div className="p-2 bg-white/10 rounded-xl"><FileText className="w-5 h-5 text-emerald-400" /></div>
-                    <h4 className="font-black">{lang === 'ar' ? 'تعليمات وملاحظات إضافية' : 'Additional Instructions'}</h4>
-                 </div>
-                 <p className="text-sm text-slate-400 font-medium leading-relaxed">{order.notes}</p>
-              </Card>
+      {/* 2. SCROLLABLE STAGES NAVIGATION - COMPACT */}
+      <div className="flex-none bg-slate-900 z-20 shadow-lg">
+        <div className="container mx-auto px-4 flex items-center h-12 gap-1 overflow-x-auto no-scrollbar scroll-smooth">
+          <button
+            onClick={() => setActiveTab('info')}
+            className={cn(
+              "flex items-center gap-2 px-5 h-full transition-all whitespace-nowrap font-black text-[10px] uppercase tracking-wider relative",
+              activeTab === 'info' ? "bg-emerald-600 text-white shadow-[inset_0_-3px_0_white]" : "text-white/40 hover:text-white/70"
             )}
+          >
+            <Info className="w-3.5 h-3.5" />
+            {lang === 'ar' ? 'بيانات الدفعة' : 'Batch Info'}
+          </button>
 
-            <div className="flex justify-center gap-4 pt-4">
-               <Button className="h-14 px-10 premium-gradient rounded-2xl font-black gap-3 shadow-xl">
-                  <Plus className="w-5 h-5" />
-                  {lang === 'ar' ? 'إضافة عملية ميدانية' : 'New Transaction'}
-               </Button>
-               <Button variant="outline" className="h-14 px-10 rounded-2xl font-black border-slate-200">
-                  {lang === 'ar' ? 'تعديل بيانات الدفعة' : 'Edit Order Data'}
-               </Button>
-            </div>
-          </div>
-        )}
+          <div className="h-4 w-px bg-white/10" />
 
-        {/* --- VIEW: STAGE LOG --- */}
-        {activeTab !== 'info' && activeTab !== 'summary' && (
-          <div className="h-full flex flex-col animate-in fade-in duration-300">
-            {/* Stage Summary Bar */}
-            <div className="bg-slate-50/50 border-b border-slate-200 py-6">
-              <div className="container mx-auto px-4">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                   <MetricCard icon={<FileInput className="w-5 h-5" />} label={lang === 'ar' ? 'سندات صرف' : 'ISSUES'} value={stageMetrics.issuesCount} color="emerald" />
-                   <MetricCard icon={<FileOutput className="w-5 h-5" />} label={lang === 'ar' ? 'مخرجات المرحلة' : 'OUTPUT'} value={stageMetrics.receiptsQty} unit="Pcs" color="blue" />
-                   <MetricCard icon={<HandCoins className="w-5 h-5" />} label={lang === 'ar' ? 'أجور مقيدة' : 'WAGES'} value={stageMetrics.wagesTotal.toLocaleString('en-US')} unit="YER" color="amber" />
-                   <ProgressMetric progress={stageMetrics.progress} />
-                </div>
-              </div>
-            </div>
+          {departments?.map((dept, idx) => (
+            <button
+              key={dept.id}
+              onClick={() => setActiveTab(dept.id)}
+              className={cn(
+                "flex items-center gap-2 px-5 h-full transition-all whitespace-nowrap text-[10px] font-black uppercase tracking-wider relative group",
+                activeTab === dept.id 
+                  ? "bg-emerald-600 text-white shadow-[inset_0_-3px_0_white]" 
+                  : order.currentStageId === dept.id 
+                    ? "text-emerald-400 bg-white/5"
+                    : "text-white/40 hover:text-white/70"
+              )}
+            >
+              <span className={cn(
+                "w-4 h-4 rounded flex items-center justify-center text-[8px] font-black border",
+                activeTab === dept.id ? "bg-emerald-500 border-white/20" : "bg-white/5 border-white/10"
+              )}>
+                {idx + 1}
+              </span>
+              <span>{dept.nameAr}</span>
+              {order.currentStageId === dept.id && activeTab !== dept.id && (
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 absolute top-2 right-2 animate-pulse" />
+              )}
+            </button>
+          ))}
 
-            <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
-               <div className="flex-1 overflow-auto p-4 md:p-8 space-y-6 no-scrollbar">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-black text-slate-900 flex items-center gap-3">
-                      <History className="w-5 h-5 text-emerald-600" />
-                      {lang === 'ar' ? 'سجل العمليات في هذه المرحلة' : 'Stage Activity Log'}
-                    </h3>
-                  </div>
+          <div className="h-4 w-px bg-white/10" />
 
-                  <div className="bg-white rounded-[2.5rem] border border-slate-200 overflow-hidden shadow-sm">
-                    <table className="w-full text-right border-separate border-spacing-0">
-                      <thead className="bg-slate-50">
-                        <tr>
-                          <th className="px-6 py-4 font-black text-[10px] text-slate-400 uppercase">{lang === 'ar' ? 'التاريخ' : 'DATE'}</th>
-                          <th className="px-6 py-4 font-black text-[10px] text-slate-400 uppercase">{lang === 'ar' ? 'نوع العملية' : 'TYPE'}</th>
-                          <th className="px-6 py-4 font-black text-[10px] text-slate-400 uppercase">{lang === 'ar' ? 'الموظف / العامل' : 'PERSONNEL'}</th>
-                          <th className="px-6 py-4 font-black text-[10px] text-slate-400 uppercase">{lang === 'ar' ? 'التفاصيل' : 'REMARKS'}</th>
-                          <th className="px-6 py-4 font-black text-[10px] text-slate-400 uppercase text-center">{lang === 'ar' ? 'الأثر' : 'IMPACT'}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {currentStageVouchers.length === 0 ? (
-                          <tr><td colSpan={5} className="py-24 text-center text-slate-300 font-bold">
-                            <Zap className="w-12 h-12 mx-auto mb-4 opacity-10" />
-                            {lang === 'ar' ? 'لا توجد عمليات موثقة في هذه المرحلة' : 'No activity in this stage'}
-                          </td></tr>
-                        ) : currentStageVouchers.map((v) => (
-                          <TableRowItem key={v.id} voucher={v} worker={workers?.find(w => w.id === v.workerId)} lang={lang} />
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-               </div>
-
-               <div className="w-full md:w-80 bg-white border-l border-slate-100 p-6 space-y-8 overflow-auto no-scrollbar">
-                  <div className="space-y-6">
-                    <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
-                       <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                       {lang === 'ar' ? 'المسؤول الإداري' : 'ADMIN CONTROL'}
-                    </h3>
-                    {(() => {
-                      const supervisor = workers?.find(w => w.departmentId === activeTab && w.isSupervisor && w.active);
-                      return (
-                        <div className="p-5 bg-emerald-50/50 border border-emerald-100 rounded-3xl space-y-4">
-                          <Avatar className="h-16 w-16 mx-auto border-4 border-white shadow-xl rounded-2xl">
-                             <AvatarImage src={supervisor?.photoUrl} />
-                             <AvatarFallback className="bg-slate-100 text-slate-400 font-black">{supervisor?.fullName?.charAt(0) || '?'}</AvatarFallback>
-                          </Avatar>
-                          <div className="text-center">
-                             <p className="text-sm font-black text-slate-800 leading-none">{supervisor?.fullName || (lang === 'ar' ? 'غير محدد' : 'No lead')}</p>
-                             <p className="text-[9px] font-bold text-slate-400 uppercase mt-2">{lang === 'ar' ? 'مشرف القسم الحالي' : 'STAGE SUPERVISOR'}</p>
-                          </div>
-                        </div>
-                      );
-                    })()}
-                  </div>
-
-                  <div className="pt-8 border-t border-slate-100">
-                     <p className="text-[10px] font-black text-slate-400 uppercase mb-4 tracking-widest">{lang === 'ar' ? 'إنجاز المسار بالكامل' : 'OVERALL PIPELINE'}</p>
-                     <div className="space-y-4">
-                        {departments?.map(d => {
-                          const doneInDept = (vouchers || [])
-                            .filter(v => v.orderId === id && v.currentStageId === d.id && v.status !== 'deleted' && v.type === 'production_receipt')
-                            .reduce((sum, v) => sum + (v.qtyAccepted || 0), 0);
-                          const p = Math.round((doneInDept / (order.targetQty || 1)) * 100);
-                          return (
-                            <div key={d.id} className="space-y-1.5">
-                               <div className="flex justify-between text-[9px] font-bold">
-                                  <span className="text-slate-600">{d.nameAr}</span>
-                                  <span className="text-emerald-600 tabular-nums">{p}%</span>
-                               </div>
-                               <Progress value={p} className="h-1 bg-slate-100" />
-                            </div>
-                          )
-                        })}
-                     </div>
-                  </div>
-               </div>
-            </div>
-          </div>
-        )}
-
-        {/* --- VIEW: FULL SUMMARY --- */}
-        {activeTab === 'summary' && (
-          <div className="container mx-auto px-4 py-10 space-y-10 animate-in zoom-in-95 duration-500 max-w-6xl">
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <SummaryMainCard 
-                title={lang === 'ar' ? 'الجاهز النهائي للبيع' : 'READY FOR SALE'} 
-                value={(() => {
-                   const finalStage = departments?.[departments.length - 1];
-                   return vouchers?.filter(v => v.type === 'production_receipt' && v.currentStageId === finalStage?.id && v.status !== 'deleted')
-                    .reduce((sum, v) => sum + (v.qtyAccepted || 0), 0) || 0;
-                })()} 
-                total={order.targetQty}
-                icon={<Package className="w-8 h-8" />}
-                color="emerald"
-              />
-              <SummaryMainCard 
-                title={lang === 'ar' ? 'إجمالي الأجور المستحقة' : 'TOTAL WAGES'} 
-                value={vouchers?.filter(v => v.type === 'production_receipt' && v.status !== 'deleted')
-                  .reduce((sum, v) => sum + (v.wageAmount || 0), 0).toLocaleString('en-US')} 
-                icon={<HandCoins className="w-8 h-8" />}
-                unit="YER"
-                color="amber"
-              />
-              <SummaryMainCard 
-                title={lang === 'ar' ? 'سندات العمليات الموثقة' : 'TOTAL VOUCHERS'} 
-                value={vouchers?.filter(v => v.status !== 'deleted').length} 
-                icon={<ClipboardList className="w-8 h-8" />}
-                color="slate"
-              />
-            </div>
-
-            <Card className="rounded-[2.5rem] border-slate-200 overflow-hidden shadow-xl">
-               <div className="p-6 bg-slate-50 border-b border-slate-200 flex items-center gap-3">
-                  <BarChart3 className="w-5 h-5 text-slate-400" />
-                  <h3 className="font-black text-slate-900">{lang === 'ar' ? 'تحليل الأداء حسب مراحل الإنتاج' : 'Performance Analysis by Stage'}</h3>
-               </div>
-               <Table className="text-right">
-                  <TableHeader className="bg-slate-50/50">
-                    <TableRow>
-                      <TableHead className="text-right font-black text-[10px] text-slate-400 uppercase">{lang === 'ar' ? 'المرحلة' : 'STAGE'}</TableHead>
-                      <TableHead className="text-center font-black text-[10px] text-slate-400 uppercase">{lang === 'ar' ? 'المنجز (قطعة)' : 'COMPLETED'}</TableHead>
-                      <TableHead className="text-center font-black text-[10px] text-slate-400 uppercase">{lang === 'ar' ? 'تكلفة الأجور' : 'WAGES'}</TableHead>
-                      <TableHead className="text-center font-black text-[10px] text-slate-400 uppercase">{lang === 'ar' ? 'نسبة الإنجاز' : 'PROGRESS'}</TableHead>
-                      <TableHead className="text-center font-black text-[10px] text-slate-400 uppercase">{lang === 'ar' ? 'حالة المرحلة' : 'STATUS'}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {departments?.map(d => {
-                      const stageReceipts = vouchers.filter(v => v.currentStageId === d.id && v.type === 'production_receipt' && v.status !== 'deleted');
-                      const done = stageReceipts.reduce((sum, v) => sum + (v.qtyAccepted || 0), 0);
-                      const cost = stageReceipts.reduce((sum, v) => sum + (v.wageAmount || 0), 0);
-                      const p = Math.round((done / (order.targetQty || 1)) * 100);
-                      
-                      return (
-                        <TableRow key={d.id} className="hover:bg-slate-50 transition-colors">
-                           <TableCell className="font-black text-slate-900 text-sm">{d.nameAr}</TableCell>
-                           <TableCell className="text-center font-bold text-slate-700 tabular-nums">{done.toLocaleString('en-US')}</TableCell>
-                           <TableCell className="text-center font-black text-emerald-700 tabular-nums">{cost.toLocaleString('en-US')} YER</TableCell>
-                           <TableCell className="text-center">
-                              <div className="flex items-center gap-3 justify-center">
-                                 <Progress value={p} className="h-1.5 w-20 bg-slate-100" />
-                                 <span className="text-[10px] font-black text-slate-400 tabular-nums">{p}%</span>
-                              </div>
-                           </TableCell>
-                           <TableCell className="text-center">
-                              {p >= 100 ? (
-                                <Badge className="bg-emerald-50 text-emerald-700 font-black text-[8px] uppercase">COMPLETE</Badge>
-                              ) : p > 0 ? (
-                                <Badge className="bg-blue-50 text-blue-700 font-black text-[8px] uppercase">ACTIVE</Badge>
-                              ) : (
-                                <Badge variant="outline" className="text-slate-300 font-black text-[8px] uppercase border-slate-200">PENDING</Badge>
-                              )}
-                           </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-               </Table>
-            </Card>
-
-            <div className="p-8 bg-slate-950 rounded-[3rem] text-center space-y-4">
-               <h4 className="text-slate-400 font-bold text-xs uppercase tracking-[0.3em]">{lang === 'ar' ? 'التكلفة الإنتاجية المبدئية' : 'ESTIMATED PRODUCTION COST'}</h4>
-               <div className="text-5xl md:text-7xl font-black text-white tabular-nums">
-                  {vouchers?.filter(v => v.status !== 'deleted').reduce((sum, v) => sum + (v.wageAmount || 0) + (v.totalAmount || 0), 0).toLocaleString('en-US')}
-                  <span className="text-lg text-emerald-500 ms-4 uppercase">YER</span>
-               </div>
-               <p className="text-xs text-slate-500 max-w-lg mx-auto font-medium">
-                 {lang === 'ar' ? 'يتم حساب هذه التكلفة بناءً على إجمالي سندات الصرف (مواد خام) مضافاً إليها سندات الأجور المقيدة حتى اللحظة.' : 'Calculated based on raw material issues plus accrued wages to date.'}
-               </p>
-            </div>
-          </div>
-        )}
-
+          <button
+            onClick={() => setActiveTab('summary')}
+            className={cn(
+              "flex items-center gap-2 px-5 h-full transition-all whitespace-nowrap font-black text-[10px] uppercase tracking-wider relative",
+              activeTab === 'summary' ? "bg-blue-600 text-white shadow-[inset_0_-3px_0_white]" : "text-white/40 hover:text-white/70"
+            )}
+          >
+            <BarChart3 className="w-3.5 h-3.5" />
+            {lang === 'ar' ? 'تحليل الأداء' : 'Analytics'}
+          </button>
+        </div>
       </div>
+
+      {/* 3. DYNAMIC DATA LEDGER AREA */}
+      <div className="flex-1 min-h-0 overflow-auto p-4 no-scrollbar">
+        <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden flex flex-col h-full">
+          
+          {/* VIEW: BATCH DATA (LEDGER STYLE) */}
+          {activeTab === 'info' && (
+            <div className="flex-1 flex flex-col animate-in fade-in duration-300">
+               <div className="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                  <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
+                     <ClipboardList className="w-4 h-4 text-emerald-600" />
+                     {lang === 'ar' ? 'سجل المواصفات الفنية' : 'TECHNICAL SPECIFICATIONS LEDGER'}
+                  </h3>
+                  <Button variant="outline" size="sm" className="h-8 text-[10px] font-black border-slate-200 rounded-md gap-2">
+                     <Edit2 className="w-3 h-3" /> {lang === 'ar' ? 'تعديل البيانات' : 'Edit Specs'}
+                  </Button>
+               </div>
+               <div className="flex-1 overflow-auto">
+                  <table className="w-full text-right border-separate border-spacing-0">
+                     <tbody className="divide-y divide-slate-100">
+                        <LedgerRow label={lang === 'ar' ? 'رقم السجل الموحد' : 'REFERENCE'} value={order.orderNumber} icon={<Hash />} />
+                        <LedgerRow label={lang === 'ar' ? 'عنوان الدفعة' : 'BATCH TITLE'} value={order.title} icon={<Type />} />
+                        <LedgerRow label={lang === 'ar' ? 'المنتج المستهدف' : 'PRODUCT'} value={product?.nameAr} icon={<ShoppingBag />} />
+                        <LedgerRow label={lang === 'ar' ? 'الكمية المستهدفة' : 'TARGET QTY'} value={`${order.targetQty} قطعة`} icon={<Target />} />
+                        <LedgerRow label={lang === 'ar' ? 'تاريخ البدء التشغيلي' : 'LAUNCH DATE'} value={order.startDate} icon={<Calendar />} />
+                        <LedgerRow label={lang === 'ar' ? 'الأولوية التنظيمية' : 'PRIORITY'} value={order.priority} icon={<ShieldCheck />} />
+                        {order.notes && (
+                           <tr className="bg-slate-50/50">
+                              <td className="px-6 py-4 w-64 font-black text-[10px] text-slate-400 uppercase border-l border-slate-100">{lang === 'ar' ? 'تعليمات وملاحظات' : 'INSTRUCTIONS'}</td>
+                              <td className="px-6 py-4 text-xs font-bold text-slate-600 leading-relaxed italic">{order.notes}</td>
+                           </tr>
+                        )}
+                     </tbody>
+                  </table>
+               </div>
+            </div>
+          )}
+
+          {/* VIEW: STAGE LEDGER (TRANSACTIONS) */}
+          {activeTab !== 'info' && activeTab !== 'summary' && (
+            <div className="flex-1 flex flex-col animate-in fade-in duration-300 overflow-hidden">
+               {/* Stage Metrics Ribbon */}
+               <div className="p-2 bg-emerald-900 text-white flex items-center justify-around gap-2 shadow-inner">
+                  <MetricItem label={lang === 'ar' ? 'سندات صرف' : 'ISSUES'} value={stageMetrics.issuesCount} />
+                  <div className="w-px h-6 bg-white/10" />
+                  <MetricItem label={lang === 'ar' ? 'مخرجات المرحلة' : 'OUTPUT'} value={stageMetrics.receiptsQty} unit="Pcs" />
+                  <div className="w-px h-6 bg-white/10" />
+                  <MetricItem label={lang === 'ar' ? 'أجور مقيدة' : 'WAGES'} value={stageMetrics.wagesTotal.toLocaleString('en-US')} unit="YER" />
+                  <div className="w-px h-6 bg-white/10" />
+                  <div className="flex items-center gap-3">
+                     <span className="text-[8px] font-black text-emerald-300 uppercase">{lang === 'ar' ? 'إنجاز المرحلة' : 'PROGRESS'}</span>
+                     <span className="text-sm font-black tabular-nums">{stageMetrics.progress}%</span>
+                  </div>
+               </div>
+
+               <div className="flex-1 overflow-auto relative">
+                  <Table className="text-right border-separate border-spacing-0">
+                    <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
+                      <TableRow>
+                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right border-b border-slate-200">{lang === 'ar' ? 'التاريخ' : 'DATE'}</TableHead>
+                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right border-b border-slate-200">{lang === 'ar' ? 'نوع العملية' : 'TYPE'}</TableHead>
+                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right border-b border-slate-200">{lang === 'ar' ? 'المسؤول / العامل' : 'PERSONNEL'}</TableHead>
+                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right border-b border-slate-200">{lang === 'ar' ? 'التفاصيل' : 'REMARKS'}</TableHead>
+                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">{lang === 'ar' ? 'الأثر' : 'IMPACT'}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {currentStageVouchers.length === 0 ? (
+                        <TableRow><TableCell colSpan={5} className="py-24 text-center text-slate-300 font-bold">
+                          <Zap className="w-10 h-10 mx-auto mb-3 opacity-10" />
+                          {lang === 'ar' ? 'لا توجد حركة مسجلة في هذا القسم' : 'No transactions in this stage'}
+                        </TableCell></TableRow>
+                      ) : currentStageVouchers.map((v) => (
+                        <LedgerTransactionRow key={v.id} voucher={v} worker={workers?.find(w => w.id === v.workerId)} lang={lang} />
+                      ))}
+                    </TableBody>
+                  </Table>
+               </div>
+               
+               {/* Admin Footer for Stage */}
+               <div className="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+                  {(() => {
+                    const supervisor = workers?.find(w => w.departmentId === activeTab && w.isSupervisor && w.active);
+                    return (
+                      <div className="flex items-center gap-3">
+                         <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                           {lang === 'ar' ? 'المشرف المسؤول:' : 'STAGE LEAD:'} 
+                           <span className="text-slate-900 ms-2">{supervisor?.fullName || (lang === 'ar' ? 'غير محدد' : 'No lead')}</span>
+                         </span>
+                      </div>
+                    );
+                  })()}
+                  <Button variant="ghost" size="sm" className="h-7 text-[9px] font-black text-emerald-700 hover:bg-emerald-50 rounded-md">
+                     {lang === 'ar' ? 'تقرير التكاليف التفصيلي للمرحلة' : 'View Stage Cost Analysis'}
+                  </Button>
+               </div>
+            </div>
+          )}
+
+          {/* VIEW: PERFORMANCE ANALYTICS (LEDGER STYLE) */}
+          {activeTab === 'summary' && (
+            <div className="flex-1 flex flex-col animate-in zoom-in-95 duration-300">
+               <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
+                  <h3 className="text-xs font-black uppercase tracking-widest flex items-center gap-2">
+                     <BarChart3 className="w-4 h-4 text-emerald-400" />
+                     {lang === 'ar' ? 'التحليل الإحصائي لخطوط الإنتاج' : 'MANUFACTURING PERFORMANCE ANALYTICS'}
+                  </h3>
+               </div>
+               <div className="flex-1 overflow-auto">
+                  <Table className="text-right border-separate border-spacing-0">
+                    <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
+                      <TableRow>
+                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right border-b border-slate-200">{lang === 'ar' ? 'المرحلة / القسم' : 'WORK CENTER'}</TableHead>
+                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">{lang === 'ar' ? 'المنجز (قطعة)' : 'COMPLETED'}</TableHead>
+                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">{lang === 'ar' ? 'تكلفة الأجور' : 'WAGE COST'}</TableHead>
+                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">{lang === 'ar' ? 'الإنجاز' : 'PROGRESS'}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {departments?.map(d => {
+                        const stageReceipts = vouchers.filter(v => v.currentStageId === d.id && v.type === 'production_receipt' && v.status !== 'deleted');
+                        const done = stageReceipts.reduce((sum, v) => sum + (v.qtyAccepted || 0), 0);
+                        const cost = stageReceipts.reduce((sum, v) => sum + (v.wageAmount || 0), 0);
+                        const p = Math.round((done / (order.targetQty || 1)) * 100);
+                        return (
+                          <TableRow key={d.id} className="hover:bg-slate-50/50 transition-colors border-b border-slate-100">
+                             <TableCell className="px-6 py-4 font-black text-slate-900 text-xs">{d.nameAr}</TableCell>
+                             <TableCell className="px-6 py-4 text-center font-bold text-slate-700 tabular-nums">{done.toLocaleString('en-US')}</TableCell>
+                             <TableCell className="px-6 py-4 text-center font-black text-emerald-700 tabular-nums">{cost.toLocaleString('en-US')} YER</TableCell>
+                             <TableCell className="px-6 py-4 text-center">
+                                <div className="flex items-center gap-3 justify-center">
+                                   <div className="flex-1 h-1.5 w-24 bg-slate-100 rounded-full overflow-hidden">
+                                      <div className="h-full bg-emerald-500" style={{ width: `${p}%` }} />
+                                   </div>
+                                   <span className="text-[10px] font-black text-slate-400 tabular-nums">{p}%</span>
+                                </div>
+                             </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                      <TableRow className="bg-slate-900 text-white font-black">
+                        <TableCell className="px-6 py-5 text-sm uppercase">{lang === 'ar' ? 'إجمالي التكلفة التقديرية' : 'TOTAL ESTIMATED COST'}</TableCell>
+                        <TableCell className="px-6 py-5 text-center text-emerald-400 tabular-nums text-lg">
+                           {vouchers?.filter(v => v.type === 'production_receipt' && v.status !== 'deleted').reduce((sum, v) => sum + (v.qtyAccepted || 0), 0).toLocaleString('en-US')}
+                        </TableCell>
+                        <TableCell className="px-6 py-5 text-center text-emerald-400 tabular-nums text-lg" colSpan={2}>
+                           {vouchers?.filter(v => v.status !== 'deleted').reduce((sum, v) => sum + (v.wageAmount || 0) + (v.totalAmount || 0), 0).toLocaleString('en-US')}
+                           <span className="text-[10px] ms-2 uppercase">YER</span>
+                        </TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+               </div>
+            </div>
+          )}
+
+        </div>
+      </div>
+
+      {/* SYSTEM NOTE - FOOTER */}
+      <div className="flex-none p-2 bg-slate-950 text-white/30 flex items-center justify-center gap-4">
+        <div className="w-5 h-5 rounded bg-emerald-500/10 flex items-center justify-center text-emerald-500"><History className="w-3 h-3" /></div>
+        <p className="text-[9px] font-bold tracking-widest uppercase">
+          {lang === 'ar' 
+            ? 'نظام السجلات الموحد: كافة البيانات هنا مرآة للسندات المالية والمخزنية المصدقة.' 
+            : 'Unified Ledger System: All data mirrors certified fiscal and inventory vouchers.'}
+        </p>
+      </div>
+
     </div>
   );
 }
 
 // --- SUB-COMPONENTS ---
 
-function InfoItem({ icon, label, value, isStatus }: { icon: any, label: string, value: string, isStatus?: boolean }) {
+function LedgerRow({ label, value, icon }: { label: string, value: string, icon: any }) {
   return (
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-3">
-        {icon}
-        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{label}</span>
-      </div>
-      {isStatus ? (
-        <Badge className="bg-emerald-50 text-emerald-700 font-black text-[10px] uppercase border border-emerald-100">{value}</Badge>
-      ) : (
-        <span className="text-xs font-black text-slate-700 tabular-nums">{value || '---'}</span>
-      )}
-    </div>
+    <tr className="hover:bg-slate-50/50 transition-colors group">
+       <td className="px-6 py-3 w-64 font-black text-[10px] text-slate-400 uppercase border-l border-slate-100 flex items-center gap-3">
+          <div className="p-1.5 bg-slate-100 rounded text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">{icon}</div>
+          {label}
+       </td>
+       <td className="px-6 py-3 text-xs font-black text-slate-900 tabular-nums">{value || '---'}</td>
+    </tr>
   );
 }
 
-function MetricCard({ icon, label, value, unit, color }: { icon: any, label: string, value: any, unit?: string, color: string }) {
-  const colorMap: any = {
-    emerald: "bg-emerald-50 text-emerald-600",
-    blue: "bg-blue-50 text-blue-600",
-    amber: "bg-amber-50 text-amber-600",
-    slate: "bg-slate-50 text-slate-600"
-  };
-  return (
-    <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-4">
-      <div className={cn("p-2.5 rounded-2xl", colorMap[color])}>{icon}</div>
-      <div>
-         <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{label}</p>
-         <h4 className="text-lg font-black text-slate-900 tabular-nums">{value} {unit && <span className="text-[8px] opacity-40 uppercase ms-1">{unit}</span>}</h4>
-      </div>
-    </div>
-  );
-}
-
-function ProgressMetric({ progress }: { progress: number }) {
-  return (
-    <div className="bg-slate-900 p-4 rounded-3xl shadow-md text-white flex items-center justify-between relative overflow-hidden group">
-      <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform"><Activity className="w-12 h-12" /></div>
-      <div className="relative z-10">
-         <p className="text-[8px] font-black text-emerald-400 uppercase tracking-widest">إنجاز المرحلة</p>
-         <h4 className="text-2xl font-black tabular-nums">{progress}%</h4>
-      </div>
-      <div className="relative z-10 w-12 h-12">
-         <svg className="w-full h-full" viewBox="0 0 36 36">
-            <path className="text-slate-800" strokeDasharray="100, 100" strokeWidth="4" fill="none" stroke="currentColor" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-            <path className="text-emerald-500" strokeDasharray={`${progress}, 100`} strokeWidth="4" strokeLinecap="round" fill="none" stroke="currentColor" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-         </svg>
-      </div>
-    </div>
-  );
-}
-
-function SummaryMainCard({ title, value, total, icon, unit, color }: { title: string, value: any, total?: number, icon: any, unit?: string, color: string }) {
-  const colors: any = {
-    emerald: "text-emerald-600 bg-emerald-50/50 border-emerald-100",
-    amber: "text-amber-600 bg-amber-50/50 border-amber-100",
-    slate: "text-slate-600 bg-slate-50/50 border-slate-100"
-  };
-  return (
-    <Card className={cn("p-8 rounded-[2.5rem] border flex flex-col items-center text-center space-y-4 shadow-sm group hover:shadow-lg transition-all", colors[color])}>
-       <div className="p-4 bg-white rounded-2xl shadow-sm group-hover:scale-110 transition-transform">{icon}</div>
-       <div className="space-y-1">
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{title}</p>
-          <div className="flex items-baseline gap-2 justify-center">
-             <h4 className="text-4xl font-black tabular-nums">{value}</h4>
-             {unit && <span className="text-sm font-bold opacity-60">{unit}</span>}
-             {total && <span className="text-xs font-bold text-slate-400 tabular-nums">/ {total} Pcs</span>}
-          </div>
-       </div>
-    </Card>
-  );
-}
-
-function TableRowItem({ voucher, worker, lang }: { voucher: any, worker: any, lang: string }) {
+function LedgerTransactionRow({ voucher, worker, lang }: { voucher: any, worker: any, lang: string }) {
   const typeMap: any = {
-    'material_issue': { labelAr: 'صرف مواد', labelEn: 'Issue', icon: <FileInput className="w-3.5 h-3.5" />, color: 'text-amber-600 bg-amber-50 border-amber-100' },
-    'production_receipt': { labelAr: 'استلام مخرجات', labelEn: 'Receipt', icon: <FileOutput className="w-3.5 h-3.5" />, color: 'text-blue-600 bg-blue-50 border-blue-100' },
-    'wage_payment': { labelAr: 'صرف أجر', labelEn: 'Wage Pay', icon: <HandCoins className="w-3.5 h-3.5" />, color: 'text-emerald-600 bg-emerald-50 border-emerald-100' }
+    'material_issue': { labelAr: 'صرف مواد', icon: <FileInput className="w-3 h-3" />, color: 'text-amber-600 bg-amber-50 border-amber-100' },
+    'production_receipt': { labelAr: 'استلام مخرجات', icon: <FileOutput className="w-3 h-3" />, color: 'text-blue-600 bg-blue-50 border-blue-100' },
+    'wage_payment': { labelAr: 'صرف أجر', icon: <HandCoins className="w-3 h-3" />, color: 'text-emerald-600 bg-emerald-50 border-emerald-100' }
   };
   const config = typeMap[voucher.type] || { labelAr: 'أخرى', icon: <FileText />, color: 'text-slate-500 bg-slate-50 border-slate-100' };
 
   return (
-    <tr className="hover:bg-slate-50/50 border-b border-slate-100 transition-colors group">
-      <td className="px-6 py-4 font-bold text-slate-400 text-[11px] tabular-nums">{voucher.date}</td>
-      <td className="px-6 py-4">
-        <div className={cn("inline-flex items-center gap-2 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase border", config.color)}>
+    <TableRow className="hover:bg-slate-50/50 border-b border-slate-100 transition-colors group">
+      <TableCell className="px-6 py-3 font-bold text-slate-400 text-[10px] tabular-nums">{voucher.date}</TableCell>
+      <TableCell className="px-6 py-3">
+        <div className={cn("inline-flex items-center gap-2 px-2 py-0.5 rounded text-[9px] font-black uppercase border", config.color)}>
            {config.icon}
-           {lang === 'ar' ? config.labelAr : config.labelEn}
+           {lang === 'ar' ? config.labelAr : voucher.type.replace('_', ' ')}
         </div>
-      </td>
-      <td className="px-6 py-4">
-        <div className="flex items-center gap-3">
-          <Avatar className="h-8 w-8 rounded-lg border-2 border-white shadow-sm">
-            <AvatarImage src={worker?.photoUrl} className="object-cover" />
-            <AvatarFallback className="bg-slate-100 text-[10px] font-black">{worker?.fullName?.charAt(0)}</AvatarFallback>
-          </Avatar>
+      </TableCell>
+      <TableCell className="px-6 py-3">
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded bg-slate-100 flex items-center justify-center text-[9px] font-black uppercase overflow-hidden">
+             {worker?.photoUrl ? <img src={worker.photoUrl} className="w-full h-full object-cover" /> : worker?.fullName?.charAt(0)}
+          </div>
           <div className="flex flex-col">
-             <span className="text-xs font-black text-slate-700">{worker?.fullName || 'System'}</span>
-             <span className="text-[8px] font-bold text-slate-400 tabular-nums uppercase">{worker?.workerId}</span>
+             <span className="text-[11px] font-black text-slate-700">{worker?.fullName || 'System'}</span>
           </div>
         </div>
-      </td>
-      <td className="px-6 py-4 text-xs font-bold text-slate-500 max-w-[250px] truncate">
+      </TableCell>
+      <TableCell className="px-6 py-3 text-[11px] font-bold text-slate-500 max-w-[300px] truncate">
         {voucher.notes || (voucher.items ? `${voucher.items.length} مواد مصروفة` : '---')}
-      </td>
-      <td className="px-6 py-4 text-center">
+      </TableCell>
+      <TableCell className="px-6 py-3 text-center">
         <div className="flex flex-col items-center">
-           <span className="text-sm font-black text-slate-900 tabular-nums">
+           <span className="text-xs font-black text-slate-900 tabular-nums">
               {voucher.type === 'production_receipt' ? (voucher.qtyAccepted || 0).toLocaleString('en-US') : (voucher.totalAmount || 0).toLocaleString('en-US')}
            </span>
-           <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">
+           <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest">
               {voucher.type === 'production_receipt' ? (lang === 'ar' ? 'قطعة' : 'Pcs') : voucher.currency}
            </span>
         </div>
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
+  );
+}
+
+function MetricItem({ label, value, unit }: { label: string, value: any, unit?: string }) {
+  return (
+    <div className="flex items-center gap-3">
+       <span className="text-[8px] font-black text-emerald-300 uppercase tracking-widest">{label}</span>
+       <span className="text-xs font-black tabular-nums">{value} {unit && <span className="text-[8px] opacity-40 uppercase ms-1">{unit}</span>}</span>
+    </div>
   );
 }
