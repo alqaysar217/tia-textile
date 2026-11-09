@@ -300,19 +300,30 @@ export default function OrderDetailsDashboard() {
                         <LedgerRow label={lang === 'ar' ? 'الأولوية' : 'PRIORITY'} value={order.priority} icon={<ShieldCheck className="w-4 h-4" />} />
                         <LedgerRow label={lang === 'ar' ? 'الحالة' : 'STATUS'} value={order.status} icon={<Tag className="w-4 h-4" />} />
                         <tr className="hover:bg-slate-50/50 transition-colors group">
-                           <td className="px-6 py-4 w-72 font-black text-[10px] text-slate-400 uppercase border-l border-slate-100 flex items-center gap-3"><div className="p-1.5 bg-slate-100 rounded text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors"><Activity className="w-4 h-4" /></div>{lang === 'ar' ? 'مستوى التقدم الإجمالي' : 'PROGRESS'}</td>
+                           <td className="px-6 py-4 w-72 border-e border-slate-100">
+                              <div className="flex items-center gap-3">
+                                 <div className="p-1.5 bg-slate-100 rounded text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                                    <Activity className="w-4 h-4" />
+                                 </div>
+                                 <span className="font-black text-[10px] text-slate-400 uppercase tracking-widest">{lang === 'ar' ? 'مستوى التقدم الإجمالي' : 'PROGRESS'}</span>
+                              </div>
+                           </td>
                            <td className="px-6 py-4">
                               <div className="flex items-center gap-4">
-                                 <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden max-w-[200px]"><div className="h-full bg-emerald-500" style={{ width: `${progress}%` }} /></div>
+                                 <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden max-w-[200px]">
+                                    <div className="h-full bg-emerald-500" style={{ width: `${progress}%` }} />
+                                 </div>
                                  <span className="text-xs font-black text-emerald-700 tabular-nums">{progress}%</span>
                               </div>
                            </td>
                         </tr>
                         {order.notes && (
                            <tr className="bg-slate-50/50">
-                             <td className="px-6 py-5 w-72 font-black text-[10px] text-slate-400 border-l border-slate-100 flex items-center gap-3">
-                               <div className="p-1.5 bg-slate-100 rounded text-emerald-600"><Info className="w-4 h-4" /></div>
-                               NOTES
+                             <td className="px-6 py-5 w-72 border-e border-slate-100">
+                               <div className="flex items-center gap-3">
+                                 <div className="p-1.5 bg-slate-100 rounded text-emerald-600"><Info className="w-4 h-4" /></div>
+                                 <span className="font-black text-[10px] text-slate-400 uppercase tracking-widest">NOTES</span>
+                               </div>
                              </td>
                              <td className="px-6 py-5 text-xs font-bold text-slate-600 italic leading-relaxed">{order.notes}</td>
                            </tr>
@@ -629,7 +640,12 @@ export default function OrderDetailsDashboard() {
 function LedgerRow({ label, value, icon, color = "text-slate-900" }: { label: string, value: string | number, icon: any, color?: string }) {
   return (
     <tr className="hover:bg-slate-50/50 transition-colors group">
-       <td className="px-6 py-4 w-72 font-black text-[10px] text-slate-400 uppercase border-l border-slate-100 flex items-center gap-3"><div className="p-1.5 bg-slate-100 rounded text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">{icon}</div>{label}</td>
+       <td className="px-6 py-4 w-72 border-e border-slate-100">
+          <div className="flex items-center gap-3">
+             <div className="p-1.5 bg-slate-100 rounded text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">{icon}</div>
+             <span className="font-black text-[10px] text-slate-400 uppercase tracking-widest">{label}</span>
+          </div>
+       </td>
        <td className={cn("px-6 py-4 text-xs font-black tabular-nums", color)}>{value || '---'}</td>
     </tr>
   );
