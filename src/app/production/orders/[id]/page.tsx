@@ -170,11 +170,17 @@ export default function OrderDetailsDashboard() {
       .reduce((sum, v) => sum + (v.qtyAccepted || 0), 0);
   }, [vouchers, finalStage]);
 
+  const progress = useMemo(() => {
+    if (!order || !order.targetQty) return 0;
+    return Math.round((finalCompletedQty / order.targetQty) * 100);
+  }, [finalCompletedQty, order]);
+
   const filteredStageVouchers = useMemo(() => {
     if (!vouchers || activeTab === 'info' || activeTab === 'summary') return [];
     
     let list = vouchers.filter(v => {
       if (v.status === 'deleted') return false;
+      // Filter by stage ID or if the worker belongs to this department
       const isInStage = v.currentStageId === activeTab || (workers?.find(w => w.id === v.workerId)?.departmentId === activeTab);
       if (!isInStage) return false;
       if (stageTypeFilter !== 'all' && v.type !== stageTypeFilter) return false;
@@ -285,15 +291,32 @@ export default function OrderDetailsDashboard() {
                   <table className="w-full text-right border-separate border-spacing-0">
                      <tbody className="divide-y divide-slate-100">
                         <LedgerRow label={lang === 'ar' ? 'رقم السجل الموحد' : 'REFERENCE'} value={order.orderNumber} icon={<Hash className="w-4 h-4" />} />
+                        <LedgerRow label={lang === 'ar' ? 'تاريخ البدء' : 'LAUNCH DATE'} value={order.startDate} icon={<Calendar className="w-4 h-4" />} />
                         <LedgerRow label={lang === 'ar' ? 'عنوان الدفعة' : 'BATCH TITLE'} value={order.title} icon={<Type className="w-4 h-4" />} />
-                        <LedgerRow label={lang === 'ar' ? 'المنتج المستهدف' : 'PRODUCT'} value={product?.nameAr} icon={<ShoppingBag className="w-4 h-4" />} />
+                        <LedgerRow label={lang === 'ar' ? 'المنتج المستهدف' : 'TARGET PRODUCT'} value={product?.nameAr} icon={<ShoppingBag className="w-4 h-4" />} />
                         <LedgerRow label={lang === 'ar' ? 'الكمية المستهدفة' : 'TARGET QTY'} value={`${order.targetQty} قطعة`} icon={<Target className="w-4 h-4" />} />
-                        <LedgerRow label={lang === 'ar' ? 'الكمية المنجزة' : 'RECEIVED'} value={`${finalCompletedQty} قطعة`} icon={<CheckCircle2 className="w-4 h-4" />} color="text-emerald-700" />
+                        <LedgerRow label={lang === 'ar' ? 'الكمية المنجزة (النهائية)' : 'COMPLETED'} value={`${finalCompletedQty} قطعة`} icon={<CheckCircle2 className="w-4 h-4" />} color="text-emerald-700" />
                         <LedgerRow label={lang === 'ar' ? 'قيد العمل (WIP)' : 'WIP'} value={`${order.targetQty - finalCompletedQty} قطعة`} icon={<Package className="w-4 h-4" />} color="text-blue-600" />
-                        <LedgerRow label={lang === 'ar' ? 'تاريخ البدء' : 'LAUNCH'} value={order.startDate} icon={<Calendar className="w-4 h-4" />} />
                         <LedgerRow label={lang === 'ar' ? 'الأولوية' : 'PRIORITY'} value={order.priority} icon={<ShieldCheck className="w-4 h-4" />} />
                         <LedgerRow label={lang === 'ar' ? 'الحالة' : 'STATUS'} value={order.status} icon={<Tag className="w-4 h-4" />} />
-                        {order.notes && <tr className="bg-slate-50/50"><td className="px-6 py-5 w-72 font-black text-[10px] text-slate-400 border-l border-slate-100">NOTES</td><td className="px-6 py-5 text-xs font-bold text-slate-600 italic">{order.notes}</td></tr>}
+                        <tr className="hover:bg-slate-50/50 transition-colors group">
+                           <td className="px-6 py-4 w-72 font-black text-[10px] text-slate-400 uppercase border-l border-slate-100 flex items-center gap-3"><div className="p-1.5 bg-slate-100 rounded text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors"><Activity className="w-4 h-4" /></div>{lang === 'ar' ? 'مستوى التقدم الإجمالي' : 'PROGRESS'}</td>
+                           <td className="px-6 py-4">
+                              <div className="flex items-center gap-4">
+                                 <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden max-w-[200px]"><div className="h-full bg-emerald-500" style={{ width: `${progress}%` }} /></div>
+                                 <span className="text-xs font-black text-emerald-700 tabular-nums">{progress}%</span>
+                              </div>
+                           </td>
+                        </tr>
+                        {order.notes && (
+                           <tr className="bg-slate-50/50">
+                             <td className="px-6 py-5 w-72 font-black text-[10px] text-slate-400 border-l border-slate-100 flex items-center gap-3">
+                               <div className="p-1.5 bg-slate-100 rounded text-emerald-600"><Info className="w-4 h-4" /></div>
+                               NOTES
+                             </td>
+                             <td className="px-6 py-5 text-xs font-bold text-slate-600 italic">{order.notes}</td>
+                           </tr>
+                        )}
                      </tbody>
                   </table>
                </div>
