@@ -115,7 +115,7 @@ export default function PayrollManagementPage() {
 
   // Payment Form State
   const [formData, setFormData] = useState({
-    date: new Date().toISOString().split('T', 1)[0],
+    date: new Date().toISOString().split('T')[0],
     workerId: '',
     amount: 0,
     currency: 'YER',
@@ -261,15 +261,15 @@ export default function PayrollManagementPage() {
     }
     setIsSubmitting(true);
     
-    // CRITICAL: Capture Order context for the ledger. 
-    // We take the orderId and currentStageId from the first linked receipt for reporting purposes.
+    // CRITICAL FIX: To make payments appear in the Order Stage Ledger, we must tag them.
+    // We derive orderId and currentStageId from the first receipt in the selection.
     const firstReceiptId = formData.linkedReceipts[0];
     const firstReceipt = allReceipts?.find(r => r.id === firstReceiptId);
     
     const paymentData = { 
       ...formData, 
-      orderId: firstReceipt?.orderId || '',
-      currentStageId: firstReceipt?.currentStageId || '',
+      orderId: firstReceipt?.orderId || '', // Now linked to the Batch
+      currentStageId: firstReceipt?.currentStageId || '', // Now linked to the Stage
       type: 'wage_payment', 
       totalAmount: Number(formData.amount), 
       status: 'posted', 
