@@ -1,22 +1,13 @@
 'use client';
 
-import React, { useMemo, useState, useCallback, useRef } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { 
   ArrowRight, 
   ArrowLeft, 
-  Workflow, 
-  History, 
-  FileText, 
-  FileOutput, 
-  FileInput, 
-  HandCoins, 
   ChevronRight, 
   Target, 
-  Clock, 
-  Package, 
   CheckCircle2, 
-  AlertCircle,
   Hash,
   ShoppingBag,
   Info,
@@ -24,31 +15,24 @@ import {
   Plus,
   ShieldCheck,
   Calendar,
-  Zap,
-  LayoutGrid,
+  Activity,
+  Edit2,
   BarChart3,
   ClipboardList,
   Type,
   User,
-  ArrowUpRight,
-  Edit2,
-  Activity,
-  Layers,
-  Save,
+  Eye,
+  Download,
+  FileInput,
+  FileOutput,
+  HandCoins,
   Tag,
   Search,
   Filter,
-  RefreshCcw,
-  Wallet,
-  ArrowUpDown,
+  Check,
   SortAsc,
   SortDesc,
-  Check,
-  Eye,
-  Download,
-  Printer,
-  FileDown,
-  Coins
+  ArrowUpDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from '@/components/LanguageProvider';
@@ -57,12 +41,10 @@ import { doc, collection, query, where, updateDoc, serverTimestamp } from 'fireb
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -238,7 +220,6 @@ export default function OrderDetailsDashboard() {
   return (
     <div className="flex flex-col h-full bg-[#f1f5f9] overflow-hidden" dir={dir}>
       
-      {/* 1. ERP MASTER HEADER */}
       <div className="flex-none bg-white border-b border-slate-200 z-30 px-6 py-3 shadow-sm">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
@@ -262,7 +243,6 @@ export default function OrderDetailsDashboard() {
         </div>
       </div>
 
-      {/* 2. STAGES NAVIGATION */}
       <div className="flex-none bg-slate-900 z-20 shadow-lg">
         <div className="flex items-center h-12 gap-1 overflow-x-auto no-scrollbar scroll-smooth px-4">
           <button onClick={() => setActiveTab('info')} className={cn("flex items-center gap-2 px-5 h-full transition-all font-black text-[10px] uppercase tracking-wider shrink-0", activeTab === 'info' ? "bg-emerald-600 text-white shadow-[inset_0_-3px_0_white]" : "text-white/40 hover:text-white/70")}><Info className="w-3.5 h-3.5" />{lang === 'ar' ? 'معلومات الدفعة' : 'Batch Info'}</button>
@@ -278,7 +258,6 @@ export default function OrderDetailsDashboard() {
         </div>
       </div>
 
-      {/* 3. DYNAMIC DATA LEDGER AREA */}
       <div className="flex-1 min-h-0 flex flex-col p-4 no-scrollbar">
         <div className="flex-1 bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden flex flex-col">
           
@@ -300,15 +279,7 @@ export default function OrderDetailsDashboard() {
                         <LedgerRow label={lang === 'ar' ? 'الأولوية' : 'PRIORITY'} value={order.priority} icon={<ShieldCheck className="w-4 h-4" />} />
                         <LedgerRow label={lang === 'ar' ? 'الحالة' : 'STATUS'} value={order.status} icon={<Tag className="w-4 h-4" />} />
                         <tr className="hover:bg-slate-50/50 transition-colors group">
-                           <td className="px-6 py-4 w-72 border-e border-slate-100">
-                              <div className="flex items-center gap-3">
-                                 <div className="p-1.5 bg-slate-100 rounded text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
-                                    <Activity className="w-4 h-4" />
-                                 </div>
-                                 <span className="font-black text-[10px] text-slate-400 uppercase tracking-widest">{lang === 'ar' ? 'مستوى التقدم الإجمالي' : 'PROGRESS'}</span>
-                              </div>
-                           </td>
-                           <td className="px-6 py-4">
+                           <td className={cn("px-6 py-4 text-xs font-black tabular-nums")}>
                               <div className="flex items-center gap-4">
                                  <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden max-w-[200px]">
                                     <div className="h-full bg-emerald-500" style={{ width: `${progress}%` }} />
@@ -316,16 +287,24 @@ export default function OrderDetailsDashboard() {
                                  <span className="text-xs font-black text-emerald-700 tabular-nums">{progress}%</span>
                               </div>
                            </td>
+                           <td className="px-6 py-4 w-72 border-s border-slate-100">
+                              <div className="flex items-center gap-3 justify-end">
+                                 <span className="font-black text-[10px] text-slate-400 uppercase tracking-widest">{lang === 'ar' ? 'مستوى التقدم الإجمالي' : 'PROGRESS'}</span>
+                                 <div className="p-1.5 bg-slate-100 rounded text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                                    <Activity className="w-4 h-4" />
+                                 </div>
+                              </div>
+                           </td>
                         </tr>
                         {order.notes && (
                            <tr className="bg-slate-50/50">
-                             <td className="px-6 py-5 w-72 border-e border-slate-100">
-                               <div className="flex items-center gap-3">
-                                 <div className="p-1.5 bg-slate-100 rounded text-emerald-600"><Info className="w-4 h-4" /></div>
+                             <td className="px-6 py-5 text-xs font-bold text-slate-600 italic leading-relaxed text-right">{order.notes}</td>
+                             <td className="px-6 py-5 w-72 border-s border-slate-100">
+                               <div className="flex items-center gap-3 justify-end">
                                  <span className="font-black text-[10px] text-slate-400 uppercase tracking-widest">NOTES</span>
+                                 <div className="p-1.5 bg-slate-100 rounded text-emerald-600"><Info className="w-4 h-4" /></div>
                                </div>
                              </td>
-                             <td className="px-6 py-5 text-xs font-bold text-slate-600 italic leading-relaxed">{order.notes}</td>
                            </tr>
                         )}
                      </tbody>
@@ -401,7 +380,6 @@ export default function OrderDetailsDashboard() {
         </div>
       </div>
 
-      {/* ENHANCED VOUCHER PREVIEW */}
       <Dialog open={!!viewingVoucher} onOpenChange={(open) => !open && setViewingVoucher(null)}>
         <DialogContent className="sm:max-w-[850px] p-0 overflow-hidden border-none bg-white shadow-2xl">
           <DialogHeader className="sr-only"><DialogTitle>معاينة السند الرسمي</DialogTitle></DialogHeader>
@@ -620,7 +598,6 @@ export default function OrderDetailsDashboard() {
         </DialogContent>
       </Dialog>
 
-      {/* EDIT ORDER DIALOG */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-[500px] rounded-lg p-0 overflow-hidden border-none shadow-2xl">
           <div className="premium-gradient p-6 text-white"><DialogHeader className="text-right"><DialogTitle className="text-xl font-black flex items-center gap-3"><Edit2 className="w-5 h-5 text-emerald-300" />{lang === 'ar' ? 'تحديث مواصفات الدفعة' : 'Update Specs'}</DialogTitle></DialogHeader></div>
@@ -640,13 +617,13 @@ export default function OrderDetailsDashboard() {
 function LedgerRow({ label, value, icon, color = "text-slate-900" }: { label: string, value: string | number, icon: any, color?: string }) {
   return (
     <tr className="hover:bg-slate-50/50 transition-colors group">
-       <td className="px-6 py-4 w-72 border-e border-slate-100">
-          <div className="flex items-center gap-3">
-             <div className="p-1.5 bg-slate-100 rounded text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">{icon}</div>
+       <td className={cn("px-6 py-4 text-xs font-black tabular-nums text-right", color)}>{value || '---'}</td>
+       <td className="px-6 py-4 w-72 border-s border-slate-100">
+          <div className="flex items-center gap-3 justify-end">
              <span className="font-black text-[10px] text-slate-400 uppercase tracking-widest">{label}</span>
+             <div className="p-1.5 bg-slate-100 rounded text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">{icon}</div>
           </div>
        </td>
-       <td className={cn("px-6 py-4 text-xs font-black tabular-nums", color)}>{value || '---'}</td>
     </tr>
   );
 }
