@@ -97,7 +97,6 @@ export default function OrderDetailsDashboard() {
 
   const [stageSearch, setStageSearch] = useState('');
   const [stageTypeFilter, setStageTypeFilter] = useState<'all' | 'material_issue' | 'production_receipt' | 'wage_payment'>('all');
-  const [stageCurrencyFilter, setStageCurrencyFilter] = useState<string>('all');
   const [stageSortOrder, setStageSortOrder] = useState<'asc' | 'desc'>('desc');
 
   const orderRef = useMemo(() => !db ? null : doc(db, 'productionOrders', id as string), [db, id]);
@@ -171,11 +170,6 @@ export default function OrderDetailsDashboard() {
       .reduce((sum, v) => sum + (v.qtyAccepted || 0), 0);
   }, [vouchers, finalStage]);
 
-  const totalProgress = useMemo(() => {
-    if (!order?.targetQty) return 0;
-    return Math.round((finalCompletedQty / order.targetQty) * 100);
-  }, [finalCompletedQty, order]);
-
   const filteredStageVouchers = useMemo(() => {
     if (!vouchers || activeTab === 'info' || activeTab === 'summary') return [];
     
@@ -184,7 +178,6 @@ export default function OrderDetailsDashboard() {
       const isInStage = v.currentStageId === activeTab || (workers?.find(w => w.id === v.workerId)?.departmentId === activeTab);
       if (!isInStage) return false;
       if (stageTypeFilter !== 'all' && v.type !== stageTypeFilter) return false;
-      if (stageCurrencyFilter !== 'all' && (v.currency || 'YER') !== stageCurrencyFilter) return false;
       if (stageSearch) {
         const s = stageSearch.toLowerCase();
         const worker = workers?.find(w => w.id === v.workerId);
@@ -200,25 +193,7 @@ export default function OrderDetailsDashboard() {
       const timeB = new Date(b.date || 0).getTime();
       return stageSortOrder === 'asc' ? timeA - timeB : timeB - timeA;
     });
-  }, [vouchers, activeTab, workers, stageSearch, stageTypeFilter, stageCurrencyFilter, stageSortOrder]);
-
-  const handleExportStageCSV = () => {
-    const headers = [lang === 'ar' ? 'التاريخ' : 'Date', 'REF #', 'Type', 'Personnel', 'Value', 'Currency'];
-    const rows = filteredStageVouchers.map(v => {
-      const worker = workers?.find(w => w.id === v.workerId);
-      const val = v.type === 'production_receipt' ? (v.qtyAccepted || 0) : (v.totalAmount || 0);
-      return [v.date, v.voucherNumber, v.type, worker?.fullName || '---', val, v.currency || 'YER'];
-    });
-    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `StageLog_${activeTab}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+  }, [vouchers, activeTab, workers, stageSearch, stageTypeFilter, stageSortOrder]);
 
   const handleDownloadImage = async () => {
     const element = document.getElementById('printable-voucher');
@@ -230,10 +205,10 @@ export default function OrderDetailsDashboard() {
         backgroundColor: '#ffffff', 
         pixelRatio: 2, 
         cacheBust: true,
-        fontEmbedCSS: '', // Fixes font trim error
+        fontEmbedCSS: '',
       });
       const link = document.createElement('a');
-      link.download = `Voucher-${viewingVoucher.voucherNumber}.png`;
+      link.download = `${viewingVoucher.type}-${viewingVoucher.voucherNumber}.png`;
       link.href = dataUrl;
       document.body.appendChild(link);
       link.click();
@@ -333,7 +308,6 @@ export default function OrderDetailsDashboard() {
                     <Input value={stageSearch} onChange={(e) => setStageSearch(e.target.value)} placeholder={lang === 'ar' ? 'بحث في سجل المرحلة...' : 'Search stage log...'} className={cn("h-9 bg-white text-xs font-bold border-slate-200", dir === 'rtl' ? "pr-9" : "pl-9")} />
                   </div>
                   <div className="flex items-center gap-1.5 px-1.5 border-x border-slate-200">
-                    <Button onClick={handleExportStageCSV} variant="ghost" size="sm" className="h-9 px-3 text-[10px] font-black gap-2 text-slate-600 hover:bg-white"><FileDown className="w-3.5 h-3.5 text-emerald-600" />{lang === 'ar' ? 'تصدير' : 'Export'}</Button>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild><Button variant="ghost" size="sm" className="h-9 px-3 text-[10px] font-black gap-2 text-slate-600 hover:bg-white"><Filter className="w-3.5 h-3.5" />{lang === 'ar' ? 'تصفية' : 'Filter'}</Button></DropdownMenuTrigger>
                       <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="w-56 rounded-xl shadow-xl">
@@ -393,7 +367,7 @@ export default function OrderDetailsDashboard() {
         </div>
       </div>
 
-      {/* ENHANCED UNIFIED VOUCHER PREVIEW */}
+      {/* ENHANCED VOUCHER PREVIEW - SYNCED WITH RECEIPT PAGE DESIGN */}
       <Dialog open={!!viewingVoucher} onOpenChange={(open) => !open && setViewingVoucher(null)}>
         <DialogContent className="sm:max-w-[850px] p-0 overflow-hidden border-none bg-white shadow-2xl">
           <DialogHeader className="sr-only"><DialogTitle>معاينة السند الرسمي</DialogTitle></DialogHeader>
@@ -433,7 +407,7 @@ export default function OrderDetailsDashboard() {
                     <div className="inline-block border-[2.5px] border-emerald-800 px-12 py-2 rounded-full bg-white shadow-sm ring-4 ring-emerald-50">
                       <h3 className="text-xl font-black text-emerald-900 uppercase tracking-widest">
                         {viewingVoucher.type === 'material_issue' ? (lang === 'ar' ? 'سند صرف مواد خام' : 'Material Issue') : 
-                         viewingVoucher.type === 'production_receipt' ? (lang === 'ar' ? 'سند استلام منجز' : 'Production Receipt') :
+                         viewingVoucher.type === 'production_receipt' ? (lang === 'ar' ? 'سند استلام وتسوية إنتاج' : 'Production Settlement') :
                          (lang === 'ar' ? 'سند صرف أجور مالي' : 'Wage Payment')}
                       </h3>
                     </div>
@@ -443,7 +417,7 @@ export default function OrderDetailsDashboard() {
                   <div className="grid grid-cols-3 gap-y-6 gap-x-8 mb-10 bg-slate-50/50 p-8 rounded-[1.5rem] border border-slate-100 relative z-10">
                     <div className="space-y-4">
                       <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'اسم المستلم' : 'Recipient'}</span>
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'اسم المستلم/المسلم' : 'Personnel'}</span>
                         <span className="text-sm font-black text-slate-900">{workers?.find(w => w.id === viewingVoucher.workerId)?.fullName || '---'}</span>
                       </div>
                       <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
@@ -473,52 +447,105 @@ export default function OrderDetailsDashboard() {
                       <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'المشرف المسؤول' : 'Supervisor'}</span>
                         <span className="text-sm font-black text-slate-700">
-                          {workers?.find(w => w.id === (viewingVoucher.supervisorId || workers?.find(work => work.id === viewingVoucher.workerId)?.supervisorId))?.fullName || (lang === 'ar' ? 'مشرف الخياطين' : 'General Sup')}
+                          {workers?.find(w => w.id === (viewingVoucher.supervisorId || workers?.find(work => work.id === viewingVoucher.workerId)?.supervisorId))?.fullName || (lang === 'ar' ? 'مشرف القسم المباشر' : 'Direct Supervisor')}
                         </span>
                       </div>
                     </div>
                   </div>
 
-                  {/* 4. ITEMS / TRANSACTION TABLE */}
-                  <div className="mb-12 relative z-10">
-                    <Table className="text-right border-2 border-emerald-900/10">
-                      <TableHeader className="bg-emerald-800/5">
-                        <TableRow className="hover:bg-transparent border-b-2 border-emerald-900/20">
-                          <TableHead className="text-right font-black text-xs py-4 text-emerald-900 uppercase">
-                            {viewingVoucher.type === 'material_issue' ? (lang === 'ar' ? 'المادة الخام' : 'Raw Material') :
-                             viewingVoucher.type === 'wage_payment' ? (lang === 'ar' ? 'بيان الاستحقاق' : 'Description') :
-                             (lang === 'ar' ? 'المنتج المنجز' : 'Finished Goods')}
-                          </TableHead>
-                          <TableHead className="text-center font-black text-xs py-4 text-emerald-900 uppercase">{lang === 'ar' ? 'الكمية' : 'Qty'}</TableHead>
-                          <TableHead className="text-center font-black text-xs py-4 text-emerald-900 uppercase">{lang === 'ar' ? 'الوحدة' : 'Unit'}</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {viewingVoucher.type === 'material_issue' && viewingVoucher.items?.map((item: any, i: number) => (
-                          <TableRow key={i} className="border-b border-slate-100 bg-white/40">
-                            <TableCell className="font-bold text-sm py-4 text-slate-800">{item.nameAr}</TableCell>
-                            <TableCell className="text-center font-black text-sm tabular-nums py-4 text-emerald-800">{item.qty}</TableCell>
-                            <TableCell className="text-center text-xs font-bold text-slate-500 uppercase py-4">{item.unit}</TableCell>
-                          </TableRow>
-                        ))}
-                        {viewingVoucher.type === 'production_receipt' && (
-                          <TableRow className="bg-white/40">
-                            <TableCell className="font-bold text-sm py-5 text-slate-800">
-                              {product?.nameAr || '---'} ( {lang === 'ar' ? 'فحص ومطابقة' : 'QC Passed'} )
-                            </TableCell>
-                            <TableCell className="text-center font-black text-lg tabular-nums py-5 text-emerald-800">{viewingVoucher.qtyAccepted}</TableCell>
-                            <TableCell className="text-center text-xs font-bold text-slate-500 uppercase py-5">PIECE</TableCell>
-                          </TableRow>
+                  {/* 4. ITEMS / TRANSACTION TABLES */}
+                  <div className="space-y-8 relative z-10 mb-12">
+                    
+                    {/* PRODUCTION RECEIPT - DUAL TABLES SYNC */}
+                    {viewingVoucher.type === 'production_receipt' ? (
+                      <>
+                        {/* Section I: Finished Goods */}
+                        <div className="space-y-3">
+                          <h4 className="text-[10px] font-black text-emerald-900 border-r-4 border-emerald-600 pr-3 mb-2 uppercase">
+                            {lang === 'ar' ? 'أولاً: مخرجات الإنتاج المنجزة' : 'I. FINISHED PRODUCTION OUTPUTS'}
+                          </h4>
+                          <Table className="text-right border-2 border-emerald-900/10">
+                            <TableHeader className="bg-emerald-900/5">
+                              <TableRow className="hover:bg-transparent border-b-2 border-emerald-900/20">
+                                <TableHead className="text-right font-black text-xs py-4 text-emerald-900">{lang === 'ar' ? 'نوع المعوز' : 'Item Type'}</TableHead>
+                                <TableHead className="text-center font-black text-xs py-4 text-emerald-900">{lang === 'ar' ? 'الكمية المستلمة' : 'Accepted Qty'}</TableHead>
+                                <TableHead className="text-center font-black text-xs py-4 text-emerald-900">{lang === 'ar' ? 'أجر القطعة' : 'Wage/Pcs'}</TableHead>
+                                <TableHead className="text-center font-black text-xs py-4 text-emerald-900">{lang === 'ar' ? 'الإجمالي' : 'Total'}</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              <TableRow className="bg-white/40">
+                                <TableCell className="font-bold text-sm py-5 text-slate-800">{product?.nameAr || '---'}</TableCell>
+                                <TableCell className="text-center font-black text-sm text-emerald-800 tabular-nums">
+                                  {(viewingVoucher.qtyAccepted || 0).toLocaleString('en-US')} {lang === 'ar' ? 'قطعة' : 'Pcs'}
+                                </TableCell>
+                                <TableCell className="text-center font-bold text-sm tabular-nums">{(viewingVoucher.wageRate || 0).toLocaleString('en-US')}</TableCell>
+                                <TableCell className="text-center font-black text-sm text-emerald-900 tabular-nums">
+                                  {(viewingVoucher.wageAmount || 0).toLocaleString('en-US')} <span className="text-[10px] opacity-60">{viewingVoucher.currency || 'YER'}</span>
+                                </TableCell>
+                              </TableRow>
+                            </TableBody>
+                          </Table>
+                        </div>
+
+                        {/* Section II: Returned Materials */}
+                        {viewingVoucher.returnedItems?.length > 0 && (
+                          <div className="space-y-3">
+                            <h4 className="text-[10px] font-black text-blue-900 border-r-4 border-blue-600 pr-3 mb-2 uppercase">
+                              {lang === 'ar' ? 'ثانياً: المواد الخام المرتجعة للمخزن' : 'II. RETURNED RAW MATERIALS'}
+                            </h4>
+                            <Table className="text-right border-2 border-blue-900/10">
+                              <TableHeader className="bg-blue-900/5">
+                                <TableRow className="hover:bg-transparent border-b-2 border-blue-900/20">
+                                  <TableHead className="text-right font-black text-xs py-4 text-blue-900">{lang === 'ar' ? 'اسم المادة' : 'Material'}</TableHead>
+                                  <TableHead className="text-center font-black text-xs py-4 text-blue-900">{lang === 'ar' ? 'الكمية المرجعة' : 'Qty'}</TableHead>
+                                  <TableHead className="text-center font-black text-xs py-4 text-blue-900">{lang === 'ar' ? 'الوحدة' : 'Unit'}</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {viewingVoucher.returnedItems.map((item: any, i: number) => (
+                                  <TableRow key={i} className="border-b border-slate-100 bg-white/40">
+                                    <TableCell className="font-bold text-sm py-4 text-slate-800">{item.nameAr}</TableCell>
+                                    <TableCell className="text-center font-black text-sm text-blue-800 tabular-nums">{(item.qty || 0).toLocaleString('en-US')}</TableCell>
+                                    <TableCell className="text-center text-xs font-bold text-slate-500 uppercase py-4">{item.unit}</TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
                         )}
-                        {viewingVoucher.type === 'wage_payment' && (
-                          <TableRow className="bg-white/40">
-                            <TableCell className="font-bold text-sm py-5 text-slate-800">إجمالي مستحقات الأجور المصروفة</TableCell>
-                            <TableCell className="text-center font-black text-lg tabular-nums py-5 text-emerald-800">{viewingVoucher.totalAmount}</TableCell>
-                            <TableCell className="text-center text-xs font-bold text-slate-500 uppercase py-5">{viewingVoucher.currency}</TableCell>
+                      </>
+                    ) : (
+                      /* OTHER VOUCHERS (MATERIAL ISSUE / WAGE PAYMENT) */
+                      <Table className="text-right border-2 border-emerald-900/10">
+                        <TableHeader className="bg-emerald-800/5">
+                          <TableRow className="hover:bg-transparent border-b-2 border-emerald-900/20">
+                            <TableHead className="text-right font-black text-xs py-4 text-emerald-900 uppercase">
+                              {viewingVoucher.type === 'material_issue' ? (lang === 'ar' ? 'المادة الخام المصروفة' : 'Raw Material') :
+                               (lang === 'ar' ? 'بيان الاستحقاق المالي' : 'Wage Description')}
+                            </TableHead>
+                            <TableHead className="text-center font-black text-xs py-4 text-emerald-900 uppercase">{lang === 'ar' ? 'الكمية/القيمة' : 'Value'}</TableHead>
+                            <TableHead className="text-center font-black text-xs py-4 text-emerald-900 uppercase">{lang === 'ar' ? 'الوحدة/العملة' : 'Unit'}</TableHead>
                           </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
+                        </TableHeader>
+                        <TableBody>
+                          {viewingVoucher.type === 'material_issue' && viewingVoucher.items?.map((item: any, i: number) => (
+                            <TableRow key={i} className="border-b border-slate-100 bg-white/40">
+                              <TableCell className="font-bold text-sm py-4 text-slate-800">{item.nameAr}</TableCell>
+                              <TableCell className="text-center font-black text-sm text-emerald-800 tabular-nums">{item.qty}</TableCell>
+                              <TableCell className="text-center text-xs font-bold text-slate-500 uppercase py-4">{item.unit}</TableCell>
+                            </TableRow>
+                          ))}
+                          {viewingVoucher.type === 'wage_payment' && (
+                            <TableRow className="bg-white/40">
+                              <TableCell className="font-bold text-sm py-5 text-slate-800">إجمالي مستحقات الأجور المصروفة</TableCell>
+                              <TableCell className="text-center font-black text-lg tabular-nums py-5 text-emerald-800">{(viewingVoucher.totalAmount || 0).toLocaleString('en-US')}</TableCell>
+                              <TableCell className="text-center text-xs font-bold text-slate-500 uppercase py-5">{viewingVoucher.currency || 'YER'}</TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    )}
                   </div>
 
                   {/* 5. SIGNATURES SECTION */}
@@ -529,7 +556,7 @@ export default function OrderDetailsDashboard() {
                       <p className="text-[8px] font-bold text-slate-300 uppercase tracking-widest">Signature / التاريخ</p>
                     </div>
                     <div className="space-y-12">
-                      <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">{lang === 'ar' ? 'توقيع المستلم' : 'Recipient'}</p>
+                      <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">{lang === 'ar' ? 'توقيع المستلم/المسلم' : 'Personnel Sign'}</p>
                       <div className="h-px bg-slate-300 w-3/4 mx-auto" />
                       <p className="text-[8px] font-bold text-slate-300 uppercase tracking-widest">Signature / التاريخ</p>
                     </div>
