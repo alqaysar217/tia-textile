@@ -46,7 +46,9 @@ import {
   Check,
   Eye,
   Download,
-  Printer
+  Printer,
+  FileDown,
+  Coins
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from '@/components/LanguageProvider';
@@ -96,6 +98,7 @@ export default function OrderDetailsDashboard() {
   // Stage View Local Filters
   const [stageSearch, setStageSearch] = useState('');
   const [stageTypeFilter, setStageTypeFilter] = useState<'all' | 'material_issue' | 'production_receipt' | 'wage_payment'>('all');
+  const [stageCurrencyFilter, setStageCurrencyFilter] = useState<string>('all');
   const [stageSortOrder, setStageSortOrder] = useState<'asc' | 'desc'>('desc');
 
   // Fetch Data
@@ -188,7 +191,6 @@ export default function OrderDetailsDashboard() {
       if (v.type === 'production_receipt') {
         isInStage = v.currentStageId === activeTab;
       } else {
-        // For issues and payments, check if the worker belongs to this department
         const worker = workers?.find(w => w.id === v.workerId);
         isInStage = worker?.departmentId === activeTab;
       }
@@ -197,6 +199,9 @@ export default function OrderDetailsDashboard() {
 
       // Type Filter
       if (stageTypeFilter !== 'all' && v.type !== stageTypeFilter) return false;
+
+      // Currency Filter
+      if (stageCurrencyFilter !== 'all' && v.currency !== stageCurrencyFilter) return false;
 
       // Search Filter
       if (stageSearch) {
@@ -216,31 +221,42 @@ export default function OrderDetailsDashboard() {
       const timeB = new Date(b.date || 0).getTime();
       return stageSortOrder === 'asc' ? timeA - timeB : timeB - timeA;
     });
-  }, [vouchers, activeTab, workers, stageSearch, stageTypeFilter, stageSortOrder]);
+  }, [vouchers, activeTab, workers, stageSearch, stageTypeFilter, stageCurrencyFilter, stageSortOrder]);
 
-  const stageMetrics = useMemo(() => {
-    const baseList = vouchers?.filter(v => {
-      if (v.status === 'deleted') return false;
-      if (v.type === 'production_receipt') return v.currentStageId === activeTab;
+  const handleExportStageCSV = () => {
+    const headers = [
+      lang === 'ar' ? 'التاريخ' : 'Date',
+      lang === 'ar' ? 'رقم السند' : 'Reference',
+      lang === 'ar' ? 'النوع' : 'Type',
+      lang === 'ar' ? 'الموظف' : 'Personnel',
+      lang === 'ar' ? 'القيمة' : 'Value',
+      lang === 'ar' ? 'العملة' : 'Currency'
+    ];
+
+    const rows = filteredStageVouchers.map(v => {
       const worker = workers?.find(w => w.id === v.workerId);
-      return worker?.departmentId === activeTab;
-    }) || [];
+      const val = v.type === 'production_receipt' ? (v.qtyAccepted || 0) : (v.totalAmount || 0);
+      return [
+        v.date,
+        v.voucherNumber,
+        v.type,
+        worker?.fullName || '---',
+        val,
+        v.currency || (v.type === 'production_receipt' ? 'Pcs' : '---')
+      ];
+    });
 
-    const receipts = baseList.filter(v => v.type === 'production_receipt');
-    const issues = baseList.filter(v => v.type === 'material_issue');
-    const payments = baseList.filter(v => v.type === 'wage_payment');
-    
-    const qtyDone = receipts.reduce((sum, v) => sum + (v.qtyAccepted || 0), 0);
-    const wagesPaid = payments.reduce((sum, v) => sum + (v.totalAmount || 0), 0);
-    const progress = order?.targetQty ? Math.round((qtyDone / order.targetQty) * 100) : 0;
-    
-    return { 
-      issuesCount: issues.length, 
-      receiptsQty: qtyDone, 
-      paymentsTotal: wagesPaid, 
-      progress 
-    };
-  }, [vouchers, activeTab, workers, order]);
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `Stage_${activeTab}_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast({ title: lang === 'ar' ? "تم تصدير سجل المرحلة" : "Stage Ledger Exported" });
+  };
 
   const handleDownloadImage = async () => {
     const element = document.getElementById('printable-voucher');
@@ -333,28 +349,28 @@ export default function OrderDetailsDashboard() {
         </div>
       </div>
 
-      {/* 2. STAGES NAVIGATION */}
+      {/* 2. STAGES NAVIGATION (SCROLLABLE) */}
       <div className="flex-none bg-slate-900 z-20 shadow-lg">
-        <div className="container mx-auto px-4 flex items-center h-12 gap-1 overflow-x-auto no-scrollbar scroll-smooth">
+        <div className="flex items-center h-12 gap-1 overflow-x-auto no-scrollbar scroll-smooth px-4">
           <button
-            onClick={() => { setActiveTab('info'); setStageSearch(''); }}
+            onClick={() => setActiveTab('info')}
             className={cn(
-              "flex items-center gap-2 px-5 h-full transition-all whitespace-nowrap font-black text-[10px] uppercase tracking-wider relative",
+              "flex items-center gap-2 px-5 h-full transition-all whitespace-nowrap font-black text-[10px] uppercase tracking-wider relative shrink-0",
               activeTab === 'info' ? "bg-emerald-600 text-white shadow-[inset_0_-3px_0_white]" : "text-white/40 hover:text-white/70"
             )}
           >
             <Info className="w-3.5 h-3.5" />
-            {lang === 'ar' ? 'بيانات الدفعة' : 'Batch Info'}
+            {lang === 'ar' ? 'معلومات الدفعة' : 'Batch Info'}
           </button>
 
-          <div className="h-4 w-px bg-white/10" />
+          <div className="h-4 w-px bg-white/10 shrink-0" />
 
           {departments?.map((dept, idx) => (
             <button
               key={dept.id}
-              onClick={() => { setActiveTab(dept.id); setStageSearch(''); }}
+              onClick={() => setActiveTab(dept.id)}
               className={cn(
-                "flex items-center gap-2 px-5 h-full transition-all whitespace-nowrap text-[10px] font-black uppercase tracking-wider relative group",
+                "flex items-center gap-2 px-5 h-full transition-all whitespace-nowrap text-[10px] font-black uppercase tracking-wider relative group shrink-0",
                 activeTab === dept.id 
                   ? "bg-emerald-600 text-white shadow-[inset_0_-3px_0_white]" 
                   : order.currentStageId === dept.id 
@@ -369,30 +385,27 @@ export default function OrderDetailsDashboard() {
                 {idx + 1}
               </span>
               <span>{dept.nameAr}</span>
-              {order.currentStageId === dept.id && activeTab !== dept.id && (
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 absolute top-2 right-2 animate-pulse" />
-              )}
             </button>
           ))}
 
-          <div className="h-4 w-px bg-white/10" />
+          <div className="h-4 w-px bg-white/10 shrink-0" />
 
           <button
-            onClick={() => { setActiveTab('summary'); setStageSearch(''); }}
+            onClick={() => setActiveTab('summary')}
             className={cn(
-              "flex items-center gap-2 px-5 h-full transition-all whitespace-nowrap font-black text-[10px] uppercase tracking-wider relative",
+              "flex items-center gap-2 px-5 h-full transition-all whitespace-nowrap font-black text-[10px] uppercase tracking-wider relative shrink-0",
               activeTab === 'summary' ? "bg-blue-600 text-white shadow-[inset_0_-3px_0_white]" : "text-white/40 hover:text-white/70"
             )}
           >
             <BarChart3 className="w-3.5 h-3.5" />
-            {lang === 'ar' ? 'تحليل الأداء' : 'Analytics'}
+            {lang === 'ar' ? 'الملخص الإحصائي' : 'Batch Analytics'}
           </button>
         </div>
       </div>
 
       {/* 3. DYNAMIC DATA LEDGER AREA */}
-      <div className="flex-1 min-h-0 overflow-auto p-4 no-scrollbar">
-        <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden flex flex-col min-h-full">
+      <div className="flex-1 min-h-0 flex flex-col p-4 no-scrollbar">
+        <div className="flex-1 bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden flex flex-col">
           
           {/* VIEW: BATCH DATA */}
           {activeTab === 'info' && (
@@ -403,23 +416,22 @@ export default function OrderDetailsDashboard() {
                      {lang === 'ar' ? 'سجل المواصفات الفنية المعتمد' : 'MASTER BATCH LEDGER'}
                   </h3>
                   <Button onClick={handleOpenEdit} variant="outline" size="sm" className="h-8 text-[10px] font-black border-slate-200 rounded-md gap-2">
-                     <Edit2 className="w-3 h-3" /> {lang === 'ar' ? 'تعديل البيانات' : 'Update Specs'}
+                     <Edit2 className="w-3 h-3" /> {lang === 'ar' ? 'تعديل البيانات' : 'Edit Specs'}
                   </Button>
                </div>
-               <div className="flex-1 overflow-auto p-0">
+               <div className="flex-1 overflow-auto">
                   <table className="w-full text-right border-separate border-spacing-0">
                      <tbody className="divide-y divide-slate-100">
                         <LedgerRow label={lang === 'ar' ? 'رقم السجل الموحد' : 'REFERENCE'} value={order.orderNumber} icon={<Hash className="w-4 h-4" />} />
-                        <LedgerRow label={lang === 'ar' ? 'تاريخ البدء التشغيلي' : 'LAUNCH DATE'} value={order.startDate} icon={<Calendar className="w-4 h-4" />} />
                         <LedgerRow label={lang === 'ar' ? 'عنوان الدفعة' : 'BATCH TITLE'} value={order.title} icon={<Type className="w-4 h-4" />} />
                         <LedgerRow label={lang === 'ar' ? 'المنتج المستهدف' : 'PRODUCT'} value={product?.nameAr} icon={<ShoppingBag className="w-4 h-4" />} />
-                        <LedgerRow label={lang === 'ar' ? 'القسم المسؤول حالياً' : 'WORK CENTER'} value={departments?.find(d => d.id === order.currentStageId)?.nameAr} icon={<Workflow className="w-4 h-4" />} />
-                        <LedgerRow label={lang === 'ar' ? 'الكمية المستهدفة' : 'TARGET QTY'} value={`${order.targetQty} قطعة`} icon={<Target className="w-4 h-4" />} color="text-slate-900" />
-                        <LedgerRow label={lang === 'ar' ? 'الجاهز النهائي الموثق' : 'FINISHED QTY'} value={`${finalCompletedQty} قطعة`} icon={<CheckCircle2 className="w-4 h-4" />} color="text-emerald-700" />
-                        <LedgerRow label={lang === 'ar' ? 'قيد العمل الإجمالي' : 'WIP QTY'} value={`${order.targetQty - finalCompletedQty} قطعة`} icon={<Package className="w-4 h-4" />} color="text-blue-600" />
-                        <LedgerRow label={lang === 'ar' ? 'نسبة الإنجاز الكلية' : 'PROGRESS %'} value={`${totalProgress}%`} icon={<Activity className="w-4 h-4" />} color="text-emerald-600" />
+                        <LedgerRow label={lang === 'ar' ? 'الكمية المستهدفة' : 'TARGET QTY'} value={`${order.targetQty} قطعة`} icon={<Target className="w-4 h-4" />} />
+                        <LedgerRow label={lang === 'ar' ? 'تاريخ البدء التشغيلي' : 'LAUNCH DATE'} value={order.startDate} icon={<Calendar className="w-4 h-4" />} />
+                        <LedgerRow label={lang === 'ar' ? 'الكمية المستلمة (نهائي)' : 'RECEIVED'} value={`${finalCompletedQty} قطعة`} icon={<CheckCircle2 className="w-4 h-4" />} color="text-emerald-700" />
+                        <LedgerRow label={lang === 'ar' ? 'قيد العمل (WIP)' : 'WIP'} value={`${order.targetQty - finalCompletedQty} قطعة`} icon={<Package className="w-4 h-4" />} color="text-blue-600" />
+                        <LedgerRow label={lang === 'ar' ? 'مستوى التقدم' : 'PROGRESS'} value={`${totalProgress}%`} icon={<Activity className="w-4 h-4" />} />
                         <LedgerRow label={lang === 'ar' ? 'الأولوية التنظيمية' : 'PRIORITY'} value={order.priority} icon={<ShieldCheck className="w-4 h-4" />} />
-                        <LedgerRow label={lang === 'ar' ? 'الحالة الحالية' : 'STATUS'} value={order.status} icon={<Tag className="w-4 h-4" />} />
+                        <LedgerRow label={lang === 'ar' ? 'الحالة' : 'STATUS'} value={order.status} icon={<Tag className="w-4 h-4" />} />
                         {order.notes && (
                            <tr className="bg-slate-50/50">
                               <td className="px-6 py-5 w-72 font-black text-[10px] text-slate-400 uppercase border-l border-slate-100">{lang === 'ar' ? 'تعليمات وملاحظات' : 'INSTRUCTIONS'}</td>
@@ -432,28 +444,11 @@ export default function OrderDetailsDashboard() {
             </div>
           )}
 
-          {/* VIEW: STAGE LEDGER */}
+          {/* VIEW: STAGE LEDGER (ACTION BAR + TABLE) */}
           {activeTab !== 'info' && activeTab !== 'summary' && (
             <div className="flex-1 flex flex-col animate-in fade-in duration-300 overflow-hidden">
-               <div className="p-3 bg-emerald-900 text-white flex items-center justify-between gap-4 shadow-inner">
-                  <div className="flex flex-1 items-center justify-around gap-2">
-                    <MetricItem label={lang === 'ar' ? 'سند صرف المواد' : 'MATERIAL ISSUE'} value={stageMetrics.issuesCount} />
-                    <div className="w-px h-6 bg-white/10" />
-                    <MetricItem label={lang === 'ar' ? 'استلام انتاج ومواد مرتجعة' : 'RECEIPT & RETURN'} value={stageMetrics.receiptsQty} unit="Pcs" />
-                    <div className="w-px h-6 bg-white/10" />
-                    <MetricItem label={lang === 'ar' ? 'سند صرف أجور' : 'WAGE PAYMENT'} value={stageMetrics.paymentsTotal.toLocaleString('en-US')} unit="YER" />
-                  </div>
-                  <div className="w-px h-8 bg-white/20" />
-                  <div className="flex items-center gap-4 px-4">
-                     <div className="text-right">
-                        <p className="text-[8px] font-black text-emerald-300 uppercase tracking-widest">{lang === 'ar' ? 'إنجاز المرحلة' : 'STAGE PROGRESS'}</p>
-                        <p className="text-lg font-black tabular-nums leading-none mt-1">{stageMetrics.progress}%</p>
-                     </div>
-                     <Progress value={stageMetrics.progress} className="w-24 h-1.5 bg-emerald-800" />
-                  </div>
-               </div>
-
-               <div className="p-2 bg-slate-50 border-b border-slate-200 flex items-center gap-2">
+               {/* ENHANCED ERP ACTION BAR */}
+               <div className="p-2 bg-slate-50 border-b border-slate-200 flex items-center gap-2 shadow-sm">
                   <div className="relative flex-1">
                     <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400`} />
                     <Input 
@@ -464,43 +459,70 @@ export default function OrderDetailsDashboard() {
                     />
                   </div>
                   
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 px-1.5 border-x border-slate-200">
+                    <Button 
+                      onClick={handleExportStageCSV}
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-9 px-3 text-[10px] font-black gap-2 text-slate-600 hover:bg-white border border-transparent hover:border-slate-200"
+                    >
+                      <FileDown className="w-3.5 h-3.5 text-emerald-600" />
+                      {lang === 'ar' ? 'تصدير CSV' : 'Export CSV'}
+                    </Button>
+
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm" className="h-9 px-3 text-[10px] font-black gap-2 border-slate-200 bg-white">
+                        <Button variant="ghost" size="sm" className="h-9 px-3 text-[10px] font-black gap-2 text-slate-600 hover:bg-white border border-transparent hover:border-slate-200">
                           <Filter className="w-3.5 h-3.5" />
-                          {lang === 'ar' ? 'تصفية العمليات' : 'Filter Types'}
+                          {lang === 'ar' ? 'تصفية' : 'Filter'}
+                          {(stageTypeFilter !== 'all' || stageCurrencyFilter !== 'all') && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                          )}
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="w-56 rounded-xl shadow-xl">
+                        <DropdownMenuLabel className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{lang === 'ar' ? 'نوع السند' : 'VOUCHER TYPE'}</DropdownMenuLabel>
                         <DropdownMenuItem onClick={() => setStageTypeFilter('all')} className="text-xs font-bold flex justify-between cursor-pointer">
-                          {lang === 'ar' ? 'الكل' : 'All Activities'}
-                          {stageTypeFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                          {lang === 'ar' ? 'الكل' : 'All Types'}
+                          {stageTypeFilter === 'all' && <Check className="w-3 h-3 text-emerald-600" />}
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setStageTypeFilter('material_issue')} className="text-xs font-bold flex justify-between cursor-pointer">
                           {lang === 'ar' ? 'صرف مواد' : 'Material Issue'}
-                          {stageTypeFilter === 'material_issue' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                          {stageTypeFilter === 'material_issue' && <Check className="w-3 h-3 text-emerald-600" />}
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setStageTypeFilter('production_receipt')} className="text-xs font-bold flex justify-between cursor-pointer">
                           {lang === 'ar' ? 'استلام انتاج' : 'Production Receipt'}
-                          {stageTypeFilter === 'production_receipt' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                          {stageTypeFilter === 'production_receipt' && <Check className="w-3 h-3 text-emerald-600" />}
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setStageTypeFilter('wage_payment')} className="text-xs font-bold flex justify-between cursor-pointer">
                           {lang === 'ar' ? 'صرف أجور' : 'Wage Payment'}
-                          {stageTypeFilter === 'wage_payment' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                          {stageTypeFilter === 'wage_payment' && <Check className="w-3 h-3 text-emerald-600" />}
                         </DropdownMenuItem>
+                        
+                        <DropdownMenuSeparator />
+                        <DropdownMenuLabel className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{lang === 'ar' ? 'حسب العملة' : 'CURRENCY'}</DropdownMenuLabel>
+                        <DropdownMenuItem onClick={() => setStageCurrencyFilter('all')} className="text-xs font-bold flex justify-between cursor-pointer">
+                          {lang === 'ar' ? 'جميع العملات' : 'All Currencies'}
+                          {stageCurrencyFilter === 'all' && <Check className="w-3 h-3 text-emerald-600" />}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setStageCurrencyFilter('YER')} className="text-xs font-bold flex justify-between cursor-pointer">YER {stageCurrencyFilter === 'YER' && <Check className="w-3 h-3 text-emerald-600" />}</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setStageCurrencyFilter('SAR')} className="text-xs font-bold flex justify-between cursor-pointer">SAR {stageCurrencyFilter === 'SAR' && <Check className="w-3 h-3 text-emerald-600" />}</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
 
                     <Button 
-                      variant="outline" 
+                      variant="ghost" 
                       size="sm" 
                       onClick={() => setStageSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
-                      className="h-9 px-3 text-[10px] font-black gap-2 border-slate-200 bg-white"
+                      className="h-9 px-3 text-[10px] font-black gap-2 text-slate-600 hover:bg-white border border-transparent hover:border-slate-200"
                     >
                       {stageSortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5" /> : <SortDesc className="w-3.5 h-3.5" />}
                       {lang === 'ar' ? 'ترتيب' : 'Sort'}
                     </Button>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest tabular-nums">
+                     {lang === 'ar' ? 'النتائج:' : 'COUNT:'} <span className="text-emerald-600">{filteredStageVouchers.length}</span>
                   </div>
                </div>
 
@@ -525,21 +547,6 @@ export default function OrderDetailsDashboard() {
                       ))}
                     </TableBody>
                   </Table>
-               </div>
-               
-               <div className="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
-                  {(() => {
-                    const supervisor = workers?.find(w => w.departmentId === activeTab && w.isSupervisor && w.active);
-                    return (
-                      <div className="flex items-center gap-3">
-                         <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                           {lang === 'ar' ? 'المشرف المسؤول:' : 'STAGE LEAD:'} 
-                           <span className="text-slate-900 ms-2">{supervisor?.fullName || (lang === 'ar' ? 'غير محدد' : 'No lead')}</span>
-                         </span>
-                      </div>
-                    );
-                  })()}
                </div>
             </div>
           )}
@@ -853,7 +860,7 @@ function LedgerTransactionRow({ voucher, worker, lang, onView }: { voucher: any,
               {voucher.type === 'production_receipt' ? (voucher.qtyAccepted || 0).toLocaleString('en-US') : (voucher.totalAmount || 0).toLocaleString('en-US')}
            </span>
            <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest">
-              {voucher.type === 'production_receipt' ? (lang === 'ar' ? 'قطعة' : 'Pcs') : voucher.currency}
+              {voucher.type === 'production_receipt' ? (lang === 'ar' ? 'قطعة' : 'Pcs') : (voucher.currency || 'YER')}
            </span>
         </div>
       </TableCell>
@@ -863,14 +870,5 @@ function LedgerTransactionRow({ voucher, worker, lang, onView }: { voucher: any,
          </Button>
       </TableCell>
     </TableRow>
-  );
-}
-
-function MetricItem({ label, value, unit }: { label: string, value: any, unit?: string }) {
-  return (
-    <div className="flex items-center gap-3">
-       <span className="text-[8px] font-black text-emerald-300 uppercase tracking-widest">{label}</span>
-       <span className="text-xs font-black tabular-nums">{value} {unit && <span className="text-[8px] opacity-40 uppercase ms-1">{unit}</span>}</span>
-    </div>
   );
 }
