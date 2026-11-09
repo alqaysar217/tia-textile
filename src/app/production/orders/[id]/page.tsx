@@ -516,7 +516,7 @@ export default function OrderDetailsDashboard() {
                         )}
                       </>
                     ) : viewingVoucher.type === 'wage_payment' ? (
-                      /* WAGE PAYMENT - DETAILED TABLE (FIXED AS REQUESTED) */
+                      /* WAGE PAYMENT - DETAILED TABLE */
                       <Table className="text-right border-2 border-emerald-900/10">
                         <TableHeader className="bg-emerald-900/5">
                           <TableRow className="hover:bg-transparent border-b-2 border-emerald-900/20">

@@ -129,6 +129,7 @@ export default function ProductionReceiptPage() {
   const workersQuery = useMemo(() => !db ? null : collection(db, 'workers'), [db]);
   const materialsQuery = useMemo(() => !db ? null : collection(db, 'materials'), [db]);
   const productsQuery = useMemo(() => !db ? null : collection(db, 'products'), [db]);
+  const deptsQuery = useMemo(() => !db ? null : collection(db, 'departments'), [db]);
   const mivQuery = useMemo(() => !db ? null : query(collection(db, 'vouchers'), where('type', '==', 'material_issue')), [db]);
   const vouchersQuery = useMemo(() => !db ? null : query(collection(db, 'vouchers'), where('type', '==', 'production_receipt')), [db]);
 
@@ -136,6 +137,7 @@ export default function ProductionReceiptPage() {
   const { data: allWorkers } = useCollection<any>(workersQuery);
   const { data: allMaterials } = useCollection<any>(materialsQuery);
   const { data: allProducts } = useCollection<any>(productsQuery);
+  const { data: allDepartments } = useCollection<any>(deptsQuery);
   const { data: allMIVs } = useCollection<any>(mivQuery);
   const { data: vouchers, loading: vouchersLoading } = useCollection<any>(vouchersQuery);
 
@@ -261,7 +263,7 @@ export default function ProductionReceiptPage() {
         backgroundColor: '#ffffff', 
         pixelRatio: 2,
         cacheBust: true,
-        fontEmbedCSS: '', // Fixes font trim error
+        fontEmbedCSS: '', 
       });
       const link = document.createElement('a');
       link.download = `Settlement-${printingVoucher.voucherNumber}.png`;
@@ -335,13 +337,11 @@ export default function ProductionReceiptPage() {
     setIsSubmitting(true);
     const batch = writeBatch(db);
     const wageAmount = Number(formData.qtyAccepted) * Number(formData.wageRate);
-    
-    // CRITICAL: Capture the current stage of the order to lock this receipt to a stage ledger
     const currentStageId = selectedOrder?.currentStageId || '';
 
     const voucherData = {
       ...formData,
-      currentStageId, // Saving stage context
+      currentStageId,
       qtyAccepted: Number(formData.qtyAccepted),
       wageAmount,
       totalQty: Number(formData.qtyAccepted),
@@ -954,4 +954,3 @@ export default function ProductionReceiptPage() {
     </div>
   );
 }
-

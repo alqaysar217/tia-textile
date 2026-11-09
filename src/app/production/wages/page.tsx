@@ -352,7 +352,7 @@ export default function PayrollManagementPage() {
         backgroundColor: '#ffffff', 
         pixelRatio: 2, 
         cacheBust: true,
-        fontEmbedCSS: '', // Fixes font trim error
+        fontEmbedCSS: '', 
       });
       const link = document.createElement('a');
       link.download = `Payment-${printingVoucher.voucherNumber}.png`;
@@ -508,10 +508,10 @@ export default function PayrollManagementPage() {
                       <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
                          <TableRow>
                            <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-right">
-                              <button onClick={() => toggleSort('voucherNumber')} className="flex items-center gap-2 hover:text-emerald-700 transition-colors uppercase">REF #{sortBy === 'voucherNumber' ? (sortOrder === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-30" />}</button>
+                              <button onClick={() => toggleSort('voucherNumber')} className="flex items-center gap-2 hover:text-emerald-700 transition-colors uppercase">REF #{sortBy === 'voucherNumber' ? (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5" /> : <SortDesc className="w-3.5 h-3.5" />) : <ArrowUpDown className="w-3 h-3 opacity-30" />}</button>
                            </TableHead>
                            <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-right">
-                              <button onClick={() => toggleSort('date')} className="flex items-center gap-2 hover:text-emerald-700 transition-colors uppercase">DATE {sortBy === 'date' ? (sortOrder === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-30" />}</button>
+                              <button onClick={() => toggleSort('date')} className="flex items-center gap-2 hover:text-emerald-700 transition-colors uppercase">DATE {sortBy === 'date' ? (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5" /> : <SortDesc className="w-3.5 h-3.5" />) : <ArrowUpDown className="w-3 h-3 opacity-30" />}</button>
                            </TableHead>
                            <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-right">WORKER</TableHead>
                            <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center">PAID AMOUNT</TableHead>
@@ -686,7 +686,7 @@ export default function PayrollManagementPage() {
 
                     <div className="grid grid-cols-3 gap-8 pt-10 border-t-2 border-slate-100 text-center relative z-10 mt-auto">
                       <div className="space-y-12">
-                        <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">{lang === 'ar' ? 'المحاسب' : 'Cashier'}</p>
+                        <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">{lang === 'ar' ? 'المحاسبة' : 'Cashier'}</p>
                         <div className="h-px bg-slate-300 w-3/4 mx-auto" />
                         <p className="text-[8px] font-bold text-slate-300 uppercase tracking-widest">Signature / التاريخ</p>
                       </div>
@@ -739,4 +739,3 @@ export default function PayrollManagementPage() {
     </div>
   );
 }
-
