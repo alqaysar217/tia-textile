@@ -180,7 +180,6 @@ export default function OrderDetailsDashboard() {
     
     let list = vouchers.filter(v => {
       if (v.status === 'deleted') return false;
-      // Filter by stage ID or if the worker belongs to this department
       const isInStage = v.currentStageId === activeTab || (workers?.find(w => w.id === v.workerId)?.departmentId === activeTab);
       if (!isInStage) return false;
       if (stageTypeFilter !== 'all' && v.type !== stageTypeFilter) return false;
@@ -235,6 +234,8 @@ export default function OrderDetailsDashboard() {
     );
   }
 
+  if (!order) return null;
+
   return (
     <div className="flex flex-col h-full bg-[#f1f5f9] overflow-hidden" dir={dir}>
       
@@ -283,11 +284,11 @@ export default function OrderDetailsDashboard() {
         <div className="flex-1 bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden flex flex-col">
           
           {activeTab === 'info' && (
-            <div className="flex-1 flex flex-col animate-in fade-in duration-300">
+            <ScrollArea className="flex-1 animate-in fade-in duration-300">
                <div className="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
                   <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest flex items-center gap-2"><ClipboardList className="w-4 h-4 text-emerald-600" />{lang === 'ar' ? 'سجل المواصفات الفنية المعتمد' : 'MASTER LEDGER'}</h3>
                </div>
-               <div className="flex-1 overflow-auto">
+               <div className="overflow-hidden">
                   <table className="w-full text-right border-separate border-spacing-0">
                      <tbody className="divide-y divide-slate-100">
                         <LedgerRow label={lang === 'ar' ? 'رقم السجل الموحد' : 'REFERENCE'} value={order.orderNumber} icon={<Hash className="w-4 h-4" />} />
@@ -296,7 +297,7 @@ export default function OrderDetailsDashboard() {
                         <LedgerRow label={lang === 'ar' ? 'المنتج المستهدف' : 'TARGET PRODUCT'} value={product?.nameAr} icon={<ShoppingBag className="w-4 h-4" />} />
                         <LedgerRow label={lang === 'ar' ? 'الكمية المستهدفة' : 'TARGET QTY'} value={`${order.targetQty} قطعة`} icon={<Target className="w-4 h-4" />} />
                         <LedgerRow label={lang === 'ar' ? 'الكمية المنجزة (النهائية)' : 'COMPLETED'} value={`${finalCompletedQty} قطعة`} icon={<CheckCircle2 className="w-4 h-4" />} color="text-emerald-700" />
-                        <LedgerRow label={lang === 'ar' ? 'قيد العمل (WIP)' : 'WIP'} value={`${order.targetQty - finalCompletedQty} قطعة`} icon={<Package className="w-4 h-4" />} color="text-blue-600" />
+                        <LedgerRow label={lang === 'ar' ? 'قيد العمل (WIP)' : 'WIP'} value={`${Math.max(0, order.targetQty - finalCompletedQty)} قطعة`} icon={<Package className="w-4 h-4" />} color="text-blue-600" />
                         <LedgerRow label={lang === 'ar' ? 'الأولوية' : 'PRIORITY'} value={order.priority} icon={<ShieldCheck className="w-4 h-4" />} />
                         <LedgerRow label={lang === 'ar' ? 'الحالة' : 'STATUS'} value={order.status} icon={<Tag className="w-4 h-4" />} />
                         <tr className="hover:bg-slate-50/50 transition-colors group">
@@ -314,13 +315,13 @@ export default function OrderDetailsDashboard() {
                                <div className="p-1.5 bg-slate-100 rounded text-emerald-600"><Info className="w-4 h-4" /></div>
                                NOTES
                              </td>
-                             <td className="px-6 py-5 text-xs font-bold text-slate-600 italic">{order.notes}</td>
+                             <td className="px-6 py-5 text-xs font-bold text-slate-600 italic leading-relaxed">{order.notes}</td>
                            </tr>
                         )}
                      </tbody>
                   </table>
                </div>
-            </div>
+            </ScrollArea>
           )}
 
           {activeTab !== 'info' && activeTab !== 'summary' && (
@@ -390,7 +391,7 @@ export default function OrderDetailsDashboard() {
         </div>
       </div>
 
-      {/* ENHANCED VOUCHER PREVIEW - SYNCED WITH RECEIPT PAGE DESIGN */}
+      {/* ENHANCED VOUCHER PREVIEW */}
       <Dialog open={!!viewingVoucher} onOpenChange={(open) => !open && setViewingVoucher(null)}>
         <DialogContent className="sm:max-w-[850px] p-0 overflow-hidden border-none bg-white shadow-2xl">
           <DialogHeader className="sr-only"><DialogTitle>معاينة السند الرسمي</DialogTitle></DialogHeader>
@@ -398,26 +399,21 @@ export default function OrderDetailsDashboard() {
             <div className="p-12 bg-white relative z-0" id="printable-voucher">
               {viewingVoucher && (
                 <div className="flex flex-col h-full text-slate-900 font-sans relative overflow-hidden" dir="rtl">
-                  
-                  {/* BACKGROUND LOGO WATERMARK */}
                   <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] opacity-[0.035] pointer-events-none -z-10 select-none">
                     <img src="/images/logo.png" alt="watermark" className="w-full h-full object-contain grayscale" />
                   </div>
 
-                  {/* 1. PROFESSIONAL BILINGUAL HEADER */}
                   <div className="grid grid-cols-3 items-center border-b-[6px] border-emerald-800 pb-8 mb-8 relative z-10">
                     <div className="text-right space-y-1">
                       <h2 className="text-xl font-black text-emerald-900 leading-tight">جمعية الصناعات النسيجية</h2>
                       <p className="text-xs font-bold text-slate-500">الروضة - محافظة شبوة - اليمن</p>
                       <p className="text-[11px] font-bold text-slate-400 tabular-nums" dir="ltr">0777 263 091 | nseeg202020@gmail.com</p>
                     </div>
-                    
                     <div className="flex justify-center">
                       <div className="w-24 h-24 bg-white border-2 border-emerald-800/10 rounded-full flex items-center justify-center p-2 shadow-sm relative overflow-hidden">
                         <img src="/images/logo.png" alt="Logo" className="w-full h-full object-contain" />
                       </div>
                     </div>
-
                     <div className="text-left space-y-1" dir="ltr">
                       <h2 className="text-[14px] font-black text-emerald-900 uppercase leading-tight tracking-tight">Textile Industries Association</h2>
                       <p className="text-[11px] font-bold text-slate-500">Al-Rawdah - Shabwa - Yemen</p>
@@ -425,7 +421,6 @@ export default function OrderDetailsDashboard() {
                     </div>
                   </div>
 
-                  {/* 2. VOUCHER TYPE BADGE */}
                   <div className="text-center mb-10 relative z-10">
                     <div className="inline-block border-[2.5px] border-emerald-800 px-12 py-2 rounded-full bg-white shadow-sm ring-4 ring-emerald-50">
                       <h3 className="text-xl font-black text-emerald-900 uppercase tracking-widest">
@@ -436,7 +431,6 @@ export default function OrderDetailsDashboard() {
                     </div>
                   </div>
 
-                  {/* 3. STRUCTURED DATA GRID */}
                   <div className="grid grid-cols-3 gap-y-6 gap-x-8 mb-10 bg-slate-50/50 p-8 rounded-[1.5rem] border border-slate-100 relative z-10">
                     <div className="space-y-4">
                       <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
@@ -450,7 +444,6 @@ export default function OrderDetailsDashboard() {
                         </span>
                       </div>
                     </div>
-
                     <div className="space-y-4">
                       <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'رقم السند' : 'Ref No.'}</span>
@@ -461,7 +454,6 @@ export default function OrderDetailsDashboard() {
                         <span className="text-sm font-black text-slate-700 truncate max-w-[150px]">{order?.title || '---'}</span>
                       </div>
                     </div>
-
                     <div className="space-y-4">
                       <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'تاريخ السند' : 'Date'}</span>
@@ -476,17 +468,11 @@ export default function OrderDetailsDashboard() {
                     </div>
                   </div>
 
-                  {/* 4. ITEMS / TRANSACTION TABLES */}
                   <div className="space-y-8 relative z-10 mb-12">
-                    
-                    {/* PRODUCTION RECEIPT - DUAL TABLES SYNC */}
                     {viewingVoucher.type === 'production_receipt' ? (
                       <>
-                        {/* Section I: Finished Goods */}
                         <div className="space-y-3">
-                          <h4 className="text-[10px] font-black text-emerald-900 border-r-4 border-emerald-600 pr-3 mb-2 uppercase">
-                            {lang === 'ar' ? 'أولاً: مخرجات الإنتاج المنجزة' : 'I. FINISHED PRODUCTION OUTPUTS'}
-                          </h4>
+                          <h4 className="text-[10px] font-black text-emerald-900 border-r-4 border-emerald-600 pr-3 mb-2 uppercase">{lang === 'ar' ? 'أولاً: مخرجات الإنتاج المنجزة' : 'I. FINISHED PRODUCTION OUTPUTS'}</h4>
                           <Table className="text-right border-2 border-emerald-900/10">
                             <TableHeader className="bg-emerald-900/5">
                               <TableRow className="hover:bg-transparent border-b-2 border-emerald-900/20">
@@ -499,24 +485,16 @@ export default function OrderDetailsDashboard() {
                             <TableBody>
                               <TableRow className="bg-white/40">
                                 <TableCell className="font-bold text-sm py-5 text-slate-800">{product?.nameAr || '---'}</TableCell>
-                                <TableCell className="text-center font-black text-sm text-emerald-800 tabular-nums">
-                                  {(viewingVoucher.qtyAccepted || 0).toLocaleString('en-US')} {lang === 'ar' ? 'قطعة' : 'Pcs'}
-                                </TableCell>
+                                <TableCell className="text-center font-black text-sm text-emerald-800 tabular-nums">{(viewingVoucher.qtyAccepted || 0).toLocaleString('en-US')} {lang === 'ar' ? 'قطعة' : 'Pcs'}</TableCell>
                                 <TableCell className="text-center font-bold text-sm tabular-nums">{(viewingVoucher.wageRate || 0).toLocaleString('en-US')}</TableCell>
-                                <TableCell className="text-center font-black text-sm text-emerald-900 tabular-nums">
-                                  {(viewingVoucher.wageAmount || 0).toLocaleString('en-US')} <span className="text-[10px] opacity-60">{viewingVoucher.currency || 'YER'}</span>
-                                </TableCell>
+                                <TableCell className="text-center font-black text-sm text-emerald-900 tabular-nums">{(viewingVoucher.wageAmount || 0).toLocaleString('en-US')} <span className="text-[10px] opacity-60">{viewingVoucher.currency || 'YER'}</span></TableCell>
                               </TableRow>
                             </TableBody>
                           </Table>
                         </div>
-
-                        {/* Section II: Returned Materials */}
                         {viewingVoucher.returnedItems?.length > 0 && (
                           <div className="space-y-3">
-                            <h4 className="text-[10px] font-black text-blue-900 border-r-4 border-blue-600 pr-3 mb-2 uppercase">
-                              {lang === 'ar' ? 'ثانياً: المواد الخام المرتجعة للمخزن' : 'II. RETURNED RAW MATERIALS'}
-                            </h4>
+                            <h4 className="text-[10px] font-black text-blue-900 border-r-4 border-blue-600 pr-3 mb-2 uppercase">{lang === 'ar' ? 'ثانياً: المواد الخام المرتجعة للمخزن' : 'II. RETURNED RAW MATERIALS'}</h4>
                             <Table className="text-right border-2 border-blue-900/10">
                               <TableHeader className="bg-blue-900/5">
                                 <TableRow className="hover:bg-transparent border-b-2 border-blue-900/20">
@@ -539,7 +517,6 @@ export default function OrderDetailsDashboard() {
                         )}
                       </>
                     ) : viewingVoucher.type === 'wage_payment' ? (
-                      /* WAGE PAYMENT - DETAILED TABLE */
                       <Table className="text-right border-2 border-emerald-900/10">
                         <TableHeader className="bg-emerald-900/5">
                           <TableRow className="hover:bg-transparent border-b-2 border-emerald-900/20">
@@ -572,13 +549,10 @@ export default function OrderDetailsDashboard() {
                         </TableBody>
                       </Table>
                     ) : (
-                      /* OTHER VOUCHERS (MATERIAL ISSUE) */
                       <Table className="text-right border-2 border-emerald-900/10">
                         <TableHeader className="bg-emerald-800/5">
                           <TableRow className="hover:bg-transparent border-b-2 border-emerald-900/20">
-                            <TableHead className="text-right font-black text-xs py-4 text-emerald-900 uppercase">
-                              {lang === 'ar' ? 'المادة الخام المصروفة' : 'Raw Material'}
-                            </TableHead>
+                            <TableHead className="text-right font-black text-xs py-4 text-emerald-900 uppercase">{lang === 'ar' ? 'المادة الخام المصروفة' : 'Raw Material'}</TableHead>
                             <TableHead className="text-center font-black text-xs py-4 text-emerald-900 uppercase">{lang === 'ar' ? 'الكمية' : 'Quantity'}</TableHead>
                             <TableHead className="text-center font-black text-xs py-4 text-emerald-900 uppercase">{lang === 'ar' ? 'الوحدة' : 'Unit'}</TableHead>
                           </TableRow>
@@ -596,7 +570,6 @@ export default function OrderDetailsDashboard() {
                     )}
                   </div>
 
-                  {/* 5. SIGNATURES SECTION */}
                   <div className="grid grid-cols-3 gap-8 pt-10 border-t-2 border-slate-100 text-center relative z-10 mt-auto">
                     <div className="space-y-12">
                       <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">{lang === 'ar' ? 'أمين المستودع' : 'Store Keeper'}</p>
@@ -615,7 +588,6 @@ export default function OrderDetailsDashboard() {
                     </div>
                   </div>
 
-                  {/* 6. PRINT FOOTER */}
                   <div className="mt-14 pt-4 text-center border-t border-slate-50 relative z-10 flex items-center justify-center gap-4">
                     <span className="text-[8px] font-black text-slate-200 uppercase tracking-[0.4em]">Generated by TIA Production System</span>
                     <span className="w-1.5 h-1.5 rounded-full bg-slate-100" />

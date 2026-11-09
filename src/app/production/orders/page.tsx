@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useCallback } from 'react';
@@ -29,7 +30,8 @@ import {
   FileText,
   Eye,
   Settings2,
-  ExternalLink
+  ExternalLink,
+  ChevronDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -68,7 +70,7 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 
 export default function ProductionOrdersPage() {
   const { lang, dir } = useTranslation();
@@ -284,7 +286,7 @@ export default function ProductionOrdersPage() {
         </div>
       </div>
 
-      {/* MAIN ORDERS LIST - COMPACT VERSION */}
+      {/* MAIN ORDERS LIST */}
       <div className="flex-1 min-h-0 overflow-auto p-4 md:p-6 space-y-2 no-scrollbar">
         {ordersLoading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-4">
@@ -299,7 +301,6 @@ export default function ProductionOrdersPage() {
         ) : filteredOrders.map((order) => {
           const product = products?.find(p => p.id === order.productId);
           
-          // Calculate stats
           const finalStage = departments?.[departments.length - 1];
           const finalStageReceipts = allReceipts?.filter(r => r.orderId === order.id && r.type === 'production_receipt' && r.currentStageId === finalStage?.id) || [];
           const finalCompletedQty = finalStageReceipts.reduce((acc, curr) => acc + (curr.qtyAccepted || 0), 0);
@@ -314,25 +315,19 @@ export default function ProductionOrdersPage() {
               className="bg-white rounded-xl border border-slate-200 shadow-sm hover:border-emerald-500/30 hover:shadow-md transition-all duration-300 overflow-hidden group cursor-pointer"
             >
               <div className="flex flex-row items-center h-16 px-4 gap-4">
-                
-                {/* ID & DATE BLOCK */}
                 <div className="w-32 flex flex-col justify-center border-l border-slate-100 h-full">
                   <span className="text-[10px] font-black text-emerald-700 tabular-nums uppercase leading-none">{order.orderNumber}</span>
                   <span className="text-[9px] font-bold text-slate-400 tabular-nums mt-1">{order.startDate}</span>
                 </div>
 
-                {/* TITLE & PRODUCT BLOCK */}
                 <div className="flex-1 flex flex-col justify-center min-w-0">
-                  <h3 className="text-xs font-black text-slate-900 group-hover:text-emerald-700 transition-colors truncate">
-                    {order.title}
-                  </h3>
+                  <h3 className="text-xs font-black text-slate-900 group-hover:text-emerald-700 transition-colors truncate">{order.title}</h3>
                   <div className="flex items-center gap-2 mt-0.5">
                     <Tag className="w-2.5 h-2.5 text-slate-400" />
                     <span className="text-[10px] font-bold text-slate-500 truncate">{product?.nameAr || '---'}</span>
                   </div>
                 </div>
 
-                {/* PROGRESS BLOCK */}
                 <div className="w-48 flex flex-col justify-center gap-1.5 px-4 border-x border-slate-100 h-full">
                   <div className="flex justify-between items-center text-[10px] font-black">
                     <span className="text-slate-400 uppercase tracking-tighter">{lang === 'ar' ? 'الإنجاز' : 'PROGRESS'}</span>
@@ -341,7 +336,6 @@ export default function ProductionOrdersPage() {
                   <Progress value={progress} className="h-1.5 bg-slate-100" />
                 </div>
 
-                {/* STATS BLOCK */}
                 <div className="flex items-center gap-6 px-4">
                   <div className="text-center">
                     <p className="text-[8px] font-black text-slate-400 uppercase leading-none">{lang === 'ar' ? 'هدف' : 'TARGET'}</p>
@@ -357,56 +351,32 @@ export default function ProductionOrdersPage() {
                   </div>
                 </div>
 
-                {/* ACTIONS BLOCK */}
                 <div className="flex items-center gap-2 border-r border-slate-100 h-full px-2">
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all"
-                          onClick={(e) => { e.stopPropagation(); router.push(`/production/orders/${order.id}`); }}
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all" onClick={(e) => { e.stopPropagation(); router.push(`/production/orders/${order.id}`); }}><Eye className="w-4 h-4" /></Button>
                       </TooltipTrigger>
                       <TooltipContent><p className="text-[10px] font-bold">{lang === 'ar' ? 'عرض السجل الفني' : 'View Ledger'}</p></TooltipContent>
                     </Tooltip>
-
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all"
-                          onClick={(e) => handleManageTeams(order, e)}
-                        >
-                          <Users2 className="w-4 h-4" />
-                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all" onClick={(e) => handleManageTeams(order, e)}><Users2 className="w-4 h-4" /></Button>
                       </TooltipTrigger>
-                      <TooltipContent><p className="text-[10px] font-bold">{lang === 'ar' ? 'تغيير المرحلة' : 'Move Stage'}</p></TooltipContent>
+                      <TooltipContent><p className="text-[10px] font-bold">{lang === 'ar' ? 'تحريك المرحلة' : 'Move Stage'}</p></TooltipContent>
                     </Tooltip>
-
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-slate-100" onClick={(e) => e.stopPropagation()}>
-                          <MoreVertical className="w-4 h-4 text-slate-400" />
-                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-slate-100" onClick={(e) => e.stopPropagation()}><MoreVertical className="w-4 h-4 text-slate-400" /></Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-40 rounded-xl shadow-xl">
-                        <DropdownMenuItem onClick={(e) => handleEditClick(order, e)} className="gap-2 font-bold text-xs">
-                          <Edit2 className="w-3.5 h-3.5 text-emerald-600" /> {lang === 'ar' ? 'تعديل البيانات' : 'Edit Specs'}
-                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={(e) => handleEditClick(order, e)} className="gap-2 font-bold text-xs"><Edit2 className="w-3.5 h-3.5 text-emerald-600" /> {lang === 'ar' ? 'تعديل البيانات' : 'Edit Specs'}</DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setDeletingOrder(order); }} className="gap-2 font-bold text-xs text-rose-600">
-                          <Trash2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'نقل للأرشيف' : 'Archive Order'}
-                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setDeletingOrder(order); }} className="gap-2 font-bold text-xs text-rose-600"><Trash2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'نقل للأرشيف' : 'Archive Order'}</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TooltipProvider>
                 </div>
-
               </div>
             </div>
           );
@@ -427,32 +397,16 @@ export default function ProductionOrdersPage() {
 
           <form onSubmit={handleSaveOrder} className="p-6 space-y-4 bg-white">
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
-                <Type className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'عنوان الطلب المميز' : 'BATCH TITLE'}
-              </Label>
-              <Input 
-                value={formData.title} 
-                onChange={(e) => setFormData({...formData, title: e.target.value})}
-                className="h-11 rounded-lg bg-slate-50 font-bold"
-                required
-              />
+              <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2"><Type className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'عنوان الطلب المميز' : 'BATCH TITLE'}</Label>
+              <Input value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} className="h-11 rounded-lg bg-slate-50 font-bold" required />
             </div>
-
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
-                <ShoppingBag className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'نوع المعوز المستهدف' : 'PRODUCT'}
-              </Label>
-              <select 
-                value={formData.productId} 
-                onChange={(e) => setFormData({...formData, productId: e.target.value})}
-                className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold outline-none"
-                required
-              >
+              <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2"><ShoppingBag className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'نوع المعوز المستهدف' : 'PRODUCT'}</Label>
+              <select value={formData.productId} onChange={(e) => setFormData({...formData, productId: e.target.value})} className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold outline-none" required>
                 <option value="">-- Select --</option>
                 {products?.map(p => <option key={p.id} value={p.id}>{p.nameAr}</option>)}
               </select>
             </div>
-
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-black uppercase text-slate-400">{lang === 'ar' ? 'الكمية المستهدفة' : 'TARGET QTY'}</Label>
@@ -465,20 +419,13 @@ export default function ProductionOrdersPage() {
                 </select>
               </div>
             </div>
-
             <div className="space-y-1.5">
               <Label className="text-[10px] font-black uppercase text-slate-400">{lang === 'ar' ? 'ملاحظات إضافية' : 'NOTES'}</Label>
               <Textarea value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} className="min-h-[80px] bg-slate-50 resize-none text-xs font-medium" />
             </div>
-
             <div className="flex gap-3 pt-4 border-t border-slate-100">
-              <Button type="submit" disabled={isSubmitting} className="flex-1 h-12 premium-gradient text-white font-black">
-                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : <Save className="w-4 h-4 me-2" />}
-                {lang === 'ar' ? 'حفظ البيانات' : 'Commit'}
-              </Button>
-              <Button type="button" variant="outline" onClick={resetForm} className="px-6 h-12 font-black text-slate-400">
-                {lang === 'ar' ? 'إلغاء' : 'Cancel'}
-              </Button>
+              <Button type="submit" disabled={isSubmitting} className="flex-1 h-12 premium-gradient text-white font-black">{isSubmitting ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : <Save className="w-4 h-4 me-2" />}{lang === 'ar' ? 'حفظ البيانات' : 'Commit'}</Button>
+              <Button type="button" variant="outline" onClick={resetForm} className="px-6 h-12 font-black text-slate-400">{lang === 'ar' ? 'إلغاء' : 'Cancel'}</Button>
             </div>
           </form>
         </DialogContent>
@@ -493,24 +440,61 @@ export default function ProductionOrdersPage() {
                 <Building2 className="w-5 h-5 text-emerald-400" />
                 {lang === 'ar' ? 'تحريك مسار الإنتاج' : 'Production Routing'}
               </DialogTitle>
+              <DialogDescription className="text-slate-400 font-bold text-[10px] uppercase tracking-widest mt-1">
+                {managingOrder?.orderNumber} - {managingOrder?.title}
+              </DialogDescription>
             </DialogHeader>
           </div>
           <form onSubmit={handleUpdateLogistics} className="p-6 space-y-6 bg-white">
-            <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase text-slate-400">{lang === 'ar' ? 'المرحلة التالية' : 'MOVE TO STAGE'}</Label>
-              <select 
-                value={logisticsData.currentStageId} 
-                onChange={(e) => setLogisticsData({...logisticsData, currentStageId: e.target.value})}
-                className="w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-black outline-none"
-                required
-              >
-                <option value="">-- Select Stage --</option>
-                {departments?.filter(d => d.status === 'active').map(d => <option key={d.id} value={d.id}>{d.nameAr}</option>)}
-              </select>
+            <div className="space-y-4">
+              <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'المرحلة الحالية' : 'CURRENT STAGE'}</p>
+                  <p className="text-sm font-black text-slate-900">{departments?.find(d => d.id === managingOrder?.currentStageId)?.nameAr || '---'}</p>
+                </div>
+                <ArrowRight className={cn("w-5 h-5 text-emerald-500", dir === 'rtl' ? "rotate-180" : "")} />
+                <div className="space-y-1 text-right">
+                   <p className="text-[10px] font-black text-emerald-600 uppercase">{lang === 'ar' ? 'المرحلة القادمة' : 'TARGET STAGE'}</p>
+                   <p className="text-sm font-black text-emerald-700">
+                     {departments?.find(d => d.id === logisticsData.currentStageId)?.nameAr || '...'}
+                   </p>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-black uppercase text-slate-400">{lang === 'ar' ? 'انتقال إلى المرحلة' : 'MOVE TO STAGE'}</Label>
+                <div className="relative group">
+                   <Building2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-emerald-500 transition-colors" />
+                   <select 
+                    value={logisticsData.currentStageId} 
+                    onChange={(e) => setLogisticsData({...logisticsData, currentStageId: e.target.value})}
+                    className="w-full h-12 pr-10 pl-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-black outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all appearance-none"
+                    required
+                  >
+                    <option value="">-- Select Stage --</option>
+                    {departments?.filter(d => d.status === 'active').map(d => <option key={d.id} value={d.id}>{d.nameAr}</option>)}
+                  </select>
+                  <ChevronDown className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-black uppercase text-slate-400">{lang === 'ar' ? 'تعليمات للمرحلة القادمة' : 'NOTES FOR NEXT TEAM'}</Label>
+                <Textarea 
+                  value={logisticsData.notes} 
+                  onChange={(e) => setLogisticsData({...logisticsData, notes: e.target.value})} 
+                  placeholder={lang === 'ar' ? 'مثال: يرجى التركيز على جودة الخياطة في الحواف...' : 'Example: Please ensure QC on edges...'}
+                  className="min-h-[80px] rounded-xl bg-slate-50 border-slate-200 resize-none text-xs font-medium"
+                />
+              </div>
             </div>
-            <div className="flex gap-3">
-              <Button type="submit" disabled={isSubmitting} className="flex-1 h-12 premium-gradient text-white font-black">{lang === 'ar' ? 'تحديث المرحلة' : 'Commit'}</Button>
-              <Button type="button" variant="outline" onClick={resetLogistics} className="px-6 h-12 font-black text-slate-400">إلغاء</Button>
+
+            <div className="flex gap-3 pt-2">
+              <Button type="submit" disabled={isSubmitting || !logisticsData.currentStageId} className="flex-1 h-12 premium-gradient text-white rounded-xl font-black text-sm border-none shadow-lg shadow-emerald-900/10">
+                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : <RefreshCcw className="w-4 h-4 me-2" />}
+                {lang === 'ar' ? 'تأكيد الانتقال' : 'Confirm Movement'}
+              </Button>
+              <Button type="button" variant="outline" onClick={resetLogistics} className="px-6 h-12 font-black text-slate-400 rounded-xl border-slate-200">إلغاء</Button>
             </div>
           </form>
         </DialogContent>
@@ -533,6 +517,3 @@ export default function ProductionOrdersPage() {
     </div>
   );
 }
-
-// Re-defining Tooltip Components here as they might be needed and were imported
-import { TooltipProvider } from '@/components/ui/tooltip';
