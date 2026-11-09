@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { 
   ArrowRight, 
@@ -31,7 +31,8 @@ import {
   Zap,
   LayoutGrid,
   BarChart3,
-  ClipboardList
+  ClipboardList,
+  Type
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from '@/components/LanguageProvider';
@@ -42,6 +43,7 @@ import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 export default function OrderDetailsDashboard() {
   const { id } = useParams();
@@ -76,13 +78,14 @@ export default function OrderDetailsDashboard() {
 
   const product = useMemo(() => products?.find(p => p.id === order?.productId), [products, order]);
 
-  // Stage Metrics calculation (moved from inline for clarity)
+  // Stage Metrics calculation
   const currentStageVouchers = useMemo(() => {
     if (!vouchers || activeTab === 'info' || activeTab === 'summary') return [];
     return vouchers.filter(v => {
       if (v.status === 'deleted') return false;
-      const worker = workers?.find(w => w.id === v.workerId);
       if (v.type === 'production_receipt') return v.currentStageId === activeTab;
+      // For issues and others, check if the worker belongs to this department
+      const worker = workers?.find(w => w.id === v.workerId);
       return worker?.departmentId === activeTab;
     });
   }, [vouchers, activeTab, workers]);
@@ -123,7 +126,6 @@ export default function OrderDetailsDashboard() {
       <div className="flex-none bg-white border-b border-slate-200 shadow-sm z-30">
         <div className="container mx-auto px-4 flex items-center h-20 gap-4 overflow-x-auto no-scrollbar">
           
-          {/* Back Button */}
           <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-xl border border-slate-100 h-10 w-10 shrink-0">
             {dir === 'rtl' ? <ArrowRight className="w-5 h-5" /> : <ArrowLeft className="w-5 h-5" />}
           </Button>
@@ -185,7 +187,6 @@ export default function OrderDetailsDashboard() {
 
           <div className="flex-1" />
 
-          {/* Global Order Status Badge (Always Visible) */}
           <div className="hidden md:flex flex-col items-end shrink-0">
              <Badge className="bg-slate-900 text-white font-black text-[10px] tabular-nums uppercase">{order.orderNumber}</Badge>
              <p className="text-[9px] font-bold text-slate-400 mt-1 uppercase">{product?.nameAr}</p>
@@ -264,7 +265,6 @@ export default function OrderDetailsDashboard() {
             </div>
 
             <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
-               {/* Log Table */}
                <div className="flex-1 overflow-auto p-4 md:p-8 space-y-6 no-scrollbar">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-black text-slate-900 flex items-center gap-3">
@@ -298,7 +298,6 @@ export default function OrderDetailsDashboard() {
                   </div>
                </div>
 
-               {/* Accountability Side Area */}
                <div className="w-full md:w-80 bg-white border-l border-slate-100 p-6 space-y-8 overflow-auto no-scrollbar">
                   <div className="space-y-6">
                     <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
@@ -351,7 +350,6 @@ export default function OrderDetailsDashboard() {
         {activeTab === 'summary' && (
           <div className="container mx-auto px-4 py-10 space-y-10 animate-in zoom-in-95 duration-500 max-w-6xl">
             
-            {/* 1. Master Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <SummaryMainCard 
                 title={lang === 'ar' ? 'الجاهز النهائي للبيع' : 'READY FOR SALE'} 
@@ -380,7 +378,6 @@ export default function OrderDetailsDashboard() {
               />
             </div>
 
-            {/* 2. Detailed Breakdown Table */}
             <Card className="rounded-[2.5rem] border-slate-200 overflow-hidden shadow-xl">
                <div className="p-6 bg-slate-50 border-b border-slate-200 flex items-center gap-3">
                   <BarChart3 className="w-5 h-5 text-slate-400" />
