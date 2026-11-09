@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
@@ -160,13 +159,11 @@ export default function ProductionReceiptPage() {
     );
   }, [formData.orderId, formData.workerId, allMIVs, editingVoucherId, formData.linkedMIVs]);
 
-  // SMART LOGIC: Calculate current net balance in worker hands
   const issuedMaterialsPool = useMemo(() => {
     if (!formData.linkedMIVs.length || !allMIVs || !vouchers) return [];
     
     const pool: Record<string, { nameAr: string; qty: number; unit: string }> = {};
     
-    // 1. Calculate Gross Issued
     formData.linkedMIVs.forEach(mivId => {
       const miv = allMIVs.find(m => m.id === mivId);
       if (miv && miv.items) {
@@ -179,7 +176,6 @@ export default function ProductionReceiptPage() {
       }
     });
 
-    // 2. Subtract what was ALREADY returned
     vouchers.forEach(v => {
       if (v.id === editingVoucherId || v.status === 'deleted' || v.type !== 'production_receipt') return;
       const sharesAnyMIV = v.linkedMIVs?.some((id: string) => formData.linkedMIVs.includes(id));
@@ -214,7 +210,6 @@ export default function ProductionReceiptPage() {
     if (!vouchers) return [];
     let result = vouchers.filter(v => v.status !== 'deleted');
     
-    // Search filter
     if (search) {
       const s = search.toLowerCase();
       result = result.filter(v => {
@@ -226,12 +221,10 @@ export default function ProductionReceiptPage() {
       });
     }
     
-    // Batch filter
     if (batchFilter !== 'all') {
       result = result.filter(v => v.orderId === batchFilter);
     }
     
-    // Sorting
     return result.sort((a, b) => {
       let valA = a[sortBy] ?? '';
       let valB = b[sortBy] ?? '';
@@ -748,7 +741,7 @@ export default function ProductionReceiptPage() {
             <div className="flex gap-3 pt-4 border-t border-slate-100">
               <Button type="submit" disabled={isSubmitting || !formData.workerId || !formData.orderId || formData.linkedMIVs.length === 0 || formData.qtyAccepted <= 0 || formData.wageRate <= 0} className="flex-1 h-14 premium-gradient text-white rounded-xl font-black text-base shadow-xl">
                 {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin me-2" /> : <CheckCircle2 className="w-5 h-5 me-2" />}
-                {editingVoucherId ? (lang === 'ar' ? 'تحديث السند والمخازن' : 'Update Voucher & WMS') : (lang === 'ar' ? 'ترحيل التسوية وتحديث المخازن والإنجاز' : 'Post Settlement & Update Assets')}
+                {lang === 'ar' ? (editingVoucherId ? 'تحديث السند والمخازن' : 'ترحيل التسوية وتحديث المخازن والإنجاز') : (editingVoucherId ? 'Update Voucher & WMS' : 'Post Settlement & Update Assets')}
               </Button>
               <Button type="button" variant="outline" onClick={resetDialog} className="px-8 h-14 font-black text-slate-400 rounded-xl border-slate-200">
                 {lang === 'ar' ? 'إلغاء' : 'Cancel'}
@@ -769,12 +762,10 @@ export default function ProductionReceiptPage() {
               {printingVoucher && (
                 <div className="flex flex-col h-full text-slate-900 font-sans relative overflow-hidden" dir="rtl">
                   
-                  {/* WATERMARK LOGO */}
                   <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 opacity-[0.04] pointer-events-none -z-10 select-none">
                     <img src="/images/logo.png" alt="watermark" className="w-full h-full object-contain grayscale" />
                   </div>
 
-                  {/* PROFESSIONAL BILINGUAL HEADER */}
                   <div className="grid grid-cols-3 items-center border-b-[6px] border-emerald-800 pb-8 mb-8 relative z-10">
                     <div className="text-right space-y-1">
                       <h2 className="text-xl font-black text-emerald-900 leading-tight">جمعية الصناعات النسيجية</h2>
@@ -795,7 +786,6 @@ export default function ProductionReceiptPage() {
                     </div>
                   </div>
 
-                  {/* VOUCHER TITLE BAR */}
                   <div className="text-center mb-10 relative z-10">
                     <div className="inline-block border-[2.5px] border-emerald-800 px-12 py-2 rounded-full bg-white shadow-sm ring-4 ring-emerald-50">
                       <h3 className="text-xl font-black text-emerald-900 uppercase tracking-widest">
@@ -807,28 +797,36 @@ export default function ProductionReceiptPage() {
                   <div className="grid grid-cols-3 gap-x-8 gap-y-6 mb-10 bg-slate-50/50 p-8 rounded-[1.5rem] border border-slate-100 relative z-10">
                     <div className="space-y-4">
                       <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'الموظف المسلم' : 'Worker'}</span>
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'اسم المستلم/المسلم' : 'Recipient'}</span>
                         <span className="text-sm font-black text-slate-900">{allWorkers?.find(w => w.id === printingVoucher.workerId)?.fullName}</span>
                       </div>
+                      <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'القسم / المسار' : 'Department'}</span>
+                        <span className="text-sm font-black text-slate-700">
+                           {allDepartments?.find(d => d.id === printingVoucher.currentStageId || d.id === allWorkers?.find(w => w.id === printingVoucher.workerId)?.departmentId)?.nameAr || '---'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="space-y-4">
                       <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'رقم السند' : 'Voucher No.'}</span>
                         <span className="text-sm font-black text-emerald-900 tabular-nums tracking-wider">{printingVoucher.voucherNumber}</span>
                       </div>
+                      <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'الدفعة' : 'Batch Name'}</span>
+                        <span className="text-sm font-black text-slate-700 truncate max-w-[150px]">{allOrders?.find(o => o.id === printingVoucher.orderId)?.title}</span>
+                      </div>
                     </div>
                     <div className="space-y-4">
                       <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'تاريخ التسوية' : 'Settlement Date'}</span>
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'تاريخ السند' : 'Settlement Date'}</span>
                         <span className="text-sm font-black text-slate-700 tabular-nums">{printingVoucher.date}</span>
                       </div>
                       <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'الاستحقاق المالي' : 'Total Wage'}</span>
-                        <span className="text-sm font-black text-emerald-700 tabular-nums">{(printingVoucher.wageAmount || 0).toLocaleString('en-US')} {printingVoucher.currency}</span>
-                      </div>
-                    </div>
-                    <div className="space-y-4">
-                       <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'القسم المسؤول' : 'Department'}</span>
-                        <span className="text-sm font-black text-slate-700">{allDepartments?.find(d => d.id === printingVoucher.currentStageId)?.nameAr || '---'}</span>
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'المشرف المسؤول' : 'Supervisor'}</span>
+                        <span className="text-sm font-black text-slate-700">
+                          {allWorkers?.find(w => w.id === allWorkers?.find(work => work.id === printingVoucher.workerId)?.supervisorId)?.fullName || (lang === 'ar' ? 'مشرف القسم المباشر' : 'Direct Supervisor')}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -947,7 +945,7 @@ export default function ProductionReceiptPage() {
             <AlertDialogAction onClick={handleDeleteRequest} disabled={isSubmitting} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-md font-black">
               {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : (lang === 'ar' ? "تأكيد الحذف" : "Confirm")}
             </AlertDialogAction>
-            <AlertDialogCancel onClick={() => setDeletingVoucher(null)} className="flex-1 h-11 bg-slate-50 border-slate-200 text-slate-400 rounded-md font-black">{lang === 'ar' ? 'تراجع' : 'Cancel'}</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setDeletingVoucher(null)} className="flex-1 h-11 bg-slate-50 border-slate-200 text-slate-400 rounded-md font-black">{lang === 'ar' ? 'تراجع' : 'Cancel'} </AlertDialogCancel>
           </div>
         </AlertDialogContent>
       </AlertDialog>

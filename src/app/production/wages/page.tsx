@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
@@ -141,7 +140,6 @@ export default function PayrollManagementPage() {
 
   const loading = workersLoading || receiptsLoading || paymentsLoading;
 
-  // Reset selection when worker or currency changes in FORM to prevent currency mixing
   useEffect(() => {
     if (!editingVoucherId) {
       setFormData(prev => ({
@@ -152,7 +150,6 @@ export default function PayrollManagementPage() {
     }
   }, [formData.workerId, formData.currency, editingVoucherId]);
 
-  // Filter unpaid receipts by selected worker AND selected currency for the FORM
   const unpaidReceipts = useMemo(() => {
     if (!formData.workerId || !allReceipts) return [];
     
@@ -172,7 +169,6 @@ export default function PayrollManagementPage() {
     );
   }, [formData.workerId, formData.currency, allReceipts, allPayments, editingVoucherId]);
 
-  // Calculate flat balances per worker per currency for the LIST
   const flattenedBalances = useMemo(() => {
     if (!allWorkers || !allReceipts) return [];
     
@@ -262,8 +258,6 @@ export default function PayrollManagementPage() {
     }
     setIsSubmitting(true);
     
-    // ROOT CAUSE FIX: Capturing OrderID and StageID from the receipts being paid
-    // This ensures the payment voucher shows up in the Batch Ledger
     const firstReceiptId = formData.linkedReceipts[0];
     const firstReceipt = allReceipts?.find(r => r.id === firstReceiptId);
     
@@ -628,7 +622,6 @@ export default function PayrollManagementPage() {
                  <div className="flex flex-col text-slate-900 font-sans relative" dir="rtl">
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 opacity-[0.04] pointer-events-none -z-10 select-none"><img src="/images/logo.png" alt="watermark" className="w-full h-full object-contain grayscale" /></div>
                     
-                    {/* PROFESSIONAL BILINGUAL HEADER */}
                     <div className="grid grid-cols-3 items-center border-b-[6px] border-emerald-800 pb-8 mb-8 relative z-10">
                       <div className="text-right space-y-1">
                         <h2 className="text-xl font-black text-emerald-900 leading-tight">جمعية الصناعات النسيجية</h2>
@@ -656,10 +649,42 @@ export default function PayrollManagementPage() {
                     </div>
 
                     <div className="grid grid-cols-3 gap-x-8 gap-y-6 mb-10 bg-slate-50/50 p-8 rounded-[1.5rem] border border-slate-100 relative z-10">
-                      <div className="flex flex-col gap-1 border-b border-slate-200 pb-2"><span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'يصرف للأخ' : 'Recipient'}</span><span className="text-sm font-black text-slate-900">{allWorkers?.find(w => w.id === printingVoucher.workerId)?.fullName}</span></div>
-                      <div className="flex flex-col gap-1 border-b border-slate-200 pb-2"><span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'رقم السند' : 'Payment ID'}</span><span className="text-sm font-black text-emerald-900 tabular-nums">{printingVoucher.voucherNumber}</span></div>
-                      <div className="flex flex-col gap-1 border-b border-slate-200 pb-2"><span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'تاريخ الصرف' : 'Date'}</span><span className="text-sm font-black text-slate-700 tabular-nums">{printingVoucher.date}</span></div>
-                      <div className="flex flex-col gap-1 border-b border-slate-200 pb-2"><span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'العملة' : 'Currency'}</span><span className="text-sm font-black text-slate-700 uppercase">{printingVoucher.currency}</span></div>
+                      <div className="space-y-4">
+                        <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'اسم المستلم/المسلم' : 'Recipient'}</span>
+                          <span className="text-sm font-black text-slate-900">{allWorkers?.find(w => w.id === printingVoucher.workerId)?.fullName || '---'}</span>
+                        </div>
+                        <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'القسم / المسار' : 'Department'}</span>
+                          <span className="text-sm font-black text-slate-700">
+                             {allDepartments?.find(d => d.id === printingVoucher.currentStageId || d.id === allWorkers?.find(w => w.id === printingVoucher.workerId)?.departmentId)?.nameAr || '---'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'رقم السند' : 'Ref No.'}</span>
+                          <span className="text-sm font-black text-emerald-900 tabular-nums tracking-wider">{printingVoucher.voucherNumber}</span>
+                        </div>
+                        <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'الدفعة' : 'Batch'}</span>
+                          <span className="text-sm font-black text-slate-700 truncate max-w-[150px]">{allOrders?.find(o => o.id === printingVoucher.orderId)?.title || '---'}</span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'تاريخ السند' : 'Date'}</span>
+                          <span className="text-sm font-black text-slate-700 tabular-nums">{printingVoucher.date}</span>
+                        </div>
+                        <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'المشرف المسؤول' : 'Supervisor'}</span>
+                          <span className="text-sm font-black text-slate-700">
+                            {allWorkers?.find(w => w.id === allWorkers?.find(work => work.id === printingVoucher.workerId)?.supervisorId)?.fullName || (lang === 'ar' ? 'مشرف القسم المباشر' : 'Direct Supervisor')}
+                          </span>
+                        </div>
+                      </div>
                     </div>
 
                     <div className="mb-8 relative z-10">
