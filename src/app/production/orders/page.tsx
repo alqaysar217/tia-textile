@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useCallback } from 'react';
@@ -26,7 +25,8 @@ import {
   ShieldCheck,
   Users2,
   Building2,
-  UserCheck
+  UserCheck,
+  FileText
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
