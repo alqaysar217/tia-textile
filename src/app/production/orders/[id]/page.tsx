@@ -324,7 +324,7 @@ export default function OrderDetailsDashboard() {
           )}
 
           {activeTab !== 'info' && activeTab !== 'summary' && (
-            <div className="flex-1 flex flex-col animate-in fade-in duration-300 overflow-hidden">
+            <div className="flex-1 flex-col flex animate-in fade-in duration-300 overflow-hidden">
                <div className="p-2 bg-slate-50 border-b border-slate-200 flex items-center gap-2 shadow-sm">
                   <div className="relative flex-1">
                     <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400`} />
@@ -516,37 +516,40 @@ export default function OrderDetailsDashboard() {
                         )}
                       </>
                     ) : viewingVoucher.type === 'wage_payment' ? (
-                      <Table className="text-right border-2 border-emerald-900/10">
-                        <TableHeader className="bg-emerald-900/5">
-                          <TableRow className="hover:bg-transparent border-b-2 border-emerald-900/20">
-                            <TableHead className="text-right font-black text-[10px] py-4 text-emerald-900 uppercase">{lang === 'ar' ? 'رقم سند الاستلام' : 'Receipt #'}</TableHead>
-                            <TableHead className="text-right font-black text-[10px] py-4 text-emerald-900 uppercase">{lang === 'ar' ? 'المنتج' : 'Product'}</TableHead>
-                            <TableHead className="text-center font-black text-[10px] py-4 text-emerald-900 uppercase">{lang === 'ar' ? 'الكمية' : 'Qty'}</TableHead>
-                            <TableHead className="text-center font-black text-[10px] py-4 text-emerald-900 uppercase">{lang === 'ar' ? 'أجر القطعة' : 'Wage/Pcs'}</TableHead>
-                            <TableHead className="text-center font-black text-[10px] py-4 text-emerald-900 uppercase">{lang === 'ar' ? 'الإجمالي' : 'Total'}</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {viewingVoucher.linkedReceipts?.map((receiptId: string, i: number) => {
-                             const receipt = vouchers.find(v => v.id === receiptId);
-                             return (
-                               <TableRow key={i} className="bg-white/40 border-b border-slate-100">
-                                 <TableCell className="font-bold text-xs tabular-nums py-4">{receipt?.voucherNumber || '---'}</TableCell>
-                                 <TableCell className="font-bold text-xs py-4">{product?.nameAr || '---'}</TableCell>
-                                 <TableCell className="text-center font-black text-xs tabular-nums py-4">{receipt?.qtyAccepted || 0}</TableCell>
-                                 <TableCell className="text-center font-bold text-xs tabular-nums py-4">{(receipt?.wageRate || 0).toLocaleString('en-US')}</TableCell>
-                                 <TableCell className="text-center font-black text-xs text-emerald-700 tabular-nums py-4">{(receipt?.wageAmount || 0).toLocaleString('en-US')}</TableCell>
-                               </TableRow>
-                             );
-                          })}
-                          <TableRow className="bg-emerald-50/50">
-                            <TableCell colSpan={4} className="text-left font-black text-[10px] text-emerald-900 px-6 py-5 uppercase">GRAND TOTAL / الإجمالي العام</TableCell>
-                            <TableCell className="text-center font-black text-base text-emerald-800 tabular-nums px-4 py-5">
-                              {(viewingVoucher.totalAmount || 0).toLocaleString('en-US')} <span className="text-[10px] opacity-60 uppercase">{viewingVoucher.currency || 'YER'}</span>
-                            </TableCell>
-                          </TableRow>
-                        </TableBody>
-                      </Table>
+                      <div className="space-y-3">
+                        <h4 className="text-[10px] font-black text-emerald-900 border-r-4 border-emerald-600 pr-3 mb-2 uppercase">{lang === 'ar' ? 'بيان الاستحقاق المالي المفرز' : 'ITEMIZED WAGE SETTLEMENT'}</h4>
+                        <Table className="text-right border-2 border-emerald-900/10">
+                          <TableHeader className="bg-emerald-900/5">
+                            <TableRow className="hover:bg-transparent border-b-2 border-emerald-900/20">
+                              <TableHead className="text-right font-black text-[10px] py-4 text-emerald-900 uppercase">{lang === 'ar' ? 'رقم سند الاستلام' : 'Receipt #'}</TableHead>
+                              <TableHead className="text-right font-black text-[10px] py-4 text-emerald-900 uppercase">{lang === 'ar' ? 'المنتج' : 'Product'}</TableHead>
+                              <TableHead className="text-center font-black text-[10px] py-4 text-emerald-900 uppercase">{lang === 'ar' ? 'الكمية' : 'Qty'}</TableHead>
+                              <TableHead className="text-center font-black text-[10px] py-4 text-emerald-900 uppercase">{lang === 'ar' ? 'أجر القطعة' : 'Wage/Pcs'}</TableHead>
+                              <TableHead className="text-center font-black text-[10px] py-4 text-emerald-900 uppercase">{lang === 'ar' ? 'الإجمالي' : 'Total'}</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {viewingVoucher.linkedReceipts?.map((receiptId: string, i: number) => {
+                               const receipt = vouchers.find(v => v.id === receiptId);
+                               return (
+                                 <TableRow key={i} className="bg-white/40 border-b border-slate-100">
+                                   <TableCell className="font-bold text-xs tabular-nums py-4">{receipt?.voucherNumber || '---'}</TableCell>
+                                   <TableCell className="font-bold text-xs py-4">{product?.nameAr || '---'}</TableCell>
+                                   <TableCell className="text-center font-black text-xs tabular-nums py-4">{receipt?.qtyAccepted || 0}</TableCell>
+                                   <TableCell className="text-center font-bold text-xs tabular-nums py-4">{(receipt?.wageRate || 0).toLocaleString('en-US')}</TableCell>
+                                   <TableCell className="text-center font-black text-xs text-emerald-700 tabular-nums py-4">{(receipt?.wageAmount || 0).toLocaleString('en-US')}</TableCell>
+                                 </TableRow>
+                               );
+                            })}
+                            <TableRow className="bg-emerald-50/50">
+                              <TableCell colSpan={4} className="text-left font-black text-[10px] text-emerald-900 px-6 py-5 uppercase">GRAND TOTAL / الإجمالي العام</TableCell>
+                              <TableCell className="text-center font-black text-base text-emerald-800 tabular-nums px-4 py-5">
+                                {(viewingVoucher.totalAmount || 0).toLocaleString('en-US')} <span className="text-[10px] opacity-60 uppercase">{viewingVoucher.currency || 'YER'}</span>
+                              </TableCell>
+                            </TableRow>
+                          </TableBody>
+                        </Table>
+                      </div>
                     ) : (
                       <Table className="text-right border-2 border-emerald-900/10">
                         <TableHeader className="bg-emerald-800/5">

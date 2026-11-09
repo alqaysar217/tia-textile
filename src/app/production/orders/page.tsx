@@ -31,7 +31,8 @@ import {
   Settings2,
   ExternalLink,
   ChevronDown,
-  ArrowRight
+  ArrowRight,
+  RefreshCcw
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -103,13 +104,11 @@ export default function ProductionOrdersPage() {
   const productsQuery = useMemo(() => !db ? null : collection(db, 'products'), [db]);
   const ordersQuery = useMemo(() => !db ? null : collection(db, 'productionOrders'), [db]);
   const deptsQuery = useMemo(() => !db ? null : collection(db, 'departments'), [db]);
-  const workersQuery = useMemo(() => !db ? null : collection(db, 'workers'), [db]);
   const vouchersQuery = useMemo(() => !db ? null : query(collection(db, 'vouchers'), where('status', '==', 'posted')), [db]);
 
   const { data: products, loading: productsLoading } = useCollection<any>(productsQuery);
   const { data: orders, loading: ordersLoading } = useCollection<any>(ordersQuery);
   const { data: departments } = useCollection<any>(deptsQuery);
-  const { data: workers } = useCollection<any>(workersQuery);
   const { data: allReceipts } = useCollection<any>(vouchersQuery);
 
   const filteredOrders = useMemo(() => {
