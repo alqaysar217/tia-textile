@@ -30,7 +30,8 @@ import {
   ClipboardList,
   Type,
   User,
-  ArrowUpRight
+  ArrowUpRight,
+  Edit2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from '@/components/LanguageProvider';
