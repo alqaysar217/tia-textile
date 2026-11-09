@@ -153,37 +153,23 @@ export default function PayrollManagementPage() {
   const unpaidReceipts = useMemo(() => {
     if (!formData.workerId || !allReceipts) return [];
     
-    const activePayments = (allPayments || []).filter(p => p.status !== 'deleted');
-    const activeReceipts = (allReceipts || []).filter(r => r.status !== 'deleted');
-
-    const paidReceiptIds = new Set<string>();
-    activePayments.forEach(p => {
-      if (p.id === editingVoucherId) return;
-      p.linkedReceipts?.forEach((id: string) => paidReceiptIds.add(id));
-    });
-
-    return activeReceipts.filter(r => 
+    // ACCOUNTING SHIELD: Rely on paymentStatus field for 100% accuracy
+    return allReceipts.filter(r => 
       r.workerId === formData.workerId && 
-      !paidReceiptIds.has(r.id) && 
+      r.status !== 'deleted' &&
+      r.paymentStatus !== 'paid' && 
       (r.currency || 'YER') === formData.currency
     );
-  }, [formData.workerId, formData.currency, allReceipts, allPayments, editingVoucherId]);
+  }, [formData.workerId, formData.currency, allReceipts]);
 
   const flattenedBalances = useMemo(() => {
     if (!allWorkers || !allReceipts) return [];
     
-    const activePayments = (allPayments || []).filter(p => p.status !== 'deleted');
-    const activeReceipts = (allReceipts || []).filter(r => r.status !== 'deleted');
-
-    const paidReceiptIds = new Set<string>();
-    activePayments.forEach(p => {
-      p.linkedReceipts?.forEach((id: string) => paidReceiptIds.add(id));
-    });
-
+    const activeReceipts = (allReceipts || []).filter(r => r.status !== 'deleted' && r.paymentStatus !== 'paid');
     const list: any[] = [];
 
     allWorkers.filter(w => w.status !== 'deleted').forEach(worker => {
-      const myUnpaid = activeReceipts.filter(r => r.workerId === worker.id && !paidReceiptIds.has(r.id));
+      const myUnpaid = activeReceipts.filter(r => r.workerId === worker.id);
       
       const balanceByCurrency: Record<string, number> = {};
       myUnpaid.forEach(r => {
@@ -203,7 +189,7 @@ export default function PayrollManagementPage() {
     });
 
     return list;
-  }, [allWorkers, allReceipts, allPayments]);
+  }, [allWorkers, allReceipts]);
 
   const toggleReceiptSelection = useCallback((receiptId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -257,7 +243,9 @@ export default function PayrollManagementPage() {
        return;
     }
     setIsSubmitting(true);
+    const batch = writeBatch(db);
     
+    // Extract metadata from receipts to link the payment to orders/stages
     const firstReceiptId = formData.linkedReceipts[0];
     const firstReceipt = allReceipts?.find(r => r.id === firstReceiptId);
     
@@ -272,17 +260,39 @@ export default function PayrollManagementPage() {
     };
 
     try {
+      let voucherId = editingVoucherId;
+      
       if (editingVoucherId) {
-        await updateDoc(doc(db, 'vouchers', editingVoucherId), paymentData);
-        toast({ title: lang === 'ar' ? "تم تحديث السند بنجاح" : "Voucher Updated" });
+        // Reverse old links if editing (reopening receipts)
+        const oldSnap = await getDoc(doc(db, 'vouchers', editingVoucherId));
+        const oldV = oldSnap.data();
+        oldV?.linkedReceipts?.forEach((rid: string) => {
+           batch.update(doc(db, 'vouchers', rid), { paymentStatus: 'pending', paidAmount: 0 });
+        });
+        batch.update(doc(db, 'vouchers', editingVoucherId), paymentData);
       } else {
         const voucherNumber = `PAY-${Date.now().toString().slice(-6)}`;
-        await addDoc(collection(db, 'vouchers'), { ...paymentData, voucherNumber, createdAt: serverTimestamp() });
-        toast({ title: lang === 'ar' ? "تم تسجيل سند الصرف بنجاح" : "Payment Voucher Recorded" });
+        const newVoucherRef = doc(collection(db, 'vouchers'));
+        voucherId = newVoucherRef.id;
+        batch.set(newVoucherRef, { ...paymentData, voucherNumber, createdAt: serverTimestamp() });
       }
+
+      // ACCOUNTING SHIELD: Lock receipts to this payment
+      formData.linkedReceipts.forEach(rid => {
+        const r = allReceipts?.find(rec => rec.id === rid);
+        batch.update(doc(db, 'vouchers', rid), { 
+          paymentStatus: 'paid', 
+          paidAmount: r?.wageAmount || 0,
+          paymentVoucherId: voucherId 
+        });
+      });
+
+      await batch.commit();
+      toast({ title: lang === 'ar' ? "تم تسجيل سند الصرف بنجاح" : "Payment Voucher Recorded" });
       resetDialog();
     } catch (error) {
       console.error(error);
+      toast({ variant: "destructive", title: "Accounting Lock Error" });
     } finally {
       setIsSubmitting(false);
     }
@@ -291,11 +301,19 @@ export default function PayrollManagementPage() {
   const handleDeletePayment = async () => {
     if (!db || !deletingVoucher || isSubmitting) return;
     setIsSubmitting(true);
+    const batch = writeBatch(db);
     try {
-      await updateDoc(doc(db, 'vouchers', deletingVoucher.id), {
+      // Reopen receipts
+      deletingVoucher.linkedReceipts?.forEach((rid: string) => {
+        batch.update(doc(db, 'vouchers', rid), { paymentStatus: 'pending', paidAmount: 0, paymentVoucherId: null });
+      });
+      
+      batch.update(doc(db, 'vouchers', deletingVoucher.id), {
         status: 'deleted',
         deletedAt: serverTimestamp()
       });
+      
+      await batch.commit();
       toast({ title: lang === 'ar' ? "تم إلغاء السند وإرجاع المستحقات" : "Voucher reversed successfully" });
     } finally {
       setIsSubmitting(false);

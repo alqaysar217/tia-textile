@@ -264,7 +264,6 @@ export default function ProductionReceiptPage() {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      toast({ title: lang === 'ar' ? "تم تحميل السند" : "Voucher Downloaded" });
     } catch (err) {
       console.error('Image generation failed:', err);
     } finally {
@@ -308,7 +307,6 @@ export default function ProductionReceiptPage() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast({ title: lang === 'ar' ? "تم تصدير البيانات" : "Data Exported" });
   };
 
   const toggleSort = (field: typeof sortBy) => {
@@ -340,6 +338,8 @@ export default function ProductionReceiptPage() {
       totalQty: Number(formData.qtyAccepted),
       type: 'production_receipt',
       status: 'posted',
+      paymentStatus: 'pending', // ACCOUNTING SHIELD: Tracking payment status
+      paidAmount: 0,
       updatedAt: serverTimestamp()
     };
 
