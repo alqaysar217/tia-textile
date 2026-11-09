@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
@@ -255,11 +256,12 @@ export default function ProductionReceiptPage() {
     if (!element || !printingVoucher) return;
     setIsDownloading(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 800));
+      await new Promise(resolve => setTimeout(resolve, 1000));
       const dataUrl = await toPng(element, { 
         backgroundColor: '#ffffff', 
         pixelRatio: 2,
         cacheBust: true,
+        fontEmbedCSS: '', // Fixes font trim error
       });
       const link = document.createElement('a');
       link.download = `Settlement-${printingVoucher.voucherNumber}.png`;
@@ -268,6 +270,8 @@ export default function ProductionReceiptPage() {
       link.click();
       document.body.removeChild(link);
       toast({ title: lang === 'ar' ? "تم تحميل السند" : "Voucher Downloaded" });
+    } catch (err) {
+      console.error('Image generation failed:', err);
     } finally {
       setIsDownloading(false);
     }
@@ -718,8 +722,8 @@ export default function ProductionReceiptPage() {
                 <Button type="button" onClick={handleReturnItem} className="h-10 bg-blue-600 text-white font-black text-xs px-6 rounded-md shadow-md">{lang === 'ar' ? 'إدراج الاسترجاع' : 'Insert Return'}</Button>
               </div>
               {formData.returnedItems.length > 0 && (
-                <div className="border border-blue-100 rounded-xl overflow-hidden shadow-sm">
-                   <Table className="text-right bg-white/50">
+                <div className="border border-blue-100 rounded-xl overflow-hidden shadow-sm bg-white/50">
+                   <Table className="text-right">
                       <TableHeader className="bg-blue-50/50">
                         <TableRow>
                           <TableHead className="text-right text-[9px] font-black text-blue-500 uppercase">{lang === 'ar' ? 'المادة المستلمة' : 'MATERIAL'}</TableHead>
@@ -756,7 +760,7 @@ export default function ProductionReceiptPage() {
 
       {/* PRINT PREVIEW DIALOG */}
       <Dialog open={!!printingVoucher} onOpenChange={(open) => !open && setPrintingVoucher(null)}>
-        <DialogContent className="sm:max-w-[750px] p-0 overflow-hidden border-none bg-white">
+        <DialogContent className="sm:max-w-[750px] p-0 overflow-hidden border-none bg-white shadow-2xl">
           <DialogHeader className="sr-only">
             <DialogTitle>{lang === 'ar' ? 'معاينة طباعة سند التسوية' : 'Settlement Voucher Preview'}</DialogTitle>
           </DialogHeader>

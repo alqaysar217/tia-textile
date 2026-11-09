@@ -347,8 +347,13 @@ export default function PayrollManagementPage() {
     if (!element || !printingVoucher) return;
     setIsDownloading(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 800));
-      const dataUrl = await toPng(element, { backgroundColor: '#ffffff', pixelRatio: 2, cacheBust: true });
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      const dataUrl = await toPng(element, { 
+        backgroundColor: '#ffffff', 
+        pixelRatio: 2, 
+        cacheBust: true,
+        fontEmbedCSS: '', // Fixes font trim error
+      });
       const link = document.createElement('a');
       link.download = `Payment-${printingVoucher.voucherNumber}.png`;
       link.href = dataUrl;
@@ -356,6 +361,8 @@ export default function PayrollManagementPage() {
       link.click();
       document.body.removeChild(link);
       toast({ title: lang === 'ar' ? "تم تحميل السند" : "Voucher Downloaded" });
+    } catch (err) {
+      console.error('Image generation failed:', err);
     } finally {
       setIsDownloading(false);
     }
@@ -663,7 +670,10 @@ export default function PayrollManagementPage() {
             </div>
           </ScrollArea>
           <DialogFooter className="p-6 bg-slate-50 border-t border-slate-100">
-             <Button onClick={handleDownloadImage} disabled={isDownloading} className="premium-gradient font-black h-12 px-8 rounded-xl shadow-lg gap-2">{isDownloading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}{lang === 'ar' ? 'تحميل كصورة' : 'Download PNG'}</Button>
+             <Button onClick={handleDownloadImage} disabled={isDownloading} className="premium-gradient font-black h-12 px-8 rounded-xl shadow-lg gap-2">
+                {isDownloading ? <Loader2 className="w-5 h-5 animate-spin me-2" /> : <Download className="w-5 h-5" />}
+                {lang === 'ar' ? 'تحميل كصورة' : 'Download PNG'}
+             </Button>
              <Button variant="ghost" onClick={() => setPrintingVoucher(null)} className="h-12 px-6 rounded-xl border border-slate-200 font-black">Close</Button>
           </DialogFooter>
         </DialogContent>

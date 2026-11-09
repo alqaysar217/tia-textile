@@ -225,14 +225,21 @@ export default function OrderDetailsDashboard() {
     if (!element || !viewingVoucher) return;
     setIsDownloading(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 800));
-      const dataUrl = await toPng(element, { backgroundColor: '#ffffff', pixelRatio: 2, cacheBust: true });
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      const dataUrl = await toPng(element, { 
+        backgroundColor: '#ffffff', 
+        pixelRatio: 2, 
+        cacheBust: true,
+        fontEmbedCSS: '', // Fixes font trim error
+      });
       const link = document.createElement('a');
       link.download = `Voucher-${viewingVoucher.voucherNumber}.png`;
       link.href = dataUrl;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+    } catch (err) {
+      console.error('Image generation failed:', err);
     } finally {
       setIsDownloading(false);
     }

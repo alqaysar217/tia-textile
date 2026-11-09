@@ -305,9 +305,9 @@ export default function MaterialIssuePage() {
     try {
       if (editingVoucherId) {
         const oldVoucherSnap = await getDoc(doc(db, 'vouchers', editingVoucherId));
-        const oldVoucher = oldVoucherSnap.data();
+        const oldV = oldVoucherSnap.data();
         
-        oldVoucher?.items.forEach((oldItem: any) => {
+        oldV?.items.forEach((oldItem: any) => {
           const material = materials?.find(m => m.id === oldItem.id);
           if (material) {
             batch.update(doc(db, 'materials', oldItem.id), {
@@ -391,13 +391,12 @@ export default function MaterialIssuePage() {
     
     setIsDownloading(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 800));
+      await new Promise(resolve => setTimeout(resolve, 1000));
       const dataUrl = await toPng(element, { 
         backgroundColor: '#ffffff',
         pixelRatio: 2,
         cacheBust: true,
-        fontEmbedCSS: '', 
-        filter: (node) => node.tagName !== 'SCRIPT'
+        fontEmbedCSS: '', // Fixes font trim error
       });
       
       const link = document.createElement('a');
