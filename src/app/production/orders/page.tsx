@@ -6,32 +6,23 @@ import {
   Plus, 
   Search, 
   ChevronRight, 
-  Factory, 
-  PlayCircle, 
-  Timer, 
-  CheckCircle2, 
-  FileText,
-  AlertCircle,
-  TrendingUp,
+  Workflow, 
+  ShoppingBag, 
+  MoreVertical, 
+  Edit2, 
+  Trash2, 
+  History, 
+  Type, 
+  Tag, 
+  Activity, 
+  Target, 
+  Layers, 
+  ArrowUpRight, 
+  Loader2, 
   Boxes,
   Calendar,
   Save,
-  Loader2,
-  Workflow,
-  ShoppingBag,
-  MoreVertical,
-  Edit2,
-  Trash2,
-  Lock,
-  History,
-  Type,
-  Tag,
-  Activity,
-  Gauge,
-  Target,
-  Layers,
-  ArrowUpRight,
-  FileInput,
+  AlertCircle,
   ShieldCheck,
   Users2,
   Building2,
@@ -107,7 +98,7 @@ export default function ProductionOrdersPage() {
   const ordersQuery = useMemo(() => !db ? null : collection(db, 'productionOrders'), [db]);
   const deptsQuery = useMemo(() => !db ? null : collection(db, 'departments'), [db]);
   const workersQuery = useMemo(() => !db ? null : collection(db, 'workers'), [db]);
-  const vouchersQuery = useMemo(() => !db ? null : query(collection(db, 'vouchers'), where('type', '==', 'production_receipt')), [db]);
+  const vouchersQuery = useMemo(() => !db ? null : query(collection(db, 'vouchers'), where('status', '==', 'posted')), [db]);
 
   const { data: products, loading: productsLoading } = useCollection<any>(productsQuery);
   const { data: orders, loading: ordersLoading } = useCollection<any>(ordersQuery);
@@ -140,7 +131,8 @@ export default function ProductionOrdersPage() {
     setLogisticsData({ currentStageId: '', notes: '' });
   }, []);
 
-  const handleEditClick = (order: any) => {
+  const handleEditClick = (order: any, e: React.MouseEvent) => {
+    e.stopPropagation();
     setEditingOrderId(order.id);
     setFormData({
       title: order.title || '',
@@ -152,7 +144,8 @@ export default function ProductionOrdersPage() {
     setIsAddDialogOpen(true);
   };
 
-  const handleManageTeams = (order: any) => {
+  const handleManageTeams = (order: any, e: React.MouseEvent) => {
+    e.stopPropagation();
     setManagingOrder(order);
     setLogisticsData({
       currentStageId: order.currentStageId || '',
@@ -223,13 +216,12 @@ export default function ProductionOrdersPage() {
   const handleDeleteOrder = async () => {
     if (!db || !deletingOrder) return;
     
-    // Only delete if NO receipts exist for this order at all
-    const hasReceipts = allReceipts?.some(r => r.orderId === deletingOrder.id && r.status !== 'deleted');
-    if (hasReceipts) {
+    const hasVouchers = allReceipts?.some(r => r.orderId === deletingOrder.id && r.status !== 'deleted');
+    if (hasVouchers) {
       toast({ 
         variant: "destructive", 
         title: lang === 'ar' ? "فشل الحذف" : "Deletion Failed",
-        description: lang === 'ar' ? "لا يمكن حذف أمر إنتاج بدأت فيه العمليات الميدانية." : "Cannot delete order with existing receipts."
+        description: lang === 'ar' ? "لا يمكن حذف أمر إنتاج بدأت فيه العمليات الميدانية." : "Cannot delete order with existing vouchers."
       });
       setDeletingOrder(null);
       return;
@@ -249,7 +241,7 @@ export default function ProductionOrdersPage() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#f8fafc] overflow-hidden">
+    <div className="flex flex-col h-full bg-[#f8fafc] overflow-hidden" dir={dir}>
       
       {/* ERP HUB - HEADER */}
       <div className="flex-none bg-white border-b border-slate-200 z-30 px-6 py-4 shadow-sm">
@@ -306,145 +298,117 @@ export default function ProductionOrdersPage() {
           const stage = departments?.find(d => d.id === order.currentStageId);
           const stageSupervisor = workers?.find(w => w.departmentId === order.currentStageId && w.isSupervisor && w.active);
           
-          // DYNAMIC PROGRESS CALCULATION: 
-          // We calculate completion based on the LAST defined stage in the department list
-          // Simple logic: if multiple stages exist, the order's "Final Progress" is its performance in the latest stage it reached.
           const finalStage = departments?.[departments.length - 1];
-          const finalStageReceipts = allReceipts?.filter(r => r.orderId === order.id && r.currentStageId === finalStage?.id && r.status !== 'deleted') || [];
+          const finalStageReceipts = allReceipts?.filter(r => r.orderId === order.id && r.type === 'production_receipt' && r.currentStageId === finalStage?.id) || [];
           const finalCompletedQty = finalStageReceipts.reduce((acc, curr) => acc + (curr.qtyAccepted || 0), 0);
           
-          // WIP Tracking (Current Stage Progress)
-          const currentStageReceipts = allReceipts?.filter(r => r.orderId === order.id && r.currentStageId === order.currentStageId && r.status !== 'deleted') || [];
+          const currentStageReceipts = allReceipts?.filter(r => r.orderId === order.id && r.type === 'production_receipt' && r.currentStageId === order.currentStageId) || [];
           const currentStageDone = currentStageReceipts.reduce((acc, curr) => acc + (curr.qtyAccepted || 0), 0);
 
           const progress = Math.round((finalCompletedQty / order.targetQty) * 100) || 0;
           const currentStageProgress = Math.round((currentStageDone / order.targetQty) * 100) || 0;
           
-          const priorityColor = order.priority === 'high' ? 'bg-rose-500' : order.priority === 'normal' ? 'bg-emerald-500' : 'bg-slate-400';
-
           return (
-            <div key={order.id} className="bg-white rounded-xl border border-slate-200 shadow-sm hover:border-emerald-200 hover:shadow-md transition-all duration-300 overflow-hidden group">
+            <div key={order.id} onClick={() => router.push(`/production/orders/${order.id}`)} className="bg-white rounded-xl border border-slate-200 shadow-sm hover:border-emerald-200 hover:shadow-md transition-all duration-300 overflow-hidden group cursor-pointer">
               <div className="flex flex-col lg:flex-row items-stretch">
                 
-                {/* 1. IDENTITY & STATUS BAR */}
-                <div className="w-full lg:w-1/4 p-3 flex flex-col justify-between relative border-l border-slate-100">
-                  <div className="space-y-1.5">
+                <div className="w-full lg:w-1/4 p-4 flex flex-col justify-between relative border-l border-slate-100">
+                  <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="px-1.5 py-0.5 bg-slate-100 text-slate-600 text-[9px] font-black rounded border border-slate-200 tabular-nums uppercase tracking-tight">
+                      <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] font-black rounded border border-slate-200 tabular-nums uppercase tracking-tight">
                         {order.orderNumber}
                       </span>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md hover:bg-slate-100"><MoreVertical className="w-3 h-3 text-slate-400" /></Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-44 rounded-lg shadow-xl">
-                          <DropdownMenuItem onClick={() => handleEditClick(order)} className="gap-2 font-bold py-1.5 cursor-pointer text-xs">
-                            <Edit2 className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'تعديل البيانات' : 'Edit Details'}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => router.push(`/production/vouchers/issue?orderId=${order.id}`)} className="gap-2 font-bold py-1.5 cursor-pointer text-xs">
-                            <FileInput className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'صرف مواد' : 'Issue Material'}
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => setDeletingOrder(order)} className="gap-2 font-bold py-1.5 text-rose-600 cursor-pointer text-xs">
-                            <Trash2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'أرشفة الأمر' : 'Archive Order'}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <div className={cn("w-2 h-2 rounded-full", order.priority === 'high' ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500')} />
                     </div>
 
-                    <div className="space-y-0.5">
-                      <h3 className="text-xs font-black text-slate-900 group-hover:text-emerald-700 transition-colors truncate">
+                    <div className="space-y-1">
+                      <h3 className="text-sm font-black text-slate-900 group-hover:text-emerald-700 transition-colors truncate">
                         {order.title || (product?.nameAr || '---')}
                       </h3>
-                      <div className="inline-flex items-center gap-1 text-[8px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded uppercase">
-                        <Tag className="w-2 h-2" />
+                      <div className="inline-flex items-center gap-1.5 text-[9px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded uppercase">
+                        <Tag className="w-2.5 h-2.5" />
                         {product?.nameAr || '---'}
                       </div>
                     </div>
                   </div>
 
-                  <div className="mt-2 flex items-center justify-between border-t border-slate-50 pt-1.5">
-                    <div className="flex items-center gap-1 text-[8px] font-bold text-slate-400 uppercase tabular-nums">
-                      <Calendar className="w-2.5 h-2.5" />
+                  <div className="mt-3 flex items-center justify-between border-t border-slate-50 pt-2">
+                    <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-400 uppercase tabular-nums">
+                      <Calendar className="w-3 h-3" />
                       {order.startDate}
                     </div>
-                    <div className="flex items-center gap-1">
-                      <div className={cn("w-1.5 h-1.5 rounded-full", priorityColor)} />
-                      <span className="text-[8px] font-black text-slate-400 uppercase">{order.priority}</span>
-                    </div>
+                    <Badge variant="ghost" className="text-[8px] font-black text-slate-400 uppercase p-0">{order.priority}</Badge>
                   </div>
                 </div>
 
-                {/* 2. PROGRESS & METRICS */}
-                <div className="flex-1 p-3 space-y-3 bg-slate-50/30">
+                <div className="flex-1 p-4 space-y-4 bg-slate-50/30">
                   <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
-                        <Layers className="w-2.5 h-2.5 text-emerald-600" />
-                        {lang === 'ar' ? 'المرحلة الحالية والمسؤولية' : 'CURRENT PHASE & LEAD'}
+                    <div className="space-y-1">
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                        <Layers className="w-3 h-3 text-emerald-600" />
+                        {lang === 'ar' ? 'المرحلة والمسؤولية' : 'CURRENT PHASE'}
                       </p>
                       <div className="flex items-center gap-3">
-                        <p className="text-[11px] font-black text-slate-800">
+                        <p className="text-xs font-black text-slate-800">
                           {stage?.nameAr || (lang === 'ar' ? 'بانتظار البدء' : 'PENDING')}
                         </p>
                         {stageSupervisor && (
-                          <div className="flex items-center gap-1.5 px-2 py-0.5 bg-white border border-slate-100 rounded-md shadow-sm animate-in fade-in zoom-in-95">
-                            <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                            <span className="text-[9px] font-black text-slate-600">{lang === 'ar' ? 'بإشراف:' : 'Lead:'} {stageSupervisor.fullName}</span>
+                          <div className="flex items-center gap-1.5 px-2 py-0.5 bg-white border border-slate-100 rounded-md shadow-sm">
+                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                            <span className="text-[10px] font-black text-slate-600">{lang === 'ar' ? 'بإشراف:' : 'Lead:'} {stageSupervisor.fullName}</span>
                           </div>
                         )}
                       </div>
                     </div>
                     <div className="text-right">
                       <div className="flex flex-col items-end">
-                        <div className="flex items-center gap-1">
-                          <span className="text-base font-black text-slate-900 tabular-nums">{progress}%</span>
-                          <div className="p-0.5 bg-emerald-50 rounded text-emerald-600"><CheckCircle2 className="w-2.5 h-2.5" /></div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-lg font-black text-slate-900 tabular-nums">{progress}%</span>
+                          <div className="p-0.5 bg-emerald-50 rounded text-emerald-600"><Target className="w-3.5 h-3.5" /></div>
                         </div>
-                        <p className="text-[7px] font-black text-slate-400 uppercase tracking-tighter">{lang === 'ar' ? 'جاهز نهائي' : 'FINISHED'}</p>
+                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-tighter">{lang === 'ar' ? 'جاهز نهائي' : 'FINISHED'}</p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="space-y-1">
-                    <div className="flex justify-between items-center text-[7px] font-bold text-slate-400 uppercase">
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between items-center text-[9px] font-bold text-slate-400 uppercase">
                       <span>{lang === 'ar' ? 'إنجاز المرحلة الحالية' : 'STAGE PROGRESS'}</span>
                       <span className="tabular-nums">{currentStageProgress}%</span>
                     </div>
-                    <Progress value={currentStageProgress} className="h-1 bg-slate-200/50" />
+                    <Progress value={currentStageProgress} className="h-1.5 bg-slate-200/50" />
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="space-y-0.5 bg-white/40 p-1.5 rounded-lg border border-slate-100 text-center">
-                      <p className="text-[8px] font-bold text-slate-400 uppercase">{lang === 'ar' ? 'المستهدف الكلي' : 'TOTAL TARGET'}</p>
-                      <p className="text-[11px] font-black text-slate-700 tabular-nums">{order.targetQty}</p>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="space-y-1 bg-white/40 p-2 rounded-xl border border-slate-100 text-center">
+                      <p className="text-[9px] font-bold text-slate-400 uppercase">{lang === 'ar' ? 'المستهدف' : 'TARGET'}</p>
+                      <p className="text-xs font-black text-slate-700 tabular-nums">{order.targetQty}</p>
                     </div>
-                    <div className="space-y-0.5 bg-white/40 p-1.5 rounded-lg border border-slate-100 text-center">
-                      <p className="text-[8px] font-bold text-slate-400 uppercase">{lang === 'ar' ? 'منجز في المرحلة' : 'DONE IN STAGE'}</p>
-                      <p className="text-[11px] font-black text-emerald-600 tabular-nums">{currentStageDone}</p>
+                    <div className="space-y-1 bg-white/40 p-2 rounded-xl border border-slate-100 text-center">
+                      <p className="text-[9px] font-bold text-slate-400 uppercase">{lang === 'ar' ? 'تم الاستلام' : 'RECEIVED'}</p>
+                      <p className="text-xs font-black text-emerald-600 tabular-nums">{currentStageDone}</p>
                     </div>
-                    <div className="space-y-0.5 bg-emerald-50/50 p-1.5 rounded-lg border border-emerald-100/50 text-center">
-                      <p className="text-[8px] font-bold text-emerald-600 uppercase">{lang === 'ar' ? 'الجاهز للبيع' : 'READY TO SELL'}</p>
-                      <p className="text-[11px] font-black text-emerald-700 tabular-nums">{finalCompletedQty}</p>
+                    <div className="space-y-1 bg-emerald-50/50 p-2 rounded-xl border border-emerald-100/50 text-center">
+                      <p className="text-[9px] font-bold text-emerald-600 uppercase">{lang === 'ar' ? 'قيد العمل' : 'WIP'}</p>
+                      <p className="text-xs font-black text-emerald-700 tabular-nums">{order.targetQty - currentStageDone}</p>
                     </div>
                   </div>
                 </div>
 
-                {/* 3. QUICK ACTIONS HUB */}
-                <div className="w-full lg:w-36 p-2.5 flex flex-row lg:flex-col gap-2 border-r border-slate-100 bg-white items-center justify-center">
+                <div className="w-full lg:w-40 p-4 flex flex-row lg:flex-col gap-2 border-r border-slate-100 bg-white items-center justify-center">
                   <Button 
-                    onClick={() => router.push(`/production/vouchers/issue?orderId=${order.id}`)}
+                    onClick={(e) => { e.stopPropagation(); router.push(`/production/vouchers/issue?orderId=${order.id}`); }}
                     variant="outline" 
-                    className="flex-1 lg:w-full h-9 rounded-lg text-[9px] font-black gap-1.5 border-slate-200 hover:bg-slate-50 transition-all uppercase"
+                    className="flex-1 lg:w-full h-10 rounded-xl text-[10px] font-black gap-2 border-slate-200 hover:bg-slate-50 transition-all uppercase"
                   >
-                    <FileText className="w-3.5 h-3.5 text-emerald-600" />
+                    <FileText className="w-4 h-4 text-emerald-600" />
                     {lang === 'ar' ? 'سندات الأمر' : 'Vouchers'}
                   </Button>
                   <Button 
-                    onClick={() => handleManageTeams(order)}
-                    className="flex-1 lg:w-full h-9 premium-gradient rounded-lg text-[9px] font-black gap-1.5 border-none shadow-md hover:opacity-90 uppercase"
+                    onClick={(e) => handleManageTeams(order, e)}
+                    className="flex-1 lg:w-full h-10 premium-gradient rounded-xl text-[10px] font-black gap-2 border-none shadow-md hover:opacity-90 uppercase"
                   >
-                    <Users2 className="w-3.5 h-3.5" />
+                    <Users2 className="w-4 h-4" />
                     {lang === 'ar' ? 'إدارة الفرق' : 'Manage Teams'}
                   </Button>
                 </div>
@@ -500,13 +464,6 @@ export default function ProductionOrdersPage() {
                   <option key={p.id} value={p.id}>{p.nameAr}</option>
                 ))}
               </select>
-              {products?.length === 0 && !productsLoading && (
-                <p className="text-[10px] text-amber-600 font-bold mt-1 flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" />
-                  {lang === 'ar' ? 'الكتالوج فارغ. يرجى إضافة منتجات أولاً.' : 'Catalog is empty. Please add products first.'}
-                  <Link href="/production/products" className="underline ms-1">{lang === 'ar' ? 'اذهب للكتالوج' : 'Go to Catalog'}</Link>
-                </p>
-              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -560,7 +517,7 @@ export default function ProductionOrdersPage() {
         </DialogContent>
       </Dialog>
 
-      {/* MANAGE TEAMS & LOGISTICS DIALOG */}
+      {/* MANAGE LOGISTICS DIALOG */}
       <Dialog open={isLogisticsDialogOpen} onOpenChange={(open) => !open && resetLogistics()}>
         <DialogContent className="sm:max-w-[500px] rounded-lg p-0 overflow-hidden border-none shadow-2xl">
           <div className="bg-slate-900 p-6 text-white relative">
@@ -577,46 +534,25 @@ export default function ProductionOrdersPage() {
           </div>
 
           <form onSubmit={handleUpdateLogistics} className="p-6 space-y-6 bg-white">
-            {managingOrder && (
-              <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-emerald-600 shadow-sm"><Activity className="w-5 h-5" /></div>
-                  <div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'الحالة الحالية' : 'CURRENT STATUS'}</p>
-                    <p className="text-sm font-black text-slate-800">
-                      {departments?.find(d => d.id === managingOrder.currentStageId)?.nameAr || (lang === 'ar' ? 'غير محدد' : 'N/A')}
-                    </p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <Badge className="bg-emerald-50 text-emerald-700 font-black text-[10px]">{managingOrder.orderNumber}</Badge>
-                </div>
-              </div>
-            )}
-
             <div className="space-y-4">
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
                   <Layers className="w-3 h-3 text-emerald-600" />
-                  {lang === 'ar' ? 'تغيير مرحلة الإنتاج (Work Center)' : 'MOVE TO WORK CENTER'}
+                  {lang === 'ar' ? 'تغيير مرحلة الإنتاج الحالية' : 'MOVE TO STAGE'}
                 </Label>
                 <select 
                   value={logisticsData.currentStageId} 
                   onChange={(e) => setLogisticsData({...logisticsData, currentStageId: e.target.value})}
-                  className="w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-black outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                  className="w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-black outline-none focus:ring-2 focus:ring-emerald-500/20"
                   required
                 >
-                  <option value="">{lang === 'ar' ? '-- اختر القسم المستلم --' : '-- Select Stage --'}</option>
+                  <option value="">{lang === 'ar' ? '-- اختر القسم --' : '-- Select Stage --'}</option>
                   {departments?.filter(d => d.status === 'active').map(d => (
                     <option key={d.id} value={d.id}>{d.nameAr}</option>
                   ))}
                 </select>
-                <p className="text-[9px] font-bold text-slate-400 italic">
-                  {lang === 'ar' ? '* اختيار القسم سيقوم تلقائياً بتحديث المشرف المسؤول عن الطلبية.' : '* Selecting a stage updates the responsible supervisor.'}
-                </p>
               </div>
 
-              {/* RELEVANT SUPERVISOR INFO */}
               {logisticsData.currentStageId && (
                 <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center gap-3 animate-in fade-in zoom-in-95">
                   <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-emerald-600 shadow-sm">
@@ -633,9 +569,8 @@ export default function ProductionOrdersPage() {
             </div>
 
             <div className="flex gap-3 pt-4 border-t border-slate-100">
-              <Button type="submit" disabled={isSubmitting || !logisticsData.currentStageId} className="flex-1 h-12 premium-gradient hover:opacity-90 text-white rounded-xl font-black text-sm border-none shadow-xl shadow-emerald-900/10 gap-2">
-                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                {lang === 'ar' ? 'تأكيد النقل والمسؤولية' : 'Commit Transfer'}
+              <Button type="submit" disabled={isSubmitting || !logisticsData.currentStageId} className="flex-1 h-12 premium-gradient hover:opacity-90 text-white rounded-xl font-black text-sm border-none shadow-xl">
+                {lang === 'ar' ? 'تحديث المرحلة' : 'Commit Stage Change'}
               </Button>
               <Button type="button" variant="outline" onClick={resetLogistics} className="px-6 h-12 font-black text-slate-400 rounded-xl">
                 {lang === 'ar' ? 'إلغاء' : 'Cancel'}
@@ -645,64 +580,6 @@ export default function ProductionOrdersPage() {
         </DialogContent>
       </Dialog>
 
-      {/* DELETE ORDER ALERT DIALOG */}
-      <AlertDialog open={!!deletingOrder} onOpenChange={(open) => !open && setDeletingOrder(null)}>
-        <AlertDialogContent className="max-w-[400px] rounded-lg border-none shadow-2xl p-0 overflow-hidden">
-          <div className="bg-slate-950 p-8 text-center">
-            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20 shadow-inner">
-              <History className="w-8 h-8 text-red-500" />
-            </div>
-            <AlertDialogTitle className="text-white text-xl font-black">{lang === 'ar' ? 'أرشفة أمر الإنتاج' : 'Archive Order'}</AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-400 font-bold mt-2 text-xs leading-relaxed">
-              {lang === 'ar' 
-                ? 'سيتم نقل هذا الأمر للأرشيف. لا يمكن الحذف في حال وجود أي سندات استلام مسجلة منعاً لتضارب الحسابات.' 
-                : 'Order will be moved to archive. Deletion is blocked if any production receipts exist.'}
-            </AlertDialogDescription>
-          </div>
-          <div className="bg-white p-6 flex gap-3">
-            <AlertDialogAction onClick={handleDeleteOrder} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-md font-black">
-              {lang === 'ar' ? 'تأكيد' : 'Confirm'}
-            </AlertDialogAction>
-            <AlertDialogCancel onClick={() => setDeletingOrder(null)} className="flex-1 h-11 bg-slate-50 border-slate-200 text-slate-400 rounded-md font-black">
-              {lang === 'ar' ? 'تراجع' : 'Cancel'}
-            </AlertDialogCancel>
-          </div>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* SYSTEM NOTE - FOOTER */}
-      <div className="flex-none p-2 bg-slate-900 text-white/40 flex items-center gap-3">
-        <div className="w-5 h-5 rounded bg-white/5 flex items-center justify-center"><AlertCircle className="w-2.5 h-2.5" /></div>
-        <p className="text-[9px] font-bold">
-          {lang === 'ar' 
-            ? 'بروتوكول الرقابة: العداد النهائي يمثل القطع الجاهزة للبيع فقط. الكميات في المراحل البينية تظهر كإنجاز جزئي للمسار.' 
-            : 'Audit Protocol: Final counter represents finished goods only. Partial stages show WIP progress.'}
-        </p>
-      </div>
-
     </div>
-  );
-}
-
-// Add simple Refresh icon component as it might not be imported correctly from lucide-react if the version varies
-function RefreshCw(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
-      <path d="M21 3v5h-5" />
-      <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
-      <path d="M3 21v-5h5" />
-    </svg>
   );
 }
