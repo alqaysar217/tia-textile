@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
@@ -261,7 +262,8 @@ export default function PayrollManagementPage() {
     }
     setIsSubmitting(true);
     
-    // CRITICAL: Linking to Order and Stage for Ledger visibility
+    // ROOT CAUSE FIX: Capturing OrderID and StageID from the receipts being paid
+    // This ensures the payment voucher shows up in the Batch Ledger
     const firstReceiptId = formData.linkedReceipts[0];
     const firstReceipt = allReceipts?.find(r => r.id === firstReceiptId);
     
