@@ -189,8 +189,10 @@ export default function OrderDetailsDashboard() {
       // Basic stage filtering
       let isInStage = false;
       if (v.type === 'production_receipt') {
+        // Direct link in PRVs
         isInStage = v.currentStageId === activeTab;
       } else {
+        // Indirect link via Worker's Dept for MIVs and PAYs
         const worker = workers?.find(w => w.id === v.workerId);
         isInStage = worker?.departmentId === activeTab;
       }
@@ -601,7 +603,7 @@ export default function OrderDetailsDashboard() {
         </div>
       </div>
 
-      {/* VOUCHER PREVIEW DIALOG */}
+      {/* VOUCHER PREVIEW DIALOG (Restored Professional Style) */}
       <Dialog open={!!viewingVoucher} onOpenChange={(open) => !open && setViewingVoucher(null)}>
         <DialogContent className="sm:max-w-[700px] p-0 overflow-hidden border-none bg-white shadow-2xl">
           <DialogHeader className="sr-only"><DialogTitle>معاينة السند</DialogTitle></DialogHeader>
@@ -615,7 +617,7 @@ export default function OrderDetailsDashboard() {
                     <img src="/images/logo.png" alt="watermark" className="w-full h-full object-contain grayscale" />
                   </div>
 
-                  {/* HEADER */}
+                  {/* PROFESSIONAL HEADER */}
                   <div className="grid grid-cols-3 items-center border-b-4 border-emerald-800 pb-6 mb-6">
                     <div className="text-center space-y-0.5">
                       <h2 className="text-base font-black text-emerald-900">جمعية الصناعات النسيجية</h2>
