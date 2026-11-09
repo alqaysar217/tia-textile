@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo, useState } from 'react';
@@ -25,7 +24,9 @@ import {
   Hash,
   ShoppingBag,
   Info,
-  Loader2
+  Loader2,
+  Plus,
+  ShieldCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from '@/components/LanguageProvider';
@@ -136,7 +137,6 @@ export default function OrderDetailsDashboard() {
         <div className="container mx-auto px-4 flex items-center h-16 gap-2">
           {departments?.map((dept, idx) => {
             const isActive = activeStageId === dept.id;
-            const isCompleted = order.currentStageId !== dept.id; // Simple logic for visual indicator
             
             return (
               <button
