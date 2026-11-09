@@ -29,7 +29,8 @@ import {
   History,
   FileBarChart,
   UserCheck,
-  HandCoins
+  HandCoins,
+  PackageSearch
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -71,7 +72,8 @@ export function Sidebar() {
       icon: <FileText className="w-5 h-5" />,
       children: [
         { name: lang === 'ar' ? 'سندات صرف مواد' : 'Material Issue', href: '/production/vouchers/issue', icon: <FileInput className="w-3.5 h-3.5" /> },
-        { name: lang === 'ar' ? 'سندات استلام وتسوية' : 'Production Receipt', href: '/production/vouchers/receipt', icon: <FileOutput className="w-3.5 h-3.5" /> },
+        { name: lang === 'ar' ? 'سندات استلام انتاج' : 'Production Receipt', href: '/production/vouchers/receipt', icon: <FileOutput className="w-3.5 h-3.5" /> },
+        { name: lang === 'ar' ? 'سندات توريد مرتجع' : 'Material Returns', href: '/production/vouchers/return', icon: <RefreshCcw className="w-3.5 h-3.5" /> },
         { name: lang === 'ar' ? 'سندات صرف الأجور' : 'Wage Payments', href: '/production/wages', icon: <HandCoins className="w-3.5 h-3.5" /> },
       ]
     },
@@ -184,4 +186,3 @@ export function Sidebar() {
     </div>
   );
 }
-
