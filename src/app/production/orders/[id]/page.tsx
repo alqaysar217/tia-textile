@@ -31,11 +31,10 @@ import {
 import { Button } from '@/components/ui/button';
 import { useTranslation } from '@/components/LanguageProvider';
 import { useFirestore, useDoc, useCollection } from '@/firebase';
-import { doc, collection, query, where, orderBy } from 'firebase/firestore';
+import { doc, collection, query, where } from 'firebase/firestore';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 export default function OrderDetailsDashboard() {
@@ -48,16 +47,27 @@ export default function OrderDetailsDashboard() {
 
   // Fetch Data
   const orderRef = useMemo(() => !db ? null : doc(db, 'productionOrders', id as string), [db, id]);
-  const vouchersQuery = useMemo(() => !db ? null : query(collection(db, 'vouchers'), where('orderId', '==', id), orderBy('date', 'desc')), [db, id]);
+  // Removed orderBy to avoid index requirement error
+  const vouchersQuery = useMemo(() => !db ? null : query(collection(db, 'vouchers'), where('orderId', '==', id)), [db, id]);
   const deptsQuery = useMemo(() => !db ? null : query(collection(db, 'departments'), where('status', '!=', 'deleted')), [db]);
   const workersQuery = useMemo(() => !db ? null : collection(db, 'workers'), [db]);
   const productsQuery = useMemo(() => !db ? null : collection(db, 'products'), [db]);
 
   const { data: order, loading: orderLoading } = useDoc<any>(orderRef);
-  const { data: vouchers, loading: vouchersLoading } = useCollection<any>(vouchersQuery);
+  const { data: rawVouchers, loading: vouchersLoading } = useCollection<any>(vouchersQuery);
   const { data: departments, loading: deptsLoading } = useCollection<any>(deptsQuery);
   const { data: workers } = useCollection<any>(workersQuery);
   const { data: products } = useCollection<any>(productsQuery);
+
+  // Client-side sorting by date (descending) to avoid index error
+  const vouchers = useMemo(() => {
+    if (!rawVouchers) return [];
+    return [...rawVouchers].sort((a, b) => {
+      const dateA = new Date(a.date || 0).getTime();
+      const dateB = new Date(b.date || 0).getTime();
+      return dateB - dateA;
+    });
+  }, [rawVouchers]);
 
   const product = useMemo(() => products?.find(p => p.id === order?.productId), [products, order]);
 
@@ -73,7 +83,6 @@ export default function OrderDetailsDashboard() {
     return vouchers.filter(v => {
       if (v.status === 'deleted') return false;
       const worker = workers?.find(w => w.id === v.workerId);
-      // Logic: For receipts, we have stageId. For issues/payments, we infer from worker's dept or the current filter
       if (v.type === 'production_receipt') return v.currentStageId === activeStageId;
       return worker?.departmentId === activeStageId;
     });
