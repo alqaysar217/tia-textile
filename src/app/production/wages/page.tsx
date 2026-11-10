@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
@@ -39,7 +40,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useTranslation } from '@/components/LanguageProvider';
-import { useFirestore, useCollection } from '@/firebase';
+import { useFirestore, useCollection, useDoc } from '@/firebase';
 import { collection, addDoc, updateDoc, doc, serverTimestamp, query, where, getDoc, writeBatch } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -112,14 +113,37 @@ export default function PayrollManagementPage() {
   const [workerFilter, setWorkerFilter] = useState('all');
   const [currencyFilter, setCurrencyFilter] = useState('all');
 
+  // Fetch System Settings for Currency Lock
+  const settingsRef = useMemo(() => !db ? null : doc(db, 'settings', 'global'), [db]);
+  const { data: savedSettings } = useDoc<any>(settingsRef);
+  const systemCurrency = savedSettings?.baseCurrency || 'YER';
+
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     workerId: '',
     amount: 0,
-    currency: 'YER',
+    currency: systemCurrency,
     notes: '',
     linkedReceipts: [] as string[]
   });
+
+  // Sync currency with system settings when adding new payment
+  useEffect(() => {
+    if (!editingVoucherId && systemCurrency) {
+      setFormData(prev => ({ 
+        ...prev, 
+        currency: systemCurrency,
+        linkedReceipts: [],
+        amount: 0
+      }));
+    } else if (!editingVoucherId) {
+       setFormData(prev => ({
+        ...prev,
+        linkedReceipts: [],
+        amount: 0
+      }));
+    }
+  }, [formData.workerId, systemCurrency, editingVoucherId, isPayDialogOpen]);
 
   const workersQuery = useMemo(() => !db ? null : collection(db, 'workers'), [db]);
   const deptsQuery = useMemo(() => !db ? null : collection(db, 'departments'), [db]);
@@ -136,16 +160,6 @@ export default function PayrollManagementPage() {
   const { data: allPayments, loading: paymentsLoading } = useCollection<any>(paymentsQuery);
 
   const loading = workersLoading || receiptsLoading || paymentsLoading;
-
-  useEffect(() => {
-    if (!editingVoucherId) {
-      setFormData(prev => ({
-        ...prev,
-        linkedReceipts: [],
-        amount: 0
-      }));
-    }
-  }, [formData.workerId, formData.currency, editingVoucherId]);
 
   const unpaidReceipts = useMemo(() => {
     if (!formData.workerId || !allReceipts) return [];
@@ -212,11 +226,11 @@ export default function PayrollManagementPage() {
       date: new Date().toISOString().split('T')[0], 
       workerId: '', 
       amount: 0, 
-      currency: 'YER', 
+      currency: systemCurrency, 
       notes: '', 
       linkedReceipts: [] 
     });
-  }, []);
+  }, [systemCurrency]);
 
   const handleEditVoucher = (p: any) => {
     setEditingVoucherId(p.id);
@@ -580,8 +594,14 @@ export default function PayrollManagementPage() {
             <div className="p-4 bg-emerald-50/30 border border-emerald-100 rounded-xl space-y-4">
               <div className="flex items-center justify-between">
                 <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2 justify-start"><Coins className="w-3.5 h-3.5 text-emerald-600" /> CURRENCY</Label>
-                <select value={formData.currency} onChange={(e) => setFormData(prev => ({...prev, currency: e.target.value}))} className="h-9 px-3 bg-white border border-emerald-200 rounded-lg text-[10px] font-black shadow-sm outline-none">
-                  <option value="YER">YER - ريال يمني</option><option value="SAR">SAR - ريال سعودي</option><option value="USD">USD - دولار أمريكي</option>
+                <select 
+                  value={formData.currency} 
+                  disabled
+                  className="h-9 px-3 bg-white border border-emerald-200 rounded-lg text-[10px] font-black shadow-sm outline-none disabled:opacity-70 disabled:cursor-not-allowed"
+                >
+                  <option value="YER">YER - ريال يمني</option>
+                  <option value="SAR">SAR - ريال سعودي</option>
+                  <option value="USD">USD - دولار أمريكي</option>
                 </select>
               </div>
               {formData.workerId && unpaidReceipts.length > 0 && (
