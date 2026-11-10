@@ -34,7 +34,8 @@ import {
   SortDesc,
   ArrowUpDown,
   Package,
-  Box
+  Box,
+  FileText
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from '@/components/LanguageProvider';
@@ -67,7 +68,8 @@ import { toast } from '@/hooks/use-toast';
 import { toPng } from 'html-to-image';
 
 export default function OrderDetailsDashboard() {
-  const { id } = useParams();
+  const params = React.use(useParams());
+  const id = params?.id;
   const router = useRouter();
   const { lang, dir } = useTranslation();
   const db = useFirestore();
@@ -281,7 +283,6 @@ export default function OrderDetailsDashboard() {
                         <LedgerRow label={lang === 'ar' ? 'الأولوية' : 'PRIORITY'} value={order.priority} icon={<ShieldCheck className="w-4 h-4" />} />
                         <LedgerRow label={lang === 'ar' ? 'الحالة' : 'STATUS'} value={order.status} icon={<Tag className="w-4 h-4" />} />
                         <tr className="hover:bg-slate-50/50 transition-colors group">
-                           {/* Label Column - Right in RTL */}
                            <td className="px-6 py-4 w-72 border-l border-slate-100 rtl:border-l-0 rtl:border-r">
                               <div className="flex items-center gap-3 justify-start">
                                  <div className="p-1.5 bg-slate-100 rounded text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
@@ -290,9 +291,8 @@ export default function OrderDetailsDashboard() {
                                  <span className="font-black text-[10px] text-slate-400 uppercase tracking-widest">{lang === 'ar' ? 'مستوى التقدم الإجمالي' : 'PROGRESS'}</span>
                               </div>
                            </td>
-                           {/* Value Column - Left in RTL */}
-                           <td className={cn("px-6 py-4 text-xs font-black tabular-nums text-left")}>
-                              <div className="flex items-center gap-4 justify-end">
+                           <td className={cn("px-6 py-4 text-xs font-black tabular-nums", dir === 'rtl' ? "text-left" : "text-right")}>
+                              <div className={cn("flex items-center gap-4", dir === 'rtl' ? "justify-end" : "justify-start")}>
                                  <span className="text-xs font-black text-emerald-700 tabular-nums">{progress}%</span>
                                  <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden max-w-[200px]">
                                     <div className="h-full bg-emerald-500" style={{ width: `${progress}%` }} />
@@ -308,7 +308,7 @@ export default function OrderDetailsDashboard() {
                                  <span className="font-black text-[10px] text-slate-400 uppercase tracking-widest">NOTES</span>
                                </div>
                              </td>
-                             <td className="px-6 py-5 text-xs font-bold text-slate-600 italic leading-relaxed text-left">{order.notes}</td>
+                             <td className={cn("px-6 py-5 text-xs font-bold text-slate-600 italic leading-relaxed", dir === 'rtl' ? "text-left" : "text-right")}>{order.notes}</td>
                            </tr>
                         )}
                      </tbody>
@@ -622,14 +622,12 @@ function LedgerRow({ label, value, icon, color = "text-slate-900" }: { label: st
   const { dir } = useTranslation();
   return (
     <tr className="hover:bg-slate-50/50 transition-colors group">
-       {/* Label Column - Now strictly on the Right in RTL */}
        <td className="px-6 py-4 w-72 border-l border-slate-100 rtl:border-l-0 rtl:border-r">
           <div className="flex items-center gap-3 justify-start">
              <div className="p-1.5 bg-slate-100 rounded text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">{icon}</div>
              <span className="font-black text-[10px] text-slate-400 uppercase tracking-widest">{label}</span>
           </div>
        </td>
-       {/* Value Column - Now strictly on the Left in RTL */}
        <td className={cn("px-6 py-4 text-xs font-black tabular-nums", color, dir === 'rtl' ? "text-left" : "text-right")}>
          {value || '---'}
        </td>
