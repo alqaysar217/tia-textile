@@ -126,7 +126,6 @@ export default function MaterialReturnPage() {
 
   const activeOrders = useMemo(() => (allOrders || []).filter(o => o.status !== 'deleted'), [allOrders]);
 
-  // Receipts that have returns but not yet verified
   const pendingReturns = useMemo(() => {
     if (!allReceipts) return [];
     return allReceipts.filter(r => 
@@ -137,7 +136,6 @@ export default function MaterialReturnPage() {
     );
   }, [allReceipts]);
 
-  // Verified Return Vouchers (Archive)
   const verifiedReturns = useMemo(() => {
     if (!returnVouchers) return [];
     let list = returnVouchers.filter(v => v.status !== 'deleted');
@@ -284,7 +282,7 @@ export default function MaterialReturnPage() {
       </div>
 
       <div className="flex-1 min-h-0 flex flex-col p-4 md:p-6 no-scrollbar">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full h-full flex flex-col">
+        <Tabs value={activeTab} onValueChange={setActiveTab} dir={dir} className="w-full h-full flex flex-col">
           <TabsList className="grid grid-cols-2 w-[400px] mb-6 bg-white border border-slate-200 shadow-sm h-11">
             <TabsTrigger value="pending" className="font-black text-xs gap-2">
               <AlertTriangle className="w-3.5 h-3.5 text-amber-500" /> 
@@ -296,10 +294,10 @@ export default function MaterialReturnPage() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="pending" className="flex-1 min-h-0">
+          <TabsContent value="pending" className="flex-1 min-h-0 focus-visible:ring-0 outline-none">
              <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden h-full flex flex-col">
                 <div className="p-4 bg-amber-50 border-b border-amber-100 flex items-center gap-3">
-                   <Info className="w-4 h-4 text-amber-600" />
+                   <Info className="w-4 h-4 text-amber-600 shrink-0" />
                    <p className="text-[11px] font-bold text-amber-800">
                      {lang === 'ar' ? 'تظهر هنا السندات التي تم فيها إرجاع مواد عند استلام المنتج، وتحتاج إلى تأكيد أمين المستودع لدخول الرصيد.' : 'Receipts with returns waiting for warehouse verification to update stock.'}
                    </p>
@@ -308,10 +306,10 @@ export default function MaterialReturnPage() {
                    <Table className="text-right border-separate border-spacing-0">
                       <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
                         <TableRow>
-                          <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase">{lang === 'ar' ? 'سند الاستلام' : 'RECEIPT #'}</TableHead>
-                          <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase">{lang === 'ar' ? 'الموظف' : 'WORKER'}</TableHead>
-                          <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase">{lang === 'ar' ? 'المواد المرجعة' : 'RETURNED ITEMS'}</TableHead>
-                          <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center">{lang === 'ar' ? 'الكمية' : 'QTY'}</TableHead>
+                          <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'سند الاستلام' : 'RECEIPT #'}</TableHead>
+                          <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'الموظف' : 'WORKER'}</TableHead>
+                          <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'ملخص المواد' : 'RETURN SUMMARY'}</TableHead>
+                          <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center">{lang === 'ar' ? 'الكمية' : 'TOTAL ITEMS'}</TableHead>
                           <TableHead className="w-32 px-6 py-4"></TableHead>
                         </TableRow>
                       </TableHeader>
@@ -320,19 +318,24 @@ export default function MaterialReturnPage() {
                           <TableRow><TableCell colSpan={5} className="text-center py-20 font-bold text-slate-300 italic">{lang === 'ar' ? 'لا توجد مرتجعات معلقة حالياً' : 'No pending returns'}</TableCell></TableRow>
                         ) : pendingReturns.map(r => (
                           <TableRow key={r.id} className="hover:bg-slate-50/50 border-b border-slate-100 transition-colors">
-                            <TableCell className="px-6 py-3 font-black text-slate-900 text-xs tabular-nums">{r.voucherNumber}</TableCell>
-                            <TableCell className="px-6 py-3 font-bold text-slate-700 text-xs">{allWorkers?.find(w => w.id === r.workerId)?.fullName || '---'}</TableCell>
-                            <TableCell className="px-6 py-3">
-                               <div className="flex flex-wrap gap-1">
-                                  {r.returnedItems.map((item: any, i: number) => (
-                                    <Badge key={i} variant="outline" className="text-[9px] font-bold bg-slate-50">{item.nameAr}</Badge>
-                                  ))}
+                            <TableCell className={cn("px-6 py-3 font-black text-slate-900 text-xs tabular-nums", dir === 'rtl' ? "text-right" : "text-left")}>{r.voucherNumber}</TableCell>
+                            <TableCell className={cn("px-6 py-3 font-bold text-slate-700 text-xs", dir === 'rtl' ? "text-right" : "text-left")}>{allWorkers?.find(w => w.id === r.workerId)?.fullName || '---'}</TableCell>
+                            <TableCell className={cn("px-6 py-3", dir === 'rtl' ? "text-right" : "text-left")}>
+                               <div className="flex items-center gap-2">
+                                  <div className="p-1.5 bg-slate-100 rounded text-slate-500"><Box className="w-3.5 h-3.5" /></div>
+                                  <span className="text-[10px] font-bold text-slate-500 italic truncate max-w-[200px]">
+                                    ({r.returnedItems.slice(0, 2).map((it: any) => it.nameAr).join(', ')}{r.returnedItems.length > 2 ? '...' : ''})
+                                  </span>
                                </div>
                             </TableCell>
-                            <TableCell className="px-6 py-3 text-center font-black text-amber-600 tabular-nums">{r.returnedItems.length} {lang === 'ar' ? 'أصناف' : 'Items'}</TableCell>
+                            <TableCell className="px-6 py-3 text-center">
+                               <Badge variant="outline" className="font-black tabular-nums bg-amber-50 text-amber-700 border-amber-100">
+                                  {r.returnedItems.length} {lang === 'ar' ? 'أصناف' : 'Items'}
+                               </Badge>
+                            </TableCell>
                             <TableCell className="px-6 py-3 text-center">
                                <Button onClick={() => handleQuickVerify(r)} variant="outline" className="h-8 px-4 rounded-lg text-[10px] font-black uppercase text-emerald-600 border-emerald-100 hover:bg-emerald-600 hover:text-white transition-all shadow-sm gap-2">
-                                  <CheckCircle2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'توثيق المرتجع' : 'Confirm'}
+                                  <CheckCircle2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'توثيق المرتجع' : 'Verify'}
                                </Button>
                             </TableCell>
                           </TableRow>
@@ -343,37 +346,43 @@ export default function MaterialReturnPage() {
              </div>
           </TabsContent>
 
-          <TabsContent value="verified" className="flex-1 min-h-0">
+          <TabsContent value="verified" className="flex-1 min-h-0 focus-visible:ring-0 outline-none">
              <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden h-full flex flex-col">
                 <div className="p-4 border-b border-slate-100 flex gap-3">
                    <div className="relative flex-1">
                       <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400`} />
-                      <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={lang === 'ar' ? 'بحث في الأرشيف الموثق...' : 'Search verified returns...'} className={cn("h-10 bg-slate-50 border-none text-xs font-bold", dir === 'rtl' ? "pr-10" : "pl-10")} />
+                      <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={lang === 'ar' ? 'بحث في الأرشيف الموثق...' : 'Search verified archive...'} className={cn("h-10 bg-slate-50 border-none text-xs font-bold", dir === 'rtl' ? "pr-10" : "pl-10")} />
                    </div>
                 </div>
                 <div className="flex-1 overflow-auto">
                    <Table className="text-right border-separate border-spacing-0">
                       <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
                         <TableRow>
-                          <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase">{lang === 'ar' ? 'رقم السند' : 'REF #'}</TableHead>
-                          <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase">{lang === 'ar' ? 'التاريخ' : 'DATE'}</TableHead>
-                          <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase">{lang === 'ar' ? 'الموظف' : 'WORKER'}</TableHead>
+                          <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'رقم السند' : 'REF #'}</TableHead>
+                          <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'التاريخ' : 'DATE'}</TableHead>
+                          <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'الموظف' : 'WORKER'}</TableHead>
                           <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center">{lang === 'ar' ? 'الأصناف' : 'ITEMS'}</TableHead>
-                          <TableHead className="w-24 px-6 py-4"></TableHead>
+                          <TableHead className="w-24 px-6 py-4 text-center">ACTIONS</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {verifiedReturns.map(v => (
+                        {verifiedReturns.length === 0 ? (
+                          <TableRow><TableCell colSpan={5} className="text-center py-20 font-bold text-slate-300 italic">{lang === 'ar' ? 'الأرشيف فارغ' : 'Archive empty'}</TableCell></TableRow>
+                        ) : verifiedReturns.map(v => (
                           <TableRow key={v.id} className="hover:bg-slate-50/50 border-b border-slate-100 transition-colors">
-                            <TableCell className="px-6 py-3 font-black text-slate-900 text-xs tabular-nums">{v.voucherNumber}</TableCell>
-                            <TableCell className="px-6 py-3 font-bold text-slate-500 text-xs tabular-nums">{v.date}</TableCell>
-                            <TableCell className="px-6 py-3 font-bold text-slate-700 text-xs">{allWorkers?.find(w => w.id === v.workerId)?.fullName || '---'}</TableCell>
-                            <TableCell className="px-6 py-3 text-center"><Badge variant="outline" className="font-black tabular-nums">{v.items?.length || 0}</Badge></TableCell>
+                            <TableCell className={cn("px-6 py-3 font-black text-slate-900 text-xs tabular-nums", dir === 'rtl' ? "text-right" : "text-left")}>{v.voucherNumber}</TableCell>
+                            <TableCell className={cn("px-6 py-3 font-bold text-slate-500 text-xs tabular-nums", dir === 'rtl' ? "text-right" : "text-left")}>{v.date}</TableCell>
+                            <TableCell className={cn("px-6 py-3 font-bold text-slate-700 text-xs", dir === 'rtl' ? "text-right" : "text-left")}>{allWorkers?.find(w => w.id === v.workerId)?.fullName || '---'}</TableCell>
+                            <TableCell className="px-6 py-3 text-center">
+                              <Badge variant="outline" className="font-black tabular-nums bg-emerald-50 text-emerald-700 border-emerald-100">
+                                {v.items?.length || 0}
+                              </Badge>
+                            </TableCell>
                             <TableCell className="px-6 py-3 text-center">
                                <div className="flex items-center justify-center gap-1">
-                                  <Button variant="ghost" size="icon" onClick={() => setPrintingVoucher(v)} className="h-8 w-8 text-slate-400 hover:text-emerald-600"><Eye className="w-4 h-4" /></Button>
+                                  <Button variant="ghost" size="icon" onClick={() => setPrintingVoucher(v)} className="h-8 w-8 text-slate-400 hover:text-emerald-600 transition-colors"><Eye className="w-4 h-4" /></Button>
                                   <DropdownMenu>
-                                    <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="w-4 h-4 text-slate-400" /></Button></DropdownMenuTrigger>
+                                    <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-slate-100 rounded-lg"><MoreVertical className="w-4 h-4 text-slate-400" /></Button></DropdownMenuTrigger>
                                     <DropdownMenuContent align="end" className="w-44 rounded-xl shadow-xl">
                                       <DropdownMenuItem onClick={() => { setEditingVoucherId(v.id); setFormData({ ...v }); setIsAddDialogOpen(true); }} className="gap-2 font-bold py-2 cursor-pointer text-xs"><Edit2 className="w-3.5 h-3.5 text-emerald-600" /> تعديل</DropdownMenuItem>
                                       <DropdownMenuSeparator />
@@ -444,15 +453,15 @@ export default function MaterialReturnPage() {
                    <Table className="text-right">
                       <TableHeader className="bg-slate-50">
                         <TableRow>
-                          <TableHead className="text-right text-[9px] font-black text-slate-500 uppercase">MATERIAL</TableHead>
-                          <TableHead className="text-center text-[9px] font-black text-slate-500 uppercase">QTY</TableHead>
+                          <TableHead className={cn("px-4 py-2 text-[9px] font-black text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>MATERIAL</TableHead>
+                          <TableHead className="px-4 py-2 text-[9px] font-black text-slate-500 uppercase text-center">QTY</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {formData.items.map((item, idx) => (
                           <TableRow key={idx} className="border-b border-slate-50">
-                            <TableCell className="text-xs font-bold text-slate-900">{item.nameAr}</TableCell>
-                            <TableCell className="text-center font-black text-emerald-700 tabular-nums">{(item.qty || 0).toLocaleString('en-US')} {item.unit}</TableCell>
+                            <TableCell className={cn("px-4 py-3 text-xs font-bold text-slate-900", dir === 'rtl' ? "text-right" : "text-left")}>{item.nameAr}</TableCell>
+                            <TableCell className="px-4 py-3 text-center font-black text-emerald-700 tabular-nums">{(item.qty || 0).toLocaleString('en-US')} {item.unit}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
