@@ -36,7 +36,8 @@ import {
   UploadCloud,
   X,
   PlusCircle,
-  Coins
+  Coins,
+  RefreshCcw
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -172,7 +173,7 @@ export default function OverheadCostsPage() {
     if (!currentItem.description || currentItem.amount <= 0) return;
     setFormData(prev => ({
       ...prev,
-      items: [...prev.items, { ...currentItem }]
+      items: [...(prev.items || []), { ...currentItem }]
     }));
     setCurrentItem({ category: 'other', description: '', amount: 0 });
   };
@@ -180,7 +181,7 @@ export default function OverheadCostsPage() {
   const removeItem = (idx: number) => {
     setFormData(prev => ({
       ...prev,
-      items: prev.items.filter((_, i) => i !== idx)
+      items: (prev.items || []).filter((_, i) => i !== idx)
     }));
   };
 
@@ -211,7 +212,10 @@ export default function OverheadCostsPage() {
 
   const handleSaveVoucher = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!db || isSubmitting || formData.items.length === 0) return;
+    if (!db || isSubmitting || !formData.items || formData.items.length === 0) {
+      toast({ variant: "destructive", title: lang === 'ar' ? "يرجى إضافة بند تكلفة واحد على الأقل" : "Please add at least one expense item" });
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -264,6 +268,15 @@ export default function OverheadCostsPage() {
   const toggleSort = (field: typeof sortBy) => {
     if (sortBy === field) setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     else { setSortBy(field); setSortOrder('asc'); }
+  };
+
+  const handleEditVoucher = (v: any) => {
+    setEditingVoucherId(v.id);
+    setFormData({ 
+      ...v, 
+      items: v.items || [] // Safeguard: ensure items is always an array
+    });
+    setIsAddDialogOpen(true);
   };
 
   return (
@@ -338,7 +351,7 @@ export default function OverheadCostsPage() {
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-slate-100 rounded-lg"><MoreVertical className="w-4 h-4 text-slate-400" /></Button></DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-44 rounded-xl shadow-xl">
-                          <DropdownMenuItem onClick={() => { setEditingVoucherId(v.id); setFormData({ ...v }); setIsAddDialogOpen(true); }} className="gap-2 font-bold py-2 cursor-pointer text-xs"><Edit2 className="w-3.5 h-3.5 text-emerald-600" /> {lang === 'ar' ? 'تعديل السند' : 'Edit Voucher'}</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleEditVoucher(v)} className="gap-2 font-bold py-2 cursor-pointer text-xs"><Edit2 className="w-3.5 h-3.5 text-emerald-600" /> {lang === 'ar' ? 'تعديل السند' : 'Edit Voucher'}</DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem onClick={() => setDeletingVoucher(v)} className="gap-2 font-bold py-2 text-rose-600 cursor-pointer text-xs"><Trash2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'نقل للمهملات' : 'Move to Trash'}</DropdownMenuItem>
                         </DropdownMenuContent>
@@ -445,7 +458,7 @@ export default function OverheadCostsPage() {
                 <Button type="button" onClick={handleAddItem} className="md:col-span-2 h-10 bg-emerald-600 text-white font-black text-xs rounded-lg shadow-md border-none"><Plus className="w-3.5 h-3.5 me-1" /> {lang === 'ar' ? 'إضافة البند' : 'Add'}</Button>
               </div>
 
-              {formData.items.length > 0 && (
+              {(formData.items?.length || 0) > 0 && (
                 <div className="border border-emerald-100 rounded-xl overflow-hidden shadow-sm bg-white">
                   <Table className="text-right">
                     <TableHeader className="bg-emerald-50">
@@ -490,7 +503,7 @@ export default function OverheadCostsPage() {
             </div>
 
             <div className="flex gap-3 pt-4 border-t border-slate-100">
-              <Button type="submit" disabled={isSubmitting || formData.items.length === 0} className="flex-1 h-14 premium-gradient text-white rounded-xl font-black text-base shadow-xl">
+              <Button type="submit" disabled={isSubmitting || !formData.items || formData.items.length === 0} className="flex-1 h-14 premium-gradient text-white rounded-xl font-black text-base shadow-xl">
                 {isSubmitting ? <Loader2 className="animate-spin me-2" /> : <Save className="w-5 h-5 me-2" />}
                 {lang === 'ar' ? 'ترحيل سند المصاريف' : 'Post Cost Voucher'}
               </Button>
@@ -618,7 +631,7 @@ export default function OverheadCostsPage() {
       <AlertDialog open={!!deletingVoucher} onOpenChange={() => setDeletingVoucher(null)}>
         <AlertDialogContent className="max-w-[400px] rounded-lg border-none shadow-2xl p-0 overflow-hidden">
           <div className="bg-slate-950 p-8 text-center">
-            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20"><History className="w-8 h-8 text-red-500" /></div>
+            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20 shadow-inner"><History className="w-8 h-8 text-red-500" /></div>
             <AlertDialogTitle className="text-white text-xl font-black">{lang === 'ar' ? 'إلغاء السند المالي' : 'Cancel Transaction'}</AlertDialogTitle>
             <AlertDialogDescription className="text-slate-400 font-bold mt-2 text-xs leading-relaxed">
               {lang === 'ar' ? 'تحذير: سيتم إلغاء السند وعكس أثره على الحسابات وتكاليف الإنتاج فوراً.' : 'Warning: This will reverse the fiscal impact on accounting and production costs.'}
