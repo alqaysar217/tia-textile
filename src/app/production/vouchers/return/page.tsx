@@ -33,7 +33,8 @@ import {
   Info,
   Users2,
   Tag,
-  Wallet
+  Wallet,
+  CalendarDays
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -77,6 +78,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -254,11 +260,37 @@ export default function MaterialReturnPage() {
                 <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={lang === 'ar' ? 'بحث...' : 'Search...'} className="h-9 w-full pr-8 text-[10px] font-bold bg-white" />
              </div>
 
-             <div className="flex items-center gap-1 bg-white px-2 rounded-lg border border-slate-200 h-9 shrink-0">
-                <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-6 border-none shadow-none text-[9px] w-24 font-bold p-0" />
-                <span className="text-slate-300">→</span>
-                <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-6 border-none shadow-none text-[9px] w-24 font-bold p-0" />
-             </div>
+             <Popover>
+               <PopoverTrigger asChild>
+                 <Button variant="ghost" className="h-9 px-3 bg-white border border-slate-200 hover:bg-slate-50 transition-all rounded-lg gap-2 text-[10px] font-black text-slate-400 shrink-0">
+                    <CalendarDays className="w-4 h-4 text-slate-400" />
+                    {dateFrom || dateTo ? (lang === 'ar' ? 'محدد' : 'Set') : (lang === 'ar' ? 'التاريخ' : 'Date')}
+                 </Button>
+               </PopoverTrigger>
+               <PopoverContent align={dir === 'rtl' ? 'start' : 'end'} className="w-72 p-4 rounded-xl shadow-2xl border-slate-200">
+                 <div className="space-y-4">
+                   <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 pb-2">
+                      <CalendarDays className="w-3.5 h-3.5" />
+                      {lang === 'ar' ? 'تصفية حسب النطاق الزمني' : 'DATE RANGE FILTER'}
+                   </div>
+                   <div className="grid grid-cols-2 gap-3">
+                     <div className="space-y-1.5">
+                       <Label className="text-[9px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'من تاريخ' : 'FROM'}</Label>
+                       <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-9 text-[10px] font-bold tabular-nums" />
+                     </div>
+                     <div className="space-y-1.5">
+                       <Label className="text-[9px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'إلى تاريخ' : 'TO'}</Label>
+                       <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-9 text-[10px] font-bold tabular-nums" />
+                     </div>
+                   </div>
+                   {(dateFrom || dateTo) && (
+                     <Button variant="ghost" size="sm" onClick={() => { setDateFrom(''); setDateTo(''); }} className="w-full h-8 text-[9px] font-black text-rose-500 hover:bg-rose-50 hover:text-rose-600 border border-transparent hover:border-rose-100 rounded-lg">
+                        {lang === 'ar' ? 'إعادة ضبط الوقت' : 'CLEAR DATES'}
+                     </Button>
+                   )}
+                 </div>
+               </PopoverContent>
+             </Popover>
 
              <div className="flex items-center gap-1 shrink-0">
                 <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg hover:bg-white border border-transparent hover:border-slate-200"><Filter className="w-4 h-4 text-slate-400" /></Button>
