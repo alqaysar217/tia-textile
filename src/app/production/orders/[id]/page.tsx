@@ -35,7 +35,8 @@ import {
   ArrowUpDown,
   Package,
   Box,
-  FileText
+  FileText,
+  RefreshCcw
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from '@/components/LanguageProvider';
@@ -81,7 +82,7 @@ export default function OrderDetailsDashboard({ params }: { params: Promise<{ id
   const [isDownloading, setIsDownloading] = useState(false);
 
   const [stageSearch, setStageSearch] = useState('');
-  const [stageTypeFilter, setStageTypeFilter] = useState<'all' | 'material_issue' | 'production_receipt' | 'wage_payment'>('all');
+  const [stageTypeFilter, setStageTypeFilter] = useState<'all' | 'material_issue' | 'production_receipt' | 'wage_payment' | 'material_return'>('all');
   const [stageSortOrder, setStageSortOrder] = useState<'asc' | 'desc'>('desc');
 
   const orderRef = useMemo(() => !db ? null : doc(db, 'productionOrders', id as string), [db, id]);
@@ -165,12 +166,16 @@ export default function OrderDetailsDashboard({ params }: { params: Promise<{ id
     
     let list = vouchers.filter(v => {
       if (v.status === 'deleted') return false;
-      const isInStage = v.currentStageId === activeTab || (workers?.find(w => w.id === v.workerId)?.departmentId === activeTab);
+      
+      const worker = workers?.find(w => w.id === v.workerId);
+      const deptIdOfVoucher = v.currentStageId || worker?.departmentId;
+      
+      const isInStage = deptIdOfVoucher === activeTab;
       if (!isInStage) return false;
+      
       if (stageTypeFilter !== 'all' && v.type !== stageTypeFilter) return false;
       if (stageSearch) {
         const s = stageSearch.toLowerCase();
-        const worker = workers?.find(w => w.id === v.workerId);
         return v.voucherNumber?.toLowerCase().includes(s) || 
                worker?.fullName?.toLowerCase().includes(s) ||
                v.notes?.toLowerCase().includes(s);
@@ -224,6 +229,7 @@ export default function OrderDetailsDashboard({ params }: { params: Promise<{ id
   return (
     <div className="flex flex-col h-full bg-[#f1f5f9] overflow-hidden" dir={dir}>
       
+      {/* COMPACT ERP HEADER */}
       <div className="flex-none bg-white border-b border-slate-200 z-30 px-6 py-3 shadow-sm">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
@@ -231,7 +237,7 @@ export default function OrderDetailsDashboard({ params }: { params: Promise<{ id
               {dir === 'rtl' ? <ArrowRight className="w-4 h-4" /> : <ArrowLeft className="w-4 h-4" />}
             </Button>
             <div className="h-8 w-px bg-slate-200" />
-            <div>
+            <div className="text-right rtl:text-right ltr:text-left">
               <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                 <span>{lang === 'ar' ? 'أوامر الإنتاج' : 'Work Orders'}</span>
                 <ChevronRight className={`w-3 h-3 ${dir === 'rtl' ? 'rotate-180' : ''}`} />
@@ -247,6 +253,7 @@ export default function OrderDetailsDashboard({ params }: { params: Promise<{ id
         </div>
       </div>
 
+      {/* STAGE SELECTOR TABS */}
       <div className="flex-none bg-slate-900 z-20 shadow-lg">
         <div className="flex items-center h-12 gap-1 overflow-x-auto no-scrollbar scroll-smooth px-4">
           <button onClick={() => setActiveTab('info')} className={cn("flex items-center gap-2 px-5 h-full transition-all font-black text-[10px] uppercase tracking-wider shrink-0", activeTab === 'info' ? "bg-emerald-600 text-white shadow-[inset_0_-3px_0_white]" : "text-white/40 hover:text-white/70")}><Info className="w-3.5 h-3.5" />{lang === 'ar' ? 'معلومات الدفعة' : 'Batch Info'}</button>
@@ -265,6 +272,7 @@ export default function OrderDetailsDashboard({ params }: { params: Promise<{ id
       <div className="flex-1 min-h-0 flex flex-col p-4 no-scrollbar">
         <div className="flex-1 bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden flex flex-col">
           
+          {/* TAB 1: MASTER LEDGER INFO (RTL REVERSED) */}
           {activeTab === 'info' && (
             <ScrollArea className="flex-1 animate-in fade-in duration-300">
                <div className="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
@@ -283,16 +291,16 @@ export default function OrderDetailsDashboard({ params }: { params: Promise<{ id
                         <LedgerRow label={lang === 'ar' ? 'الأولوية' : 'PRIORITY'} value={order.priority} icon={<ShieldCheck className="w-4 h-4" />} />
                         <LedgerRow label={lang === 'ar' ? 'الحالة' : 'STATUS'} value={order.status} icon={<Tag className="w-4 h-4" />} />
                         <tr className="hover:bg-slate-50/50 transition-colors group">
-                           <td className="px-6 py-4 w-72 border-l border-slate-100">
+                           <td className="px-6 py-4 w-72 border-l border-slate-100 bg-slate-50/30">
                               <div className="flex items-center gap-3 justify-start">
-                                 <div className="p-1.5 bg-slate-100 rounded text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                                 <div className="p-1.5 bg-white border border-slate-100 rounded text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
                                     <Activity className="w-4 h-4" />
                                  </div>
                                  <span className="font-black text-[10px] text-slate-400 uppercase tracking-widest">{lang === 'ar' ? 'مستوى التقدم الإجمالي' : 'PROGRESS'}</span>
                               </div>
                            </td>
-                           <td className={cn("px-6 py-4 text-xs font-black tabular-nums text-left")}>
-                              <div className={cn("flex items-center gap-4 justify-end")}>
+                           <td className="px-6 py-4">
+                              <div className="flex items-center gap-4 justify-end">
                                  <span className="text-xs font-black text-emerald-700 tabular-nums">{progress}%</span>
                                  <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden max-w-[200px]">
                                     <div className="h-full bg-emerald-500" style={{ width: `${progress}%` }} />
@@ -304,11 +312,11 @@ export default function OrderDetailsDashboard({ params }: { params: Promise<{ id
                            <tr className="bg-slate-50/50">
                              <td className="px-6 py-5 w-72 border-l border-slate-100">
                                <div className="flex items-center gap-3 justify-start">
-                                 <div className="p-1.5 bg-slate-100 rounded text-emerald-600"><Info className="w-4 h-4" /></div>
+                                 <div className="p-1.5 bg-white border border-slate-100 rounded text-emerald-600"><Info className="w-4 h-4" /></div>
                                  <span className="font-black text-[10px] text-slate-400 uppercase tracking-widest">NOTES</span>
                                </div>
                              </td>
-                             <td className={cn("px-6 py-5 text-xs font-bold text-slate-600 italic leading-relaxed text-left")}>{order.notes}</td>
+                             <td className="px-6 py-5 text-xs font-bold text-slate-600 italic leading-relaxed text-left">{order.notes}</td>
                            </tr>
                         )}
                      </tbody>
@@ -317,6 +325,7 @@ export default function OrderDetailsDashboard({ params }: { params: Promise<{ id
             </ScrollArea>
           )}
 
+          {/* TAB 2: DYNAMIC STAGE LOG */}
           {activeTab !== 'info' && activeTab !== 'summary' && (
             <div className="flex-1 flex-col flex animate-in fade-in duration-300 overflow-hidden">
                <div className="p-2 bg-slate-50 border-b border-slate-200 flex items-center gap-2 shadow-sm">
@@ -332,17 +341,27 @@ export default function OrderDetailsDashboard({ params }: { params: Promise<{ id
                         <DropdownMenuItem onClick={() => setStageTypeFilter('all')} className="text-xs font-bold flex justify-between cursor-pointer">{lang === 'ar' ? 'الكل' : 'All'}{stageTypeFilter === 'all' && <Check className="w-3 h-3 text-emerald-600" />}</DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setStageTypeFilter('material_issue')} className="text-xs font-bold flex justify-between cursor-pointer">{lang === 'ar' ? 'صرف مواد' : 'Material Issue'}{stageTypeFilter === 'material_issue' && <Check className="w-3 h-3 text-emerald-600" />}</DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setStageTypeFilter('production_receipt')} className="text-xs font-bold flex justify-between cursor-pointer">{lang === 'ar' ? 'استلام انتاج' : 'Production Receipt'}{stageTypeFilter === 'production_receipt' && <Check className="w-3 h-3 text-emerald-600" />}</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setStageTypeFilter('material_return')} className="text-xs font-bold flex justify-between cursor-pointer">{lang === 'ar' ? 'توريد مرتجع' : 'Material Return'}{stageTypeFilter === 'material_return' && <Check className="w-3 h-3 text-emerald-600" />}</DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setStageTypeFilter('wage_payment')} className="text-xs font-bold flex justify-between cursor-pointer">{lang === 'ar' ? 'صرف أجور' : 'Wage Payment'}{stageTypeFilter === 'wage_payment' && <Check className="w-3 h-3 text-emerald-600" />}</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
                   <div className="flex items-center gap-2 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest tabular-nums">
-                     COUNT: <span className="text-emerald-600">{filteredStageVouchers.length}</span>
+                     LOG COUNT: <span className="text-emerald-600">{filteredStageVouchers.length}</span>
                   </div>
                </div>
                <div className="flex-1 overflow-auto">
                   <Table className="text-right border-separate border-spacing-0">
-                    <TableHeader className="bg-slate-100 sticky top-0 z-10 shadow-sm"><TableRow><TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase">{lang === 'ar' ? 'التاريخ' : 'DATE'}</TableHead><TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase">REF #</TableHead><TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase">ACTIVITY</TableHead><TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase">PERSONNEL</TableHead><TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-center">IMPACT</TableHead><TableHead className="px-6 py-3 w-16"></TableHead></TableRow></TableHeader>
+                    <TableHeader className="bg-slate-100 sticky top-0 z-10 shadow-sm">
+                      <TableRow>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'التاريخ' : 'DATE'}</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>REF #</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>ACTIVITY</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>PERSONNEL</TableHead>
+                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-center">IMPACT</TableHead>
+                        <TableHead className="px-6 py-3 w-16"></TableHead>
+                      </TableRow>
+                    </TableHeader>
                     <TableBody>
                       {filteredStageVouchers.map((v) => (
                         <LedgerTransactionRow key={v.id} voucher={v} worker={workers?.find(w => w.id === v.workerId)} lang={lang} onView={(v) => setViewingVoucher(v)} />
@@ -353,7 +372,8 @@ export default function OrderDetailsDashboard({ params }: { params: Promise<{ id
             </div>
           )}
 
-          {activeTab === 'summary' && (
+          {/* TAB 3: SUMMARY ANALYTICS */}
+          {activeTab === 'summary' && (activeTab === 'summary' && (
             <div className="flex-1 flex flex-col animate-in zoom-in-95 duration-300">
                <div className="p-4 bg-slate-900 text-white flex items-center justify-between"><h3 className="text-xs font-black uppercase tracking-widest flex items-center gap-2"><BarChart3 className="w-4 h-4 text-emerald-400" /> {lang === 'ar' ? 'التحليل الإحصائي لخطوط الإنتاج' : 'ANALYTICS'}</h3></div>
                <div className="flex-1 overflow-auto">
@@ -380,10 +400,11 @@ export default function OrderDetailsDashboard({ params }: { params: Promise<{ id
                   </Table>
                </div>
             </div>
-          )}
+          ))}
         </div>
       </div>
 
+      {/* VOUCHER PRINT VIEW DIALOG */}
       <Dialog open={!!viewingVoucher} onOpenChange={(open) => !open && setViewingVoucher(null)}>
         <DialogContent className="sm:max-w-[850px] p-0 overflow-hidden border-none bg-white shadow-2xl">
           <DialogHeader className="sr-only"><DialogTitle>معاينة السند الرسمي</DialogTitle></DialogHeader>
@@ -419,7 +440,8 @@ export default function OrderDetailsDashboard({ params }: { params: Promise<{ id
                         {viewingVoucher.type === 'material_issue' ? (lang === 'ar' ? 'سند صرف مواد خام' : 'Material Issue') : 
                          viewingVoucher.type === 'production_receipt' ? (lang === 'ar' ? 'سند استلام وتسوية إنتاج' : 'Production Settlement') :
                          viewingVoucher.type === 'wage_payment' ? (lang === 'ar' ? 'سند صرف أجور مالي' : 'Wage Payment') :
-                         (lang === 'ar' ? 'سند توريد مرتجع مخزني' : 'Material Return')}
+                         viewingVoucher.type === 'material_return' ? (lang === 'ar' ? 'سند توريد مرتجع مخزني' : 'Material Return') :
+                         (lang === 'ar' ? 'مستند مالي' : 'Financial Document')}
                       </h3>
                     </div>
                   </div>
@@ -531,7 +553,7 @@ export default function OrderDetailsDashboard({ params }: { params: Promise<{ id
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {viewingVoucher.items?.map((item: any, i: number) => (
+                          {(viewingVoucher.items || viewingVoucher.returnedItems)?.map((item: any, i: number) => (
                             <TableRow key={i} className="border-b border-slate-100 bg-white/40">
                               <TableCell className="font-bold text-sm py-4 text-slate-800">{item.nameAr}</TableCell>
                               <TableCell className="text-center font-black text-sm text-emerald-800 tabular-nums">{item.qty}</TableCell>
@@ -580,6 +602,7 @@ export default function OrderDetailsDashboard({ params }: { params: Promise<{ id
         </DialogContent>
       </Dialog>
 
+      {/* EDIT MODAL */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-[500px] rounded-lg p-0 overflow-hidden border-none shadow-2xl">
           <div className="premium-gradient p-6 text-white"><DialogHeader className="text-right"><DialogTitle className="text-xl font-black flex items-center gap-3"><Edit2 className="w-5 h-5 text-emerald-300" />{lang === 'ar' ? 'تحديث مواصفات الدفعة' : 'Update Specs'}</DialogTitle></DialogHeader></div>
@@ -600,9 +623,9 @@ function LedgerRow({ label, value, icon, color = "text-slate-900" }: { label: st
   const { dir } = useTranslation();
   return (
     <tr className="hover:bg-slate-50/50 transition-colors group">
-       <td className="px-6 py-4 w-72 border-l border-slate-100">
+       <td className="px-6 py-4 w-72 border-l border-slate-100 bg-slate-50/30">
           <div className="flex items-center gap-3 justify-start">
-             <div className="p-1.5 bg-slate-100 rounded text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">{icon}</div>
+             <div className="p-1.5 bg-white border border-slate-100 rounded text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">{icon}</div>
              <span className="font-black text-[10px] text-slate-400 uppercase tracking-widest">{label}</span>
           </div>
        </td>
@@ -614,26 +637,59 @@ function LedgerRow({ label, value, icon, color = "text-slate-900" }: { label: st
 }
 
 function LedgerTransactionRow({ voucher, worker, lang, onView }: { voucher: any, worker: any, lang: string, onView: (v: any) => void }) {
+  const { dir } = useTranslation();
+  
   const typeMap: any = {
     'material_issue': { labelAr: 'صرف مواد', icon: <FileInput className="w-3.5 h-3.5" />, color: 'text-amber-600 bg-amber-50 border-amber-100' },
     'production_receipt': { labelAr: 'استلام انتاج', icon: <FileOutput className="w-3.5 h-3.5" />, color: 'text-blue-600 bg-blue-50 border-blue-100' },
-    'wage_payment': { labelAr: 'صرف أجور', icon: <HandCoins className="w-3.5 h-3.5" />, color: 'text-emerald-600 bg-emerald-50 border-emerald-100' }
+    'material_return': { labelAr: 'توريد مرتجع', icon: <RefreshCcw className="w-3.5 h-3.5" />, color: 'text-emerald-600 bg-emerald-50 border-emerald-100' },
+    'wage_payment': { labelAr: 'صرف أجور', icon: <HandCoins className="w-3.5 h-3.5" />, color: 'text-purple-600 bg-purple-50 border-purple-100' }
   };
-  const config = typeMap[voucher.type] || { labelAr: 'أخرى', icon: <FileText className="w-3.5 h-3.5" />, color: 'text-slate-500' };
+  
+  const config = typeMap[voucher.type] || { labelAr: 'عملية أخرى', icon: <FileText className="w-3.5 h-3.5" />, color: 'text-slate-500 bg-slate-50 border-slate-200' };
 
   return (
     <TableRow className="hover:bg-slate-50/50 border-b border-slate-100 transition-colors group">
-      <TableCell className="px-6 py-3 font-bold text-slate-400 text-[10px] tabular-nums">{voucher.date}</TableCell>
-      <TableCell className="px-6 py-3 font-black text-slate-900 text-[10px] tabular-nums tracking-wider">{voucher.voucherNumber}</TableCell>
-      <TableCell className="px-6 py-3"><div className={cn("inline-flex items-center gap-2 px-2 py-0.5 rounded text-[9px] font-black uppercase border", config.color)}>{config.icon}{lang === 'ar' ? config.labelAr : voucher.type}</div></TableCell>
-      <TableCell className="px-6 py-3"><div className="flex items-center gap-2"><div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center border border-slate-200 overflow-hidden">{worker?.photoUrl ? <img src={worker.photoUrl} className="w-full h-full object-cover" /> : <User className="w-3.5 h-3.5 text-slate-400" />}</div><span className="text-[11px] font-black text-slate-800">{worker?.fullName || '---'}</span></div></TableCell>
-      <TableCell className="px-6 py-3 text-center">
-        <div className="flex flex-col items-center">
-           <span className={cn("text-xs font-black tabular-nums", voucher.type === 'material_issue' ? "text-amber-700" : voucher.type === 'wage_payment' ? "text-emerald-700" : "text-blue-700")}>{voucher.type === 'production_receipt' ? (voucher.qtyAccepted || 0).toLocaleString('en-US') : (voucher.totalAmount || 0).toLocaleString('en-US')}</span>
-           <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest">{voucher.type === 'production_receipt' ? 'Pcs' : (voucher.currency || 'YER')}</span>
+      <TableCell className={cn("px-6 py-3 font-bold text-slate-400 text-[10px] tabular-nums", dir === 'rtl' ? "text-right" : "text-left")}>
+        {voucher.date}
+      </TableCell>
+      <TableCell className={cn("px-6 py-3 font-black text-slate-900 text-[10px] tabular-nums tracking-wider", dir === 'rtl' ? "text-right" : "text-left")}>
+        {voucher.voucherNumber}
+      </TableCell>
+      <TableCell className={cn("px-6 py-3", dir === 'rtl' ? "text-right" : "text-left")}>
+        <div className={cn("inline-flex items-center gap-2 px-2 py-0.5 rounded text-[9px] font-black uppercase border", config.color)}>
+          {config.icon}
+          {lang === 'ar' ? config.labelAr : voucher.type}
         </div>
       </TableCell>
-      <TableCell className="px-6 py-3 text-center"><Button variant="ghost" size="icon" onClick={() => onView(voucher)} className="h-7 w-7 text-slate-400 hover:text-emerald-600"><Eye className="w-4 h-4" /></Button></TableCell>
+      <TableCell className={cn("px-6 py-3", dir === 'rtl' ? "text-right" : "text-left")}>
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center border border-slate-200 overflow-hidden shrink-0">
+            {worker?.photoUrl ? <img src={worker.photoUrl} className="w-full h-full object-cover" /> : <User className="w-3.5 h-3.5 text-slate-400" />}
+          </div>
+          <span className="text-[11px] font-black text-slate-800 truncate max-w-[120px]">{worker?.fullName || '---'}</span>
+        </div>
+      </TableCell>
+      <TableCell className="px-6 py-3 text-center">
+        <div className="flex flex-col items-center justify-center">
+           <span className={cn("text-xs font-black tabular-nums", 
+              voucher.type === 'material_issue' ? "text-amber-700" : 
+              voucher.type === 'wage_payment' ? "text-purple-700" : 
+              voucher.type === 'material_return' ? "text-emerald-700" :
+              "text-blue-700"
+           )}>
+             {voucher.type === 'production_receipt' ? (voucher.qtyAccepted || 0).toLocaleString('en-US') : (voucher.totalAmount || 0).toLocaleString('en-US')}
+           </span>
+           <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest">
+             {voucher.type === 'production_receipt' ? 'Pcs' : (voucher.currency || 'YER')}
+           </span>
+        </div>
+      </TableCell>
+      <TableCell className="px-6 py-3 text-center">
+        <Button variant="ghost" size="icon" onClick={() => onView(voucher)} className="h-8 w-8 text-slate-400 hover:text-emerald-600 transition-colors rounded-lg">
+          <Eye className="w-4 h-4" />
+        </Button>
+      </TableCell>
     </TableRow>
   );
 }
