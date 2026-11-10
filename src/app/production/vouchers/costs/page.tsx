@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { 
   Plus, 
   Search, 
@@ -43,7 +43,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useTranslation } from '@/components/LanguageProvider';
-import { useFirestore, useCollection } from '@/firebase';
+import { useFirestore, useCollection, useDoc } from '@/firebase';
 import { collection, addDoc, updateDoc, doc, serverTimestamp, query, where, getDoc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -111,11 +111,16 @@ export default function OverheadCostsPage() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
 
+  // Fetch System Settings for Currency Lock
+  const settingsRef = useMemo(() => !db ? null : doc(db, 'settings', 'global'), [db]);
+  const { data: savedSettings } = useDoc<any>(settingsRef);
+  const systemCurrency = savedSettings?.baseCurrency || 'YER';
+
   // Unified Form State (Single Item Approach)
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     category: 'other',
-    currency: 'YER',
+    currency: systemCurrency,
     orderId: '',
     recipient: '',
     supervisorId: '',
@@ -124,6 +129,13 @@ export default function OverheadCostsPage() {
     notes: '',
     invoicePhotoUrl: ''
   });
+
+  // Sync currency with system settings when adding new voucher
+  useEffect(() => {
+    if (!editingVoucherId && systemCurrency) {
+      setFormData(prev => ({ ...prev, currency: systemCurrency }));
+    }
+  }, [systemCurrency, editingVoucherId, isAddDialogOpen]);
 
   const costCategories = [
     { value: 'electricity', labelAr: 'كهرباء', icon: <Zap className="w-3.5 h-3.5" /> },
@@ -240,7 +252,7 @@ export default function OverheadCostsPage() {
     setFormData({ 
       date: new Date().toISOString().split('T')[0], 
       category: 'other', 
-      currency: 'YER', 
+      currency: systemCurrency, 
       orderId: '', 
       recipient: '', 
       supervisorId: '', 
@@ -336,7 +348,7 @@ export default function OverheadCostsPage() {
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);
-                }} variant="ghost" className="h-10 px-3 rounded-lg text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent">
+                }} variant="ghost" className="h-10 px-3 rounded-lg text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent hover:border-slate-200">
                   <FileDown className="w-4 h-4 text-emerald-600" />
                   {lang === 'ar' ? 'تصدير' : 'Export'}
                 </Button>
@@ -541,8 +553,14 @@ export default function OverheadCostsPage() {
                        <div className="relative">
                           <Input type="number" step="any" value={formData.totalAmount || ''} onChange={(e) => setFormData({...formData, totalAmount: Number(e.target.value)})} className="h-12 font-black text-xl text-center tabular-nums bg-white border-emerald-200 text-emerald-700" required />
                           <div className="absolute left-3 top-1/2 -translate-y-1/2">
-                            <select value={formData.currency} onChange={(e) => setFormData({...formData, currency: e.target.value})} className="h-8 px-1 bg-emerald-50 border border-emerald-100 rounded text-[9px] font-black outline-none">
-                               <option value="YER">YER</option><option value="SAR">SAR</option><option value="USD">USD</option>
+                            <select 
+                              value={formData.currency} 
+                              disabled 
+                              className="h-8 px-1 bg-emerald-50 border border-emerald-100 rounded text-[9px] font-black outline-none cursor-not-allowed opacity-70"
+                            >
+                               <option value="YER">YER</option>
+                               <option value="SAR">SAR</option>
+                               <option value="USD">USD</option>
                             </select>
                           </div>
                        </div>
