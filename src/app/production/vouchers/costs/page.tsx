@@ -356,113 +356,118 @@ export default function OverheadCostsPage() {
         </div>
       </div>
 
-      {/* ADD/EDIT DIALOG (SIMPLIFIED SINGLE ITEM) */}
+      {/* ADD/EDIT DIALOG (COMPACT & SCROLLABLE) */}
       <Dialog open={isAddDialogOpen} onOpenChange={(open) => !open && resetDialog()}>
         <DialogContent className="sm:max-w-[700px] rounded-lg p-0 overflow-hidden border-none shadow-2xl">
-          <div className="premium-gradient p-6 text-white">
+          <div className="premium-gradient p-5 text-white">
             <DialogHeader className="text-right rtl:text-right ltr:text-left">
-              <DialogTitle className="text-xl font-black flex items-center gap-3">
+              <DialogTitle className="text-lg font-black flex items-center gap-3">
                 <Receipt className="w-5 h-5 text-emerald-300" />
                 {editingVoucherId ? (lang === 'ar' ? 'تعديل سند المصروف' : 'Update Expenditure') : (lang === 'ar' ? 'تسجيل سند مصروفات تشغيلية' : 'New Overhead Expenditure')}
               </DialogTitle>
-              <p className="text-emerald-100/70 font-bold text-[10px] uppercase mt-1">Single entry expense allocation for better tracking</p>
+              <p className="text-emerald-100/70 font-bold text-[9px] uppercase mt-1">Single entry expense allocation for better tracking</p>
             </DialogHeader>
           </div>
 
-          <form onSubmit={handleSaveVoucher} className="p-6 space-y-6 bg-white">
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <div className="space-y-1.5 text-right">
-                  <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2 justify-start"><Calendar className="w-3 h-3 text-emerald-600" /> TRANSACTION DATE</Label>
-                  <Input type="date" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} className="h-11 bg-slate-50 font-bold" required />
-                </div>
-
-                <div className="space-y-1.5 text-right">
-                  <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2 justify-start"><Workflow className="w-3 h-3 text-emerald-600" /> LINKED BATCH (OPTIONAL)</Label>
-                  <select value={formData.orderId} onChange={(e) => setFormData({...formData, orderId: e.target.value})} className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none">
-                     <option value="">-- عام (غير مرتبط بطلب) --</option>
-                     {allOrders?.filter(o => o.status !== 'deleted').map(o => <option key={o.id} value={o.id}>{o.orderNumber} - {o.title}</option>)}
-                  </select>
-                </div>
-
-                <div className="space-y-1.5 text-right">
-                  <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2 justify-start"><UserCheck className="w-3 h-3 text-emerald-600" /> RESPONSIBLE PERSONNEL</Label>
-                  <select value={formData.supervisorId} onChange={(e) => setFormData({...formData, supervisorId: e.target.value})} className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none" required>
-                     <option value="">-- اختر المسؤول عن الصرف --</option>
-                     {allWorkers?.filter(w => w.status !== 'deleted').map(w => <option key={w.id} value={w.id}>{w.fullName} ({w.isSupervisor ? 'مشرف' : 'موظف'})</option>)}
-                  </select>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                 <Label className="text-[10px] font-black uppercase text-slate-400 block text-center">SUPPORTING DOCUMENT / صورة السند</Label>
-                 <div 
-                  onClick={() => !isCompressing && fileInputRef.current?.click()}
-                  className="w-full aspect-[4/3] rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 flex items-center justify-center cursor-pointer group hover:bg-slate-100 transition-all overflow-hidden relative"
-                 >
-                    {formData.invoicePhotoUrl ? (
-                      <img src={formData.invoicePhotoUrl} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="flex flex-col items-center gap-2 text-slate-300 group-hover:text-emerald-500">
-                        {isCompressing ? <Loader2 className="w-8 h-8 animate-spin" /> : <UploadCloud className="w-8 h-8" />}
-                        <span className="text-[10px] font-black uppercase tracking-widest">{lang === 'ar' ? 'انقر للرفع' : 'Upload Image'}</span>
+          <form onSubmit={handleSaveVoucher} className="bg-white flex flex-col max-h-[85vh]">
+            <ScrollArea className="flex-1 p-6">
+              <div className="space-y-6">
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5 text-right">
+                        <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-1.5"><Calendar className="w-3 h-3 text-emerald-600" /> DATE</Label>
+                        <Input type="date" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} className="h-10 bg-slate-50 font-bold text-xs" required />
                       </div>
-                    )}
-                    {formData.invoicePhotoUrl && (
-                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                         <RefreshCcw className="w-6 h-6 text-white" />
-                      </div>
-                    )}
-                 </div>
-                 <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
-              </div>
-            </div>
-
-            <div className="p-5 bg-emerald-50/50 border border-emerald-100 rounded-2xl space-y-5">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5 text-right">
-                  <Label className="text-[10px] font-black uppercase text-emerald-700">COST CATEGORY / النوع</Label>
-                  <select value={formData.category} onChange={(e) => setFormData({...formData, category: e.target.value})} className="w-full h-11 px-3 bg-white border border-emerald-200 rounded-lg text-sm font-bold">
-                     {costCategories.map(c => <option key={c.value} value={c.value}>{c.labelAr}</option>)}
-                  </select>
-                </div>
-                <div className="space-y-1.5 text-right">
-                  <Label className="text-[10px] font-black uppercase text-emerald-700">PAID TO / المستفيد</Label>
-                  <Input value={formData.recipient} onChange={(e) => setFormData({...formData, recipient: e.target.value})} className="h-11 bg-white border-emerald-200 font-bold" placeholder="مثال: شركة الكهرباء / اسم المورد" required />
-                </div>
-              </div>
-
-              <div className="space-y-1.5 text-right">
-                <Label className="text-[10px] font-black uppercase text-emerald-700">EXPENDITURE DESCRIPTION / البيان</Label>
-                <Input value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="h-11 bg-white border-emerald-200 font-bold" placeholder="مثال: قيمة فاتورة شهر أكتوبر" required />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5 text-right">
-                   <Label className="text-[10px] font-black uppercase text-emerald-700">AMOUNT / القيمة</Label>
-                   <div className="relative">
-                      <Input type="number" step="any" value={formData.totalAmount || ''} onChange={(e) => setFormData({...formData, totalAmount: Number(e.target.value)})} className="h-14 font-black text-2xl text-center tabular-nums bg-white border-emerald-200 text-emerald-700" required />
-                      <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                        <select value={formData.currency} onChange={(e) => setFormData({...formData, currency: e.target.value})} className="h-9 px-2 bg-emerald-50 border border-emerald-100 rounded-lg text-[10px] font-black outline-none">
-                           <option value="YER">YER</option><option value="SAR">SAR</option><option value="USD">USD</option>
+                      <div className="space-y-1.5 text-right">
+                        <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-1.5"><Tag className="w-3 h-3 text-emerald-600" /> CATEGORY</Label>
+                        <select value={formData.category} onChange={(e) => setFormData({...formData, category: e.target.value})} className="w-full h-10 px-2 bg-slate-50 border border-slate-200 rounded-md text-[11px] font-bold outline-none">
+                           {costCategories.map(c => <option key={c.value} value={c.value}>{c.labelAr}</option>)}
                         </select>
                       </div>
-                   </div>
-                </div>
-                <div className="space-y-1.5 text-right">
-                   <Label className="text-[10px] font-black uppercase text-slate-400">ADDITIONAL NOTES / ملاحظات</Label>
-                   <Input value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} className="h-14 bg-white border-slate-200 text-xs font-bold" />
-                </div>
-              </div>
-            </div>
+                    </div>
 
-            <div className="flex gap-3 pt-2">
-              <Button type="submit" disabled={isSubmitting || isCompressing || formData.totalAmount <= 0} className="flex-1 h-14 premium-gradient text-white rounded-xl font-black text-base shadow-xl">
-                {isSubmitting ? <Loader2 className="animate-spin me-2" /> : <Save className="w-5 h-5 me-2" />}
+                    <div className="space-y-1.5 text-right">
+                      <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-1.5"><Workflow className="w-3 h-3 text-emerald-600" /> BATCH (OPTIONAL)</Label>
+                      <select value={formData.orderId} onChange={(e) => setFormData({...formData, orderId: e.target.value})} className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-md text-[11px] font-bold outline-none">
+                         <option value="">-- عام (غير مرتبط بطلب) --</option>
+                         {allOrders?.filter(o => o.status !== 'deleted').map(o => <option key={o.id} value={o.id}>{o.orderNumber} - {o.title}</option>)}
+                      </select>
+                    </div>
+
+                    <div className="space-y-1.5 text-right">
+                      <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-1.5"><UserCheck className="w-3 h-3 text-emerald-600" /> PERSONNEL</Label>
+                      <select value={formData.supervisorId} onChange={(e) => setFormData({...formData, supervisorId: e.target.value})} className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-md text-[11px] font-bold outline-none" required>
+                         <option value="">-- اختر المسؤول عن الصرف --</option>
+                         {allWorkers?.filter(w => w.status !== 'deleted').map(w => <option key={w.id} value={w.id}>{w.fullName} ({w.isSupervisor ? 'مشرف' : 'موظف'})</option>)}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label className="text-[10px] font-black uppercase text-slate-400 block text-center">ATTACHMENT / صورة السند</Label>
+                    <div 
+                      onClick={() => !isCompressing && fileInputRef.current?.click()}
+                      className="w-full aspect-video md:aspect-[4/3] rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 flex items-center justify-center cursor-pointer group hover:bg-slate-100 transition-all overflow-hidden relative"
+                    >
+                      {formData.invoicePhotoUrl ? (
+                        <img src={formData.invoicePhotoUrl} className="w-full h-full object-cover" alt="invoice" />
+                      ) : (
+                        <div className="flex flex-col items-center gap-1 text-slate-300 group-hover:text-emerald-500">
+                          {isCompressing ? <Loader2 className="w-6 h-6 animate-spin" /> : <UploadCloud className="w-7 h-7" />}
+                          <span className="text-[9px] font-black uppercase tracking-widest">{lang === 'ar' ? 'انقر للرفع' : 'Upload'}</span>
+                        </div>
+                      )}
+                      {formData.invoicePhotoUrl && (
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                           <RefreshCcw className="w-5 h-5 text-white" />
+                        </div>
+                      )}
+                    </div>
+                    <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
+                  </div>
+                </div>
+
+                <div className="p-4 bg-emerald-50/50 border border-emerald-100 rounded-xl space-y-4">
+                  <div className="space-y-1.5 text-right">
+                    <Label className="text-[10px] font-black uppercase text-emerald-700">PAID TO / المستفيد</Label>
+                    <Input value={formData.recipient} onChange={(e) => setFormData({...formData, recipient: e.target.value})} className="h-10 bg-white border-emerald-200 font-bold text-xs" placeholder="مثال: شركة الكهرباء / اسم المورد" required />
+                  </div>
+
+                  <div className="space-y-1.5 text-right">
+                    <Label className="text-[10px] font-black uppercase text-emerald-700">DESCRIPTION / البيان</Label>
+                    <Input value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="h-10 bg-white border-emerald-200 font-bold text-xs" placeholder="مثال: قيمة فاتورة شهر أكتوبر" required />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5 text-right">
+                       <Label className="text-[10px] font-black uppercase text-emerald-700">AMOUNT / القيمة</Label>
+                       <div className="relative">
+                          <Input type="number" step="any" value={formData.totalAmount || ''} onChange={(e) => setFormData({...formData, totalAmount: Number(e.target.value)})} className="h-12 font-black text-xl text-center tabular-nums bg-white border-emerald-200 text-emerald-700" required />
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                            <select value={formData.currency} onChange={(e) => setFormData({...formData, currency: e.target.value})} className="h-8 px-1 bg-emerald-50 border border-emerald-100 rounded text-[9px] font-black outline-none">
+                               <option value="YER">YER</option><option value="SAR">SAR</option><option value="USD">USD</option>
+                            </select>
+                          </div>
+                       </div>
+                    </div>
+                    <div className="space-y-1.5 text-right">
+                       <Label className="text-[10px] font-black uppercase text-slate-400">NOTES / ملاحظات</Label>
+                       <Input value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} className="h-12 bg-white border-slate-200 text-[11px] font-bold" />
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </ScrollArea>
+
+            <div className="flex-none p-5 bg-slate-50 border-t border-slate-100 flex gap-3">
+              <Button type="submit" disabled={isSubmitting || isCompressing || formData.totalAmount <= 0} className="flex-1 h-12 premium-gradient text-white rounded-lg font-black text-sm shadow-lg">
+                {isSubmitting ? <Loader2 className="animate-spin me-2" /> : <Save className="w-4 h-4 me-2" />}
                 {lang === 'ar' ? 'ترحيل سند المصروف' : 'Post Cost Voucher'}
               </Button>
-              <Button type="button" variant="outline" onClick={resetDialog} className="px-8 h-14 font-black text-slate-400 rounded-xl">إلغاء</Button>
+              <Button type="button" variant="outline" onClick={resetDialog} className="px-6 h-12 font-black text-slate-400 rounded-lg">إلغاء</Button>
             </div>
           </form>
         </DialogContent>
