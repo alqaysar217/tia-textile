@@ -44,7 +44,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useTranslation } from '@/components/LanguageProvider';
-import { useFirestore, useCollection } from '@/firebase';
+import { useFirestore, useCollection, useDoc } from '@/firebase';
 import { collection, addDoc, updateDoc, doc, serverTimestamp, query, where, writeBatch, getDoc, deleteDoc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -107,6 +107,11 @@ export default function ProductionReceiptPage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [batchFilter, setBatchFilter] = useState<string>('all');
 
+  // Fetch System Settings for Currency Lock
+  const settingsRef = useMemo(() => !db ? null : doc(db, 'settings', 'global'), [db]);
+  const { data: savedSettings } = useDoc<any>(settingsRef);
+  const systemCurrency = savedSettings?.baseCurrency || 'YER';
+
   // Form State
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T', 1)[0],
@@ -117,9 +122,16 @@ export default function ProductionReceiptPage() {
     notes: '',
     qtyAccepted: 0, 
     wageRate: 0,
-    currency: 'YER',
+    currency: systemCurrency,
     returnedItems: [] as any[] 
   });
+
+  // Sync currency with system settings when adding new voucher
+  useEffect(() => {
+    if (!editingVoucherId && systemCurrency) {
+      setFormData(prev => ({ ...prev, currency: systemCurrency }));
+    }
+  }, [systemCurrency, editingVoucherId, isAddDialogOpen]);
 
   // Current Item Selection State
   const [currentItem, setCurrentItem] = useState({ id: '', qty: 0 });
@@ -202,10 +214,10 @@ export default function ProductionReceiptPage() {
       setFormData(prev => ({ 
         ...prev, 
         wageRate: targetProduct.wageRate || 0,
-        currency: targetProduct.currency || 'YER'
+        currency: systemCurrency // Overriding product currency with system lock
       }));
     }
-  }, [targetProduct, editingVoucherId]);
+  }, [targetProduct, editingVoucherId, systemCurrency]);
 
   const filteredVouchers = useMemo(() => {
     if (!vouchers) return [];
@@ -411,7 +423,18 @@ export default function ProductionReceiptPage() {
   const resetDialog = () => {
     setIsAddDialogOpen(false);
     setEditingVoucherId(null);
-    setFormData({ date: new Date().toISOString().split('T', 1)[0], orderId: '', workerId: '', linkedMIVs: [], isFinalSettlement: true, notes: '', qtyAccepted: 0, wageRate: 0, currency: 'YER', returnedItems: [] });
+    setFormData({ 
+      date: new Date().toISOString().split('T', 1)[0], 
+      orderId: '', 
+      workerId: '', 
+      linkedMIVs: [], 
+      isFinalSettlement: true, 
+      notes: '', 
+      qtyAccepted: 0, 
+      wageRate: 0, 
+      currency: systemCurrency, 
+      returnedItems: [] 
+    });
     setCurrentItem({ id: '', qty: 0 });
   };
 
@@ -665,8 +688,15 @@ export default function ProductionReceiptPage() {
                       <p className="text-[9px] font-black text-emerald-800 uppercase">{lang === 'ar' ? 'أجر القطعة الواحد' : 'WAGE PER PIECE'}</p>
                       <div className="flex items-center gap-2">
                         <Input type="number" step="any" value={formData.wageRate || ''} onChange={(e) => setFormData({...formData, wageRate: Number(e.target.value)})} className="h-8 w-24 text-xs font-black tabular-nums" required min="0.01" />
-                        <select value={formData.currency} onChange={(e) => setFormData({...formData, currency: e.target.value})} className="h-8 px-2 bg-white border border-emerald-200 rounded text-[9px] font-black">
-                          <option value="YER">YER</option><option value="SAR">SAR</option><option value="USD">USD</option>
+                        {/* FIXED: Currency lock applied to Receipt Page */}
+                        <select 
+                          value={formData.currency} 
+                          disabled 
+                          className="h-8 px-2 bg-slate-100 border border-emerald-200 rounded text-[9px] font-black cursor-not-allowed opacity-70 outline-none"
+                        >
+                          <option value="YER">YER</option>
+                          <option value="SAR">SAR</option>
+                          <option value="USD">USD</option>
                         </select>
                       </div>
                     </div>
