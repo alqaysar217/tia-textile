@@ -105,37 +105,94 @@ export function VoucherTemplate({
         </div>
       </div>
 
-      {/* ITEMS TABLE */}
+      {/* ITEMS SECTION */}
       <div className="mb-12 relative z-10">
-        <Table className="text-right border-2 border-emerald-900/10">
-          <TableHeader className="bg-emerald-900/5">
-            <TableRow className="hover:bg-transparent border-b-2 border-emerald-900/20">
-              <TableHead className="text-right font-black text-xs py-4 text-emerald-900">{isRtl ? 'البيان / المادة' : 'Description / Item'}</TableHead>
-              <TableHead className="text-center font-black text-xs py-4 text-emerald-900">{isRtl ? 'الكمية' : 'Quantity'}</TableHead>
-              <TableHead className="text-center font-black text-xs py-4 text-emerald-900">{isRtl ? 'الوحدة' : 'Unit'}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {(voucher.items || voucher.returnedItems || []).map((item: any, i: number) => (
-              <TableRow key={i} className="border-b border-slate-100 bg-white/40">
-                <TableCell className="font-bold text-sm py-4 text-slate-800">{item.nameAr || item.nameEn}</TableCell>
-                <TableCell className="text-center font-black text-sm tabular-nums py-4 text-emerald-700">{item.qty}</TableCell>
-                <TableCell className="text-center text-xs font-bold text-slate-500 uppercase py-4">{item.unit}</TableCell>
-              </TableRow>
-            ))}
-            {voucher.type === 'production_receipt' && (
-              <TableRow className="bg-white/40">
-                <TableCell className="font-bold text-sm py-5">
-                  {products?.find(p => p.id === order?.productId)?.nameAr || '---'}
-                </TableCell>
-                <TableCell className="text-center font-black text-sm text-emerald-700 tabular-nums">
-                  {(voucher.qtyAccepted || 0).toLocaleString('en-US')} {isRtl ? 'قطعة' : 'Pcs'}
-                </TableCell>
-                <TableCell className="text-center text-xs font-bold text-slate-500 uppercase py-5">Pcs</TableCell>
-              </TableRow>
+        {voucher.type === 'production_receipt' ? (
+          /* SPECIAL LAYOUT FOR PRODUCTION RECEIPT WITH TWO TABLES */
+          <div className="space-y-10">
+            {/* TABLE 1: FINISHED OUTPUT */}
+            <div className="space-y-3">
+              <h4 className="text-[10px] font-black text-emerald-900 border-r-4 border-emerald-600 pr-3 uppercase">
+                {isRtl ? 'أولاً: مخرجات الإنتاج المنجزة' : 'I. FINISHED PRODUCTION OUTPUTS'}
+              </h4>
+              <Table className="text-right border-2 border-emerald-900/10">
+                <TableHeader className="bg-emerald-900/5">
+                  <TableRow className="hover:bg-transparent border-b-2 border-emerald-900/20">
+                    <TableHead className="text-right font-black text-xs py-4 text-emerald-900">{isRtl ? 'نوع المعوز' : 'Item Type'}</TableHead>
+                    <TableHead className="text-center font-black text-xs py-4 text-emerald-900">{isRtl ? 'الكمية المستلمة' : 'Accepted Qty'}</TableHead>
+                    <TableHead className="text-center font-black text-xs py-4 text-emerald-900">{isRtl ? 'أجر القطعة' : 'Wage/Pcs'}</TableHead>
+                    <TableHead className="text-center font-black text-xs py-4 text-emerald-900">{isRtl ? 'الإجمالي' : 'Total'}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow className="bg-white/40">
+                    <TableCell className="font-bold text-sm py-5">
+                      {products?.find(p => p.id === order?.productId)?.nameAr || '---'}
+                    </TableCell>
+                    <TableCell className="text-center font-black text-sm text-emerald-700 tabular-nums">
+                      {(voucher.qtyAccepted || 0).toLocaleString('en-US')} {isRtl ? 'قطعة' : 'Pcs'}
+                    </TableCell>
+                    <TableCell className="text-center font-bold text-sm tabular-nums">
+                      {(voucher.wageRate || 0).toLocaleString('en-US')}
+                    </TableCell>
+                    <TableCell className="text-center font-black text-sm tabular-nums text-emerald-900">
+                      {(voucher.wageAmount || 0).toLocaleString('en-US')}
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* TABLE 2: RETURNED MATERIALS */}
+            {voucher.returnedItems?.length > 0 && (
+              <div className="space-y-3">
+                <h4 className="text-[10px] font-black text-blue-900 border-r-4 border-blue-600 pr-3 uppercase">
+                  {isRtl ? 'ثانياً: المواد الخام المرتجعة للمخزن' : 'II. RETURNED RAW MATERIALS'}
+                </h4>
+                <Table className="text-right border-2 border-blue-900/10">
+                  <TableHeader className="bg-blue-900/5">
+                    <TableRow className="hover:bg-transparent border-b-2 border-blue-900/20">
+                      <TableHead className="text-right font-black text-xs py-4 text-blue-900">{isRtl ? 'اسم المادة' : 'Material Name'}</TableHead>
+                      <TableHead className="text-center font-black text-xs py-4 text-blue-900">{isRtl ? 'الكمية المرجعة' : 'Returned Qty'}</TableHead>
+                      <TableHead className="text-center font-black text-xs py-4 text-blue-900">{isRtl ? 'الوحدة' : 'Unit'}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {voucher.returnedItems.map((item: any, i: number) => (
+                      <TableRow key={i} className="bg-white/40 border-b border-slate-100">
+                        <TableCell className="font-bold text-sm py-4 text-slate-800">{item.nameAr}</TableCell>
+                        <TableCell className="text-center font-black text-sm text-blue-700 tabular-nums">
+                          {(item.qty || 0).toLocaleString('en-US')}
+                        </TableCell>
+                        <TableCell className="text-center text-xs font-bold text-slate-500 uppercase py-4">{item.unit}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             )}
-          </TableBody>
-        </Table>
+          </div>
+        ) : (
+          /* STANDARD TABLE FOR OTHER VOUCHER TYPES */
+          <Table className="text-right border-2 border-emerald-900/10">
+            <TableHeader className="bg-emerald-900/5">
+              <TableRow className="hover:bg-transparent border-b-2 border-emerald-900/20">
+                <TableHead className="text-right font-black text-xs py-4 text-emerald-900">{isRtl ? 'البيان / المادة' : 'Description / Item'}</TableHead>
+                <TableHead className="text-center font-black text-xs py-4 text-emerald-900">{isRtl ? 'الكمية' : 'Quantity'}</TableHead>
+                <TableHead className="text-center font-black text-xs py-4 text-emerald-900">{isRtl ? 'الوحدة' : 'Unit'}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {(voucher.items || voucher.returnedItems || []).map((item: any, i: number) => (
+                <TableRow key={i} className="border-b border-slate-100 bg-white/40">
+                  <TableCell className="font-bold text-sm py-4 text-slate-800">{item.nameAr || item.nameEn}</TableCell>
+                  <TableCell className="text-center font-black text-sm tabular-nums py-4 text-emerald-700">{item.qty}</TableCell>
+                  <TableCell className="text-center text-xs font-bold text-slate-500 uppercase py-4">{item.unit}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
       </div>
 
       {/* SIGNATURES SECTION */}
