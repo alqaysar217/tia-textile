@@ -67,9 +67,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from '@/hooks/use-toast';
 import { toPng } from 'html-to-image';
 
-export default function OrderDetailsDashboard() {
-  const params = React.use(useParams());
-  const id = params?.id;
+export default function OrderDetailsDashboard({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = React.use(params);
+  const id = resolvedParams.id;
   const router = useRouter();
   const { lang, dir } = useTranslation();
   const db = useFirestore();
@@ -283,7 +283,7 @@ export default function OrderDetailsDashboard() {
                         <LedgerRow label={lang === 'ar' ? 'الأولوية' : 'PRIORITY'} value={order.priority} icon={<ShieldCheck className="w-4 h-4" />} />
                         <LedgerRow label={lang === 'ar' ? 'الحالة' : 'STATUS'} value={order.status} icon={<Tag className="w-4 h-4" />} />
                         <tr className="hover:bg-slate-50/50 transition-colors group">
-                           <td className="px-6 py-4 w-72 border-l border-slate-100 rtl:border-l-0 rtl:border-r">
+                           <td className="px-6 py-4 w-72 border-l border-slate-100">
                               <div className="flex items-center gap-3 justify-start">
                                  <div className="p-1.5 bg-slate-100 rounded text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
                                     <Activity className="w-4 h-4" />
@@ -291,8 +291,8 @@ export default function OrderDetailsDashboard() {
                                  <span className="font-black text-[10px] text-slate-400 uppercase tracking-widest">{lang === 'ar' ? 'مستوى التقدم الإجمالي' : 'PROGRESS'}</span>
                               </div>
                            </td>
-                           <td className={cn("px-6 py-4 text-xs font-black tabular-nums", dir === 'rtl' ? "text-left" : "text-right")}>
-                              <div className={cn("flex items-center gap-4", dir === 'rtl' ? "justify-end" : "justify-start")}>
+                           <td className={cn("px-6 py-4 text-xs font-black tabular-nums text-left")}>
+                              <div className={cn("flex items-center gap-4 justify-end")}>
                                  <span className="text-xs font-black text-emerald-700 tabular-nums">{progress}%</span>
                                  <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden max-w-[200px]">
                                     <div className="h-full bg-emerald-500" style={{ width: `${progress}%` }} />
@@ -302,13 +302,13 @@ export default function OrderDetailsDashboard() {
                         </tr>
                         {order.notes && (
                            <tr className="bg-slate-50/50">
-                             <td className="px-6 py-5 w-72 border-l border-slate-100 rtl:border-l-0 rtl:border-r">
+                             <td className="px-6 py-5 w-72 border-l border-slate-100">
                                <div className="flex items-center gap-3 justify-start">
                                  <div className="p-1.5 bg-slate-100 rounded text-emerald-600"><Info className="w-4 h-4" /></div>
                                  <span className="font-black text-[10px] text-slate-400 uppercase tracking-widest">NOTES</span>
                                </div>
                              </td>
-                             <td className={cn("px-6 py-5 text-xs font-bold text-slate-600 italic leading-relaxed", dir === 'rtl' ? "text-left" : "text-right")}>{order.notes}</td>
+                             <td className={cn("px-6 py-5 text-xs font-bold text-slate-600 italic leading-relaxed text-left")}>{order.notes}</td>
                            </tr>
                         )}
                      </tbody>
@@ -321,7 +321,7 @@ export default function OrderDetailsDashboard() {
             <div className="flex-1 flex-col flex animate-in fade-in duration-300 overflow-hidden">
                <div className="p-2 bg-slate-50 border-b border-slate-200 flex items-center gap-2 shadow-sm">
                   <div className="relative flex-1">
-                    <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400`} />
+                    <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300`} />
                     <Input value={stageSearch} onChange={(e) => setStageSearch(e.target.value)} placeholder={lang === 'ar' ? 'بحث في سجل المرحلة...' : 'Search stage log...'} className={cn("h-9 bg-white text-xs font-bold border-slate-200", dir === 'rtl' ? "pr-9" : "pl-9")} />
                   </div>
                   <div className="flex items-center gap-1.5 px-1.5 border-x border-slate-200">
@@ -418,7 +418,8 @@ export default function OrderDetailsDashboard() {
                       <h3 className="text-xl font-black text-emerald-900 uppercase tracking-widest">
                         {viewingVoucher.type === 'material_issue' ? (lang === 'ar' ? 'سند صرف مواد خام' : 'Material Issue') : 
                          viewingVoucher.type === 'production_receipt' ? (lang === 'ar' ? 'سند استلام وتسوية إنتاج' : 'Production Settlement') :
-                         (lang === 'ar' ? 'سند صرف أجور مالي' : 'Wage Payment')}
+                         viewingVoucher.type === 'wage_payment' ? (lang === 'ar' ? 'سند صرف أجور مالي' : 'Wage Payment') :
+                         (lang === 'ar' ? 'سند توريد مرتجع مخزني' : 'Material Return')}
                       </h3>
                     </div>
                   </div>
@@ -484,29 +485,6 @@ export default function OrderDetailsDashboard() {
                             </TableBody>
                           </Table>
                         </div>
-                        {viewingVoucher.returnedItems?.length > 0 && (
-                          <div className="space-y-3">
-                            <h4 className="text-[10px] font-black text-blue-900 border-r-4 border-blue-600 pr-3 mb-2 uppercase">{lang === 'ar' ? 'ثانياً: المواد الخام المرتجعة للمخزن' : 'II. RETURNED RAW MATERIALS'}</h4>
-                            <Table className="text-right border-2 border-blue-900/10">
-                              <TableHeader className="bg-blue-900/5">
-                                <TableRow className="hover:bg-transparent border-b-2 border-blue-900/20">
-                                  <TableHead className="text-right font-black text-xs py-4 text-blue-900">{lang === 'ar' ? 'اسم المادة' : 'Material'}</TableHead>
-                                  <TableHead className="text-center font-black text-xs py-4 text-blue-900">{lang === 'ar' ? 'الكمية المرجعة' : 'Qty'}</TableHead>
-                                  <TableHead className="text-center font-black text-xs py-4 text-blue-900">{lang === 'ar' ? 'الوحدة' : 'Unit'}</TableHead>
-                                </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {viewingVoucher.returnedItems.map((item: any, i: number) => (
-                                  <TableRow key={i} className="border-b border-slate-100 bg-white/40">
-                                    <TableCell className="font-bold text-sm py-4 text-slate-800">{item.nameAr}</TableCell>
-                                    <TableCell className="text-center font-black text-sm text-blue-800 tabular-nums">{(item.qty || 0).toLocaleString('en-US')}</TableCell>
-                                    <TableCell className="text-center text-xs font-bold text-slate-500 uppercase py-4">{item.unit}</TableCell>
-                                  </TableRow>
-                                ))}
-                              </TableBody>
-                            </Table>
-                          </div>
-                        )}
                       </>
                     ) : viewingVoucher.type === 'wage_payment' ? (
                       <div className="space-y-3">
@@ -547,7 +525,7 @@ export default function OrderDetailsDashboard() {
                       <Table className="text-right border-2 border-emerald-900/10">
                         <TableHeader className="bg-emerald-800/5">
                           <TableRow className="hover:bg-transparent border-b-2 border-emerald-900/20">
-                            <TableHead className="text-right font-black text-xs py-4 text-emerald-900 uppercase">{lang === 'ar' ? 'المادة الخام المصروفة' : 'Raw Material'}</TableHead>
+                            <TableHead className="text-right font-black text-xs py-4 text-emerald-900 uppercase">{lang === 'ar' ? 'المادة الخام' : 'Raw Material'}</TableHead>
                             <TableHead className="text-center font-black text-xs py-4 text-emerald-900 uppercase">{lang === 'ar' ? 'الكمية' : 'Quantity'}</TableHead>
                             <TableHead className="text-center font-black text-xs py-4 text-emerald-900 uppercase">{lang === 'ar' ? 'الوحدة' : 'Unit'}</TableHead>
                           </TableRow>
@@ -622,13 +600,13 @@ function LedgerRow({ label, value, icon, color = "text-slate-900" }: { label: st
   const { dir } = useTranslation();
   return (
     <tr className="hover:bg-slate-50/50 transition-colors group">
-       <td className="px-6 py-4 w-72 border-l border-slate-100 rtl:border-l-0 rtl:border-r">
+       <td className="px-6 py-4 w-72 border-l border-slate-100">
           <div className="flex items-center gap-3 justify-start">
              <div className="p-1.5 bg-slate-100 rounded text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">{icon}</div>
              <span className="font-black text-[10px] text-slate-400 uppercase tracking-widest">{label}</span>
           </div>
        </td>
-       <td className={cn("px-6 py-4 text-xs font-black tabular-nums", color, dir === 'rtl' ? "text-left" : "text-right")}>
+       <td className={cn("px-6 py-4 text-xs font-black tabular-nums text-left", color)}>
          {value || '---'}
        </td>
     </tr>
