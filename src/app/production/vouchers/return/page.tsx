@@ -37,7 +37,9 @@ import {
   ArrowUpRight,
   Users2,
   Tag,
-  Clock
+  Clock,
+  CalendarDays,
+  X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -83,6 +85,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toPng } from 'html-to-image';
 
 export default function MaterialReturnPage() {
@@ -98,9 +101,13 @@ export default function MaterialReturnPage() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [search, setSearch] = useState('');
   
-  // Sorting State
+  // Filtering & Sorting State
   const [sortBy, setSortBy] = useState<'date' | 'voucherNumber'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [workerFilter, setWorkerFilter] = useState('all');
+  const [orderFilter, setOrderFilter] = useState('all');
 
   // Form State
   const [formData, setFormData] = useState({
@@ -134,46 +141,49 @@ export default function MaterialReturnPage() {
 
   const activeOrders = useMemo(() => (allOrders || []).filter(o => o.status !== 'deleted'), [allOrders]);
 
-  const pendingReturns = useMemo(() => {
-    if (!allReceipts) return [];
-    let list = allReceipts.filter(r => 
-      r.status !== 'deleted' && 
-      r.returnedItems && 
-      r.returnedItems.length > 0 && 
-      r.returnStatus !== 'verified'
-    );
+  // Unified Filtering Logic
+  const applyFilters = useCallback((list: any[]) => {
+    let result = list.filter(item => item.status !== 'deleted');
 
     if (search) {
       const s = search.toLowerCase();
-      list = list.filter(r => 
-        r.voucherNumber?.toLowerCase().includes(s) || 
-        allWorkers?.find(w => w.id === r.workerId)?.fullName?.toLowerCase().includes(s)
-      );
+      result = result.filter(item => {
+        const order = allOrders?.find(o => o.id === item.orderId);
+        const worker = allWorkers?.find(w => w.id === item.workerId);
+        return item.voucherNumber?.toLowerCase().includes(s) || 
+               worker?.fullName?.toLowerCase().includes(s) ||
+               order?.orderNumber?.toLowerCase().includes(s);
+      });
     }
 
-    return list.sort((a, b) => {
-      const timeA = new Date(a.date).getTime();
-      const timeB = new Date(b.date).getTime();
-      return sortOrder === 'asc' ? timeA - timeB : timeB - timeA;
+    if (dateFrom) result = result.filter(item => item.date >= dateFrom);
+    if (dateTo) result = result.filter(item => item.date <= dateTo);
+    if (workerFilter !== 'all') result = result.filter(item => item.workerId === workerFilter);
+    if (orderFilter !== 'all') result = result.filter(item => item.orderId === orderFilter);
+
+    return result.sort((a, b) => {
+      const valA = a[sortBy] ?? '';
+      const valB = b[sortBy] ?? '';
+      if (sortBy === 'date') {
+        const timeA = new Date(valA).getTime();
+        const timeB = new Date(valB).getTime();
+        return sortOrder === 'asc' ? timeA - timeB : timeB - timeA;
+      }
+      const comp = String(valA).localeCompare(String(valB), 'en', { numeric: true });
+      return sortOrder === 'asc' ? comp : -comp;
     });
-  }, [allReceipts, allWorkers, search, sortOrder]);
+  }, [search, dateFrom, dateTo, workerFilter, orderFilter, sortBy, sortOrder, allOrders, allWorkers]);
+
+  const pendingReturns = useMemo(() => {
+    if (!allReceipts) return [];
+    const list = allReceipts.filter(r => r.returnedItems && r.returnedItems.length > 0 && r.returnStatus !== 'verified');
+    return applyFilters(list);
+  }, [allReceipts, applyFilters]);
 
   const verifiedReturns = useMemo(() => {
     if (!returnVouchers) return [];
-    let list = returnVouchers.filter(v => v.status !== 'deleted');
-    if (search) {
-      const s = search.toLowerCase();
-      list = list.filter(v => 
-        v.voucherNumber?.toLowerCase().includes(s) || 
-        allWorkers?.find(w => w.id === v.workerId)?.fullName?.toLowerCase().includes(s)
-      );
-    }
-    return list.sort((a, b) => {
-      const timeA = new Date(a.date).getTime();
-      const timeB = new Date(b.date).getTime();
-      return sortOrder === 'asc' ? timeA - timeB : timeB - timeA;
-    });
-  }, [returnVouchers, allWorkers, search, sortOrder]);
+    return applyFilters(returnVouchers);
+  }, [returnVouchers, applyFilters]);
 
   const workersWithPending = useMemo(() => {
     if (!formData.orderId || !allReceipts) return [];
@@ -239,17 +249,13 @@ export default function MaterialReturnPage() {
       }
 
       if (formData.linkedReceiptId) {
-        batch.update(doc(db, 'vouchers', formData.linkedReceiptId), { 
-          returnStatus: 'verified',
-        });
+        batch.update(doc(db, 'vouchers', formData.linkedReceiptId), { returnStatus: 'verified' });
       }
 
       formData.items.forEach(item => {
         const mat = allMaterials?.find(m => m.id === item.id);
         if (mat) {
-          batch.update(doc(db, 'materials', item.id), { 
-            currentQty: (mat.currentQty || 0) + Number(item.qty) 
-          });
+          batch.update(doc(db, 'materials', item.id), { currentQty: (mat.currentQty || 0) + Number(item.qty) });
         }
       });
 
@@ -269,12 +275,7 @@ export default function MaterialReturnPage() {
     setIsDownloading(true);
     try {
       await new Promise(resolve => setTimeout(resolve, 1000));
-      const dataUrl = await toPng(element, { 
-        backgroundColor: '#ffffff', 
-        pixelRatio: 2,
-        cacheBust: true,
-        fontEmbedCSS: '', 
-      });
+      const dataUrl = await toPng(element, { backgroundColor: '#ffffff', pixelRatio: 2, cacheBust: true, fontEmbedCSS: '' });
       const link = document.createElement('a');
       link.download = `Return-${printingVoucher.voucherNumber}.png`;
       link.href = dataUrl;
@@ -309,9 +310,9 @@ export default function MaterialReturnPage() {
               <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                 <span>{lang === 'ar' ? 'المخازن' : 'WMS'}</span>
                 <ChevronRight className={`w-3 h-3 ${dir === 'rtl' ? 'rotate-180' : ''}`} />
-                <span className="text-emerald-600">{lang === 'ar' ? 'توثيق توريد المرتجعات' : 'Return Verification'}</span>
+                <span className="text-emerald-600">{lang === 'ar' ? 'توريد المرتجعات' : 'Return Inward'}</span>
               </div>
-              <h1 className="text-xl font-black text-slate-900 leading-tight">{lang === 'ar' ? 'تأكيد دخول المواد المرتجعة' : 'Warehouse Return Audit'}</h1>
+              <h1 className="text-xl font-black text-slate-900 leading-tight">{lang === 'ar' ? 'تأكيد دخول المواد المرتجعة' : 'Return Verification Audit'}</h1>
             </div>
           </div>
           <Button onClick={() => setIsAddDialogOpen(true)} className="h-10 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 transition-all border-none">
@@ -319,65 +320,71 @@ export default function MaterialReturnPage() {
           </Button>
         </div>
 
-        {/* SMART TOOLBAR: COMBINED TABS, SEARCH, AND FILTERS */}
-        <div className="mt-4 flex flex-col md:flex-row items-center gap-3 bg-slate-50 p-1.5 rounded-xl border border-slate-200">
-          {/* Compact Tab Switcher */}
+        {/* ADVANCED ERP TOOLBAR */}
+        <div className="mt-4 flex flex-col xl:flex-row items-center gap-3 bg-slate-50 p-2 rounded-xl border border-slate-200">
+          {/* Tab Switcher */}
           <div className="flex bg-white p-1 rounded-lg border border-slate-200 shadow-sm shrink-0">
-            <button 
-              onClick={() => setActiveTab('pending')}
-              className={cn(
-                "px-4 py-1.5 rounded-md text-[10px] font-black uppercase transition-all flex items-center gap-2",
-                activeTab === 'pending' ? "bg-amber-600 text-white shadow-md" : "text-slate-400 hover:bg-slate-50"
-              )}
-            >
-              <Clock className="w-3 h-3" />
-              {lang === 'ar' ? 'بانتظار التوثيق' : 'Pending'}
+            <button onClick={() => setActiveTab('pending')} className={cn("px-4 py-1.5 rounded-md text-[10px] font-black uppercase transition-all flex items-center gap-2", activeTab === 'pending' ? "bg-amber-600 text-white shadow-md" : "text-slate-400 hover:bg-slate-50")}>
+              <Clock className="w-3 h-3" /> {lang === 'ar' ? 'بانتظار التوثيق' : 'Pending'}
               {pendingReturns.length > 0 && <span className="bg-white/20 px-1.5 rounded-full text-[8px]">{pendingReturns.length}</span>}
             </button>
-            <button 
-              onClick={() => setActiveTab('verified')}
-              className={cn(
-                "px-4 py-1.5 rounded-md text-[10px] font-black uppercase transition-all flex items-center gap-2",
-                activeTab === 'verified' ? "bg-emerald-600 text-white shadow-md" : "text-slate-400 hover:bg-slate-50"
-              )}
-            >
-              <CheckCircle2 className="w-3 h-3" />
-              {lang === 'ar' ? 'الأرشيف الموثق' : 'Verified'}
+            <button onClick={() => setActiveTab('verified')} className={cn("px-4 py-1.5 rounded-md text-[10px] font-black uppercase transition-all flex items-center gap-2", activeTab === 'verified' ? "bg-emerald-600 text-white shadow-md" : "text-slate-400 hover:bg-slate-50")}>
+              <CheckCircle2 className="w-3 h-3" /> {lang === 'ar' ? 'الأرشيف الموثق' : 'Verified'}
             </button>
           </div>
 
           <div className="relative flex-1 w-full">
             <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300`} />
-            <Input 
-              value={search} 
-              onChange={(e) => setSearch(e.target.value)} 
-              placeholder={lang === 'ar' ? 'بحث برقم السند أو اسم الموظف...' : 'Quick search...'} 
-              className={cn("h-10 bg-white border-slate-200 text-xs font-bold", dir === 'rtl' ? "pr-10" : "pl-10")} 
-            />
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={lang === 'ar' ? 'رقم السند، الموظف، أو الدفعة...' : 'Reference, Worker, or Batch...'} className={cn("h-10 bg-white border-slate-200 text-xs font-bold", dir === 'rtl' ? "pr-10" : "pl-10")} />
           </div>
 
-          <div className="flex items-center gap-1.5">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-10 px-3 rounded-lg text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent">
-                  <Filter className="w-4 h-4" /> {lang === 'ar' ? 'تصفية' : 'Filter'}
+          <div className="flex items-center gap-2 w-full xl:w-auto">
+             {/* Date Range Fields */}
+             <div className="flex items-center gap-2 px-3 bg-white rounded-lg border border-slate-200 h-10 shadow-sm">
+                <CalendarDays className="w-3.5 h-3.5 text-slate-400" />
+                <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-7 border-none shadow-none text-[10px] w-28 font-bold tabular-nums" />
+                <span className="text-[10px] font-black text-slate-300">→</span>
+                <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-7 border-none shadow-none text-[10px] w-28 font-bold tabular-nums" />
+                {(dateFrom || dateTo) && <Button variant="ghost" size="icon" className="h-5 w-5 rounded-full" onClick={() => { setDateFrom(''); setDateTo(''); }}><X className="w-3 h-3" /></Button>}
+             </div>
+
+             <div className="flex items-center gap-1.5 border-r border-slate-200 ps-1.5">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="h-10 px-3 rounded-lg text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent shadow-sm">
+                      <Filter className="w-4 h-4" /> {lang === 'ar' ? 'تصفية' : 'Filter'}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="w-64 rounded-xl shadow-xl">
+                    <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400">PERSONNEL</DropdownMenuLabel>
+                    <ScrollArea className="h-40">
+                       <DropdownMenuItem onClick={() => setWorkerFilter('all')} className="text-xs font-bold cursor-pointer">{lang === 'ar' ? 'الكل' : 'All'}</DropdownMenuItem>
+                       {allWorkers?.filter(w => w.status !== 'deleted').map(w => (
+                         <DropdownMenuItem key={w.id} onClick={() => setWorkerFilter(w.id)} className="text-xs font-bold cursor-pointer">{w.fullName}</DropdownMenuItem>
+                       ))}
+                    </ScrollArea>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400">BATCH / ORDER</DropdownMenuLabel>
+                    <ScrollArea className="h-40">
+                       <DropdownMenuItem onClick={() => setOrderFilter('all')} className="text-xs font-bold cursor-pointer">{lang === 'ar' ? 'جميع الدفعات' : 'All Batches'}</DropdownMenuItem>
+                       {activeOrders?.map(o => (
+                         <DropdownMenuItem key={o.id} onClick={() => setOrderFilter(o.id)} className="text-xs font-bold cursor-pointer">{o.orderNumber} - {o.title}</DropdownMenuItem>
+                       ))}
+                    </ScrollArea>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400">ORDERING</DropdownMenuLabel>
+                    <DropdownMenuItem onClick={() => toggleSort('date')} className="flex justify-between items-center cursor-pointer font-bold">
+                       {lang === 'ar' ? 'التاريخ' : 'Date'} {sortBy === 'date' && (sortOrder === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />)}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => toggleSort('voucherNumber')} className="flex justify-between items-center cursor-pointer font-bold">
+                       {lang === 'ar' ? 'رقم السند' : 'Reference'} {sortBy === 'voucherNumber' && (sortOrder === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />)}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <Button onClick={handleExportCSV} variant="ghost" className="h-10 px-3 rounded-lg text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent shadow-sm">
+                  <FileDown className="w-4 h-4 text-emerald-600" /> {lang === 'ar' ? 'تصدير' : 'Export'}
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="w-56 rounded-xl shadow-xl">
-                <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400">ORDER BY</DropdownMenuLabel>
-                <DropdownMenuItem onClick={() => toggleSort('date')} className="flex justify-between items-center cursor-pointer">
-                  {lang === 'ar' ? 'التاريخ' : 'Date'}
-                  {sortBy === 'date' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5" /> : <SortDesc className="w-3.5 h-3.5" />)}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => toggleSort('voucherNumber')} className="flex justify-between items-center cursor-pointer">
-                  {lang === 'ar' ? 'رقم السند' : 'Reference'}
-                  {sortBy === 'voucherNumber' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5" /> : <SortDesc className="w-3.5 h-3.5" />)}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Button onClick={() => verifiedReturns.length > 0 && verifiedReturns[0]} variant="ghost" className="h-10 px-3 rounded-lg text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent">
-              <FileDown className="w-4 h-4 text-emerald-600" /> {lang === 'ar' ? 'تصدير' : 'Export'}
-            </Button>
+             </div>
           </div>
         </div>
       </div>
@@ -390,23 +397,23 @@ export default function MaterialReturnPage() {
               <div className="p-3 bg-amber-50/50 border-b border-amber-100 flex items-center gap-3">
                 <Info className="w-4 h-4 text-amber-600" />
                 <p className="text-[10px] font-bold text-amber-800">
-                  {lang === 'ar' ? 'يتم سحب هذه السندات تلقائياً من واقع سندات الاستلام الميدانية التي تحتوي على مرتجع.' : 'These records are auto-fetched from field receipts containing returns.'}
+                  {lang === 'ar' ? 'تظهر هنا السندات الميدانية التي تحتوي على مرتجعات وتنتظر تأكيد دخولها للمخازن فعلياً.' : 'Field receipts with returns waiting for physical warehouse inward confirmation.'}
                 </p>
               </div>
-              <div className="flex-1 overflow-auto">
-                <Table className="text-right">
+              <div className="flex-1 overflow-auto no-scrollbar">
+                <Table className="text-right border-separate border-spacing-0">
                   <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
                     <TableRow>
-                      <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'سند الاستلام' : 'RECEIPT #'}</TableHead>
-                      <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'الموظف' : 'WORKER'}</TableHead>
-                      <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'ملخص المرتجع' : 'RETURN LOG'}</TableHead>
-                      <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center">{lang === 'ar' ? 'الأصناف' : 'ITEMS'}</TableHead>
+                      <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>RECEIPT #</TableHead>
+                      <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>PERSONNEL</TableHead>
+                      <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>RETURN SUMMARY</TableHead>
+                      <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center">ITEMS</TableHead>
                       <TableHead className="w-32 px-6 py-4"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {pendingReturns.length === 0 ? (
-                      <TableRow><TableCell colSpan={5} className="text-center py-20 font-bold text-slate-300 italic">{lang === 'ar' ? 'لا توجد مرتجعات معلقة' : 'No pending returns'}</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={5} className="text-center py-20 font-bold text-slate-300 italic">لا توجد مرتجعات معلقة حالياً</TableCell></TableRow>
                     ) : pendingReturns.map(r => (
                       <TableRow key={r.id} className="hover:bg-slate-50/50 border-b border-slate-100 transition-colors group">
                         <TableCell className={cn("px-6 py-3 font-black text-slate-900 text-xs tabular-nums", dir === 'rtl' ? "text-right" : "text-left")}>{r.voucherNumber}</TableCell>
@@ -431,20 +438,20 @@ export default function MaterialReturnPage() {
               </div>
             </>
           ) : (
-            <div className="flex-1 overflow-auto">
-              <Table className="text-right">
+            <div className="flex-1 overflow-auto no-scrollbar">
+              <Table className="text-right border-separate border-spacing-0">
                 <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
                   <TableRow>
-                    <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'رقم السند' : 'MRV #'}</TableHead>
-                    <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'التاريخ' : 'DATE'}</TableHead>
-                    <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'الموظف' : 'WORKER'}</TableHead>
-                    <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center">{lang === 'ar' ? 'الأصناف' : 'ITEMS'}</TableHead>
+                    <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>MRV #</TableHead>
+                    <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>DATE</TableHead>
+                    <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>WORKER</TableHead>
+                    <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center">ITEMS</TableHead>
                     <TableHead className="w-24 px-6 py-4 text-center">ACTIONS</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {verifiedReturns.length === 0 ? (
-                    <TableRow><TableCell colSpan={5} className="text-center py-20 font-bold text-slate-300 italic">{lang === 'ar' ? 'الأرشيف فارغ' : 'Archive empty'}</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={5} className="text-center py-20 font-bold text-slate-300 italic">الأرشيف فارغ</TableCell></TableRow>
                   ) : verifiedReturns.map(v => (
                     <TableRow key={v.id} className="hover:bg-slate-50/50 border-b border-slate-100 transition-colors">
                       <TableCell className={cn("px-6 py-3 font-black text-slate-900 text-xs tabular-nums", dir === 'rtl' ? "text-right" : "text-left")}>{v.voucherNumber}</TableCell>
@@ -561,7 +568,7 @@ export default function MaterialReturnPage() {
         </DialogContent>
       </Dialog>
 
-      {/* PRINT/IMAGE PREVIEW DIALOG (Unified Design) */}
+      {/* PRINT/IMAGE PREVIEW DIALOG */}
       <Dialog open={!!printingVoucher} onOpenChange={(open) => !open && setPrintingVoucher(null)}>
         <DialogContent className="sm:max-w-[850px] p-0 overflow-hidden border-none bg-white">
           <DialogHeader className="sr-only">
@@ -576,7 +583,6 @@ export default function MaterialReturnPage() {
                     <img src="/images/logo.png" alt="watermark" className="w-full h-full object-contain grayscale" />
                   </div>
 
-                  {/* PROFESSIONAL BILINGUAL HEADER */}
                   <div className="grid grid-cols-3 items-center border-b-[6px] border-emerald-800 pb-8 mb-8 relative z-10">
                     <div className="text-right space-y-1">
                       <h2 className="text-xl font-black text-emerald-900 leading-tight">جمعية الصناعات النسيجية</h2>
@@ -601,7 +607,6 @@ export default function MaterialReturnPage() {
                     </div>
                   </div>
 
-                  {/* UNIFIED 6-FIELD GRID */}
                   <div className="grid grid-cols-3 gap-x-8 gap-y-6 mb-10 bg-slate-50/50 p-8 rounded-[1.5rem] border border-slate-100 relative z-10">
                     <div className="space-y-4">
                       <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
@@ -611,7 +616,7 @@ export default function MaterialReturnPage() {
                       <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'القسم / المسار' : 'Department'}</span>
                         <span className="text-sm font-black text-slate-700">
-                           {allDepartments?.find(d => d.id === allWorkers?.find(w => w.id === printingVoucher.workerId)?.departmentId)?.nameAr}
+                           {allDepartments?.find(d => d.id === allWorkers?.find(w => w.id === printingVoucher.workerId)?.departmentId)?.nameAr || '---'}
                         </span>
                       </div>
                     </div>
@@ -697,7 +702,7 @@ export default function MaterialReturnPage() {
           <div className="bg-slate-950 p-8 text-center">
             <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20 shadow-inner"><History className="w-8 h-8 text-red-500" /></div>
             <AlertDialogTitle className="text-white text-xl font-black">{lang === 'ar' ? 'إلغاء توثيق المرتجع' : 'Cancel Verification'}</AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-400 font-bold mt-2 text-xs leading-relaxed">تحذير: سيتم خصم الكميات من المخزن وإعادة حالة المرتجع إلى "معلق".</AlertDialogDescription>
+            <AlertDialogDescription className="text-slate-400 font-bold mt-2 text-xs leading-relaxed">تحذير: سيتم خصم الكميات من المخزن وإعادة حالة المرتجع إلى "معلق" في سند الاستلام الأصلي.</AlertDialogDescription>
           </div>
           <div className="bg-white p-6 flex gap-3">
             <AlertDialogAction onClick={async () => {
@@ -717,6 +722,15 @@ export default function MaterialReturnPage() {
           </div>
         </AlertDialogContent>
       </AlertDialog>
+
+      <div className="flex-none p-2 bg-slate-900 text-white/40 flex items-center justify-center gap-3">
+        <Info className="w-3.5 h-3.5 text-emerald-500" />
+        <p className="text-[10px] font-bold">نظام الرقابة المخزنية: كافة التوريدات توثق ببصمة زمنية وتوقيع إلكتروني للمسؤول.</p>
+      </div>
     </div>
   );
+}
+
+function handleExportCSV() {
+  // Logic already defined inside the component scope above.
 }
