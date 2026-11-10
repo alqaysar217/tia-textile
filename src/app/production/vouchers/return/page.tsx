@@ -231,6 +231,40 @@ export default function MaterialReturnPage() {
     } finally { setIsDownloading(false); }
   };
 
+  const handleExportCSV = () => {
+    const list = activeTab === 'pending' ? pendingReturns : verifiedReturns;
+    const headers = [
+      lang === 'ar' ? 'رقم السند' : 'Voucher No',
+      lang === 'ar' ? 'التاريخ' : 'Date',
+      lang === 'ar' ? 'الموظف' : 'Worker',
+      lang === 'ar' ? 'أمر الإنتاج' : 'Order',
+      lang === 'ar' ? 'الحالة' : 'Status'
+    ];
+
+    const rows = list.map(v => {
+      const worker = allWorkers?.find(w => w.id === v.workerId);
+      const order = allOrders?.find(o => o.id === v.orderId);
+      return [
+        v.voucherNumber,
+        v.date,
+        worker?.fullName || '---',
+        order?.orderNumber || '---',
+        activeTab === 'pending' ? 'Pending' : 'Verified'
+      ];
+    });
+
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `Returns_${activeTab}_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast({ title: lang === 'ar' ? "تم تحميل ملف CSV" : "CSV Downloaded" });
+  };
+
   return (
     <div className="flex flex-col h-full bg-[#f8fafc] overflow-hidden" dir={dir}>
       <div className="flex-none bg-white border-b border-slate-200 z-30 px-6 py-4 shadow-sm">
@@ -245,56 +279,103 @@ export default function MaterialReturnPage() {
             </div>
           </div>
           
-          <div className="flex flex-row items-center gap-2 bg-slate-50 p-1.5 rounded-xl border border-slate-200 w-full lg:w-auto overflow-x-auto no-scrollbar">
-             <div className="flex bg-white p-1 rounded-lg border border-slate-200 shrink-0">
-                <button onClick={() => setActiveTab('pending')} className={cn("px-3 py-1.5 rounded-md text-[10px] font-black uppercase transition-all", activeTab === 'pending' ? "bg-amber-600 text-white shadow-sm" : "text-slate-400 hover:text-slate-600")}>
+          <div className="flex flex-col md:flex-row items-center gap-2 bg-slate-50 p-1.5 rounded-xl border border-slate-200 w-full lg:w-auto">
+             <div className="flex bg-white p-1 rounded-lg border border-slate-200 w-full md:w-auto">
+                <button onClick={() => setActiveTab('pending')} className={cn("flex-1 md:flex-none px-3 py-1.5 rounded-md text-[10px] font-black uppercase transition-all", activeTab === 'pending' ? "bg-amber-600 text-white shadow-sm" : "text-slate-400 hover:text-slate-600")}>
                   {lang === 'ar' ? 'بانتظار التوثيق' : 'PENDING'}
                 </button>
-                <button onClick={() => setActiveTab('verified')} className={cn("px-3 py-1.5 rounded-md text-[10px] font-black uppercase transition-all", activeTab === 'verified' ? "bg-emerald-600 text-white shadow-sm" : "text-slate-400 hover:text-slate-600")}>
+                <button onClick={() => setActiveTab('verified')} className={cn("flex-1 md:flex-none px-3 py-1.5 rounded-md text-[10px] font-black uppercase transition-all", activeTab === 'verified' ? "bg-emerald-600 text-white shadow-sm" : "text-slate-400 hover:text-slate-600")}>
                   {lang === 'ar' ? 'الأرشيف الموثق' : 'VERIFIED'}
                 </button>
              </div>
              
-             <div className="relative flex-1 min-w-[150px]">
-                <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300" />
-                <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={lang === 'ar' ? 'بحث...' : 'Search...'} className="h-9 w-full pr-8 text-[10px] font-bold bg-white" />
-             </div>
+             <div className="flex items-center gap-2 w-full">
+                <div className="relative flex-1">
+                    <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300`} />
+                    <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={lang === 'ar' ? 'بحث...' : 'Search...'} className={cn("h-9 w-full text-[10px] font-bold bg-white border-slate-200", dir === 'rtl' ? "pr-8" : "pl-8")} />
+                </div>
 
-             <Popover>
-               <PopoverTrigger asChild>
-                 <Button variant="ghost" className="h-9 px-3 bg-white border border-slate-200 hover:bg-slate-50 transition-all rounded-lg gap-2 text-[10px] font-black text-slate-400 shrink-0">
-                    <CalendarDays className="w-4 h-4 text-slate-400" />
-                    {dateFrom || dateTo ? (lang === 'ar' ? 'محدد' : 'Set') : (lang === 'ar' ? 'التاريخ' : 'Date')}
-                 </Button>
-               </PopoverTrigger>
-               <PopoverContent align={dir === 'rtl' ? 'start' : 'end'} className="w-72 p-4 rounded-xl shadow-2xl border-slate-200">
-                 <div className="space-y-4">
-                   <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 pb-2">
-                      <CalendarDays className="w-3.5 h-3.5" />
-                      {lang === 'ar' ? 'تصفية حسب النطاق الزمني' : 'DATE RANGE FILTER'}
-                   </div>
-                   <div className="grid grid-cols-2 gap-3">
-                     <div className="space-y-1.5">
-                       <Label className="text-[9px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'من تاريخ' : 'FROM'}</Label>
-                       <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-9 text-[10px] font-bold tabular-nums" />
-                     </div>
-                     <div className="space-y-1.5">
-                       <Label className="text-[9px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'إلى تاريخ' : 'TO'}</Label>
-                       <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-9 text-[10px] font-bold tabular-nums" />
-                     </div>
-                   </div>
-                   {(dateFrom || dateTo) && (
-                     <Button variant="ghost" size="sm" onClick={() => { setDateFrom(''); setDateTo(''); }} className="w-full h-8 text-[9px] font-black text-rose-500 hover:bg-rose-50 hover:text-rose-600 border border-transparent hover:border-rose-100 rounded-lg">
-                        {lang === 'ar' ? 'إعادة ضبط الوقت' : 'CLEAR DATES'}
-                     </Button>
-                   )}
-                 </div>
-               </PopoverContent>
-             </Popover>
+                <div className="flex items-center gap-1 shrink-0">
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 transition-all", (dateFrom || dateTo) && "border-emerald-500 bg-emerald-50")}>
+                                <CalendarDays className={cn("w-4 h-4", (dateFrom || dateTo) ? "text-emerald-600" : "text-slate-400")} />
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent align={dir === 'rtl' ? 'start' : 'end'} className="w-72 p-4 rounded-xl shadow-2xl border-slate-200">
+                            <div className="space-y-4">
+                            <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 pb-2">
+                                <CalendarDays className="w-3.5 h-3.5" />
+                                {lang === 'ar' ? 'تصفية حسب النطاق الزمني' : 'DATE RANGE FILTER'}
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1.5">
+                                <Label className="text-[9px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'من تاريخ' : 'FROM'}</Label>
+                                <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-9 text-[10px] font-bold tabular-nums" />
+                                </div>
+                                <div className="space-y-1.5">
+                                <Label className="text-[9px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'إلى تاريخ' : 'TO'}</Label>
+                                <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-9 text-[10px] font-bold tabular-nums" />
+                                </div>
+                            </div>
+                            {(dateFrom || dateTo) && (
+                                <Button variant="ghost" size="sm" onClick={() => { setDateFrom(''); setDateTo(''); }} className="w-full h-8 text-[9px] font-black text-rose-500 hover:bg-rose-50 hover:text-rose-600 border border-transparent hover:border-rose-100 rounded-lg">
+                                    {lang === 'ar' ? 'إعادة ضبط الوقت' : 'CLEAR DATES'}
+                                </Button>
+                            )}
+                            </div>
+                        </PopoverContent>
+                    </Popover>
 
-             <div className="flex items-center gap-1 shrink-0">
-                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg hover:bg-white border border-transparent hover:border-slate-200"><Filter className="w-4 h-4 text-slate-400" /></Button>
-                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg hover:bg-white border border-transparent hover:border-slate-200"><FileDown className="w-4 h-4 text-emerald-600" /></Button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 transition-all", (workerFilter !== 'all' || orderFilter !== 'all') && "border-emerald-500 bg-emerald-50")}>
+                                <Filter className={cn("w-4 h-4", (workerFilter !== 'all' || orderFilter !== 'all') ? "text-emerald-600" : "text-slate-400")} />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="w-64 rounded-xl shadow-xl border-slate-200">
+                            <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'ترتيب وتصفية' : 'FILTER & SORT'}</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => { setSortBy('date'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }} className="flex justify-between text-xs font-bold py-2.5 cursor-pointer">
+                                {lang === 'ar' ? 'ترتيب حسب التاريخ' : 'Sort by Date'}
+                                {sortBy === 'date' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
+                            </DropdownMenuItem>
+                            
+                            <DropdownMenuSeparator />
+                            <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'الموظف' : 'BY WORKER'}</DropdownMenuLabel>
+                            <ScrollArea className="h-40">
+                                <DropdownMenuItem onClick={() => setWorkerFilter('all')} className="flex justify-between text-xs font-bold cursor-pointer">
+                                    {lang === 'ar' ? 'الكل' : 'All'}
+                                    {workerFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                                </DropdownMenuItem>
+                                {allWorkers?.filter(w => w.status !== 'deleted').map(w => (
+                                    <DropdownMenuItem key={w.id} onClick={() => setWorkerFilter(w.id)} className="flex justify-between text-xs font-bold cursor-pointer">
+                                        {w.fullName}
+                                        {workerFilter === w.id && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                                    </DropdownMenuItem>
+                                ))}
+                            </ScrollArea>
+                            
+                            <DropdownMenuSeparator />
+                            <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'الدفعة' : 'BY BATCH'}</DropdownMenuLabel>
+                            <ScrollArea className="h-40">
+                                <DropdownMenuItem onClick={() => setOrderFilter('all')} className="flex justify-between text-xs font-bold cursor-pointer">
+                                    {lang === 'ar' ? 'الكل' : 'All'}
+                                    {orderFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                                </DropdownMenuItem>
+                                {allOrders?.filter(o => o.status !== 'deleted').map(o => (
+                                    <DropdownMenuItem key={o.id} onClick={() => setOrderFilter(o.id)} className="flex justify-between text-xs font-bold cursor-pointer">
+                                        <span className="truncate max-w-[150px]">{o.orderNumber} - {o.title}</span>
+                                        {orderFilter === o.id && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                                    </DropdownMenuItem>
+                                ))}
+                            </ScrollArea>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    <Button onClick={handleExportCSV} variant="ghost" size="icon" className="h-9 w-9 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 transition-all">
+                        <FileDown className="w-4 h-4 text-emerald-600" />
+                    </Button>
+                </div>
              </div>
           </div>
         </div>
@@ -312,10 +393,10 @@ export default function MaterialReturnPage() {
               <Table className="text-right border-separate border-spacing-0">
                 <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
                   <TableRow>
-                    <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-right">REFERENCE</TableHead>
-                    <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-right">PERSONNEL</TableHead>
-                    <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center">ITEMS</TableHead>
-                    <TableHead className="w-32 px-6 py-4 text-center">ACTIONS</TableHead>
+                    <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? "text-right" : "text-left")}>REFERENCE</TableHead>
+                    <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? "text-right" : "text-left")}>PERSONNEL</TableHead>
+                    <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">ITEMS</TableHead>
+                    <TableHead className="w-32 px-6 py-4 text-center border-b border-slate-200">ACTIONS</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -446,5 +527,4 @@ export default function MaterialReturnPage() {
       </Dialog>
     </div>
   );
-  function handleExportCSV() { toast({ title: "CSV Exported" }); }
 }
