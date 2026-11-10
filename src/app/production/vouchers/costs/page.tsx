@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useCallback, useRef } from 'react';
@@ -141,12 +140,6 @@ export default function OverheadCostsPage() {
     { value: 'other', labelAr: 'أخرى', icon: <Receipt className="w-3.5 h-3.5" /> },
   ];
 
-  const currencies = [
-    { value: 'YER', labelAr: 'ريال يمني', labelEn: 'YER' },
-    { value: 'SAR', labelAr: 'ريال سعودي', labelEn: 'SAR' },
-    { value: 'USD', labelAr: 'دولار أمريكي', labelEn: 'USD' },
-  ];
-
   // Fetch Data
   const ordersQuery = useMemo(() => !db ? null : collection(db, 'productionOrders'), [db]);
   const workersQuery = useMemo(() => !db ? null : collection(db, 'workers'), [db]);
@@ -273,38 +266,6 @@ export default function OverheadCostsPage() {
     } finally { setIsDownloading(false); }
   };
 
-  const handleExportCSV = () => {
-    const headers = [
-      lang === 'ar' ? 'رقم السند' : 'Voucher No',
-      lang === 'ar' ? 'التاريخ' : 'Date',
-      lang === 'ar' ? 'التصنيف' : 'Category',
-      lang === 'ar' ? 'المستفيد' : 'Recipient',
-      lang === 'ar' ? 'البيان' : 'Description',
-      lang === 'ar' ? 'القيمة' : 'Amount',
-      lang === 'ar' ? 'العملة' : 'Currency'
-    ];
-
-    const rows = filteredVouchers.map(v => [
-      v.voucherNumber,
-      v.date,
-      costCategories.find(c => c.value === v.category)?.labelAr || v.category,
-      v.recipient,
-      v.description,
-      v.totalAmount,
-      v.currency
-    ]);
-
-    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `Costs_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   const toggleSort = (field: typeof sortBy) => {
     if (sortBy === field) setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     else { setSortBy(field); setSortOrder('asc'); }
@@ -362,7 +323,19 @@ export default function OverheadCostsPage() {
              </div>
 
              <div className="flex items-center gap-1.5 px-1.5 border-r border-slate-200">
-                <Button onClick={handleExportCSV} variant="ghost" className="h-10 px-3 rounded-lg text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent">
+                <Button onClick={() => {
+                    const headers = ['Ref #', 'Date', 'Recipient', 'Description', 'Amount', 'Currency'];
+                    const rows = filteredVouchers.map(v => [v.voucherNumber, v.date, v.recipient, v.description, v.totalAmount, v.currency]);
+                    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+                    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.setAttribute('download', `OverheadCosts_${new Date().toISOString().split('T')[0]}.csv`);
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                }} variant="ghost" className="h-10 px-3 rounded-lg text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent">
                   <FileDown className="w-4 h-4 text-emerald-600" />
                   {lang === 'ar' ? 'تصدير' : 'Export'}
                 </Button>
@@ -372,9 +345,6 @@ export default function OverheadCostsPage() {
                     <Button variant="ghost" className="h-10 px-3 rounded-lg text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent">
                       <Filter className="w-4 h-4" />
                       {lang === 'ar' ? 'تصفية' : 'Filter'}
-                      {(categoryFilter !== 'all' || currencyFilter !== 'all' || orderFilter !== 'all' || sortOrder !== 'desc') && (
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                      )}
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="w-64 rounded-xl border-slate-200 shadow-xl">
@@ -409,7 +379,7 @@ export default function OverheadCostsPage() {
                        <DropdownMenuItem onClick={() => setOrderFilter('all')} className="flex items-center justify-between text-xs font-bold cursor-pointer">{lang === 'ar' ? 'الكل' : 'All'}{orderFilter === 'all' && <Check className="w-3 h-3 text-emerald-600" />}</DropdownMenuItem>
                        {allOrders?.map(o => (
                          <DropdownMenuItem key={o.id} onClick={() => setOrderFilter(o.id)} className="flex items-center justify-between text-xs font-bold cursor-pointer">
-                            <span className="truncate max-w-[150px]">{o.orderNumber}</span>
+                            <span className="truncate max-w-[150px]">{o.orderNumber} - {o.title}</span>
                             {orderFilter === o.id && <Check className="w-3 h-3 text-emerald-600" />}
                          </DropdownMenuItem>
                        ))}
@@ -464,7 +434,7 @@ export default function OverheadCostsPage() {
                         <DropdownMenuContent align="end" className="w-44 rounded-xl shadow-xl">
                           <DropdownMenuItem onClick={() => handleEditVoucher(v)} className="gap-2 font-bold py-2 cursor-pointer text-xs"><Edit2 className="w-3.5 h-3.5 text-emerald-600" /> {lang === 'ar' ? 'تعديل السند' : 'Edit Voucher'}</DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => setDeletingVoucher(v)} className="gap-2 font-bold py-2 text-rose-600 cursor-pointer text-xs"><Trash2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'نقل للمهملات' : 'Move to Trash'}</DropdownMenuItem>
+                          <DropdownMenuItem onClick={async () => { if (!db) return; await updateDoc(doc(db, 'vouchers', v.id), { status: 'deleted', deletedAt: serverTimestamp() }); toast({ title: lang === 'ar' ? "تم النقل للأرشيف" : "Archived" }); }} className="gap-2 font-bold py-2 text-rose-600 cursor-pointer text-xs"><Trash2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'نقل للمهملات' : 'Move to Trash'}</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
@@ -478,7 +448,7 @@ export default function OverheadCostsPage() {
 
       {/* ADD/EDIT DIALOG */}
       <Dialog open={isAddDialogOpen} onOpenChange={(open) => !open && resetDialog()}>
-        <DialogContent className="sm:max-w-[850px] rounded-lg p-0 overflow-hidden border-none shadow-2xl">
+        <DialogContent className="sm:max-w-[700px] rounded-lg p-0 overflow-hidden border-none shadow-2xl">
           <div className="premium-gradient p-5 text-white">
             <DialogHeader className="text-right rtl:text-right ltr:text-left">
               <DialogTitle className="text-lg font-black flex items-center gap-3">
@@ -490,12 +460,12 @@ export default function OverheadCostsPage() {
           </div>
 
           <form onSubmit={handleSaveVoucher} className="bg-white flex flex-col max-h-[85vh]">
-            <ScrollArea className="flex-1 p-6" dir={dir}>
+            <ScrollArea className="flex-1 p-6" dir="rtl">
               <div className="space-y-6">
                 
                 <div className="flex flex-col md:flex-row gap-8 items-start">
                   {/* COMPACT SQUARE IMAGE UPLOAD */}
-                  <div className="w-full md:w-32 space-y-2 flex flex-col items-center">
+                  <div className="w-full md:w-32 space-y-2 flex flex-col items-center shrink-0">
                     <Label className="text-[10px] font-black uppercase text-slate-400 block text-center">{lang === 'ar' ? 'صورة السند' : 'ATTACHMENT'}</Label>
                     <div 
                       onClick={() => !isCompressing && fileInputRef.current?.click()}
@@ -519,55 +489,57 @@ export default function OverheadCostsPage() {
                   </div>
 
                   {/* FORM FIELDS */}
-                  <div className="flex-1 space-y-4">
+                  <div className="flex-1 space-y-4 w-full">
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1.5 text-right">
-                        <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-1.5"><Calendar className="w-3 h-3 text-emerald-600" /> DATE</Label>
+                        <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-1.5"><Calendar className="w-3 h-3 text-emerald-600" /> TRANSACTION DATE</Label>
                         <Input type="date" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} className="h-10 bg-slate-50 font-bold text-xs" required />
                       </div>
                       <div className="space-y-1.5 text-right">
-                        <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-1.5"><Tag className="w-3 h-3 text-emerald-600" /> CATEGORY</Label>
+                        <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-1.5"><Tag className="w-3 h-3 text-emerald-600" /> COST CATEGORY / النوع</Label>
                         <select value={formData.category} onChange={(e) => setFormData({...formData, category: e.target.value})} className="w-full h-10 px-2 bg-slate-50 border border-slate-200 rounded-md text-[11px] font-bold outline-none">
                            {costCategories.map(c => <option key={c.value} value={c.value}>{c.labelAr}</option>)}
                         </select>
                       </div>
                     </div>
 
-                    <div className="space-y-1.5 text-right">
-                      <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-1.5"><Workflow className="w-3 h-3 text-emerald-600" /> BATCH (OPTIONAL)</Label>
-                      <select value={formData.orderId} onChange={(e) => setFormData({...formData, orderId: e.target.value})} className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-md text-[11px] font-bold outline-none">
-                         <option value="">-- عام (غير مرتبط بطلب) --</option>
-                         {allOrders?.filter(o => o.status !== 'deleted').map(o => <option key={o.id} value={o.id}>{o.orderNumber} - {o.title}</option>)}
-                      </select>
-                    </div>
-
-                    <div className="space-y-1.5 text-right">
-                      <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-1.5"><UserCheck className="w-3 h-3 text-emerald-600" /> PERSONNEL</Label>
-                      <select value={formData.supervisorId} onChange={(e) => setFormData({...formData, supervisorId: e.target.value})} className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-md text-[11px] font-bold outline-none" required>
-                         <option value="">-- اختر المسؤول عن الصرف --</option>
-                         {allWorkers?.filter(w => w.status !== 'deleted').map(w => <option key={w.id} value={w.id}>{w.fullName} ({w.isSupervisor ? 'مشرف' : 'موظف'})</option>)}
-                      </select>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5 text-right">
+                        <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-1.5"><Workflow className="w-3 h-3 text-emerald-600" /> LINKED BATCH (OPTIONAL)</Label>
+                        <select value={formData.orderId} onChange={(e) => setFormData({...formData, orderId: e.target.value})} className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-md text-[11px] font-bold outline-none">
+                          <option value="">-- عام (غير مرتبط بطلب) --</option>
+                          {allOrders?.filter(o => o.status !== 'deleted').map(o => <option key={o.id} value={o.id}>{o.orderNumber} - {o.title}</option>)}
+                        </select>
+                      </div>
+                      <div className="space-y-1.5 text-right">
+                        <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-1.5"><UserCheck className="w-3 h-3 text-emerald-600" /> RESPONSIBLE PERSONNEL</Label>
+                        <select value={formData.supervisorId} onChange={(e) => setFormData({...formData, supervisorId: e.target.value})} className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-md text-[11px] font-bold outline-none" required>
+                          <option value="">-- اختر المسؤول عن الصرف --</option>
+                          {allWorkers?.filter(w => w.status !== 'deleted').map(w => <option key={w.id} value={w.id}>{w.fullName} ({w.isSupervisor ? 'مشرف' : 'موظف'})</option>)}
+                        </select>
+                      </div>
                     </div>
                   </div>
                 </div>
 
                 <div className="p-4 bg-emerald-50/50 border border-emerald-100 rounded-xl space-y-4">
-                  <div className="space-y-1.5 text-right">
-                    <Label className="text-[10px] font-black uppercase text-emerald-700">PAID TO / المستفيد</Label>
-                    <Input value={formData.recipient} onChange={(e) => setFormData({...formData, recipient: e.target.value})} className="h-10 bg-white border-emerald-200 font-bold text-xs" placeholder="مثال: شركة الكهرباء / اسم المورد" required />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5 text-right">
+                      <Label className="text-[10px] font-black uppercase text-emerald-700">PAID TO / المستفيد</Label>
+                      <Input value={formData.recipient} onChange={(e) => setFormData({...formData, recipient: e.target.value})} className="h-10 bg-white border-emerald-200 font-bold text-xs" placeholder="مثال: شركة الكهرباء / اسم المورد" required />
+                    </div>
+                    <div className="space-y-1.5 text-right">
+                      <Label className="text-[10px] font-black uppercase text-emerald-700">EXPENDITURE DESCRIPTION / البيان</Label>
+                      <Input value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="h-10 bg-white border-emerald-200 font-bold text-xs" placeholder="مثال: قيمة فاتورة شهر أكتوبر" required />
+                    </div>
                   </div>
 
-                  <div className="space-y-1.5 text-right">
-                    <Label className="text-[10px] font-black uppercase text-emerald-700">DESCRIPTION / البيان</Label>
-                    <Input value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="h-10 bg-white border-emerald-200 font-bold text-xs" placeholder="مثال: قيمة فاتورة شهر أكتوبر" required />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5 text-right">
                        <Label className="text-[10px] font-black uppercase text-emerald-700">AMOUNT / القيمة</Label>
                        <div className="relative">
                           <Input type="number" step="any" value={formData.totalAmount || ''} onChange={(e) => setFormData({...formData, totalAmount: Number(e.target.value)})} className="h-12 font-black text-xl text-center tabular-nums bg-white border-emerald-200 text-emerald-700" required />
-                          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <div className="absolute left-3 top-1/2 -translate-y-1/2">
                             <select value={formData.currency} onChange={(e) => setFormData({...formData, currency: e.target.value})} className="h-8 px-1 bg-emerald-50 border border-emerald-100 rounded text-[9px] font-black outline-none">
                                <option value="YER">YER</option><option value="SAR">SAR</option><option value="USD">USD</option>
                             </select>
@@ -575,7 +547,7 @@ export default function OverheadCostsPage() {
                        </div>
                     </div>
                     <div className="space-y-1.5 text-right">
-                       <Label className="text-[10px] font-black uppercase text-slate-400">NOTES / ملاحظات</Label>
+                       <Label className="text-[10px] font-black uppercase text-slate-400">ADDITIONAL NOTES / ملاحظات</Label>
                        <Input value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} className="h-12 bg-white border-slate-200 text-[11px] font-bold" />
                     </div>
                   </div>
@@ -587,7 +559,7 @@ export default function OverheadCostsPage() {
             <div className="flex-none p-5 bg-slate-50 border-t border-slate-100 flex gap-3">
               <Button type="submit" disabled={isSubmitting || isCompressing || formData.totalAmount <= 0} className="flex-1 h-12 premium-gradient text-white rounded-lg font-black text-sm shadow-lg">
                 {isSubmitting ? <Loader2 className="animate-spin me-2" /> : <Save className="w-4 h-4 me-2" />}
-                {lang === 'ar' ? 'ترحيل سند المصروف' : 'Post Cost Voucher'}
+                {lang === 'ar' ? 'ترحيل سند المصروف' : 'Post Expenditure'}
               </Button>
               <Button type="button" variant="outline" onClick={resetDialog} className="px-6 h-12 font-black text-slate-400 rounded-lg">إلغاء</Button>
             </div>
@@ -605,18 +577,23 @@ export default function OverheadCostsPage() {
                 <div className="flex flex-col text-slate-900 font-sans relative overflow-hidden" dir="rtl">
                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 opacity-[0.04] pointer-events-none -z-10"><img src="/images/logo.png" className="w-full h-full object-contain grayscale" /></div>
                    
+                   {/* UNIFIED OFFICIAL HEADER */}
                    <div className="grid grid-cols-3 items-center border-b-[6px] border-emerald-800 pb-8 mb-8 relative z-10">
                       <div className="text-right space-y-1">
                         <h2 className="text-xl font-black text-emerald-900 leading-tight">جمعية الصناعات النسيجية</h2>
                         <p className="text-xs font-bold text-slate-500">الروضة - محافظة شبوة - اليمن</p>
                         <p className="text-[11px] font-bold text-slate-400 tabular-nums" dir="ltr">0777 263 091 | nseeg202020@gmail.com</p>
                       </div>
+
                       <div className="flex justify-center">
-                        <div className="w-24 h-24 border-2 border-emerald-800/10 rounded-full flex items-center justify-center p-2"><img src="/images/logo.png" className="w-full h-full object-contain" /></div>
+                        <div className="w-24 h-24 bg-white border-2 border-emerald-800/10 rounded-full flex items-center justify-center p-2 shadow-sm relative overflow-hidden">
+                          <img src="/images/logo.png" alt="Logo" className="w-full h-full object-contain" />
+                        </div>
                       </div>
+
                       <div className="text-left space-y-1" dir="ltr">
-                        <h2 className="text-[14px] font-black text-emerald-900 uppercase">Textile Industries Association</h2>
-                        <p className="text-[11px] font-bold text-slate-500">Al-Rawdah - Shabwa</p>
+                        <h2 className="text-[14px] font-black text-emerald-900 uppercase leading-tight tracking-tight">Textile Industries Association</h2>
+                        <p className="text-[11px] font-bold text-slate-500">Al-Rawdah - Shabwa - Yemen</p>
                         <p className="text-[10px] font-bold text-slate-400 tabular-nums">0777 263 091 | nseeg202020@gmail.com</p>
                       </div>
                     </div>
