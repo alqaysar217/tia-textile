@@ -152,18 +152,34 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
     });
   }, [rawVouchers]);
 
-  // Aggregation Logic for Materials Tab
-  const materialsSummary = useMemo(() => {
-    const agg: Record<string, { nameAr: string, qty: number, unit: string, lastDate: string }> = {};
-    vouchers.filter(v => v.type === 'material_issue' && v.status !== 'deleted').forEach(v => {
-      v.items?.forEach((item: any) => {
-        if (!agg[item.id]) agg[item.id] = { nameAr: item.nameAr, qty: 0, unit: item.unit, lastDate: v.date };
-        agg[item.id].qty += item.qty;
-        if (new Date(v.date) > new Date(agg[item.id].lastDate)) agg[item.id].lastDate = v.date;
+  // Detailed Materials Log for accurate costing
+  const materialsDetailed = useMemo(() => {
+    const list: any[] = [];
+    vouchers
+      .filter(v => v.type === 'material_issue' && v.status !== 'deleted')
+      .forEach(v => {
+        v.items?.forEach((item: any) => {
+          list.push({
+            date: v.date,
+            voucherNumber: v.voucherNumber,
+            nameAr: item.nameAr,
+            qty: Number(item.qty || 0),
+            unit: item.unit,
+            price: Number(item.price || 0),
+            total: Number(item.qty || 0) * Number(item.price || 0)
+          });
+        });
       });
+    return list.sort((a, b) => {
+      const timeA = new Date(a.date || 0).getTime();
+      const timeB = new Date(b.date || 0).getTime();
+      return timeB - timeA;
     });
-    return Object.values(agg);
   }, [vouchers]);
+
+  const totalMaterialsCost = useMemo(() => {
+    return materialsDetailed.reduce((sum, m) => sum + m.total, 0);
+  }, [materialsDetailed]);
 
   // Aggregation Logic for Wages Tab
   const wagesSummary = useMemo(() => {
@@ -355,31 +371,44 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
             </ScrollArea>
           )}
 
-          {/* TAB 2: RAW MATERIALS SUMMARY */}
+          {/* TAB 2: RAW MATERIALS DETAILED COSTING */}
           {activeTab === 'materials_summary' && (
             <div className="flex-1 flex flex-col animate-in fade-in duration-300 overflow-hidden">
-               <div className="p-4 bg-amber-50 border-b border-amber-100">
-                  <h3 className="text-xs font-black text-amber-900 uppercase tracking-widest flex items-center gap-2"><Layers className="w-4 h-4" /> {lang === 'ar' ? 'إجمالي المواد الخام المستهلكة في الدفعة' : 'TOTAL MATERIALS CONSUMED'}</h3>
+               <div className="p-4 bg-amber-50 border-b border-amber-100 flex items-center justify-between">
+                  <h3 className="text-xs font-black text-amber-900 uppercase tracking-widest flex items-center gap-2">
+                    <Layers className="w-4 h-4" /> 
+                    {lang === 'ar' ? 'سجل تفصيلي للمواد الخام وقيمتها' : 'DETAILED MATERIALS COSTING'}
+                  </h3>
+                  <div className="flex items-center gap-2">
+                     <span className="text-[10px] font-black text-amber-800 uppercase tracking-widest">{lang === 'ar' ? 'إجمالي تكلفة المواد:' : 'TOTAL COST:'}</span>
+                     <Badge className="bg-amber-600 text-white font-black tabular-nums">{totalMaterialsCost.toLocaleString('en-US')} YER</Badge>
+                  </div>
                </div>
                <div className="flex-1 overflow-auto">
                   <Table className="text-right border-separate border-spacing-0">
                     <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
                       <TableRow>
+                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'التاريخ' : 'DATE'}</TableHead>
+                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'رقم السند' : 'REF #'}</TableHead>
                         <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'اسم المادة' : 'MATERIAL'}</TableHead>
-                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-center">{lang === 'ar' ? 'إجمالي الكمية المصروفة' : 'TOTAL ISSUED'}</TableHead>
-                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-center">{lang === 'ar' ? 'الوحدة' : 'UNIT'}</TableHead>
-                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-center">{lang === 'ar' ? 'آخر حركة' : 'LAST MOVEMENT'}</TableHead>
+                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'الكمية' : 'QTY'}</TableHead>
+                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'السعر' : 'PRICE'}</TableHead>
+                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'الإجمالي' : 'TOTAL'}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {materialsSummary.length === 0 ? (
-                        <TableRow><TableCell colSpan={4} className="py-20 text-center text-slate-300 font-bold">لم يتم صرف أي مواد لهذه الدفعة بعد</TableCell></TableRow>
-                      ) : materialsSummary.map((m, idx) => (
+                      {materialsDetailed.length === 0 ? (
+                        <TableRow><TableCell colSpan={6} className="py-20 text-center text-slate-300 font-bold">لم يتم صرف أي مواد لهذه الدفعة بعد</TableCell></TableRow>
+                      ) : materialsDetailed.map((m, idx) => (
                         <TableRow key={idx} className="hover:bg-slate-50 transition-colors border-b border-slate-100">
+                           <TableCell className="px-6 py-4 text-[10px] font-bold text-slate-500 tabular-nums text-right">{m.date}</TableCell>
+                           <TableCell className="px-6 py-4 text-[10px] font-black text-slate-400 tabular-nums text-right">{m.voucherNumber}</TableCell>
                            <TableCell className="px-6 py-4 font-black text-slate-900 text-xs text-right">{m.nameAr}</TableCell>
-                           <TableCell className="px-6 py-4 text-center font-black text-amber-700 tabular-nums">{m.qty.toLocaleString('en-US')}</TableCell>
-                           <TableCell className="px-6 py-4 text-center text-[10px] font-black text-slate-400 uppercase">{m.unit}</TableCell>
-                           <TableCell className="px-6 py-4 text-center text-[10px] font-bold text-slate-500 tabular-nums">{m.lastDate}</TableCell>
+                           <TableCell className="px-6 py-4 text-right font-bold text-slate-700 tabular-nums">
+                              {m.qty.toLocaleString('en-US')} <span className="text-[8px] font-black text-slate-400 uppercase ms-1">{m.unit}</span>
+                           </TableCell>
+                           <TableCell className="px-6 py-4 text-right font-bold text-slate-600 tabular-nums">{m.price.toLocaleString('en-US')}</TableCell>
+                           <TableCell className="px-6 py-4 text-right font-black text-amber-700 tabular-nums">{m.total.toLocaleString('en-US')}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -401,8 +430,8 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                         <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'التاريخ' : 'DATE'}</TableHead>
                         <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'الموظف' : 'WORKER'}</TableHead>
                         <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'العملية / المرحلة' : 'OPERATION'}</TableHead>
-                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-center">{lang === 'ar' ? 'الكمية' : 'QTY'}</TableHead>
-                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-center">{lang === 'ar' ? 'المستحق' : 'EARNED'}</TableHead>
+                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'الكمية' : 'QTY'}</TableHead>
+                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'المستحق' : 'EARNED'}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -421,8 +450,8 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                                 </div>
                              </TableCell>
                              <TableCell className="px-6 py-4 font-black text-slate-500 text-[10px] uppercase text-right">{dept?.nameAr || '---'}</TableCell>
-                             <TableCell className="px-6 py-4 text-center font-bold text-slate-700 tabular-nums">{v.qtyAccepted.toLocaleString('en-US')} Pcs</TableCell>
-                             <TableCell className="px-6 py-4 text-center font-black text-purple-700 tabular-nums">{v.wageAmount.toLocaleString('en-US')} {v.currency}</TableCell>
+                             <TableCell className="px-6 py-4 text-right font-bold text-slate-700 tabular-nums">{v.qtyAccepted.toLocaleString('en-US')} Pcs</TableCell>
+                             <TableCell className="px-6 py-4 text-right font-black text-purple-700 tabular-nums">{v.wageAmount.toLocaleString('en-US')} {v.currency}</TableCell>
                           </TableRow>
                         );
                       })}
@@ -445,7 +474,7 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                         <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">DATE</TableHead>
                         <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">REFERENCE</TableHead>
                         <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'البيان / الوصف' : 'DESCRIPTION'}</TableHead>
-                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-center">AMOUNT</TableHead>
+                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">AMOUNT</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -456,7 +485,7 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                            <TableCell className="px-6 py-4 text-[10px] font-bold text-slate-500 tabular-nums text-right">{v.date}</TableCell>
                            <TableCell className="px-6 py-4 font-black text-slate-900 text-[10px] tabular-nums text-right">{v.voucherNumber}</TableCell>
                            <TableCell className="px-6 py-4 font-bold text-slate-700 text-xs text-right">{v.description}</TableCell>
-                           <TableCell className="px-6 py-4 text-center font-black text-rose-600 tabular-nums">{v.totalAmount.toLocaleString('en-US')} {v.currency}</TableCell>
+                           <TableCell className="px-6 py-4 text-right font-black text-rose-600 tabular-nums">{v.totalAmount.toLocaleString('en-US')} {v.currency}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
