@@ -105,6 +105,7 @@ export default function MaterialIssuePage() {
   const [search, setSearch] = useState('');
   
   // Advanced Filtering & Sorting State
+  // FIXED: Default sorting set to 'date' and 'desc' to show newest records at the top
   const [sortBy, setSortBy] = useState<'voucherNumber' | 'date' | 'totalAmount'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [batchFilter, setBatchFilter] = useState<string>('all');
@@ -121,7 +122,7 @@ export default function MaterialIssuePage() {
     date: new Date().toISOString().split('T')[0],
     orderId: filterOrderId || '',
     workerId: '',
-    supervisorId: '', // Added to store accountability
+    supervisorId: '', 
     notes: '',
     items: [] as any[]
   });
@@ -174,7 +175,7 @@ export default function MaterialIssuePage() {
       return matchesSearch && matchesBatch && matchesDept;
     });
 
-    // Sorting
+    // Sorting logic - ensures desc puts newest dates first
     return result.sort((a, b) => {
       let valA = a[sortBy] ?? '';
       let valB = b[sortBy] ?? '';
@@ -298,7 +299,7 @@ export default function MaterialIssuePage() {
     const totalAmount = formData.items.reduce((acc, item) => acc + (item.qty * item.price), 0);
     const voucherData = {
       ...formData,
-      supervisorId: selectedWorker?.supervisorId || '', // Capture supervisor at time of issue
+      supervisorId: selectedWorker?.supervisorId || '', 
       type: 'material_issue',
       totalAmount,
       status: 'posted',
@@ -464,7 +465,6 @@ export default function MaterialIssuePage() {
   return (
     <div className="flex flex-col h-full bg-[#f8fafc] overflow-hidden">
       
-      {/* ERP HEADER */}
       <div className="flex-none bg-white border-b border-slate-200 z-30 px-6 py-4 shadow-sm">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div className="flex items-center gap-4">
@@ -548,11 +548,6 @@ export default function MaterialIssuePage() {
                       {deptFilter === d.id && <Check className="w-3.5 h-3.5 text-emerald-600" />}
                     </DropdownMenuItem>
                   ))}
-                  {deptFilter !== 'all' && (
-                    <DropdownMenuItem onClick={() => setDeptFilter('all')} className="text-xs font-bold text-rose-500 cursor-pointer text-center justify-center border-t border-slate-50 mt-1">
-                      {lang === 'ar' ? 'إلغاء فلتر الأقسام' : 'Clear Dept Filter'}
-                    </DropdownMenuItem>
-                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -565,7 +560,6 @@ export default function MaterialIssuePage() {
         </div>
       </div>
 
-      {/* LIST OF VOUCHERS */}
       <div className="flex-1 min-h-0 overflow-auto p-4 md:p-6 no-scrollbar">
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <Table className="text-right border-separate border-spacing-0">
@@ -656,7 +650,6 @@ export default function MaterialIssuePage() {
         </div>
       </div>
 
-      {/* NEW/EDIT VOUCHER DIALOG */}
       <Dialog open={isAddDialogOpen} onOpenChange={(open) => !open && resetDialog()}>
         <DialogContent className="sm:max-w-[850px] rounded-lg p-0 overflow-hidden border-none shadow-2xl">
           <div className="premium-gradient p-6 text-white">
