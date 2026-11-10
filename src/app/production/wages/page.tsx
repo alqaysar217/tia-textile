@@ -89,6 +89,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toPng } from 'html-to-image';
+import { VoucherTemplate } from '@/components/production/VoucherTemplate';
 
 export default function PayrollManagementPage() {
   const { lang, dir } = useTranslation();
@@ -102,18 +103,15 @@ export default function PayrollManagementPage() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [search, setSearch] = useState('');
   
-  // Filtering & Sorting State
   const [sortBy, setSortBy] = useState<'date' | 'voucherNumber' | 'totalAmount'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [activeTab, setActiveTab] = useState('balances');
   
-  // Advanced filtering state
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [workerFilter, setWorkerFilter] = useState('all');
   const [currencyFilter, setCurrencyFilter] = useState('all');
 
-  // Payment Form State
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     workerId: '',
@@ -123,7 +121,6 @@ export default function PayrollManagementPage() {
     linkedReceipts: [] as string[]
   });
 
-  // Fetch Data
   const workersQuery = useMemo(() => !db ? null : collection(db, 'workers'), [db]);
   const deptsQuery = useMemo(() => !db ? null : collection(db, 'departments'), [db]);
   const productsQuery = useMemo(() => !db ? null : collection(db, 'products'), [db]);
@@ -152,8 +149,6 @@ export default function PayrollManagementPage() {
 
   const unpaidReceipts = useMemo(() => {
     if (!formData.workerId || !allReceipts) return [];
-    
-    // ACCOUNTING SHIELD: Rely on paymentStatus field for 100% accuracy
     return allReceipts.filter(r => 
       r.workerId === formData.workerId && 
       r.status !== 'deleted' &&
@@ -245,7 +240,6 @@ export default function PayrollManagementPage() {
     setIsSubmitting(true);
     const batch = writeBatch(db);
     
-    // Extract metadata from receipts to link the payment to orders/stages
     const firstReceiptId = formData.linkedReceipts[0];
     const firstReceipt = allReceipts?.find(r => r.id === firstReceiptId);
     
@@ -263,7 +257,6 @@ export default function PayrollManagementPage() {
       let voucherId = editingVoucherId;
       
       if (editingVoucherId) {
-        // Reverse old links if editing (reopening receipts)
         const oldSnap = await getDoc(doc(db, 'vouchers', editingVoucherId));
         const oldV = oldSnap.data();
         oldV?.linkedReceipts?.forEach((rid: string) => {
@@ -277,7 +270,6 @@ export default function PayrollManagementPage() {
         batch.set(newVoucherRef, { ...paymentData, voucherNumber, createdAt: serverTimestamp() });
       }
 
-      // ACCOUNTING SHIELD: Lock receipts to this payment
       formData.linkedReceipts.forEach(rid => {
         const r = allReceipts?.find(rec => rec.id === rid);
         batch.update(doc(db, 'vouchers', rid), { 
@@ -303,7 +295,6 @@ export default function PayrollManagementPage() {
     setIsSubmitting(true);
     const batch = writeBatch(db);
     try {
-      // Reopen receipts
       deletingVoucher.linkedReceipts?.forEach((rid: string) => {
         batch.update(doc(db, 'vouchers', rid), { paymentStatus: 'pending', paidAmount: 0, paymentVoucherId: null });
       });
@@ -637,120 +628,16 @@ export default function PayrollManagementPage() {
           <ScrollArea className="max-h-[85vh]">
             <div className="p-12 bg-white" id="printable-payment">
                {printingVoucher && (
-                 <div className="flex flex-col text-slate-900 font-sans relative" dir="rtl">
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 opacity-[0.04] pointer-events-none -z-10 select-none"><img src="/images/logo.png" alt="watermark" className="w-full h-full object-contain grayscale" /></div>
-                    
-                    <div className="grid grid-cols-3 items-center border-b-[6px] border-emerald-800 pb-8 mb-8 relative z-10">
-                      <div className="text-right space-y-1">
-                        <h2 className="text-xl font-black text-emerald-900 leading-tight">جمعية الصناعات النسيجية</h2>
-                        <p className="text-xs font-bold text-slate-500">الروضة - محافظة شبوة - اليمن</p>
-                        <p className="text-[11px] font-bold text-slate-400 tabular-nums" dir="ltr">0777 263 091 | nseeg202020@gmail.com</p>
-                      </div>
-
-                      <div className="flex justify-center">
-                        <div className="w-24 h-24 bg-white border-2 border-emerald-800/10 rounded-full flex items-center justify-center p-2 shadow-sm relative overflow-hidden">
-                          <img src="/images/logo.png" alt="Logo" className="w-full h-full object-contain" />
-                        </div>
-                      </div>
-
-                      <div className="text-left space-y-1" dir="ltr">
-                        <h2 className="text-[14px] font-black text-emerald-900 uppercase leading-tight tracking-tight">Textile Industries Association</h2>
-                        <p className="text-[11px] font-bold text-slate-500">Al-Rawdah - Shabwa - Yemen</p>
-                        <p className="text-[10px] font-bold text-slate-400 tabular-nums">0777 263 091 | nseeg202020@gmail.com</p>
-                      </div>
-                    </div>
-
-                    <div className="text-center mb-10 relative z-10">
-                      <div className="inline-block border-[2.5px] border-emerald-800 px-12 py-2 rounded-full bg-white shadow-sm ring-4 ring-emerald-50">
-                        <h3 className="text-xl font-black text-emerald-900 uppercase tracking-widest">{lang === 'ar' ? 'سند صرف أجور مالي' : 'Wage Payment Voucher'}</h3>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-x-8 gap-y-6 mb-10 bg-slate-50/50 p-8 rounded-[1.5rem] border border-slate-100 relative z-10">
-                      <div className="space-y-4">
-                        <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
-                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'اسم المستلم/المسلم' : 'Recipient'}</span>
-                          <span className="text-sm font-black text-slate-900">{allWorkers?.find(w => w.id === printingVoucher.workerId)?.fullName || '---'}</span>
-                        </div>
-                        <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
-                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'القسم / المسار' : 'Department'}</span>
-                          <span className="text-sm font-black text-slate-700">
-                             {allDepartments?.find(d => d.id === printingVoucher.currentStageId || d.id === allWorkers?.find(w => w.id === printingVoucher.workerId)?.departmentId)?.nameAr || '---'}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="space-y-4">
-                        <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
-                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'رقم السند' : 'Ref No.'}</span>
-                          <span className="text-sm font-black text-emerald-900 tabular-nums tracking-wider">{printingVoucher.voucherNumber}</span>
-                        </div>
-                        <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
-                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'الدفعة' : 'Batch'}</span>
-                          <span className="text-sm font-black text-slate-700 truncate max-w-[150px]">{allOrders?.find(o => o.id === printingVoucher.orderId)?.title || '---'}</span>
-                        </div>
-                      </div>
-
-                      <div className="space-y-4">
-                        <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
-                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'تاريخ السند' : 'Date'}</span>
-                          <span className="text-sm font-black text-slate-700 tabular-nums">{printingVoucher.date}</span>
-                        </div>
-                        <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
-                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'المشرف المسؤول' : 'Supervisor'}</span>
-                          <span className="text-sm font-black text-slate-700">
-                            {allWorkers?.find(w => w.id === allWorkers?.find(work => work.id === printingVoucher.workerId)?.supervisorId)?.fullName || (lang === 'ar' ? 'مشرف القسم المباشر' : 'Direct Supervisor')}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="mb-8 relative z-10">
-                      <Table className="text-right border-2 border-emerald-900/10">
-                        <TableHeader className="bg-emerald-900/5"><TableRow><TableHead className="text-right font-black text-xs py-3 text-emerald-900">{lang === 'ar' ? 'رقم سند الاستلام' : 'Receipt #'}</TableHead><TableHead className="text-right font-black text-xs py-3 text-emerald-900">{lang === 'ar' ? 'المنتج' : 'Product'}</TableHead><TableHead className="text-center font-black text-xs py-3 text-emerald-900">Qty</TableHead><TableHead className="text-center font-black text-xs py-3 text-emerald-900">Total</TableHead></TableRow></TableHeader>
-                        <TableBody>
-                          {printingVoucher.linkedReceipts?.map((receiptId: string, i: number) => {
-                             const receipt = allReceipts?.find(r => r.id === receiptId);
-                             const order = allOrders?.find(o => o.id === receipt?.orderId);
-                             const product = allProducts?.find(p => p.id === order?.productId);
-                             return (
-                               <TableRow key={i} className="bg-white/40 border-b border-slate-100">
-                                 <TableCell className="font-bold text-xs tabular-nums">{receipt?.voucherNumber}</TableCell>
-                                 <TableCell className="font-bold text-xs">{product?.nameAr || '---'}</TableCell>
-                                 <TableCell className="text-center font-black text-xs">{receipt?.qtyAccepted || 0}</TableCell>
-                                 <TableCell className="text-center font-black text-xs text-emerald-700">{(receipt?.wageAmount || 0).toLocaleString('en-US')}</TableCell>
-                               </TableRow>
-                             );
-                          })}
-                          <TableRow className="bg-emerald-50/50"><TableCell colSpan={3} className="text-left font-black text-sm text-emerald-900 px-6 py-4 uppercase">GRAND TOTAL</TableCell><TableCell className="text-center font-black text-lg text-emerald-700 tabular-nums">{(printingVoucher.totalAmount || 0).toLocaleString('en-US')}</TableCell></TableRow>
-                        </TableBody>
-                      </Table>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-8 pt-10 border-t-2 border-slate-100 text-center relative z-10 mt-auto">
-                      <div className="space-y-12">
-                        <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">{lang === 'ar' ? 'المحاسبة' : 'Cashier'}</p>
-                        <div className="h-px bg-slate-300 w-3/4 mx-auto" />
-                        <p className="text-[8px] font-bold text-slate-300 uppercase tracking-widest">Signature / التاريخ</p>
-                      </div>
-                      <div className="space-y-12">
-                        <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">{lang === 'ar' ? 'توقيع المستلم' : 'Recipient Sign'}</p>
-                        <div className="h-px bg-slate-300 w-3/4 mx-auto" />
-                        <p className="text-[8px] font-bold text-slate-300 uppercase tracking-widest">Signature / التاريخ</p>
-                      </div>
-                      <div className="space-y-12">
-                        <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">{lang === 'ar' ? 'الاعتماد العام' : 'General Approval'}</p>
-                        <div className="h-px bg-slate-300 w-3/4 mx-auto" />
-                        <p className="text-[8px] font-bold text-slate-300 uppercase tracking-widest">Authorized Signature</p>
-                      </div>
-                    </div>
-
-                    <div className="mt-14 pt-4 text-center border-t border-slate-50 relative z-10 flex items-center justify-center gap-4">
-                      <span className="text-[8px] font-black text-slate-200 uppercase tracking-[0.4em]">Generated by TIA Production System</span>
-                      <span className="w-1.5 h-1.5 rounded-full bg-slate-100" />
-                      <span className="text-[8px] font-black text-slate-300 tabular-nums uppercase tracking-widest">{new Date().toLocaleString()}</span>
-                    </div>
-                 </div>
+                <VoucherTemplate 
+                  voucher={printingVoucher}
+                  worker={allWorkers?.find(w => w.id === printingVoucher.workerId)}
+                  supervisor={allWorkers?.find(w => w.id === allWorkers?.find(work => work.id === printingVoucher.workerId)?.supervisorId)}
+                  departments={allDepartments}
+                  products={allProducts}
+                  allReceipts={allReceipts}
+                  allOrders={allOrders}
+                  lang={lang}
+                />
                )}
             </div>
           </ScrollArea>
@@ -759,7 +646,7 @@ export default function PayrollManagementPage() {
                 {isDownloading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
                 {lang === 'ar' ? 'تحميل كصورة PNG' : 'Download PNG'}
              </Button>
-             <Button variant="ghost" onClick={() => setPrintingVoucher(null)} className="h-12 px-8 rounded-xl border border-slate-200 font-black text-slate-500">إغلاق</Button>
+             <Button variant="ghost" onClick={() => setPrintingVoucher(null)} className="h-12 px-8 rounded-xl border border-slate-200 text-slate-500">إغلاق</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

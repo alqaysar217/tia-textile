@@ -10,6 +10,8 @@ interface VoucherTemplateProps {
   supervisor?: any;
   departments?: any[];
   products?: any[];
+  allReceipts?: any[];
+  allOrders?: any[];
   lang: string;
 }
 
@@ -20,6 +22,8 @@ export function VoucherTemplate({
   supervisor, 
   departments, 
   products, 
+  allReceipts,
+  allOrders,
   lang 
 }: VoucherTemplateProps) {
   if (!voucher) return null;
@@ -110,7 +114,6 @@ export function VoucherTemplate({
         {voucher.type === 'production_receipt' ? (
           /* SPECIAL LAYOUT FOR PRODUCTION RECEIPT WITH TWO TABLES */
           <div className="space-y-10">
-            {/* TABLE 1: FINISHED OUTPUT */}
             <div className="space-y-3">
               <h4 className="text-[10px] font-black text-emerald-900 border-r-4 border-emerald-600 pr-3 uppercase">
                 {isRtl ? 'أولاً: مخرجات الإنتاج المنجزة' : 'I. FINISHED PRODUCTION OUTPUTS'}
@@ -143,7 +146,6 @@ export function VoucherTemplate({
               </Table>
             </div>
 
-            {/* TABLE 2: RETURNED MATERIALS */}
             {voucher.returnedItems?.length > 0 && (
               <div className="space-y-3">
                 <h4 className="text-[10px] font-black text-blue-900 border-r-4 border-blue-600 pr-3 uppercase">
@@ -172,8 +174,48 @@ export function VoucherTemplate({
               </div>
             )}
           </div>
+        ) : voucher.type === 'wage_payment' ? (
+          /* SPECIAL LAYOUT FOR WAGE PAYMENT */
+          <div className="space-y-3">
+            <h4 className="text-[10px] font-black text-emerald-900 border-r-4 border-emerald-600 pr-3 uppercase">
+              {isRtl ? 'تفاصيل السندات المشمولة في الصرف' : 'DETAILS OF PAID VOUCHERS'}
+            </h4>
+            <Table className="text-right border-2 border-emerald-900/10">
+              <TableHeader className="bg-emerald-900/5">
+                <TableRow className="hover:bg-transparent border-b-2 border-emerald-900/20">
+                  <TableHead className="text-right font-black text-xs py-4 text-emerald-900">{isRtl ? 'رقم سند الاستلام' : 'Receipt #'}</TableHead>
+                  <TableHead className="text-right font-black text-xs py-4 text-emerald-900">{isRtl ? 'المنتج / البيان' : 'Product'}</TableHead>
+                  <TableHead className="text-center font-black text-xs py-4 text-emerald-900">{isRtl ? 'الكمية' : 'Qty'}</TableHead>
+                  <TableHead className="text-center font-black text-xs py-4 text-emerald-900">{isRtl ? 'المبلغ المستحق' : 'Amount'}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {voucher.linkedReceipts?.map((receiptId: string, i: number) => {
+                  const receipt = allReceipts?.find(r => r.id === receiptId);
+                  const orderOfReceipt = allOrders?.find(o => o.id === receipt?.orderId);
+                  const product = products?.find(p => p.id === orderOfReceipt?.productId);
+                  return (
+                    <TableRow key={i} className="bg-white/40 border-b border-slate-100">
+                      <TableCell className="font-bold text-sm tabular-nums">{receipt?.voucherNumber || '---'}</TableCell>
+                      <TableCell className="font-bold text-sm text-slate-700">{product?.nameAr || (isRtl ? 'مستحق إنتاج' : 'Production Due')}</TableCell>
+                      <TableCell className="text-center font-black text-sm tabular-nums">{(receipt?.qtyAccepted || 0).toLocaleString('en-US')}</TableCell>
+                      <TableCell className="text-center font-black text-sm tabular-nums text-emerald-700">{(receipt?.wageAmount || 0).toLocaleString('en-US')}</TableCell>
+                    </TableRow>
+                  );
+                })}
+                <TableRow className="bg-emerald-900 text-white">
+                  <TableCell colSpan={3} className="text-left font-black text-sm px-6 py-4 uppercase tracking-widest">
+                    {isRtl ? 'إجمالي المبلغ المصروف نقداً' : 'TOTAL DISBURSED AMOUNT'}
+                  </TableCell>
+                  <TableCell className="text-center font-black text-2xl tabular-nums">
+                    {(voucher.totalAmount || 0).toLocaleString('en-US')} <span className="text-xs opacity-70">{voucher.currency}</span>
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </div>
         ) : (
-          /* STANDARD TABLE FOR OTHER VOUCHER TYPES */
+          /* STANDARD TABLE FOR OTHER TYPES */
           <div className="space-y-3">
             <h4 className="text-[10px] font-black text-emerald-900 border-r-4 border-emerald-600 pr-3 uppercase">
               {voucher.type === 'material_return' ? (isRtl ? 'تفاصيل المواد المرتجعة للمخزن' : 'RETURNED MATERIALS DETAILS') : (isRtl ? 'تفاصيل السند' : 'VOUCHER DETAILS')}
@@ -210,7 +252,7 @@ export function VoucherTemplate({
           <p className="text-[8px] font-bold text-slate-300 uppercase tracking-widest">Signature / التاريخ</p>
         </div>
         <div className="space-y-12">
-          <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">{isRtl ? 'المحاسبة / المخازن' : 'Accounting/Store'}</p>
+          <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">{isRtl ? 'المحاسبة / الخزينة' : 'Accounting/Cashier'}</p>
           <div className="h-px bg-slate-300 w-3/4 mx-auto" />
           <p className="text-[8px] font-bold text-slate-300 uppercase tracking-widest">Signature / التاريخ</p>
         </div>
