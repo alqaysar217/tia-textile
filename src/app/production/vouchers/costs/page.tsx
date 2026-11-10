@@ -38,7 +38,8 @@ import {
   PlusCircle,
   Coins,
   RefreshCcw,
-  UserCheck
+  UserCheck,
+  CalendarDays
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -101,9 +102,14 @@ export default function OverheadCostsPage() {
   const [isCompressing, setIsCompressing] = useState(false);
   const [search, setSearch] = useState('');
   
+  // Filtering & Sorting State
   const [sortBy, setSortBy] = useState<'voucherNumber' | 'date' | 'totalAmount'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [currencyFilter, setCurrencyFilter] = useState<string>('all');
+  const [orderFilter, setOrderFilter] = useState<string>('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   // Unified Form State (Single Item Approach)
   const [formData, setFormData] = useState({
@@ -135,6 +141,12 @@ export default function OverheadCostsPage() {
     { value: 'other', labelAr: 'أخرى', icon: <Receipt className="w-3.5 h-3.5" /> },
   ];
 
+  const currencies = [
+    { value: 'YER', labelAr: 'ريال يمني', labelEn: 'YER' },
+    { value: 'SAR', labelAr: 'ريال سعودي', labelEn: 'SAR' },
+    { value: 'USD', labelAr: 'دولار أمريكي', labelEn: 'USD' },
+  ];
+
   // Fetch Data
   const ordersQuery = useMemo(() => !db ? null : collection(db, 'productionOrders'), [db]);
   const workersQuery = useMemo(() => !db ? null : collection(db, 'workers'), [db]);
@@ -147,6 +159,7 @@ export default function OverheadCostsPage() {
   const filteredVouchers = useMemo(() => {
     if (!vouchers) return [];
     let result = vouchers.filter(v => v.status !== 'deleted');
+
     if (search) {
       const s = search.toLowerCase();
       result = result.filter(v => 
@@ -155,7 +168,13 @@ export default function OverheadCostsPage() {
         v.description?.toLowerCase().includes(s)
       );
     }
+
     if (categoryFilter !== 'all') result = result.filter(v => v.category === categoryFilter);
+    if (currencyFilter !== 'all') result = result.filter(v => v.currency === currencyFilter);
+    if (orderFilter !== 'all') result = result.filter(v => v.orderId === orderFilter);
+    if (dateFrom) result = result.filter(v => v.date >= dateFrom);
+    if (dateTo) result = result.filter(v => v.date <= dateTo);
+
     return result.sort((a, b) => {
       let valA = a[sortBy] ?? '';
       let valB = b[sortBy] ?? '';
@@ -163,7 +182,7 @@ export default function OverheadCostsPage() {
       if (sortBy === 'totalAmount') return sortOrder === 'asc' ? Number(valA) - Number(valB) : Number(valB) - Number(valA);
       return sortOrder === 'asc' ? String(valA).localeCompare(String(valB)) : String(valB).localeCompare(String(valA));
     });
-  }, [vouchers, search, categoryFilter, sortBy, sortOrder]);
+  }, [vouchers, search, categoryFilter, currencyFilter, orderFilter, dateFrom, dateTo, sortBy, sortOrder]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -254,6 +273,38 @@ export default function OverheadCostsPage() {
     } finally { setIsDownloading(false); }
   };
 
+  const handleExportCSV = () => {
+    const headers = [
+      lang === 'ar' ? 'رقم السند' : 'Voucher No',
+      lang === 'ar' ? 'التاريخ' : 'Date',
+      lang === 'ar' ? 'التصنيف' : 'Category',
+      lang === 'ar' ? 'المستفيد' : 'Recipient',
+      lang === 'ar' ? 'البيان' : 'Description',
+      lang === 'ar' ? 'القيمة' : 'Amount',
+      lang === 'ar' ? 'العملة' : 'Currency'
+    ];
+
+    const rows = filteredVouchers.map(v => [
+      v.voucherNumber,
+      v.date,
+      costCategories.find(c => c.value === v.category)?.labelAr || v.category,
+      v.recipient,
+      v.description,
+      v.totalAmount,
+      v.currency
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `Costs_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const toggleSort = (field: typeof sortBy) => {
     if (sortBy === field) setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     else { setSortBy(field); setSortOrder('asc'); }
@@ -284,13 +335,88 @@ export default function OverheadCostsPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="relative">
-              <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400`} />
-              <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={lang === 'ar' ? 'بحث...' : 'Search...'} className={`${dir === 'rtl' ? "pr-10" : "pl-10"} h-10 w-64 bg-slate-50 border-slate-200 text-xs font-bold`} />
-            </div>
             <Button onClick={() => setIsAddDialogOpen(true)} className="h-10 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 transition-all border-none">
               <Plus className="w-4 h-4" /> {lang === 'ar' ? 'سند تكاليف جديد' : 'New Cost Voucher'}
             </Button>
+          </div>
+        </div>
+
+        {/* COMPACT TOOLBAR - SINGLE LINE */}
+        <div className="mt-4 flex flex-col md:flex-row items-center gap-3 bg-slate-50 p-2 rounded-xl border border-slate-200">
+          <div className="relative flex-1 w-full">
+            <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400`} />
+            <Input 
+              value={search} 
+              onChange={(e) => setSearch(e.target.value)} 
+              placeholder={lang === 'ar' ? 'بحث بالسند أو البيان أو المورد...' : 'Search records...'} 
+              className={`${dir === 'rtl' ? "pr-10" : "pl-10"} h-10 bg-white border-slate-200 text-xs font-bold`} 
+            />
+          </div>
+          
+          <div className="flex items-center gap-2 w-full md:w-auto">
+             <div className="flex items-center gap-2 px-3 bg-white rounded-lg border border-slate-200 h-10 shrink-0">
+                <CalendarDays className="w-3.5 h-3.5 text-slate-400" />
+                <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-7 border-none shadow-none text-[10px] w-28 font-bold tabular-nums" />
+                <span className="text-[10px] font-black text-slate-300">→</span>
+                <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-7 border-none shadow-none text-[10px] w-28 font-bold tabular-nums" />
+             </div>
+
+             <div className="flex items-center gap-1.5 px-1.5 border-r border-slate-200">
+                <Button onClick={handleExportCSV} variant="ghost" className="h-10 px-3 rounded-lg text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent">
+                  <FileDown className="w-4 h-4 text-emerald-600" />
+                  {lang === 'ar' ? 'تصدير' : 'Export'}
+                </Button>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="h-10 px-3 rounded-lg text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent">
+                      <Filter className="w-4 h-4" />
+                      {lang === 'ar' ? 'تصفية' : 'Filter'}
+                      {(categoryFilter !== 'all' || currencyFilter !== 'all' || orderFilter !== 'all' || sortOrder !== 'desc') && (
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                      )}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="w-64 rounded-xl border-slate-200 shadow-xl">
+                    <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'ترتيب النتائج' : 'SORTING'}</DropdownMenuLabel>
+                    <DropdownMenuItem onClick={() => toggleSort('date')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2.5">
+                      <div className="flex items-center gap-2"><Calendar className="w-3.5 h-3.5 text-slate-400" /> {lang === 'ar' ? 'حسب التاريخ' : 'By Date'}</div>
+                      {sortBy === 'date' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => toggleSort('totalAmount')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2.5">
+                      <div className="flex items-center gap-2"><Wallet className="w-3.5 h-3.5 text-slate-400" /> {lang === 'ar' ? 'حسب المبلغ' : 'By Amount'}</div>
+                      {sortBy === 'totalAmount' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
+                    </DropdownMenuItem>
+
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'حسب التصنيف' : 'BY CATEGORY'}</DropdownMenuLabel>
+                    <ScrollArea className="h-40">
+                      <DropdownMenuItem onClick={() => setCategoryFilter('all')} className="flex items-center justify-between text-xs font-bold cursor-pointer">
+                        {lang === 'ar' ? 'الكل' : 'All'}
+                        {categoryFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                      </DropdownMenuItem>
+                      {costCategories.map(c => (
+                        <DropdownMenuItem key={c.value} onClick={() => setCategoryFilter(c.value)} className="flex items-center justify-between text-xs font-bold cursor-pointer">
+                          {c.labelAr}
+                          {categoryFilter === c.value && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                        </DropdownMenuItem>
+                      ))}
+                    </ScrollArea>
+
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'حسب الدفعة' : 'BY BATCH'}</DropdownMenuLabel>
+                    <ScrollArea className="h-32">
+                       <DropdownMenuItem onClick={() => setOrderFilter('all')} className="flex items-center justify-between text-xs font-bold cursor-pointer">{lang === 'ar' ? 'الكل' : 'All'}{orderFilter === 'all' && <Check className="w-3 h-3 text-emerald-600" />}</DropdownMenuItem>
+                       {allOrders?.map(o => (
+                         <DropdownMenuItem key={o.id} onClick={() => setOrderFilter(o.id)} className="flex items-center justify-between text-xs font-bold cursor-pointer">
+                            <span className="truncate max-w-[150px]">{o.orderNumber}</span>
+                            {orderFilter === o.id && <Check className="w-3 h-3 text-emerald-600" />}
+                         </DropdownMenuItem>
+                       ))}
+                    </ScrollArea>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+             </div>
           </div>
         </div>
       </div>
@@ -301,17 +427,11 @@ export default function OverheadCostsPage() {
           <Table className="text-right border-separate border-spacing-0">
             <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
               <TableRow>
-                <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? "text-right" : "text-left")}>
-                   <button onClick={() => toggleSort('voucherNumber')} className="flex items-center gap-2">REF #{sortBy === 'voucherNumber' ? (sortOrder === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-30" />}</button>
-                </TableHead>
-                <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? "text-right" : "text-left")}>
-                   <button onClick={() => toggleSort('date')} className="flex items-center gap-2">DATE {sortBy === 'date' ? (sortOrder === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-30" />}</button>
-                </TableHead>
-                <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'البيان والمستفيد' : 'RECIPIENT'}</TableHead>
+                <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? "text-right" : "text-left")}>REF #</TableHead>
+                <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? "text-right" : "text-left")}>DATE</TableHead>
+                <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'البيان والمستفيد' : 'DESCRIPTION'}</TableHead>
                 <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">{lang === 'ar' ? 'التصنيف' : 'CATEGORY'}</TableHead>
-                <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">
-                   <button onClick={() => toggleSort('totalAmount')} className="flex items-center gap-2 mx-auto">TOTAL {sortBy === 'totalAmount' ? (sortOrder === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-30" />}</button>
-                </TableHead>
+                <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">TOTAL</TableHead>
                 <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">ACTIONS</TableHead>
               </TableRow>
             </TableHeader>
@@ -326,7 +446,7 @@ export default function OverheadCostsPage() {
                   <TableCell className={cn("px-6 py-3 font-bold text-slate-500 text-xs tabular-nums", dir === 'rtl' ? "text-right" : "text-left")}>{v.date}</TableCell>
                   <TableCell className={cn("px-6 py-3 font-bold text-slate-700 text-xs", dir === 'rtl' ? "text-right" : "text-left")}>
                     <div className="flex flex-col">
-                      <span className="font-black text-slate-900">{v.description}</span>
+                      <span className="font-black text-slate-900 line-clamp-1">{v.description}</span>
                       <span className="text-[10px] text-slate-400 font-bold">إلى: {v.recipient}</span>
                     </div>
                   </TableCell>
@@ -358,7 +478,7 @@ export default function OverheadCostsPage() {
 
       {/* ADD/EDIT DIALOG */}
       <Dialog open={isAddDialogOpen} onOpenChange={(open) => !open && resetDialog()}>
-        <DialogContent className="sm:max-w-[700px] rounded-lg p-0 overflow-hidden border-none shadow-2xl">
+        <DialogContent className="sm:max-w-[850px] rounded-lg p-0 overflow-hidden border-none shadow-2xl">
           <div className="premium-gradient p-5 text-white">
             <DialogHeader className="text-right rtl:text-right ltr:text-left">
               <DialogTitle className="text-lg font-black flex items-center gap-3">
