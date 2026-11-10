@@ -86,6 +86,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toPng } from 'html-to-image';
+import { VoucherTemplate } from '@/components/production/VoucherTemplate';
 
 export default function OverheadCostsPage() {
   const { lang, dir } = useTranslation();
@@ -574,108 +575,12 @@ export default function OverheadCostsPage() {
           <ScrollArea className="max-h-[85vh]">
             <div className="p-12 bg-white relative z-0" id="printable-voucher">
               {printingVoucher && (
-                <div className="flex flex-col text-slate-900 font-sans relative overflow-hidden" dir="rtl">
-                   <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 opacity-[0.04] pointer-events-none -z-10"><img src="/images/logo.png" className="w-full h-full object-contain grayscale" /></div>
-                   
-                   {/* UNIFIED OFFICIAL HEADER */}
-                   <div className="grid grid-cols-3 items-center border-b-[6px] border-emerald-800 pb-8 mb-8 relative z-10">
-                      <div className="text-right space-y-1">
-                        <h2 className="text-xl font-black text-emerald-900 leading-tight">جمعية الصناعات النسيجية</h2>
-                        <p className="text-xs font-bold text-slate-500">الروضة - محافظة شبوة - اليمن</p>
-                        <p className="text-[11px] font-bold text-slate-400 tabular-nums" dir="ltr">0777 263 091 | nseeg202020@gmail.com</p>
-                      </div>
-
-                      <div className="flex justify-center">
-                        <div className="w-24 h-24 bg-white border-2 border-emerald-800/10 rounded-full flex items-center justify-center p-2 shadow-sm relative overflow-hidden">
-                          <img src="/images/logo.png" alt="Logo" className="w-full h-full object-contain" />
-                        </div>
-                      </div>
-
-                      <div className="text-left space-y-1" dir="ltr">
-                        <h2 className="text-[14px] font-black text-emerald-900 uppercase leading-tight tracking-tight">Textile Industries Association</h2>
-                        <p className="text-[11px] font-bold text-slate-500">Al-Rawdah - Shabwa - Yemen</p>
-                        <p className="text-[10px] font-bold text-slate-400 tabular-nums">0777 263 091 | nseeg202020@gmail.com</p>
-                      </div>
-                    </div>
-
-                    <div className="text-center mb-10 relative z-10">
-                      <div className="inline-block border-[2.5px] border-emerald-800 px-12 py-2 rounded-full bg-white shadow-sm ring-4 ring-emerald-50">
-                        <h3 className="text-xl font-black text-emerald-900 uppercase tracking-widest">{lang === 'ar' ? 'سند صرف تكاليف تشغيلية' : 'Overhead Cost Voucher'}</h3>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-x-8 gap-y-6 mb-10 bg-slate-50/50 p-8 rounded-[1.5rem] border border-slate-100 relative z-10">
-                       <div className="space-y-4">
-                          <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
-                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'المستفيد' : 'Paid To'}</span>
-                             <span className="text-sm font-black text-slate-900">{printingVoucher.recipient}</span>
-                          </div>
-                          <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
-                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'تصنيف المصروف' : 'Expense Category'}</span>
-                             <span className="text-sm font-black text-slate-700">{costCategories.find(c => c.value === printingVoucher.category)?.labelAr || printingVoucher.category}</span>
-                          </div>
-                       </div>
-                       <div className="space-y-4">
-                          <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
-                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'رقم السند' : 'Ref No.'}</span>
-                             <span className="text-sm font-black text-emerald-900 tabular-nums">{printingVoucher.voucherNumber}</span>
-                          </div>
-                          <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
-                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'الدفعة المرتبطة' : 'Linked Batch'}</span>
-                             <span className="text-sm font-black text-slate-700 truncate">{allOrders?.find(o => o.id === printingVoucher.orderId)?.orderNumber || (lang === 'ar' ? 'مصروف إداري عام' : 'General Admin Expense')}</span>
-                          </div>
-                       </div>
-                       <div className="space-y-4">
-                          <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
-                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'تاريخ الصرف' : 'Payment Date'}</span>
-                             <span className="text-sm font-black text-slate-700 tabular-nums">{printingVoucher.date}</span>
-                          </div>
-                          <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
-                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'المسؤول / المشرف' : 'Authorized By'}</span>
-                             <span className="text-sm font-black text-slate-700">{allWorkers?.find(w => w.id === printingVoucher.supervisorId)?.fullName || '---'}</span>
-                          </div>
-                       </div>
-                    </div>
-
-                    <div className="mb-8 relative z-10">
-                       <Table className="text-right border-2 border-emerald-900/10">
-                          <TableHeader className="bg-emerald-900/5">
-                             <TableRow className="hover:bg-transparent border-b-2 border-emerald-900/20">
-                                <TableHead className="text-right font-black text-xs py-4 text-emerald-900 uppercase">DESCRIPTION / البيان</TableHead>
-                                <TableHead className="text-center font-black text-xs py-4 text-emerald-900 uppercase">AMOUNT / القيمة</TableHead>
-                             </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                             <TableRow className="bg-white/40 border-b border-slate-100">
-                                <TableCell className="py-6 px-6">
-                                   <div className="flex flex-col gap-1">
-                                      <span className="font-black text-base text-slate-900">{printingVoucher.description}</span>
-                                      <span className="text-[10px] font-bold text-slate-400 uppercase">{printingVoucher.notes || '---'}</span>
-                                   </div>
-                                </TableCell>
-                                <TableCell className="text-center font-black text-xl text-emerald-700 tabular-nums">{(printingVoucher.totalAmount || 0).toLocaleString('en-US')} <span className="text-xs opacity-60">{printingVoucher.currency}</span></TableCell>
-                             </TableRow>
-                             <TableRow className="bg-emerald-900 text-white">
-                                <TableCell className="px-6 py-4 font-black text-sm uppercase tracking-widest">{lang === 'ar' ? 'إجمالي السند نقداً' : 'TOTAL AMOUNT IN CASH'}</TableCell>
-                                <TableCell className="text-center font-black text-2xl tabular-nums">{(printingVoucher.totalAmount || 0).toLocaleString('en-US')} <span className="text-xs opacity-70">{printingVoucher.currency}</span></TableCell>
-                             </TableRow>
-                          </TableBody>
-                       </Table>
-                    </div>
-
-                    {printingVoucher.invoicePhotoUrl && (
-                      <div className="mb-12 p-4 bg-slate-50 border border-slate-200 rounded-2xl relative z-10">
-                        <h4 className="text-[10px] font-black text-slate-400 uppercase mb-3 text-center">{lang === 'ar' ? 'صورة المرفق / الفاتورة الأصلية' : 'ATTACHED INVOICE PHOTO'}</h4>
-                        <img src={printingVoucher.invoicePhotoUrl} className="w-full h-auto rounded-xl shadow-lg border-4 border-white" />
-                      </div>
-                    )}
-
-                    <div className="grid grid-cols-3 gap-8 pt-10 border-t-2 border-slate-100 text-center relative z-10 mt-auto">
-                      <div className="space-y-12"><p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">{lang === 'ar' ? 'أمين الصندوق' : 'Cashier'}</p><div className="h-px bg-slate-300 w-3/4 mx-auto" /><p className="text-[8px] font-bold text-slate-300 uppercase tracking-widest">Signature / التاريخ</p></div>
-                      <div className="space-y-12"><p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">{lang === 'ar' ? 'المستلم' : 'Recipient'}</p><div className="h-px bg-slate-300 w-3/4 mx-auto" /><p className="text-[8px] font-bold text-slate-300 uppercase tracking-widest">Full Name & Sign</p></div>
-                      <div className="space-y-12"><p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">{lang === 'ar' ? 'اعتماد الإدارة' : 'Authorization'}</p><div className="h-px bg-slate-300 w-3/4 mx-auto" /><p className="text-[8px] font-bold text-slate-300 uppercase tracking-widest">Authorized Seal</p></div>
-                    </div>
-                </div>
+                <VoucherTemplate 
+                  voucher={printingVoucher}
+                  allOrders={allOrders}
+                  allWorkers={allWorkers}
+                  lang={lang}
+                />
               )}
             </div>
           </ScrollArea>
@@ -697,7 +602,7 @@ export default function OverheadCostsPage() {
             </AlertDialogDescription>
           </div>
           <div className="bg-white p-6 flex gap-3">
-             <AlertDialogAction onClick={async () => { if (!db || !deletingVoucher) return; await updateDoc(doc(db, 'vouchers', deletingVoucher.id), { status: 'deleted', deletedAt: serverTimestamp() }); setDeletingVoucher(null); toast({ title: lang === 'ar' ? "تم الإلغاء" : "Reversed" }); }} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-md font-black">Confirm</AlertDialogAction>
+             <AlertDialogAction onClick={async () => { if (!db) return; await updateDoc(doc(db, 'vouchers', deletingVoucher.id), { status: 'deleted', deletedAt: serverTimestamp() }); setDeletingVoucher(null); toast({ title: lang === 'ar' ? "تم الإلغاء" : "Reversed" }); }} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-md font-black">Confirm</AlertDialogAction>
              <AlertDialogCancel className="flex-1 h-11 bg-slate-50 border-slate-200 text-slate-400 rounded-md font-black">Cancel</AlertDialogCancel>
           </div>
         </AlertDialogContent>

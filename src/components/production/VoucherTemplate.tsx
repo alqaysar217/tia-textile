@@ -12,6 +12,7 @@ interface VoucherTemplateProps {
   products?: any[];
   allReceipts?: any[];
   allOrders?: any[];
+  allWorkers?: any[];
   lang: string;
 }
 
@@ -24,11 +25,28 @@ export function VoucherTemplate({
   products, 
   allReceipts,
   allOrders,
+  allWorkers,
   lang 
 }: VoucherTemplateProps) {
   if (!voucher) return null;
 
   const isRtl = lang === 'ar';
+
+  const costCategories: Record<string, string> = {
+    'electricity': 'كهرباء',
+    'internet': 'انترنت',
+    'maintenance': 'صيانة',
+    'spare_parts': 'قطع غيار',
+    'rent': 'إيجار',
+    'communications': 'اتصالات',
+    'transport': 'نقل',
+    'marketing': 'تسويق',
+    'design': 'تصميم',
+    'photography': 'تصوير',
+    'training': 'تدريب',
+    'services': 'خدمات',
+    'other': 'أخرى'
+  };
 
   return (
     <div className="flex flex-col h-full text-slate-900 font-sans relative overflow-hidden" dir={isRtl ? 'rtl' : 'ltr'}>
@@ -66,6 +84,7 @@ export function VoucherTemplate({
              voucher.type === 'production_receipt' ? (isRtl ? 'سند استلام وتسوية إنتاج' : 'Production Receipt') :
              voucher.type === 'wage_payment' ? (isRtl ? 'سند صرف أجور مالي' : 'Wage Payment Voucher') :
              voucher.type === 'material_return' ? (isRtl ? 'سند توريد مرتجع مخزني' : 'Material Return Voucher') :
+             voucher.type === 'overhead_cost' ? (isRtl ? 'سند صرف تكاليف تشغيلية' : 'Overhead Cost Voucher') :
              (isRtl ? 'سند رسمي' : 'Official Voucher')}
           </h3>
         </div>
@@ -75,13 +94,16 @@ export function VoucherTemplate({
       <div className="grid grid-cols-3 gap-x-8 gap-y-6 mb-10 bg-slate-50/50 p-8 rounded-[1.5rem] border border-slate-100 relative z-10">
         <div className="space-y-4">
           <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{isRtl ? 'اسم المستلم' : 'Recipient'}</span>
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{isRtl ? 'المستفيد / المستلم' : 'Recipient'}</span>
             <span className="text-sm font-black text-slate-900">{worker?.fullName || voucher.recipient || '---'}</span>
           </div>
           <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{isRtl ? 'القسم / المسار' : 'Department'}</span>
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{isRtl ? 'التصنيف / القسم' : 'Category'}</span>
             <span className="text-sm font-black text-slate-700">
-               {departments?.find(d => d.id === voucher.currentStageId || d.id === worker?.departmentId)?.nameAr || '---'}
+               {voucher.type === 'overhead_cost' 
+                ? (costCategories[voucher.category] || voucher.category)
+                : (departments?.find(d => d.id === voucher.currentStageId || d.id === worker?.departmentId)?.nameAr || '---')
+               }
             </span>
           </div>
         </div>
@@ -92,8 +114,10 @@ export function VoucherTemplate({
             <span className="text-sm font-black text-emerald-900 tabular-nums tracking-wider">{voucher.voucherNumber}</span>
           </div>
           <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{isRtl ? 'الدفعة' : 'Batch Name'}</span>
-            <span className="text-sm font-black text-slate-700 truncate max-w-[150px]">{order?.title || '---'}</span>
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{isRtl ? 'الدفعة المرتبطة' : 'Batch Name'}</span>
+            <span className="text-sm font-black text-slate-700 truncate max-w-[150px]">
+              {allOrders?.find(o => o.id === voucher.orderId)?.orderNumber || order?.orderNumber || (isRtl ? 'مصروف عام' : 'General')}
+            </span>
           </div>
         </div>
 
@@ -104,7 +128,9 @@ export function VoucherTemplate({
           </div>
           <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{isRtl ? 'المشرف المسؤول' : 'Supervisor'}</span>
-            <span className="text-sm font-black text-slate-700">{supervisor?.fullName || '---'}</span>
+            <span className="text-sm font-black text-slate-700">
+              {allWorkers?.find(w => w.id === voucher.supervisorId)?.fullName || supervisor?.fullName || (isRtl ? 'إدارة الجمعية' : 'Management')}
+            </span>
           </div>
         </div>
       </div>
@@ -112,7 +138,6 @@ export function VoucherTemplate({
       {/* ITEMS SECTION */}
       <div className="mb-12 relative z-10">
         {voucher.type === 'production_receipt' ? (
-          /* SPECIAL LAYOUT FOR PRODUCTION RECEIPT WITH TWO TABLES */
           <div className="space-y-10">
             <div className="space-y-3">
               <h4 className="text-[10px] font-black text-emerald-900 border-r-4 border-emerald-600 pr-3 uppercase">
@@ -175,7 +200,6 @@ export function VoucherTemplate({
             )}
           </div>
         ) : voucher.type === 'wage_payment' ? (
-          /* SPECIAL LAYOUT FOR WAGE PAYMENT */
           <div className="space-y-3">
             <h4 className="text-[10px] font-black text-emerald-900 border-r-4 border-emerald-600 pr-3 uppercase">
               {isRtl ? 'تفاصيل السندات المشمولة في الصرف' : 'DETAILS OF PAID VOUCHERS'}
@@ -214,8 +238,38 @@ export function VoucherTemplate({
               </TableBody>
             </Table>
           </div>
+        ) : voucher.type === 'overhead_cost' ? (
+          <div className="space-y-3">
+             <h4 className="text-[10px] font-black text-emerald-900 border-r-4 border-emerald-600 pr-3 uppercase">
+              {isRtl ? 'تفاصيل المصروفات التشغيلية' : 'OPERATIONAL EXPENDITURE DETAILS'}
+            </h4>
+            <Table className="text-right border-2 border-emerald-900/10">
+              <TableHeader className="bg-emerald-900/5">
+                <TableRow className="hover:bg-transparent border-b-2 border-emerald-900/20">
+                  <TableHead className="text-right font-black text-xs py-4 text-emerald-900 uppercase">{isRtl ? 'البيان / الوصف' : 'Description'}</TableHead>
+                  <TableHead className="text-center font-black text-xs py-4 text-emerald-900 uppercase">{isRtl ? 'القيمة' : 'Amount'}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow className="bg-white/40 border-b border-slate-100">
+                  <TableCell className="py-6 px-6">
+                    <div className="flex flex-col gap-1">
+                      <span className="font-black text-base text-slate-900">{voucher.description}</span>
+                      {voucher.notes && <span className="text-[10px] font-bold text-slate-400 uppercase">{voucher.notes}</span>}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-center font-black text-xl text-emerald-700 tabular-nums">
+                    {(voucher.totalAmount || 0).toLocaleString('en-US')} <span className="text-xs opacity-60">{voucher.currency}</span>
+                  </TableCell>
+                </TableRow>
+                <TableRow className="bg-emerald-900 text-white">
+                  <TableCell className="px-6 py-4 font-black text-sm uppercase tracking-widest">{isRtl ? 'إجمالي السند المعتمد' : 'TOTAL AUTHORIZED AMOUNT'}</TableCell>
+                  <TableCell className="text-center font-black text-2xl tabular-nums">{(voucher.totalAmount || 0).toLocaleString('en-US')} <span className="text-xs opacity-70">{voucher.currency}</span></TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </div>
         ) : (
-          /* STANDARD TABLE FOR OTHER TYPES */
           <div className="space-y-3">
             <h4 className="text-[10px] font-black text-emerald-900 border-r-4 border-emerald-600 pr-3 uppercase">
               {voucher.type === 'material_return' ? (isRtl ? 'تفاصيل المواد المرتجعة للمخزن' : 'RETURNED MATERIALS DETAILS') : (isRtl ? 'تفاصيل السند' : 'VOUCHER DETAILS')}
@@ -244,17 +298,25 @@ export function VoucherTemplate({
         )}
       </div>
 
+      {/* PHOTO ATTACHMENT SECTION (For Costs) */}
+      {voucher.type === 'overhead_cost' && voucher.invoicePhotoUrl && (
+        <div className="mb-12 p-4 bg-slate-50 border border-slate-200 rounded-2xl relative z-10 text-center">
+          <h4 className="text-[10px] font-black text-slate-400 uppercase mb-3">{isRtl ? 'المرفقات / صورة الفاتورة' : 'ATTACHMENTS / INVOICE'}</h4>
+          <img src={voucher.invoicePhotoUrl} className="max-h-96 mx-auto rounded-xl shadow-lg border-4 border-white" alt="invoice" />
+        </div>
+      )}
+
       {/* SIGNATURES SECTION */}
       <div className="grid grid-cols-3 gap-8 pt-10 border-t-2 border-slate-100 text-center relative z-10 mt-auto">
         <div className="space-y-12">
-          <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">{isRtl ? 'توقيع المستلم' : 'Recipient'}</p>
+          <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">{isRtl ? 'أمين الصندوق' : 'Cashier'}</p>
           <div className="h-px bg-slate-300 w-3/4 mx-auto" />
           <p className="text-[8px] font-bold text-slate-300 uppercase tracking-widest">Signature / التاريخ</p>
         </div>
         <div className="space-y-12">
-          <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">{isRtl ? 'المحاسبة / الخزينة' : 'Accounting/Cashier'}</p>
+          <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">{isRtl ? 'المستفيد / المستلم' : 'Recipient'}</p>
           <div className="h-px bg-slate-300 w-3/4 mx-auto" />
-          <p className="text-[8px] font-bold text-slate-300 uppercase tracking-widest">Signature / التاريخ</p>
+          <p className="text-[8px] font-bold text-slate-300 uppercase tracking-widest">Full Name & Sign</p>
         </div>
         <div className="space-y-12">
           <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">{isRtl ? 'اعتماد الإدارة' : 'Manager Approval'}</p>
