@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { 
   Plus, 
   Search, 
@@ -9,7 +9,6 @@ import {
   Save, 
   Loader2, 
   Calendar,
-  User,
   Workflow,
   Package,
   Trash2,
@@ -32,7 +31,6 @@ import {
   SortDesc,
   ArrowUpDown,
   Hash,
-  Scale,
   Info,
   AlertTriangle,
   FileOutput,
@@ -42,7 +40,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useTranslation } from '@/components/LanguageProvider';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, addDoc, updateDoc, doc, serverTimestamp, query, where, writeBatch, deleteDoc, getDoc } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc, serverTimestamp, query, where, writeBatch, getDoc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import {
@@ -62,7 +60,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/AlertDialog";
+} from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import {
   Table,
@@ -86,9 +84,8 @@ import {
   TabsTrigger,
   TabsContent,
 } from '@/components/ui/tabs';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { toPng } from 'html-to-image';
 
 export default function MaterialReturnPage() {
@@ -109,7 +106,7 @@ export default function MaterialReturnPage() {
     date: new Date().toISOString().split('T')[0],
     orderId: '',
     workerId: '',
-    linkedReceiptId: '', // الربط بالسند المرجعي
+    linkedReceiptId: '', 
     notes: '',
     items: [] as any[]
   });
@@ -129,7 +126,7 @@ export default function MaterialReturnPage() {
 
   const activeOrders = useMemo(() => (allOrders || []).filter(o => o.status !== 'deleted'), [allOrders]);
 
-  // السندات التي فيها مرتجعات ولم توثق بعد
+  // Receipts that have returns but not yet verified
   const pendingReturns = useMemo(() => {
     if (!allReceipts) return [];
     return allReceipts.filter(r => 
@@ -140,7 +137,7 @@ export default function MaterialReturnPage() {
     );
   }, [allReceipts]);
 
-  // السندات الموثقة (الأرشيف)
+  // Verified Return Vouchers (Archive)
   const verifiedReturns = useMemo(() => {
     if (!returnVouchers) return [];
     let list = returnVouchers.filter(v => v.status !== 'deleted');
@@ -154,14 +151,12 @@ export default function MaterialReturnPage() {
     return list.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [returnVouchers, allWorkers, search]);
 
-  // الموظفون الذين لديهم مرتجعات بانتظار التوثيق في أمر إنتاج معين
   const workersWithPending = useMemo(() => {
     if (!formData.orderId || !pendingReturns) return [];
     const workerIds = pendingReturns.filter(r => r.orderId === formData.orderId).map(r => r.workerId);
     return allWorkers?.filter(w => workerIds.includes(w.id)) || [];
   }, [formData.orderId, pendingReturns, allWorkers]);
 
-  // السندات المتاحة للتوثيق لموظف معين في أمر معين
   const availableReceipts = useMemo(() => {
     if (!formData.orderId || !formData.workerId || !pendingReturns) return [];
     return pendingReturns.filter(r => r.orderId === formData.orderId && r.workerId === formData.workerId);
@@ -212,15 +207,12 @@ export default function MaterialReturnPage() {
         batch.set(doc(collection(db, 'vouchers')), { ...voucherData, voucherNumber, createdAt: serverTimestamp() });
       }
 
-      // تحديث حالة السند المرجعي ليكون "موثق"
       if (formData.linkedReceiptId) {
         batch.update(doc(db, 'vouchers', formData.linkedReceiptId), { 
           returnStatus: 'verified',
-          returnVoucherId: 'linked' // لربطه مستقبلاً
         });
       }
 
-      // زيادة رصيد المخزن فعلياً
       formData.items.forEach(item => {
         const mat = allMaterials?.find(m => m.id === item.id);
         if (mat) {
@@ -240,6 +232,23 @@ export default function MaterialReturnPage() {
     }
   };
 
+  const handleDownloadImage = async () => {
+    const element = document.getElementById('printable-voucher');
+    if (!element || !printingVoucher) return;
+    setIsDownloading(true);
+    try {
+      const dataUrl = await toPng(element, { backgroundColor: '#ffffff', pixelRatio: 2 });
+      const link = document.createElement('a');
+      link.download = `Return-${printingVoucher.voucherNumber}.png`;
+      link.href = dataUrl;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   const resetDialog = () => {
     setIsAddDialogOpen(false);
     setEditingVoucherId(null);
@@ -249,7 +258,6 @@ export default function MaterialReturnPage() {
   return (
     <div className="flex flex-col h-full bg-[#f8fafc] overflow-hidden" dir={dir}>
       
-      {/* ERP HUB HEADER */}
       <div className="flex-none bg-white border-b border-slate-200 z-30 px-6 py-4 shadow-sm">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div className="flex items-center gap-4">
@@ -288,7 +296,6 @@ export default function MaterialReturnPage() {
             </TabsTrigger>
           </TabsList>
 
-          {/* TAB: PENDING */}
           <TabsContent value="pending" className="flex-1 min-h-0">
              <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden h-full flex flex-col">
                 <div className="p-4 bg-amber-50 border-b border-amber-100 flex items-center gap-3">
@@ -336,7 +343,6 @@ export default function MaterialReturnPage() {
              </div>
           </TabsContent>
 
-          {/* TAB: VERIFIED */}
           <TabsContent value="verified" className="flex-1 min-h-0">
              <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden h-full flex flex-col">
                 <div className="p-4 border-b border-slate-100 flex gap-3">
@@ -386,7 +392,6 @@ export default function MaterialReturnPage() {
         </Tabs>
       </div>
 
-      {/* SMART FORM DIALOG */}
       <Dialog open={isAddDialogOpen} onOpenChange={(open) => !open && resetDialog()}>
         <DialogContent className="sm:max-w-[850px] rounded-lg p-0 overflow-hidden border-none shadow-2xl">
           <div className="premium-gradient p-6 text-white">
@@ -410,7 +415,6 @@ export default function MaterialReturnPage() {
                 <select value={formData.workerId} onChange={(e) => setFormData({...formData, workerId: e.target.value, linkedReceiptId: '', items: []})} disabled={!formData.orderId} className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none" required>
                   <option value="">-- اختر الموظف --</option>
                   {workersWithPending.map(w => <option key={w.id} value={w.id}>{w.fullName}</option>)}
-                  {!editingVoucherId && workersWithPending.length === 0 && formData.orderId && <option disabled>{lang === 'ar' ? 'لا يوجد مرتجعات معلقة لهذا الأمر' : 'No pending returns'}</option>}
                 </select>
               </div>
               <div className="space-y-1.5">
@@ -434,7 +438,7 @@ export default function MaterialReturnPage() {
             )}
 
             {formData.items.length > 0 && (
-              <div className="space-y-3 animate-in fade-in slide-in-from-top-2">
+              <div className="space-y-3 animate-in fade-in">
                 <h3 className="text-[10px] font-black text-emerald-700 uppercase tracking-widest flex items-center gap-2"><Box className="w-3.5 h-3.5" /> {lang === 'ar' ? 'الأصناف المرتجعة المكتشفة في السند' : 'RETURNED ITEMS FROM RECEIPT'}</h3>
                 <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm bg-white">
                    <Table className="text-right">
@@ -442,15 +446,13 @@ export default function MaterialReturnPage() {
                         <TableRow>
                           <TableHead className="text-right text-[9px] font-black text-slate-500 uppercase">MATERIAL</TableHead>
                           <TableHead className="text-center text-[9px] font-black text-slate-500 uppercase">QTY</TableHead>
-                          <TableHead className="text-center text-[9px] font-black text-slate-500 uppercase">UNIT</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {formData.items.map((item, idx) => (
                           <TableRow key={idx} className="border-b border-slate-50">
                             <TableCell className="text-xs font-bold text-slate-900">{item.nameAr}</TableCell>
-                            <TableCell className="text-center font-black text-emerald-700 tabular-nums">{(item.qty || 0).toLocaleString('en-US')}</TableCell>
-                            <TableCell className="text-center text-[10px] font-bold text-slate-400 uppercase">{item.unit}</TableCell>
+                            <TableCell className="text-center font-black text-emerald-700 tabular-nums">{(item.qty || 0).toLocaleString('en-US')} {item.unit}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -461,13 +463,13 @@ export default function MaterialReturnPage() {
 
             <div className="space-y-1.5">
               <Label className="text-[10px] font-black uppercase text-slate-400">ملاحظات توثيق المستودع</Label>
-              <Input value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} className="h-12 bg-slate-50 text-xs font-bold" placeholder={lang === 'ar' ? 'حالة المواد عند الاستلام، جودة الخيوط المتبقية...' : 'Condition upon return, yarn quality...'} />
+              <Input value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} className="h-12 bg-slate-50 text-xs font-bold" placeholder={lang === 'ar' ? 'حالة المواد عند الاستلام، جودة الخيوط المتبقية...' : 'Condition upon return...'} />
             </div>
 
             <div className="flex gap-3 pt-4 border-t border-slate-100">
               <Button type="submit" disabled={isSubmitting || formData.items.length === 0 || !formData.workerId} className="flex-1 h-14 premium-gradient text-white rounded-xl font-black text-base shadow-xl">
                 {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin me-2" /> : <ShieldCheck className="w-5 h-5 me-2" />}
-                {editingVoucherId ? (lang === 'ar' ? 'تحديث السند' : 'Update Record') : (lang === 'ar' ? 'تأكيد دخول المخزن وتصفية العهدة' : 'Confirm Inward & Clear Liability')}
+                {lang === 'ar' ? 'تأكيد دخول المخزن وتصفية العهدة' : 'Confirm Inward & Clear Liability'}
               </Button>
               <Button type="button" variant="outline" onClick={resetDialog} className="px-8 h-14 font-black text-slate-400 rounded-xl">إلغاء</Button>
             </div>
@@ -475,7 +477,6 @@ export default function MaterialReturnPage() {
         </DialogContent>
       </Dialog>
 
-      {/* PRINT PREVIEW */}
       <Dialog open={!!printingVoucher} onOpenChange={(open) => !open && setPrintingVoucher(null)}>
         <DialogContent className="sm:max-w-[850px] p-0 overflow-hidden border-none bg-white shadow-2xl">
           <DialogHeader className="sr-only"><DialogTitle>سند توريد مرتجع</DialogTitle></DialogHeader>
@@ -491,56 +492,30 @@ export default function MaterialReturnPage() {
                     <div className="flex justify-center"><img src="/images/logo.png" alt="Logo" className="w-20 h-20 object-contain" /></div>
                     <div className="text-left space-y-1" dir="ltr">
                       <h2 className="text-[14px] font-black text-emerald-900">Textile Industries Association</h2>
-                      <p className="text-[11px] font-bold text-slate-500">Al-Rawdah - Shabwa - Yemen</p>
                     </div>
                   </div>
-
                   <div className="text-center mb-10">
                     <div className="inline-block border-[2.5px] border-emerald-800 px-12 py-2 rounded-full bg-white shadow-sm ring-4 ring-emerald-50">
                       <h3 className="text-xl font-black text-emerald-900 uppercase tracking-widest">{lang === 'ar' ? 'سند توريد مرتجع مواد خام' : 'Material Return Receipt'}</h3>
                     </div>
                   </div>
-
-                  <div className="grid grid-cols-3 gap-8 mb-10 bg-slate-50/50 p-8 rounded-2xl border border-slate-100">
-                    <div className="space-y-3">
-                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'رقم السند' : 'Ref No.'}</p>
-                       <p className="text-sm font-black text-emerald-900 tabular-nums">{printingVoucher.voucherNumber}</p>
-                    </div>
-                    <div className="space-y-3">
-                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'التاريخ' : 'Date'}</p>
-                       <p className="text-sm font-black tabular-nums">{printingVoucher.date}</p>
-                    </div>
-                    <div className="space-y-3">
-                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'الموظف (المسلم)' : 'Personnel'}</p>
-                       <p className="text-sm font-black">{allWorkers?.find(w => w.id === printingVoucher.workerId)?.fullName}</p>
-                    </div>
-                  </div>
-
                   <Table className="text-right border-2 border-emerald-900/10 mb-12">
                     <TableHeader className="bg-emerald-900/5">
-                      <TableRow><TableHead className="text-right font-black text-xs py-4 text-emerald-900">المادة المرتجعة</TableHead><TableHead className="text-center font-black text-xs py-4 text-emerald-900">الكمية الموثقة</TableHead><TableHead className="text-center font-black text-xs py-4 text-emerald-900">الوحدة</TableHead></TableRow>
+                      <TableRow><TableHead className="text-right font-black text-xs py-4 text-emerald-900">المادة المرتجعة</TableHead><TableHead className="text-center font-black text-xs py-4 text-emerald-900">الكمية</TableHead></TableRow>
                     </TableHeader>
                     <TableBody>
                       {printingVoucher.items.map((item: any, i: number) => (
                         <TableRow key={i} className="bg-white/40 border-b border-slate-100">
                           <TableCell className="font-bold text-sm py-4">{item.nameAr}</TableCell>
-                          <TableCell className="text-center font-black text-sm tabular-nums text-emerald-700">{item.qty}</TableCell>
-                          <TableCell className="text-center text-xs font-bold text-slate-500 uppercase">{item.unit}</TableCell>
+                          <TableCell className="text-center font-black text-sm tabular-nums text-emerald-700">{item.qty} {item.unit}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
                   </Table>
-
                   <div className="grid grid-cols-3 gap-8 pt-10 border-t-2 border-slate-100 text-center mt-auto">
-                    <div className="space-y-12"><p className="text-[11px] font-black text-slate-400 uppercase">أمين المستودع (المستلم)</p><div className="h-px bg-slate-300 w-3/4 mx-auto" /></div>
-                    <div className="space-y-12"><p className="text-[11px] font-black text-slate-400 uppercase">الموظف (المسلم)</p><div className="h-px bg-slate-300 w-3/4 mx-auto" /></div>
+                    <div className="space-y-12"><p className="text-[11px] font-black text-slate-400 uppercase">أمين المستودع</p><div className="h-px bg-slate-300 w-3/4 mx-auto" /></div>
+                    <div className="space-y-12"><p className="text-[11px] font-black text-slate-400 uppercase">الموظف</p><div className="h-px bg-slate-300 w-3/4 mx-auto" /></div>
                     <div className="space-y-12"><p className="text-[11px] font-black text-slate-400 uppercase">اعتماد المشرف</p><div className="h-px bg-slate-300 w-3/4 mx-auto" /></div>
-                  </div>
-
-                  <div className="mt-14 pt-4 text-center border-t border-slate-50 flex items-center justify-center gap-4">
-                    <span className="text-[8px] font-black text-slate-200 uppercase tracking-[0.4em]">TIA Warehouse Management System</span>
-                    <span className="w-1.5 h-1.5 rounded-full bg-slate-100" />
-                    <span className="text-[8px] font-black text-slate-300 tabular-nums">{new Date().toLocaleString()}</span>
                   </div>
                 </div>
               )}
@@ -560,28 +535,21 @@ export default function MaterialReturnPage() {
           <div className="bg-slate-950 p-8 text-center">
             <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20 shadow-inner"><History className="w-8 h-8 text-red-500" /></div>
             <AlertDialogTitle className="text-white text-xl font-black">إلغاء توثيق المرتجع</AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-400 font-bold mt-2 text-xs leading-relaxed">تحذير: سيتم خصم الكميات من المخزن تلقائياً وإعادة حالة المرتجع إلى "معلق" في سند الاستلام الأصلي.</AlertDialogDescription>
+            <AlertDialogDescription className="text-slate-400 font-bold mt-2 text-xs leading-relaxed">تحذير: سيتم خصم الكميات من المخزن وإعادة حالة المرتجع إلى "معلق".</AlertDialogDescription>
           </div>
           <div className="bg-white p-6 flex gap-3">
             <AlertDialogAction onClick={async () => {
               if (!db || !deletingVoucher) return;
               const batch = writeBatch(db);
-              
-              // عكس تأثير المخزن
               deletingVoucher.items.forEach((item: any) => {
                 const mat = allMaterials?.find(m => m.id === item.id);
                 if (mat) batch.update(doc(db, 'materials', item.id), { currentQty: Math.max(0, mat.currentQty - item.qty) });
               });
-
-              // إعادة فتح حالة المرتجع في السند المرجعي
-              if (deletingVoucher.linkedReceiptId) {
-                batch.update(doc(db, 'vouchers', deletingVoucher.linkedReceiptId), { returnStatus: 'pending' });
-              }
-
+              if (deletingVoucher.linkedReceiptId) batch.update(doc(db, 'vouchers', deletingVoucher.linkedReceiptId), { returnStatus: 'pending' });
               batch.update(doc(db, 'vouchers', deletingVoucher.id), { status: 'deleted', deletedAt: serverTimestamp() });
               await batch.commit();
               setDeletingVoucher(null);
-              toast({ title: "تم إلغاء السند وتعديل المخزن" });
+              toast({ title: "تم إلغاء السند" });
             }} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-md font-black">تأكيد الحذف</AlertDialogAction>
             <AlertDialogCancel onClick={() => setDeletingVoucher(null)} className="flex-1 h-11 bg-slate-50 border-slate-200 text-slate-400 rounded-md font-black">تراجع</AlertDialogCancel>
           </div>
