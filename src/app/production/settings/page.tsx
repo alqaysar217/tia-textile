@@ -8,14 +8,12 @@ import {
   Save, 
   Loader2, 
   Globe,
-  Check,
-  ShieldCheck,
-  Info,
-  Languages,
   Monitor,
   Cpu,
   Database,
-  CloudBackup
+  ShieldCheck,
+  Info,
+  Languages
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from '@/components/LanguageProvider';
@@ -70,6 +68,7 @@ export default function GeneralSettingsPage() {
 
     setIsSubmitting(true);
     try {
+      // الحفظ الحقيقي في قاعدة البيانات
       await setDoc(doc(db, 'settings', 'global'), {
         ...formData,
         updatedAt: serverTimestamp()
@@ -77,7 +76,7 @@ export default function GeneralSettingsPage() {
       
       toast({ 
         title: lang === 'ar' ? "تم حفظ الإعدادات" : "Settings Saved",
-        description: lang === 'ar' ? "تم تحديث تكوين النظام بنجاح." : "System configuration updated successfully."
+        description: lang === 'ar' ? "تم تحديث تكوين العملة والنظام بنجاح." : "Currency and system configuration updated."
       });
     } catch (error) {
       console.error(error);
@@ -91,6 +90,7 @@ export default function GeneralSettingsPage() {
     return (
       <div className="h-full flex flex-col items-center justify-center gap-4 bg-[#f8fafc]">
         <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest animate-pulse">جاري جلب تهيئة النظام...</p>
       </div>
     );
   }
@@ -123,7 +123,7 @@ export default function GeneralSettingsPage() {
             className="h-10 px-8 premium-gradient hover:opacity-90 text-white rounded-lg shadow-lg font-black text-xs gap-2 border-none transition-all active:scale-95"
           >
             {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            {lang === 'ar' ? 'حفظ كافة الإعدادات' : 'Save Changes'}
+            {lang === 'ar' ? 'حفظ التغييرات' : 'Save Changes'}
           </Button>
         </div>
       </div>
@@ -244,8 +244,8 @@ export default function GeneralSettingsPage() {
              </div>
              <p className="text-[10px] font-bold text-emerald-800 leading-relaxed">
                 {lang === 'ar' 
-                  ? 'يتم تطبيق هذه الإعدادات على مستوى الجمعية بالكامل. بعض التغييرات قد تتطلب إعادة تشغيل المتصفح لتحديث كافة الواجهات بنجاح.' 
-                  : 'These settings are applied association-wide. Some changes may require a browser refresh to take full effect across all modules.'}
+                  ? 'يتم تطبيق هذه الإعدادات على مستوى الجمعية بالكامل. تغيير العملة سيؤثر على التقارير المالية القادمة وحسابات التكلفة للدفعات الجديدة.' 
+                  : 'These settings are association-wide. Currency changes will impact future financial reports and batch costing calculations.'}
              </p>
           </div>
 
