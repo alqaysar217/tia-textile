@@ -39,7 +39,8 @@ import {
   Tag,
   Clock,
   CalendarDays,
-  X
+  X,
+  FileInput
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -205,7 +206,7 @@ export default function MaterialReturnPage() {
 
   const handleQuickVerify = (receipt: any) => {
     setFormData({
-      date: new Date().toISOString().split('T')[0],
+      date: new Date().toISOString().split('T', 1)[0],
       orderId: receipt.orderId,
       workerId: receipt.workerId,
       linkedReceiptId: receipt.id,
@@ -290,12 +291,31 @@ export default function MaterialReturnPage() {
   const resetDialog = () => {
     setIsAddDialogOpen(false);
     setEditingVoucherId(null);
-    setFormData({ date: new Date().toISOString().split('T')[0], orderId: '', workerId: '', linkedReceiptId: '', notes: '', items: [] });
+    setFormData({ date: new Date().toISOString().split('T', 1)[0], orderId: '', workerId: '', linkedReceiptId: '', notes: '', items: [] });
   };
 
   const toggleSort = (key: typeof sortBy) => {
     if (sortBy === key) setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     else { setSortBy(key); setSortOrder('desc'); }
+  };
+
+  const handleExportCSV = () => {
+    const headers = ['Voucher No', 'Date', 'Worker', 'Order', 'Items Count'];
+    const list = activeTab === 'pending' ? pendingReturns : verifiedReturns;
+    const rows = list.map(v => {
+      const worker = allWorkers?.find(w => w.id === v.workerId);
+      const order = allOrders?.find(o => o.id === v.orderId);
+      return [v.voucherNumber, v.date, worker?.fullName || '---', order?.orderNumber || '---', v.items?.length || v.returnedItems?.length || 0];
+    });
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `Returns_${activeTab}_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
@@ -320,71 +340,79 @@ export default function MaterialReturnPage() {
           </Button>
         </div>
 
-        {/* ADVANCED ERP TOOLBAR */}
-        <div className="mt-4 flex flex-col xl:flex-row items-center gap-3 bg-slate-50 p-2 rounded-xl border border-slate-200">
+        {/* COMPACT ERP TOOLBAR - SINGLE LINE */}
+        <div className="mt-4 flex items-center gap-2 bg-slate-50 p-1.5 rounded-lg border border-slate-200 overflow-x-auto no-scrollbar">
           {/* Tab Switcher */}
-          <div className="flex bg-white p-1 rounded-lg border border-slate-200 shadow-sm shrink-0">
-            <button onClick={() => setActiveTab('pending')} className={cn("px-4 py-1.5 rounded-md text-[10px] font-black uppercase transition-all flex items-center gap-2", activeTab === 'pending' ? "bg-amber-600 text-white shadow-md" : "text-slate-400 hover:bg-slate-50")}>
-              <Clock className="w-3 h-3" /> {lang === 'ar' ? 'بانتظار التوثيق' : 'Pending'}
-              {pendingReturns.length > 0 && <span className="bg-white/20 px-1.5 rounded-full text-[8px]">{pendingReturns.length}</span>}
+          <div className="flex bg-white p-1 rounded-md border border-slate-200 shadow-sm shrink-0">
+            <button onClick={() => setActiveTab('pending')} className={cn("px-3 py-1 rounded text-[10px] font-black uppercase transition-all flex items-center gap-1.5", activeTab === 'pending' ? "bg-amber-600 text-white shadow-sm" : "text-slate-400 hover:bg-slate-50")}>
+              <Clock className="w-3 h-3" /> {lang === 'ar' ? 'معلق' : 'Pending'}
+              {pendingReturns.length > 0 && <span className="bg-white/20 px-1 rounded-full text-[8px]">{pendingReturns.length}</span>}
             </button>
-            <button onClick={() => setActiveTab('verified')} className={cn("px-4 py-1.5 rounded-md text-[10px] font-black uppercase transition-all flex items-center gap-2", activeTab === 'verified' ? "bg-emerald-600 text-white shadow-md" : "text-slate-400 hover:bg-slate-50")}>
-              <CheckCircle2 className="w-3 h-3" /> {lang === 'ar' ? 'الأرشيف الموثق' : 'Verified'}
+            <button onClick={() => setActiveTab('verified')} className={cn("px-3 py-1 rounded text-[10px] font-black uppercase transition-all flex items-center gap-1.5", activeTab === 'verified' ? "bg-emerald-600 text-white shadow-sm" : "text-slate-400 hover:bg-slate-50")}>
+              <CheckCircle2 className="w-3 h-3" /> {lang === 'ar' ? 'مؤرشف' : 'Verified'}
             </button>
           </div>
 
-          <div className="relative flex-1 w-full">
-            <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300`} />
-            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={lang === 'ar' ? 'رقم السند، الموظف، أو الدفعة...' : 'Reference, Worker, or Batch...'} className={cn("h-10 bg-white border-slate-200 text-xs font-bold", dir === 'rtl' ? "pr-10" : "pl-10")} />
+          <div className="h-6 w-px bg-slate-200 shrink-0" />
+
+          {/* Search - Flexible */}
+          <div className="relative flex-1 min-w-[150px]">
+            <Search className={`absolute ${dir === 'rtl' ? 'right-2.5' : 'left-2.5'} top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300`} />
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={lang === 'ar' ? 'بحث سريع...' : 'Search...'} className={cn("h-8 bg-white border-slate-200 text-[10px] font-bold py-0", dir === 'rtl' ? "pr-8" : "pl-8")} />
           </div>
 
-          <div className="flex items-center gap-2 w-full xl:w-auto">
-             {/* Date Range Fields */}
-             <div className="flex items-center gap-2 px-3 bg-white rounded-lg border border-slate-200 h-10 shadow-sm">
-                <CalendarDays className="w-3.5 h-3.5 text-slate-400" />
-                <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-7 border-none shadow-none text-[10px] w-28 font-bold tabular-nums" />
-                <span className="text-[10px] font-black text-slate-300">→</span>
-                <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-7 border-none shadow-none text-[10px] w-28 font-bold tabular-nums" />
-                {(dateFrom || dateTo) && <Button variant="ghost" size="icon" className="h-5 w-5 rounded-full" onClick={() => { setDateFrom(''); setDateTo(''); }}><X className="w-3 h-3" /></Button>}
-             </div>
+          <div className="h-6 w-px bg-slate-200 shrink-0" />
 
-             <div className="flex items-center gap-1.5 border-r border-slate-200 ps-1.5">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="h-10 px-3 rounded-lg text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent shadow-sm">
-                      <Filter className="w-4 h-4" /> {lang === 'ar' ? 'تصفية' : 'Filter'}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="w-64 rounded-xl shadow-xl">
-                    <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400">PERSONNEL</DropdownMenuLabel>
-                    <ScrollArea className="h-40">
-                       <DropdownMenuItem onClick={() => setWorkerFilter('all')} className="text-xs font-bold cursor-pointer">{lang === 'ar' ? 'الكل' : 'All'}</DropdownMenuItem>
-                       {allWorkers?.filter(w => w.status !== 'deleted').map(w => (
-                         <DropdownMenuItem key={w.id} onClick={() => setWorkerFilter(w.id)} className="text-xs font-bold cursor-pointer">{w.fullName}</DropdownMenuItem>
-                       ))}
-                    </ScrollArea>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400">BATCH / ORDER</DropdownMenuLabel>
-                    <ScrollArea className="h-40">
-                       <DropdownMenuItem onClick={() => setOrderFilter('all')} className="text-xs font-bold cursor-pointer">{lang === 'ar' ? 'جميع الدفعات' : 'All Batches'}</DropdownMenuItem>
-                       {activeOrders?.map(o => (
-                         <DropdownMenuItem key={o.id} onClick={() => setOrderFilter(o.id)} className="text-xs font-bold cursor-pointer">{o.orderNumber} - {o.title}</DropdownMenuItem>
-                       ))}
-                    </ScrollArea>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400">ORDERING</DropdownMenuLabel>
-                    <DropdownMenuItem onClick={() => toggleSort('date')} className="flex justify-between items-center cursor-pointer font-bold">
-                       {lang === 'ar' ? 'التاريخ' : 'Date'} {sortBy === 'date' && (sortOrder === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />)}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => toggleSort('voucherNumber')} className="flex justify-between items-center cursor-pointer font-bold">
-                       {lang === 'ar' ? 'رقم السند' : 'Reference'} {sortBy === 'voucherNumber' && (sortOrder === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />)}
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <Button onClick={handleExportCSV} variant="ghost" className="h-10 px-3 rounded-lg text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent shadow-sm">
-                  <FileDown className="w-4 h-4 text-emerald-600" /> {lang === 'ar' ? 'تصدير' : 'Export'}
+          {/* Dates - Combined Compact Container */}
+          <div className="flex items-center gap-1 bg-white rounded-md border border-slate-200 h-8 px-2 shadow-sm shrink-0">
+            <CalendarDays className="w-3 h-3 text-slate-400" />
+            <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-6 border-none shadow-none text-[9px] w-24 p-0 font-bold tabular-nums bg-transparent focus-visible:ring-0" />
+            <span className="text-[9px] font-black text-slate-300">→</span>
+            <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-6 border-none shadow-none text-[9px] w-24 p-0 font-bold tabular-nums bg-transparent focus-visible:ring-0" />
+            {(dateFrom || dateTo) && <button onClick={() => { setDateFrom(''); setDateTo(''); }} className="text-rose-500 hover:bg-rose-50 p-0.5 rounded-full"><X className="w-3 h-3" /></button>}
+          </div>
+
+          <div className="h-6 w-px bg-slate-200 shrink-0" />
+
+          {/* Actions */}
+          <div className="flex items-center gap-1 shrink-0">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="h-8 px-2 rounded-md text-[10px] font-black gap-1.5 text-slate-600 hover:bg-white border border-transparent">
+                  <Filter className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">{lang === 'ar' ? 'تصفية' : 'Filter'}</span>
                 </Button>
-             </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="w-64 rounded-xl shadow-xl">
+                <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400">PERSONNEL</DropdownMenuLabel>
+                <ScrollArea className="h-40">
+                   <DropdownMenuItem onClick={() => setWorkerFilter('all')} className="text-xs font-bold cursor-pointer">{lang === 'ar' ? 'الكل' : 'All'}</DropdownMenuItem>
+                   {allWorkers?.filter(w => w.status !== 'deleted').map(w => (
+                     <DropdownMenuItem key={w.id} onClick={() => setWorkerFilter(w.id)} className="text-xs font-bold cursor-pointer">{w.fullName}</DropdownMenuItem>
+                   ))}
+                </ScrollArea>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400">BATCH / ORDER</DropdownMenuLabel>
+                <ScrollArea className="h-40">
+                   <DropdownMenuItem onClick={() => setOrderFilter('all')} className="text-xs font-bold cursor-pointer">{lang === 'ar' ? 'جميع الدفعات' : 'All Batches'}</DropdownMenuItem>
+                   {activeOrders?.map(o => (
+                     <DropdownMenuItem key={o.id} onClick={() => setOrderFilter(o.id)} className="text-xs font-bold cursor-pointer">{o.orderNumber} - {o.title}</DropdownMenuItem>
+                   ))}
+                </ScrollArea>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400">ORDERING</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => toggleSort('date')} className="flex justify-between items-center cursor-pointer font-bold">
+                   {lang === 'ar' ? 'التاريخ' : 'Date'} {sortBy === 'date' && (sortOrder === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />)}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => toggleSort('voucherNumber')} className="flex justify-between items-center cursor-pointer font-bold">
+                   {lang === 'ar' ? 'رقم السند' : 'Reference'} {sortBy === 'voucherNumber' && (sortOrder === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />)}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button onClick={handleExportCSV} variant="ghost" className="h-8 px-2 rounded-md text-[10px] font-black gap-1.5 text-slate-600 hover:bg-white border border-transparent">
+              <FileDown className="w-3.5 h-3.5 text-emerald-600" />
+              <span className="hidden sm:inline">{lang === 'ar' ? 'تصدير' : 'Export'}</span>
+            </Button>
           </div>
         </div>
       </div>
@@ -570,7 +598,7 @@ export default function MaterialReturnPage() {
 
       {/* PRINT/IMAGE PREVIEW DIALOG */}
       <Dialog open={!!printingVoucher} onOpenChange={(open) => !open && setPrintingVoucher(null)}>
-        <DialogContent className="sm:max-w-[850px] p-0 overflow-hidden border-none bg-white">
+        <DialogContent className="sm:max-w-[850px] p-0 overflow-hidden border-none bg-white shadow-2xl">
           <DialogHeader className="sr-only">
             <DialogTitle>{lang === 'ar' ? 'معاينة طباعة سند توريد المرتجع' : 'Material Return Voucher Preview'}</DialogTitle>
           </DialogHeader>
@@ -654,7 +682,7 @@ export default function MaterialReturnPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {printingVoucher.items.map((item: any, i: number) => (
+                        {printingVoucher.items?.map((item: any, i: number) => (
                           <TableRow key={i} className="border-b border-slate-100 bg-white/40">
                             <TableCell className="font-bold text-sm py-4 text-slate-800">{item.nameAr}</TableCell>
                             <TableCell className="text-center font-black text-sm tabular-nums py-4 text-emerald-700">{item.qty}</TableCell>
@@ -688,49 +716,13 @@ export default function MaterialReturnPage() {
           </ScrollArea>
           <DialogFooter className="p-6 bg-slate-50 border-t border-slate-100">
             <Button onClick={handleDownloadImage} disabled={isDownloading} className="premium-gradient font-black gap-2 h-12 px-10 rounded-xl shadow-xl hover:opacity-90 active:scale-95 transition-all">
-              {isDownloading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
+              {isDownloading ? <Loader2 className="w-5 h-5 animate-spin me-2" /> : <Download className="w-5 h-5" />}
               {lang === 'ar' ? 'تحميل كصورة' : 'Download PNG'}
             </Button>
             <Button variant="ghost" onClick={() => setPrintingVoucher(null)} className="font-black h-12 px-8 rounded-xl border border-slate-200 text-slate-500">إغلاق</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* DELETE CONFIRMATION */}
-      <AlertDialog open={!!deletingVoucher} onOpenChange={(open) => !open && setDeletingVoucher(null)}>
-        <AlertDialogContent className="max-w-[400px] rounded-lg border-none shadow-2xl p-0 overflow-hidden">
-          <div className="bg-slate-950 p-8 text-center">
-            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20 shadow-inner"><History className="w-8 h-8 text-red-500" /></div>
-            <AlertDialogTitle className="text-white text-xl font-black">{lang === 'ar' ? 'إلغاء توثيق المرتجع' : 'Cancel Verification'}</AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-400 font-bold mt-2 text-xs leading-relaxed">تحذير: سيتم خصم الكميات من المخزن وإعادة حالة المرتجع إلى "معلق" في سند الاستلام الأصلي.</AlertDialogDescription>
-          </div>
-          <div className="bg-white p-6 flex gap-3">
-            <AlertDialogAction onClick={async () => {
-              if (!db || !deletingVoucher) return;
-              const batch = writeBatch(db);
-              deletingVoucher.items.forEach((item: any) => {
-                const mat = allMaterials?.find(m => m.id === item.id);
-                if (mat) batch.update(doc(db, 'materials', item.id), { currentQty: Math.max(0, mat.currentQty - item.qty) });
-              });
-              if (deletingVoucher.linkedReceiptId) batch.update(doc(db, 'vouchers', deletingVoucher.linkedReceiptId), { returnStatus: 'pending' });
-              batch.update(doc(db, 'vouchers', deletingVoucher.id), { status: 'deleted', deletedAt: serverTimestamp() });
-              await batch.commit();
-              setDeletingVoucher(null);
-              toast({ title: "تم إلغاء السند" });
-            }} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-md font-black">تأكيد الحذف</AlertDialogAction>
-            <AlertDialogCancel onClick={() => setDeletingVoucher(null)} className="flex-1 h-11 bg-slate-50 border-slate-200 text-slate-400 rounded-md font-black">تراجع</AlertDialogCancel>
-          </div>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <div className="flex-none p-2 bg-slate-900 text-white/40 flex items-center justify-center gap-3">
-        <Info className="w-3.5 h-3.5 text-emerald-500" />
-        <p className="text-[10px] font-bold">نظام الرقابة المخزنية: كافة التوريدات توثق ببصمة زمنية وتوقيع إلكتروني للمسؤول.</p>
-      </div>
     </div>
   );
-}
-
-function handleExportCSV() {
-  // Logic already defined inside the component scope above.
 }
