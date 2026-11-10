@@ -292,7 +292,7 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
 
           <div className="h-6 w-px bg-white/10 shrink-0 mx-2" />
 
-          {/* Scrollable Tabs - The entire lower bar moved up here */}
+          {/* Scrollable Tabs */}
           <div className="flex-1 flex items-center h-full gap-0 overflow-x-auto no-scrollbar scroll-smooth pe-4">
             <button 
               onClick={() => setActiveTab('info')} 
@@ -371,16 +371,6 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
               {lang === 'ar' ? 'الملخص الإحصائي' : 'Analytics'}
             </button>
           </div>
-
-          {/* Quick Action Icons at the end */}
-          <div className="hidden md:flex items-center gap-1 shrink-0 px-4 border-l border-white/10">
-             <Button variant="ghost" size="icon" onClick={handleOpenEdit} className="h-9 w-9 text-white/30 hover:text-emerald-400 hover:bg-white/5 rounded-lg transition-all" title={lang === 'ar' ? 'تعديل' : 'Edit'}>
-                <Edit2 className="w-4 h-4" />
-             </Button>
-             <Button variant="ghost" size="icon" onClick={() => router.push(`/production/vouchers/issue?orderId=${order.id}`)} className="h-9 w-9 text-white/30 hover:text-emerald-400 hover:bg-white/5 rounded-lg transition-all" title={lang === 'ar' ? 'سند جديد' : 'New Op'}>
-                <Plus className="w-4 h-4" />
-             </Button>
-          </div>
         </div>
       </div>
 
@@ -392,6 +382,10 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
             <ScrollArea className="flex-1 animate-in fade-in duration-300">
                <div className="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
                   <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest flex items-center gap-2"><ClipboardList className="w-4 h-4 text-emerald-600" />{lang === 'ar' ? 'سجل المواصفات الفنية المعتمد' : 'MASTER LEDGER'}</h3>
+                  <Button variant="outline" size="sm" onClick={handleOpenEdit} className="h-8 px-4 rounded-lg font-black text-[10px] gap-2 border-slate-200 text-slate-600 hover:bg-white transition-all shadow-sm">
+                    <Edit2 className="w-3 h-3 text-emerald-600" />
+                    {lang === 'ar' ? 'تعديل البيانات' : 'EDIT SPECS'}
+                  </Button>
                </div>
                <div className="overflow-hidden">
                   <table className="w-full text-right border-separate border-spacing-0" dir={dir}>
