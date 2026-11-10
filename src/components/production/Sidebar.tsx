@@ -30,7 +30,8 @@ import {
   FileBarChart,
   UserCheck,
   HandCoins,
-  PackageSearch
+  PackageSearch,
+  Receipt
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -75,6 +76,7 @@ export function Sidebar() {
         { name: lang === 'ar' ? 'سندات استلام انتاج' : 'Production Receipt', href: '/production/vouchers/receipt', icon: <FileOutput className="w-3.5 h-3.5" /> },
         { name: lang === 'ar' ? 'سندات توريد مرتجع' : 'Material Returns', href: '/production/vouchers/return', icon: <RefreshCcw className="w-3.5 h-3.5" /> },
         { name: lang === 'ar' ? 'سندات صرف الأجور' : 'Wage Payments', href: '/production/wages', icon: <HandCoins className="w-3.5 h-3.5" /> },
+        { name: lang === 'ar' ? 'سند تكاليف أخرى' : 'Other Costs', href: '/production/vouchers/costs', icon: <Receipt className="w-3.5 h-3.5" /> },
       ]
     },
     {

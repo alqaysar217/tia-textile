@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo, useState, useCallback } from 'react';
@@ -36,7 +37,8 @@ import {
   Package,
   Box,
   FileText,
-  RefreshCcw
+  RefreshCcw,
+  Receipt
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from '@/components/LanguageProvider';
@@ -82,7 +84,7 @@ export default function OrderDetailsDashboard({ params }: { params: Promise<{ id
   const [isDownloading, setIsDownloading] = useState(false);
 
   const [stageSearch, setStageSearch] = useState('');
-  const [stageTypeFilter, setStageTypeFilter] = useState<'all' | 'material_issue' | 'production_receipt' | 'wage_payment' | 'material_return'>('all');
+  const [stageTypeFilter, setStageTypeFilter] = useState<'all' | 'material_issue' | 'production_receipt' | 'wage_payment' | 'material_return' | 'overhead_cost'>('all');
   const [stageSortOrder, setStageSortOrder] = useState<'asc' | 'desc'>('desc');
 
   const orderRef = useMemo(() => !db ? null : doc(db, 'productionOrders', id as string), [db, id]);
@@ -170,15 +172,21 @@ export default function OrderDetailsDashboard({ params }: { params: Promise<{ id
       const worker = workers?.find(w => w.id === v.workerId);
       const deptIdOfVoucher = v.currentStageId || worker?.departmentId;
       
-      const isInStage = deptIdOfVoucher === activeTab;
-      if (!isInStage) return false;
+      // Special case: overhead costs can be general (linked only to order, not a specific stage)
+      const isInStage = activeTab === 'summary' ? true : (deptIdOfVoucher === activeTab || (v.type === 'overhead_cost' && activeTab === 'info'));
       
+      // For stage tabs, we filter by stage
+      const matchesStage = deptIdOfVoucher === activeTab;
+      if (!matchesStage && v.type !== 'overhead_cost') return false;
+      if (v.type === 'overhead_cost' && activeTab !== 'info') return false;
+
       if (stageTypeFilter !== 'all' && v.type !== stageTypeFilter) return false;
       if (stageSearch) {
         const s = stageSearch.toLowerCase();
         return v.voucherNumber?.toLowerCase().includes(s) || 
                worker?.fullName?.toLowerCase().includes(s) ||
-               v.notes?.toLowerCase().includes(s);
+               v.notes?.toLowerCase().includes(s) ||
+               v.description?.toLowerCase().includes(s);
       }
       return true;
     });
@@ -272,7 +280,7 @@ export default function OrderDetailsDashboard({ params }: { params: Promise<{ id
       <div className="flex-1 min-h-0 flex flex-col p-4 no-scrollbar">
         <div className="flex-1 bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden flex flex-col">
           
-          {/* TAB 1: MASTER LEDGER INFO (RTL REVERSED) */}
+          {/* TAB 1: MASTER LEDGER INFO */}
           {activeTab === 'info' && (
             <ScrollArea className="flex-1 animate-in fade-in duration-300">
                <div className="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
@@ -308,20 +316,34 @@ export default function OrderDetailsDashboard({ params }: { params: Promise<{ id
                               </div>
                            </td>
                         </tr>
-                        {order.notes && (
-                           <tr className="bg-slate-50/50">
-                             <td className="px-6 py-5 w-72 border-l border-slate-100">
-                               <div className="flex items-center gap-3 justify-start">
-                                 <div className="p-1.5 bg-white border border-slate-100 rounded text-emerald-600"><Info className="w-4 h-4" /></div>
-                                 <span className="font-black text-[10px] text-slate-400 uppercase tracking-widest">NOTES</span>
-                               </div>
-                             </td>
-                             <td className="px-6 py-5 text-xs font-bold text-slate-600 italic leading-relaxed text-left">{order.notes}</td>
-                           </tr>
-                        )}
                      </tbody>
                   </table>
                </div>
+
+               {/* SHOW OVERHEAD COSTS IN INFO TAB TOO AS THEY ARE GENERAL */}
+               <div className="p-4 bg-slate-50 border-y border-slate-200 mt-8">
+                  <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest flex items-center gap-2"><Receipt className="w-4 h-4 text-emerald-600" />{lang === 'ar' ? 'التكاليف الإضافية (سندات الصرف)' : 'OVERHEAD COSTS LOG'}</h3>
+               </div>
+               <Table className="text-right border-separate border-spacing-0">
+                  <TableHeader className="bg-slate-50 shadow-sm">
+                    <TableRow>
+                      <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase">DATE</TableHead>
+                      <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase">REF #</TableHead>
+                      <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase">DESCRIPTION</TableHead>
+                      <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-center">AMOUNT</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {vouchers.filter(v => v.type === 'overhead_cost' && v.status !== 'deleted').map(v => (
+                       <TableRow key={v.id} className="hover:bg-slate-50/50 border-b border-slate-100 transition-colors">
+                          <TableCell className="px-6 py-3 text-[10px] font-bold text-slate-500 tabular-nums">{v.date}</TableCell>
+                          <TableCell className="px-6 py-3 text-[10px] font-black text-slate-900 tabular-nums">{v.voucherNumber}</TableCell>
+                          <TableCell className="px-6 py-3 text-xs font-bold text-slate-700">{v.description}</TableCell>
+                          <TableCell className="px-6 py-3 text-center font-black text-rose-600 tabular-nums">{(v.totalAmount || 0).toLocaleString('en-US')} {v.currency}</TableCell>
+                       </TableRow>
+                    ))}
+                  </TableBody>
+               </Table>
             </ScrollArea>
           )}
 
@@ -373,7 +395,7 @@ export default function OrderDetailsDashboard({ params }: { params: Promise<{ id
           )}
 
           {/* TAB 3: SUMMARY ANALYTICS */}
-          {activeTab === 'summary' && (activeTab === 'summary' && (
+          {activeTab === 'summary' && (
             <div className="flex-1 flex flex-col animate-in zoom-in-95 duration-300">
                <div className="p-4 bg-slate-900 text-white flex items-center justify-between"><h3 className="text-xs font-black uppercase tracking-widest flex items-center gap-2"><BarChart3 className="w-4 h-4 text-emerald-400" /> {lang === 'ar' ? 'التحليل الإحصائي لخطوط الإنتاج' : 'ANALYTICS'}</h3></div>
                <div className="flex-1 overflow-auto">
@@ -400,7 +422,7 @@ export default function OrderDetailsDashboard({ params }: { params: Promise<{ id
                   </Table>
                </div>
             </div>
-          ))}
+          )}
         </div>
       </div>
 
@@ -420,17 +442,13 @@ export default function OrderDetailsDashboard({ params }: { params: Promise<{ id
                     <div className="text-right space-y-1">
                       <h2 className="text-xl font-black text-emerald-900 leading-tight">جمعية الصناعات النسيجية</h2>
                       <p className="text-xs font-bold text-slate-500">الروضة - محافظة شبوة - اليمن</p>
-                      <p className="text-[11px] font-bold text-slate-400 tabular-nums" dir="ltr">0777 263 091 | nseeg202020@gmail.com</p>
                     </div>
                     <div className="flex justify-center">
-                      <div className="w-24 h-24 bg-white border-2 border-emerald-800/10 rounded-full flex items-center justify-center p-2 shadow-sm relative overflow-hidden">
-                        <img src="/images/logo.png" alt="Logo" className="w-full h-full object-contain" />
-                      </div>
+                      <div className="w-24 h-24 border-2 border-emerald-800/10 rounded-full flex items-center justify-center p-2"><img src="/images/logo.png" alt="Logo" className="w-full h-full object-contain" /></div>
                     </div>
                     <div className="text-left space-y-1" dir="ltr">
-                      <h2 className="text-[14px] font-black text-emerald-900 uppercase leading-tight tracking-tight">Textile Industries Association</h2>
-                      <p className="text-[11px] font-bold text-slate-500">Al-Rawdah - Shabwa - Yemen</p>
-                      <p className="text-[10px] font-bold text-slate-400 tabular-nums">0777 263 091 | nseeg202020@gmail.com</p>
+                      <h2 className="text-[14px] font-black text-emerald-900 uppercase">Textile Industries Association</h2>
+                      <p className="text-[11px] font-bold text-slate-500">Al-Rawdah - Shabwa</p>
                     </div>
                   </div>
 
@@ -441,6 +459,7 @@ export default function OrderDetailsDashboard({ params }: { params: Promise<{ id
                          viewingVoucher.type === 'production_receipt' ? (lang === 'ar' ? 'سند استلام وتسوية إنتاج' : 'Production Settlement') :
                          viewingVoucher.type === 'wage_payment' ? (lang === 'ar' ? 'سند صرف أجور مالي' : 'Wage Payment') :
                          viewingVoucher.type === 'material_return' ? (lang === 'ar' ? 'سند توريد مرتجع مخزني' : 'Material Return') :
+                         viewingVoucher.type === 'overhead_cost' ? (lang === 'ar' ? 'سند تكاليف تشغيلية' : 'Overhead Cost') :
                          (lang === 'ar' ? 'مستند مالي' : 'Financial Document')}
                       </h3>
                     </div>
@@ -449,8 +468,8 @@ export default function OrderDetailsDashboard({ params }: { params: Promise<{ id
                   <div className="grid grid-cols-3 gap-y-6 gap-x-8 mb-10 bg-slate-50/50 p-8 rounded-[1.5rem] border border-slate-100 relative z-10">
                     <div className="space-y-4">
                       <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'اسم المستلم/المسلم' : 'Personnel'}</span>
-                        <span className="text-sm font-black text-slate-900">{workers?.find(w => w.id === viewingVoucher.workerId)?.fullName || '---'}</span>
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'الطرف الأول' : 'Primary Party'}</span>
+                        <span className="text-sm font-black text-slate-900">{viewingVoucher.recipient || workers?.find(w => w.id === viewingVoucher.workerId)?.fullName || '---'}</span>
                       </div>
                       <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'القسم / المسار' : 'Department'}</span>
@@ -484,61 +503,29 @@ export default function OrderDetailsDashboard({ params }: { params: Promise<{ id
                   </div>
 
                   <div className="space-y-8 relative z-10 mb-12">
-                    {viewingVoucher.type === 'production_receipt' ? (
-                      <>
-                        <div className="space-y-3">
-                          <h4 className="text-[10px] font-black text-emerald-900 border-r-4 border-emerald-600 pr-3 mb-2 uppercase">{lang === 'ar' ? 'أولاً: مخرجات الإنتاج المنجزة' : 'I. FINISHED PRODUCTION OUTPUTS'}</h4>
-                          <Table className="text-right border-2 border-emerald-900/10">
-                            <TableHeader className="bg-emerald-900/5">
-                              <TableRow className="hover:bg-transparent border-b-2 border-emerald-900/20">
-                                <TableHead className="text-right font-black text-xs py-4 text-emerald-900">{lang === 'ar' ? 'نوع المعوز' : 'Item Type'}</TableHead>
-                                <TableHead className="text-center font-black text-xs py-4 text-emerald-900">{lang === 'ar' ? 'الكمية المستلمة' : 'Accepted Qty'}</TableHead>
-                                <TableHead className="text-center font-black text-xs py-4 text-emerald-900">{lang === 'ar' ? 'أجر القطعة' : 'Wage/Pcs'}</TableHead>
-                                <TableHead className="text-center font-black text-xs py-4 text-emerald-900">{lang === 'ar' ? 'الإجمالي' : 'Total'}</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              <TableRow className="bg-white/40">
-                                <TableCell className="font-bold text-sm py-5 text-slate-800">{product?.nameAr || '---'}</TableCell>
-                                <TableCell className="text-center font-black text-sm text-emerald-800 tabular-nums">{(viewingVoucher.qtyAccepted || 0).toLocaleString('en-US')} {lang === 'ar' ? 'قطعة' : 'Pcs'}</TableCell>
-                                <TableCell className="text-center font-bold text-sm tabular-nums">{(viewingVoucher.wageRate || 0).toLocaleString('en-US')}</TableCell>
-                                <TableCell className="text-center font-black text-sm text-emerald-900 tabular-nums">{(viewingVoucher.wageAmount || 0).toLocaleString('en-US')} <span className="text-[10px] opacity-60">{viewingVoucher.currency || 'YER'}</span></TableCell>
-                              </TableRow>
-                            </TableBody>
-                          </Table>
-                        </div>
-                      </>
-                    ) : viewingVoucher.type === 'wage_payment' ? (
+                    {viewingVoucher.type === 'overhead_cost' ? (
+                       <div className="p-8 bg-slate-50 border-2 border-emerald-900/10 rounded-2xl">
+                          <p className="text-lg font-bold text-slate-800 leading-relaxed mb-6">{viewingVoucher.description}</p>
+                          <div className="flex justify-between items-center pt-6 border-t border-slate-200">
+                             <span className="font-black text-emerald-900 uppercase">{lang === 'ar' ? 'إجمالي المبلغ' : 'Total Amount'}</span>
+                             <span className="text-3xl font-black text-emerald-700 tabular-nums">{viewingVoucher.totalAmount?.toLocaleString('en-US')} {viewingVoucher.currency}</span>
+                          </div>
+                       </div>
+                    ) : viewingVoucher.type === 'production_receipt' ? (
                       <div className="space-y-3">
-                        <h4 className="text-[10px] font-black text-emerald-900 border-r-4 border-emerald-600 pr-3 mb-2 uppercase">{lang === 'ar' ? 'بيان الاستحقاق المالي المفرز' : 'ITEMIZED WAGE SETTLEMENT'}</h4>
                         <Table className="text-right border-2 border-emerald-900/10">
                           <TableHeader className="bg-emerald-900/5">
-                            <TableRow className="hover:bg-transparent border-b-2 border-emerald-900/20">
-                              <TableHead className="text-right font-black text-[10px] py-4 text-emerald-900 uppercase">{lang === 'ar' ? 'رقم سند الاستلام' : 'Receipt #'}</TableHead>
-                              <TableHead className="text-right font-black text-[10px] py-4 text-emerald-900 uppercase">{lang === 'ar' ? 'المنتج' : 'Product'}</TableHead>
-                              <TableHead className="text-center font-black text-[10px] py-4 text-emerald-900 uppercase">{lang === 'ar' ? 'الكمية' : 'Qty'}</TableHead>
-                              <TableHead className="text-center font-black text-[10px] py-4 text-emerald-900 uppercase">{lang === 'ar' ? 'أجر القطعة' : 'Wage/Pcs'}</TableHead>
-                              <TableHead className="text-center font-black text-[10px] py-4 text-emerald-900 uppercase">{lang === 'ar' ? 'الإجمالي' : 'Total'}</TableHead>
+                            <TableRow className="hover:bg-transparent">
+                              <TableHead className="text-right font-black text-xs py-4 text-emerald-900">ITEM</TableHead>
+                              <TableHead className="text-center font-black text-xs py-4 text-emerald-900">ACCEPTED</TableHead>
+                              <TableHead className="text-center font-black text-xs py-4 text-emerald-900">WAGE</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {viewingVoucher.linkedReceipts?.map((receiptId: string, i: number) => {
-                               const receipt = vouchers.find(v => v.id === receiptId);
-                               return (
-                                 <TableRow key={i} className="bg-white/40 border-b border-slate-100">
-                                   <TableCell className="font-bold text-xs tabular-nums py-4">{receipt?.voucherNumber || '---'}</TableCell>
-                                   <TableCell className="font-bold text-xs py-4">{product?.nameAr || '---'}</TableCell>
-                                   <TableCell className="text-center font-black text-xs tabular-nums py-4">{receipt?.qtyAccepted || 0}</TableCell>
-                                   <TableCell className="text-center font-bold text-xs tabular-nums py-4">{(receipt?.wageRate || 0).toLocaleString('en-US')}</TableCell>
-                                   <TableCell className="text-center font-black text-xs text-emerald-700 tabular-nums py-4">{(receipt?.wageAmount || 0).toLocaleString('en-US')}</TableCell>
-                                 </TableRow>
-                               );
-                            })}
-                            <TableRow className="bg-emerald-50/50">
-                              <TableCell colSpan={4} className="text-left font-black text-[10px] text-emerald-900 px-6 py-5 uppercase">GRAND TOTAL / الإجمالي العام</TableCell>
-                              <TableCell className="text-center font-black text-base text-emerald-800 tabular-nums px-4 py-5">
-                                {(viewingVoucher.totalAmount || 0).toLocaleString('en-US')} <span className="text-[10px] opacity-60 uppercase">{viewingVoucher.currency || 'YER'}</span>
-                              </TableCell>
+                            <TableRow className="bg-white/40">
+                              <TableCell className="font-bold text-sm py-5">{product?.nameAr || '---'}</TableCell>
+                              <TableCell className="text-center font-black text-sm text-emerald-800 tabular-nums">{(viewingVoucher.qtyAccepted || 0).toLocaleString('en-US')} Pcs</TableCell>
+                              <TableCell className="text-center font-black text-sm text-emerald-900 tabular-nums">{(viewingVoucher.wageAmount || 0).toLocaleString('en-US')} {viewingVoucher.currency}</TableCell>
                             </TableRow>
                           </TableBody>
                         </Table>
@@ -546,16 +533,16 @@ export default function OrderDetailsDashboard({ params }: { params: Promise<{ id
                     ) : (
                       <Table className="text-right border-2 border-emerald-900/10">
                         <TableHeader className="bg-emerald-800/5">
-                          <TableRow className="hover:bg-transparent border-b-2 border-emerald-900/20">
-                            <TableHead className="text-right font-black text-xs py-4 text-emerald-900 uppercase">{lang === 'ar' ? 'المادة الخام' : 'Raw Material'}</TableHead>
-                            <TableHead className="text-center font-black text-xs py-4 text-emerald-900 uppercase">{lang === 'ar' ? 'الكمية' : 'Quantity'}</TableHead>
-                            <TableHead className="text-center font-black text-xs py-4 text-emerald-900 uppercase">{lang === 'ar' ? 'الوحدة' : 'Unit'}</TableHead>
+                          <TableRow className="hover:bg-transparent">
+                            <TableHead className="text-right font-black text-xs py-4 text-emerald-900">MATERIAL</TableHead>
+                            <TableHead className="text-center font-black text-xs py-4 text-emerald-900">QTY</TableHead>
+                            <TableHead className="text-center font-black text-xs py-4 text-emerald-900">UNIT</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {(viewingVoucher.items || viewingVoucher.returnedItems)?.map((item: any, i: number) => (
                             <TableRow key={i} className="border-b border-slate-100 bg-white/40">
-                              <TableCell className="font-bold text-sm py-4 text-slate-800">{item.nameAr}</TableCell>
+                              <TableCell className="font-bold text-sm py-4">{item.nameAr}</TableCell>
                               <TableCell className="text-center font-black text-sm text-emerald-800 tabular-nums">{item.qty}</TableCell>
                               <TableCell className="text-center text-xs font-bold text-slate-500 uppercase py-4">{item.unit}</TableCell>
                             </TableRow>
@@ -565,28 +552,10 @@ export default function OrderDetailsDashboard({ params }: { params: Promise<{ id
                     )}
                   </div>
 
-                  <div className="grid grid-cols-3 gap-8 pt-10 border-t-2 border-slate-100 text-center relative z-10 mt-auto">
-                    <div className="space-y-12">
-                      <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">{lang === 'ar' ? 'أمين المستودع' : 'Store Keeper'}</p>
-                      <div className="h-px bg-slate-300 w-3/4 mx-auto" />
-                      <p className="text-[8px] font-bold text-slate-300 uppercase tracking-widest">Signature / التاريخ</p>
-                    </div>
-                    <div className="space-y-12">
-                      <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">{lang === 'ar' ? 'توقيع المستلم/المسلم' : 'Personnel Sign'}</p>
-                      <div className="h-px bg-slate-300 w-3/4 mx-auto" />
-                      <p className="text-[8px] font-bold text-slate-300 uppercase tracking-widest">Signature / التاريخ</p>
-                    </div>
-                    <div className="space-y-12">
-                      <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">{lang === 'ar' ? 'اعتماد المدير / المشرف' : 'Auth. Signature'}</p>
-                      <div className="h-px bg-slate-300 w-3/4 mx-auto" />
-                      <p className="text-[8px] font-bold text-slate-300 uppercase tracking-widest">Authorized Official</p>
-                    </div>
-                  </div>
-
-                  <div className="mt-14 pt-4 text-center border-t border-slate-50 relative z-10 flex items-center justify-center gap-4">
-                    <span className="text-[8px] font-black text-slate-200 uppercase tracking-[0.4em]">Generated by TIA Production System</span>
-                    <span className="w-1.5 h-1.5 rounded-full bg-slate-100" />
-                    <span className="text-[8px] font-black text-slate-300 tabular-nums uppercase tracking-widest">{new Date().toLocaleString()}</span>
+                  <div className="grid grid-cols-3 gap-8 pt-10 border-t-2 border-slate-100 text-center mt-auto">
+                    <div className="space-y-12"><p className="text-[11px] font-black text-slate-400 uppercase">SIGNATURE 1</p><div className="h-px bg-slate-300 w-full" /></div>
+                    <div className="space-y-12"><p className="text-[11px] font-black text-slate-400 uppercase">SIGNATURE 2</p><div className="h-px bg-slate-300 w-full" /></div>
+                    <div className="space-y-12"><p className="text-[11px] font-black text-slate-400 uppercase">APPROVAL</p><div className="h-px bg-slate-300 w-full" /></div>
                   </div>
                 </div>
               )}
@@ -620,7 +589,6 @@ export default function OrderDetailsDashboard({ params }: { params: Promise<{ id
 }
 
 function LedgerRow({ label, value, icon, color = "text-slate-900" }: { label: string, value: string | number, icon: any, color?: string }) {
-  const { dir } = useTranslation();
   return (
     <tr className="hover:bg-slate-50/50 transition-colors group">
        <td className="px-6 py-4 w-72 border-l border-slate-100 bg-slate-50/30">
@@ -643,10 +611,11 @@ function LedgerTransactionRow({ voucher, worker, lang, onView }: { voucher: any,
     'material_issue': { labelAr: 'صرف مواد', icon: <FileInput className="w-3.5 h-3.5" />, color: 'text-amber-600 bg-amber-50 border-amber-100' },
     'production_receipt': { labelAr: 'استلام انتاج', icon: <FileOutput className="w-3.5 h-3.5" />, color: 'text-blue-600 bg-blue-50 border-blue-100' },
     'material_return': { labelAr: 'توريد مرتجع', icon: <RefreshCcw className="w-3.5 h-3.5" />, color: 'text-emerald-600 bg-emerald-50 border-emerald-100' },
-    'wage_payment': { labelAr: 'صرف أجور', icon: <HandCoins className="w-3.5 h-3.5" />, color: 'text-purple-600 bg-purple-50 border-purple-100' }
+    'wage_payment': { labelAr: 'صرف أجور', icon: <HandCoins className="w-3.5 h-3.5" />, color: 'text-purple-600 bg-purple-50 border-purple-100' },
+    'overhead_cost': { labelAr: 'تكاليف تشغيل', icon: <Receipt className="w-3.5 h-3.5" />, color: 'text-rose-600 bg-rose-50 border-rose-100' }
   };
   
-  const config = typeMap[voucher.type] || { labelAr: 'عملية أخرى', icon: <FileText className="w-3.5 h-3.5" />, color: 'text-slate-500 bg-slate-50 border-slate-200' };
+  const config = typeMap[voucher.type] || { labelAr: 'أخرى', icon: <FileText className="w-3.5 h-3.5" />, color: 'text-slate-500 bg-slate-50 border-slate-200' };
 
   return (
     <TableRow className="hover:bg-slate-50/50 border-b border-slate-100 transition-colors group">
@@ -667,7 +636,7 @@ function LedgerTransactionRow({ voucher, worker, lang, onView }: { voucher: any,
           <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center border border-slate-200 overflow-hidden shrink-0">
             {worker?.photoUrl ? <img src={worker.photoUrl} className="w-full h-full object-cover" /> : <User className="w-3.5 h-3.5 text-slate-400" />}
           </div>
-          <span className="text-[11px] font-black text-slate-800 truncate max-w-[120px]">{worker?.fullName || '---'}</span>
+          <span className="text-[11px] font-black text-slate-800 truncate max-w-[120px]">{worker?.fullName || voucher.recipient || '---'}</span>
         </div>
       </TableCell>
       <TableCell className="px-6 py-3 text-center">
@@ -676,6 +645,7 @@ function LedgerTransactionRow({ voucher, worker, lang, onView }: { voucher: any,
               voucher.type === 'material_issue' ? "text-amber-700" : 
               voucher.type === 'wage_payment' ? "text-purple-700" : 
               voucher.type === 'material_return' ? "text-emerald-700" :
+              voucher.type === 'overhead_cost' ? "text-rose-700" :
               "text-blue-700"
            )}>
              {voucher.type === 'production_receipt' ? (voucher.qtyAccepted || 0).toLocaleString('en-US') : (voucher.totalAmount || 0).toLocaleString('en-US')}
