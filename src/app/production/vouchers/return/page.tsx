@@ -81,6 +81,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toPng } from 'html-to-image';
+import { VoucherTemplate } from '@/components/production/VoucherTemplate';
 
 export default function MaterialReturnPage() {
   const { lang, dir } = useTranslation();
@@ -115,6 +116,7 @@ export default function MaterialReturnPage() {
   const workersQuery = useMemo(() => !db ? null : collection(db, 'workers'), [db]);
   const materialsQuery = useMemo(() => !db ? null : collection(db, 'materials'), [db]);
   const deptsQuery = useMemo(() => !db ? null : collection(db, 'departments'), [db]);
+  const productsQuery = useMemo(() => !db ? null : collection(db, 'products'), [db]);
   const receiptsQuery = useMemo(() => !db ? null : query(collection(db, 'vouchers'), where('type', '==', 'production_receipt')), [db]);
   const returnVouchersQuery = useMemo(() => !db ? null : query(collection(db, 'vouchers'), where('type', '==', 'material_return')), [db]);
 
@@ -122,6 +124,7 @@ export default function MaterialReturnPage() {
   const { data: allWorkers } = useCollection<any>(workersQuery);
   const { data: allMaterials } = useCollection<any>(materialsQuery);
   const { data: allDepartments } = useCollection<any>(deptsQuery);
+  const { data: allProducts } = useCollection<any>(productsQuery);
   const { data: allReceipts } = useCollection<any>(receiptsQuery);
   const { data: returnVouchers, loading: vL } = useCollection<any>(returnVouchersQuery);
 
@@ -207,7 +210,12 @@ export default function MaterialReturnPage() {
     setIsDownloading(true);
     try {
       await new Promise(resolve => setTimeout(resolve, 1000));
-      const dataUrl = await toPng(element, { backgroundColor: '#ffffff', pixelRatio: 2, cacheBust: true, fontEmbedCSS: '' });
+      const dataUrl = await toPng(element, { 
+        backgroundColor: '#ffffff', 
+        pixelRatio: 2, 
+        cacheBust: true, 
+        fontEmbedCSS: '' 
+      });
       const link = document.createElement('a');
       link.download = `Return-${printingVoucher.voucherNumber}.png`;
       link.href = dataUrl;
@@ -254,7 +262,7 @@ export default function MaterialReturnPage() {
 
              <div className="flex items-center gap-1 shrink-0">
                 <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg hover:bg-white border border-transparent hover:border-slate-200"><Filter className="w-4 h-4 text-slate-400" /></Button>
-                <Button onClick={handleExportCSV} variant="ghost" size="icon" className="h-9 w-9 rounded-lg hover:bg-white border border-transparent hover:border-slate-200"><FileDown className="w-4 h-4 text-emerald-600" /></Button>
+                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg hover:bg-white border border-transparent hover:border-slate-200"><FileDown className="w-4 h-4 text-emerald-600" /></Button>
              </div>
           </div>
         </div>
@@ -272,8 +280,8 @@ export default function MaterialReturnPage() {
               <Table className="text-right border-separate border-spacing-0">
                 <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
                   <TableRow>
-                    <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase">REFERENCE</TableHead>
-                    <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase">PERSONNEL</TableHead>
+                    <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-right">REFERENCE</TableHead>
+                    <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-right">PERSONNEL</TableHead>
                     <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center">ITEMS</TableHead>
                     <TableHead className="w-32 px-6 py-4 text-center">ACTIONS</TableHead>
                   </TableRow>
@@ -323,7 +331,7 @@ export default function MaterialReturnPage() {
       </div>
 
       <Dialog open={isAddDialogOpen} onOpenChange={(open) => !open && resetDialog()}>
-        <DialogContent className="sm:max-w-[850px] p-0 overflow-hidden border-none shadow-2xl">
+        <DialogContent className="sm:max-w-[850px] rounded-lg p-0 overflow-hidden border-none shadow-2xl">
           <div className="premium-gradient p-6 text-white">
             <DialogHeader className="text-right">
               <DialogTitle className="text-xl font-black flex items-center gap-3 text-white">
@@ -378,46 +386,28 @@ export default function MaterialReturnPage() {
       </Dialog>
 
       <Dialog open={!!printingVoucher} onOpenChange={(open) => !open && setPrintingVoucher(null)}>
-        <DialogContent className="sm:max-w-[850px] p-0 overflow-hidden border-none bg-white">
+        <DialogContent className="sm:max-w-[850px] p-0 overflow-hidden border-none bg-white shadow-2xl">
           <DialogHeader className="sr-only"><DialogTitle>معاينة سند المرتجع</DialogTitle></DialogHeader>
           <ScrollArea className="max-h-[85vh]">
             <div className="p-12 bg-white relative z-0" id="printable-voucher">
               {printingVoucher && (
-                <div className="flex flex-col h-full text-slate-900 font-sans relative overflow-hidden" dir="rtl">
-                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 opacity-[0.04] pointer-events-none -z-10"><img src="/images/logo.png" className="w-full h-full object-contain grayscale" /></div>
-                  <div className="grid grid-cols-3 items-center border-b-[6px] border-emerald-800 pb-8 mb-8">
-                    <div className="text-right space-y-1"><h2 className="text-xl font-black text-emerald-900">جمعية الصناعات النسيجية</h2><p className="text-xs font-bold text-slate-500">الروضة - شبوة - اليمن</p></div>
-                    <div className="flex justify-center"><div className="w-24 h-24 border-2 border-emerald-800/10 rounded-full flex items-center justify-center p-2"><img src="/images/logo.png" className="w-full h-full object-contain" /></div></div>
-                    <div className="text-left space-y-1" dir="ltr"><h2 className="text-[14px] font-black text-emerald-900 uppercase">Textile Industries Association</h2><p className="text-[11px] font-bold text-slate-500">Al-Rawdah - Shabwa</p></div>
-                  </div>
-                  <div className="text-center mb-10"><div className="inline-block border-[2.5px] border-emerald-800 px-12 py-2 rounded-full bg-white shadow-sm"><h3 className="text-xl font-black text-emerald-900 uppercase tracking-widest">{lang === 'ar' ? 'سند توريد مرتجع مخزني' : 'Material Return Voucher'}</h3></div></div>
-                  <div className="grid grid-cols-3 gap-8 mb-10 bg-slate-50/50 p-8 rounded-[1.5rem] border border-slate-100">
-                    <div className="space-y-4">
-                      <div className="flex flex-col gap-1 border-b border-slate-200 pb-2"><span className="text-[10px] font-black text-slate-400 uppercase">المرسل / الموظف</span><span className="text-sm font-black text-slate-900">{allWorkers?.find(w => w.id === printingVoucher.workerId)?.fullName}</span></div>
-                      <div className="flex flex-col gap-1 border-b border-slate-200 pb-2"><span className="text-[10px] font-black text-slate-400 uppercase">القسم</span><span className="text-sm font-black text-slate-700">{allDepartments?.find(d => d.id === (allWorkers?.find(w => w.id === printingVoucher.workerId)?.departmentId))?.nameAr}</span></div>
-                    </div>
-                    <div className="space-y-4">
-                      <div className="flex flex-col gap-1 border-b border-slate-200 pb-2"><span className="text-[10px] font-black text-slate-400 uppercase">رقم السند</span><span className="text-sm font-black text-emerald-900 tabular-nums">{printingVoucher.voucherNumber}</span></div>
-                      <div className="flex flex-col gap-1 border-b border-slate-200 pb-2"><span className="text-[10px] font-black text-slate-400 uppercase">الدفعة</span><span className="text-sm font-black text-slate-700">{allOrders?.find(o => o.id === printingVoucher.orderId)?.title}</span></div>
-                    </div>
-                    <div className="space-y-4">
-                      <div className="flex flex-col gap-1 border-b border-slate-200 pb-2"><span className="text-[10px] font-black text-slate-400 uppercase">تاريخ التوريد</span><span className="text-sm font-black text-slate-700 tabular-nums">{printingVoucher.date}</span></div>
-                      <div className="flex flex-col gap-1 border-b border-slate-200 pb-2"><span className="text-[10px] font-black text-slate-400 uppercase">المشرف المعتمد</span><span className="text-sm font-black text-slate-700">{allWorkers?.find(w => w.id === (allWorkers?.find(work => work.id === printingVoucher.workerId)?.supervisorId))?.fullName || '---'}</span></div>
-                    </div>
-                  </div>
-                  <div className="mb-12"><Table className="text-right border-2 border-emerald-900/10"><TableHeader className="bg-emerald-900/5"><TableRow><TableHead className="text-right font-black text-xs py-4 text-emerald-900 uppercase">المادة المرتجعة</TableHead><TableHead className="text-center font-black text-xs py-4 text-emerald-900 uppercase">الكمية</TableHead><TableHead className="text-center font-black text-xs py-4 text-emerald-900 uppercase">الوحدة</TableHead></TableRow></TableHeader><TableBody>{(printingVoucher.items || printingVoucher.returnedItems).map((item: any, i: number) => (<TableRow key={i} className="border-b border-slate-100 bg-white/40"><TableCell className="font-bold text-sm py-4">{item.nameAr}</TableCell><TableCell className="text-center font-black text-sm tabular-nums text-emerald-700">{item.qty}</TableCell><TableCell className="text-center text-xs font-bold text-slate-500 uppercase">{item.unit}</TableCell></TableRow>))}</TableBody></Table></div>
-                  <div className="grid grid-cols-3 gap-8 pt-10 border-t-2 border-slate-100 text-center mt-auto">
-                    <div className="space-y-12"><p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">أمين المستودع</p><div className="h-px bg-slate-300 w-full" /></div>
-                    <div className="space-y-12"><p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">توقيع الموظف</p><div className="h-px bg-slate-300 w-full" /></div>
-                    <div className="space-y-12"><p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">اعتماد المشرف</p><div className="h-px bg-slate-300 w-full" /></div>
-                  </div>
-                  <div className="mt-14 pt-4 text-center border-t border-slate-50 flex items-center justify-center gap-4"><span className="text-[8px] font-black text-slate-200 uppercase tracking-[0.4em]">Generated by TIA Production System</span></div>
-                </div>
+                <VoucherTemplate 
+                  voucher={printingVoucher}
+                  order={allOrders?.find(o => o.id === printingVoucher.orderId)}
+                  worker={allWorkers?.find(w => w.id === printingVoucher.workerId)}
+                  supervisor={allWorkers?.find(w => w.id === (allWorkers?.find(work => work.id === printingVoucher.workerId)?.supervisorId))}
+                  departments={allDepartments}
+                  products={allProducts}
+                  lang={lang}
+                />
               )}
             </div>
           </ScrollArea>
           <DialogFooter className="p-6 bg-slate-50 border-t border-slate-100">
-             <Button onClick={handleDownloadImage} disabled={isDownloading} className="premium-gradient font-black gap-2 h-12 px-10 rounded-xl shadow-xl hover:opacity-90 active:scale-95 transition-all"><Download className="w-5 h-5" />{lang === 'ar' ? 'تحميل كصورة PNG' : 'Download PNG'}</Button>
+             <Button onClick={handleDownloadImage} disabled={isDownloading} className="premium-gradient font-black gap-2 h-12 px-10 rounded-xl shadow-xl hover:opacity-90 active:scale-95 transition-all">
+                {isDownloading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
+                {lang === 'ar' ? 'تحميل كصورة PNG' : 'Download PNG'}
+             </Button>
              <Button variant="ghost" onClick={() => setPrintingVoucher(null)} className="font-black h-12 px-8 rounded-xl border border-slate-200 text-slate-500">إغلاق</Button>
           </DialogFooter>
         </DialogContent>

@@ -174,24 +174,31 @@ export function VoucherTemplate({
           </div>
         ) : (
           /* STANDARD TABLE FOR OTHER VOUCHER TYPES */
-          <Table className="text-right border-2 border-emerald-900/10">
-            <TableHeader className="bg-emerald-900/5">
-              <TableRow className="hover:bg-transparent border-b-2 border-emerald-900/20">
-                <TableHead className="text-right font-black text-xs py-4 text-emerald-900">{isRtl ? 'البيان / المادة' : 'Description / Item'}</TableHead>
-                <TableHead className="text-center font-black text-xs py-4 text-emerald-900">{isRtl ? 'الكمية' : 'Quantity'}</TableHead>
-                <TableHead className="text-center font-black text-xs py-4 text-emerald-900">{isRtl ? 'الوحدة' : 'Unit'}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(voucher.items || voucher.returnedItems || []).map((item: any, i: number) => (
-                <TableRow key={i} className="border-b border-slate-100 bg-white/40">
-                  <TableCell className="font-bold text-sm py-4 text-slate-800">{item.nameAr || item.nameEn}</TableCell>
-                  <TableCell className="text-center font-black text-sm tabular-nums py-4 text-emerald-700">{item.qty}</TableCell>
-                  <TableCell className="text-center text-xs font-bold text-slate-500 uppercase py-4">{item.unit}</TableCell>
+          <div className="space-y-3">
+            <h4 className="text-[10px] font-black text-emerald-900 border-r-4 border-emerald-600 pr-3 uppercase">
+              {voucher.type === 'material_return' ? (isRtl ? 'تفاصيل المواد المرتجعة للمخزن' : 'RETURNED MATERIALS DETAILS') : (isRtl ? 'تفاصيل السند' : 'VOUCHER DETAILS')}
+            </h4>
+            <Table className="text-right border-2 border-emerald-900/10">
+              <TableHeader className="bg-emerald-900/5">
+                <TableRow className="hover:bg-transparent border-b-2 border-emerald-900/20">
+                  <TableHead className="text-right font-black text-xs py-4 text-emerald-900 uppercase">
+                    {voucher.type === 'material_return' ? (isRtl ? 'اسم المادة المرتجعة' : 'Returned Item') : (isRtl ? 'البيان / المادة' : 'Description / Item')}
+                  </TableHead>
+                  <TableHead className="text-center font-black text-xs py-4 text-emerald-900 uppercase">{isRtl ? 'الكمية' : 'Quantity'}</TableHead>
+                  <TableHead className="text-center font-black text-xs py-4 text-emerald-900 uppercase">{isRtl ? 'الوحدة' : 'Unit'}</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {(voucher.items || voucher.returnedItems || []).map((item: any, i: number) => (
+                  <TableRow key={i} className="border-b border-slate-100 bg-white/40">
+                    <TableCell className="font-bold text-sm py-4 text-slate-800">{item.nameAr || item.nameEn}</TableCell>
+                    <TableCell className="text-center font-black text-sm tabular-nums py-4 text-emerald-700">{item.qty}</TableCell>
+                    <TableCell className="text-center text-xs font-bold text-slate-500 uppercase py-4">{item.unit}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         )}
       </div>
 
