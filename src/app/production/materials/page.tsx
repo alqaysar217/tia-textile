@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { 
   Plus, 
   Search, 
@@ -16,7 +16,6 @@ import {
   Info, 
   Hash,
   Languages,
-  Type,
   Activity,
   AlertCircle,
   SortAsc,
@@ -77,7 +76,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
-import { useFirestore, useCollection } from '@/firebase';
+import { useFirestore, useCollection, useDoc } from '@/firebase';
 import { collection, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -103,6 +102,11 @@ export default function MaterialsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCompressing, setIsCompressing] = useState(false);
   
+  // Fetch System Settings for Currency Lock
+  const settingsRef = useMemo(() => !db ? null : doc(db, 'settings', 'global'), [db]);
+  const { data: savedSettings } = useDoc<any>(settingsRef);
+  const systemCurrency = savedSettings?.baseCurrency || 'YER';
+
   const [formData, setFormData] = useState({
     code: '',
     nameAr: '',
@@ -112,10 +116,17 @@ export default function MaterialsPage() {
     currentQty: 0,
     minQty: 0,
     price: 0,
-    currency: 'YER',
+    currency: systemCurrency,
     photoUrl: '',
     status: 'active'
   });
+
+  // Sync currency with system settings when adding new material
+  useEffect(() => {
+    if (!editingMatId && systemCurrency) {
+      setFormData(prev => ({ ...prev, currency: systemCurrency }));
+    }
+  }, [systemCurrency, editingMatId, isAddDialogOpen]);
 
   const materialsQuery = useMemo(() => {
     if (!db) return null;
@@ -210,11 +221,11 @@ export default function MaterialsPage() {
       currentQty: 0, 
       minQty: 0, 
       price: 0,
-      currency: 'YER',
+      currency: systemCurrency, 
       photoUrl: '',
       status: 'active' 
     });
-  }, []);
+  }, [systemCurrency]);
 
   const toggleSort = (key: 'code' | 'nameAr' | 'currentQty' | 'price') => {
     if (sortBy === key) {
@@ -268,7 +279,7 @@ export default function MaterialsPage() {
       currentQty: Number(formData.currentQty),
       minQty: Number(formData.minQty),
       price: Number(formData.price),
-      currency: formData.currency || 'YER',
+      currency: formData.currency, // Locked to system currency
       updatedAt: serverTimestamp(),
     };
 
@@ -312,7 +323,7 @@ export default function MaterialsPage() {
       currentQty: mat.currentQty || 0,
       minQty: mat.minQty || 0,
       price: mat.price || 0,
-      currency: mat.currency || 'YER',
+      currency: mat.currency || systemCurrency,
       photoUrl: mat.photoUrl || '',
       status: mat.status || 'active'
     });
@@ -503,7 +514,7 @@ export default function MaterialsPage() {
         <div className="flex-1 bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden flex flex-col">
           <div className="flex-1 overflow-auto no-scrollbar relative">
             <Table className="text-right">
-              <TableHeader className="sticky top-0 z-20 bg-slate-100/95 backdrop-blur-sm">
+              <TableHeader className="sticky top-0 z-20 bg-slate-100/95 backdrop-blur-sm shadow-sm">
                 <TableRow>
                   <TableHead className="h-10 font-bold text-[11px] text-slate-500 px-6 text-right">
                     <button onClick={() => toggleSort('code')} className="flex items-center gap-2 hover:text-emerald-700 transition-colors uppercase">
@@ -682,7 +693,11 @@ export default function MaterialsPage() {
                   <Coins className="w-3 h-3 text-emerald-600" />
                   {lang === 'ar' ? 'العملة' : 'CURR.'}
                 </Label>
-                <select value={formData.currency} onChange={(e) => setFormData({...formData, currency: e.target.value})} className="w-full h-10 px-2 bg-slate-50 border border-slate-200 rounded-md text-[10px] font-bold outline-none">
+                <select 
+                  value={formData.currency} 
+                  disabled 
+                  className="w-full h-10 px-2 bg-slate-100 border border-slate-200 rounded-md text-[10px] font-bold outline-none cursor-not-allowed text-slate-500"
+                >
                   {currencies.map(c => <option key={c.value} value={c.value}>{lang === 'ar' ? c.labelAr : c.labelEn}</option>)}
                 </select>
               </div>
