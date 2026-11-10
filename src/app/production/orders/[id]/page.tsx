@@ -277,52 +277,110 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
   return (
     <div className="flex flex-col h-full bg-[#f1f5f9] overflow-hidden" dir={dir}>
       
-      {/* COMPACT ERP HEADER */}
-      <div className="flex-none bg-white border-b border-slate-200 z-30 px-6 py-3 shadow-sm">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => router.back()} className="h-9 w-9 rounded-lg border border-slate-100 hover:bg-slate-50 transition-colors">
-              {dir === 'rtl' ? <ArrowRight className="w-4 h-4" /> : <ArrowLeft className="w-4 h-4" />}
-            </Button>
-            <div className="h-8 w-px bg-slate-200" />
-            <div className="text-right rtl:text-right ltr:text-left">
-              <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                <span>{lang === 'ar' ? 'أوامر الإنتاج' : 'Work Orders'}</span>
-                <ChevronRight className={`w-3 h-3 ${dir === 'rtl' ? 'rotate-180' : ''}`} />
-                <span className="text-emerald-600 tabular-nums">{order.orderNumber}</span>
-              </div>
-              <h1 className="text-lg font-black text-slate-900 leading-tight">{order.title}</h1>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-             <Button onClick={handleOpenEdit} variant="outline" className="h-9 px-4 font-black gap-2 border-slate-200 text-slate-600 text-[11px] rounded-lg"><Edit2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'تعديل الأمر' : 'Edit Order'}</Button>
-             <Button onClick={() => router.push(`/production/vouchers/issue?orderId=${order.id}`)} className="h-9 px-5 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 border-none text-[11px]"><Plus className="w-3.5 h-3.5" /> {lang === 'ar' ? 'عملية جديدة' : 'New Op'}</Button>
-          </div>
-        </div>
-      </div>
+      {/* UNIFIED NAVIGATION & TAB BAR */}
+      <div className="flex-none bg-slate-900 z-30 shadow-2xl border-b border-white/10">
+        <div className="flex items-center h-14 gap-0 px-2">
+          {/* Back Button */}
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => router.back()} 
+            className="h-11 w-11 shrink-0 text-white/30 hover:text-white hover:bg-white/5 transition-all rounded-xl mx-1"
+          >
+            {dir === 'rtl' ? <ArrowRight className="w-5 h-5" /> : <ArrowLeft className="w-5 h-5" />}
+          </Button>
 
-      {/* STAGE SELECTOR TABS */}
-      <div className="flex-none bg-slate-900 z-20 shadow-lg">
-        <div className="flex items-center h-12 gap-1 overflow-x-auto no-scrollbar scroll-smooth px-4">
-          <button onClick={() => setActiveTab('info')} className={cn("flex items-center gap-2 px-5 h-full transition-all font-black text-[10px] uppercase tracking-wider shrink-0", activeTab === 'info' ? "bg-emerald-600 text-white shadow-[inset_0_-3px_0_white]" : "text-white/40 hover:text-white/70")}><Info className="w-3.5 h-3.5" />{lang === 'ar' ? 'معلومات الدفعة' : 'Batch Info'}</button>
-          <div className="h-4 w-px bg-white/10 shrink-0" />
-          
-          {departments?.map((dept, idx) => (
-            <button key={dept.id} onClick={() => setActiveTab(dept.id)} className={cn("flex items-center gap-2 px-5 h-full transition-all text-[10px] font-black uppercase tracking-wider shrink-0", activeTab === dept.id ? "bg-emerald-600 text-white shadow-[inset_0_-3px_0_white]" : "text-white/40 hover:text-white/70")}>
-              <span className={cn("w-4 h-4 rounded flex items-center justify-center text-[8px] font-black border", activeTab === dept.id ? "bg-emerald-500 border-white/20" : "bg-white/5 border-white/10")}>{idx + 1}</span>
-              <span>{dept.nameAr}</span>
+          <div className="h-6 w-px bg-white/10 shrink-0 mx-2" />
+
+          {/* Scrollable Tabs - The entire lower bar moved up here */}
+          <div className="flex-1 flex items-center h-full gap-0 overflow-x-auto no-scrollbar scroll-smooth pe-4">
+            <button 
+              onClick={() => setActiveTab('info')} 
+              className={cn(
+                "flex items-center gap-2 px-5 h-full transition-all font-black text-[10px] uppercase tracking-wider shrink-0 whitespace-nowrap", 
+                activeTab === 'info' ? "bg-emerald-600 text-white shadow-[inset_0_-3px_0_white]" : "text-white/40 hover:text-white/70"
+              )}
+            >
+              <Info className="w-3.5 h-3.5" />
+              {lang === 'ar' ? 'معلومات الدفعة' : 'Batch Info'}
             </button>
-          ))}
-          
-          <div className="h-4 w-px bg-white/10 shrink-0" />
+            
+            <div className="h-4 w-px bg-white/5 shrink-0" />
+            
+            {departments?.map((dept, idx) => (
+              <button 
+                key={dept.id} 
+                onClick={() => setActiveTab(dept.id)} 
+                className={cn(
+                  "flex items-center gap-2 px-5 h-full transition-all text-[10px] font-black uppercase tracking-wider shrink-0 whitespace-nowrap", 
+                  activeTab === dept.id ? "bg-emerald-600 text-white shadow-[inset_0_-3px_0_white]" : "text-white/40 hover:text-white/70"
+                )}
+              >
+                <span className={cn("w-4 h-4 rounded flex items-center justify-center text-[8px] font-black border", activeTab === dept.id ? "bg-emerald-500 border-white/20" : "bg-white/5 border-white/10")}>
+                  {idx + 1}
+                </span>
+                <span>{dept.nameAr}</span>
+              </button>
+            ))}
+            
+            <div className="h-4 w-px bg-white/5 shrink-0" />
 
-          {/* NEW ANALYTICAL TABS */}
-          <button onClick={() => setActiveTab('materials_summary')} className={cn("flex items-center gap-2 px-5 h-full transition-all font-black text-[10px] uppercase tracking-wider shrink-0", activeTab === 'materials_summary' ? "bg-amber-600 text-white shadow-[inset_0_-3px_0_white]" : "text-white/40 hover:text-white/70")}><Layers className="w-3.5 h-3.5" />{lang === 'ar' ? 'المواد الخام' : 'Materials'}</button>
-          <button onClick={() => setActiveTab('wages_summary')} className={cn("flex items-center gap-2 px-5 h-full transition-all font-black text-[10px] uppercase tracking-wider shrink-0", activeTab === 'wages_summary' ? "bg-purple-600 text-white shadow-[inset_0_-3px_0_white]" : "text-white/40 hover:text-white/70")}><Wallet className="w-3.5 h-3.5" />{lang === 'ar' ? 'الأجور' : 'Wages'}</button>
-          <button onClick={() => setActiveTab('costs_summary')} className={cn("flex items-center gap-2 px-5 h-full transition-all font-black text-[10px] uppercase tracking-wider shrink-0", activeTab === 'costs_summary' ? "bg-rose-600 text-white shadow-[inset_0_-3px_0_white]" : "text-white/40 hover:text-white/70")}><Receipt className="w-3.5 h-3.5" />{lang === 'ar' ? 'التكاليف' : 'Costs'}</button>
+            <button 
+              onClick={() => setActiveTab('materials_summary')} 
+              className={cn(
+                "flex items-center gap-2 px-5 h-full transition-all font-black text-[10px] uppercase tracking-wider shrink-0 whitespace-nowrap", 
+                activeTab === 'materials_summary' ? "bg-amber-600 text-white shadow-[inset_0_-3px_0_white]" : "text-white/40 hover:text-white/70"
+              )}
+            >
+              <Layers className="w-3.5 h-3.5" />
+              {lang === 'ar' ? 'المواد الخام' : 'Materials'}
+            </button>
+            
+            <button 
+              onClick={() => setActiveTab('wages_summary')} 
+              className={cn(
+                "flex items-center gap-2 px-5 h-full transition-all font-black text-[10px] uppercase tracking-wider shrink-0 whitespace-nowrap", 
+                activeTab === 'wages_summary' ? "bg-purple-600 text-white shadow-[inset_0_-3px_0_white]" : "text-white/40 hover:text-white/70"
+              )}
+            >
+              <Wallet className="w-3.5 h-3.5" />
+              {lang === 'ar' ? 'الأجور' : 'Wages'}
+            </button>
+            
+            <button 
+              onClick={() => setActiveTab('costs_summary')} 
+              className={cn(
+                "flex items-center gap-2 px-5 h-full transition-all font-black text-[10px] uppercase tracking-wider shrink-0 whitespace-nowrap", 
+                activeTab === 'costs_summary' ? "bg-rose-600 text-white shadow-[inset_0_-3px_0_white]" : "text-white/40 hover:text-white/70"
+              )}
+            >
+              <Receipt className="w-3.5 h-3.5" />
+              {lang === 'ar' ? 'التكاليف' : 'Costs'}
+            </button>
 
-          <div className="h-4 w-px bg-white/10 shrink-0" />
-          <button onClick={() => setActiveTab('summary')} className={cn("flex items-center gap-2 px-5 h-full transition-all font-black text-[10px] uppercase tracking-wider shrink-0", activeTab === 'summary' ? "bg-blue-600 text-white shadow-[inset_0_-3px_0_white]" : "text-white/40 hover:text-white/70")}><BarChart3 className="w-3.5 h-3.5" />{lang === 'ar' ? 'الملخص الإحصائي' : 'Analytics'}</button>
+            <div className="h-4 w-px bg-white/5 shrink-0" />
+            
+            <button 
+              onClick={() => setActiveTab('summary')} 
+              className={cn(
+                "flex items-center gap-2 px-5 h-full transition-all font-black text-[10px] uppercase tracking-wider shrink-0 whitespace-nowrap", 
+                activeTab === 'summary' ? "bg-blue-600 text-white shadow-[inset_0_-3px_0_white]" : "text-white/40 hover:text-white/70"
+              )}
+            >
+              <BarChart3 className="w-3.5 h-3.5" />
+              {lang === 'ar' ? 'الملخص الإحصائي' : 'Analytics'}
+            </button>
+          </div>
+
+          {/* Quick Action Icons at the end */}
+          <div className="hidden md:flex items-center gap-1 shrink-0 px-4 border-l border-white/10">
+             <Button variant="ghost" size="icon" onClick={handleOpenEdit} className="h-9 w-9 text-white/30 hover:text-emerald-400 hover:bg-white/5 rounded-lg transition-all" title={lang === 'ar' ? 'تعديل' : 'Edit'}>
+                <Edit2 className="w-4 h-4" />
+             </Button>
+             <Button variant="ghost" size="icon" onClick={() => router.push(`/production/vouchers/issue?orderId=${order.id}`)} className="h-9 w-9 text-white/30 hover:text-emerald-400 hover:bg-white/5 rounded-lg transition-all" title={lang === 'ar' ? 'سند جديد' : 'New Op'}>
+                <Plus className="w-4 h-4" />
+             </Button>
+          </div>
         </div>
       </div>
 
