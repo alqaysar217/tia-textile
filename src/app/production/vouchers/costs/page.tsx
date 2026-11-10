@@ -356,7 +356,7 @@ export default function OverheadCostsPage() {
         </div>
       </div>
 
-      {/* ADD/EDIT DIALOG (COMPACT & SCROLLABLE) */}
+      {/* ADD/EDIT DIALOG */}
       <Dialog open={isAddDialogOpen} onOpenChange={(open) => !open && resetDialog()}>
         <DialogContent className="sm:max-w-[700px] rounded-lg p-0 overflow-hidden border-none shadow-2xl">
           <div className="premium-gradient p-5 text-white">
@@ -370,11 +370,36 @@ export default function OverheadCostsPage() {
           </div>
 
           <form onSubmit={handleSaveVoucher} className="bg-white flex flex-col max-h-[85vh]">
-            <ScrollArea className="flex-1 p-6">
+            <ScrollArea className="flex-1 p-6" dir={dir}>
               <div className="space-y-6">
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
-                  <div className="space-y-4">
+                <div className="flex flex-col md:flex-row gap-8 items-start">
+                  {/* COMPACT SQUARE IMAGE UPLOAD */}
+                  <div className="w-full md:w-32 space-y-2 flex flex-col items-center">
+                    <Label className="text-[10px] font-black uppercase text-slate-400 block text-center">{lang === 'ar' ? 'صورة السند' : 'ATTACHMENT'}</Label>
+                    <div 
+                      onClick={() => !isCompressing && fileInputRef.current?.click()}
+                      className="w-32 h-32 rounded-2xl border-4 border-slate-100 shadow-md bg-slate-50 flex items-center justify-center cursor-pointer group hover:bg-slate-100 transition-all overflow-hidden relative"
+                    >
+                      {formData.invoicePhotoUrl ? (
+                        <img src={formData.invoicePhotoUrl} className="w-full h-full object-cover" alt="invoice" />
+                      ) : (
+                        <div className="flex flex-col items-center gap-1 text-slate-300 group-hover:text-emerald-500">
+                          {isCompressing ? <Loader2 className="w-6 h-6 animate-spin" /> : <UploadCloud className="w-7 h-7" />}
+                          <span className="text-[9px] font-black uppercase tracking-widest">{lang === 'ar' ? 'رفع' : 'Upload'}</span>
+                        </div>
+                      )}
+                      {formData.invoicePhotoUrl && (
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                           <RefreshCcw className="w-5 h-5 text-white" />
+                        </div>
+                      )}
+                    </div>
+                    <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
+                  </div>
+
+                  {/* FORM FIELDS */}
+                  <div className="flex-1 space-y-4">
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1.5 text-right">
                         <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-1.5"><Calendar className="w-3 h-3 text-emerald-600" /> DATE</Label>
@@ -403,29 +428,6 @@ export default function OverheadCostsPage() {
                          {allWorkers?.filter(w => w.status !== 'deleted').map(w => <option key={w.id} value={w.id}>{w.fullName} ({w.isSupervisor ? 'مشرف' : 'موظف'})</option>)}
                       </select>
                     </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    <Label className="text-[10px] font-black uppercase text-slate-400 block text-center">ATTACHMENT / صورة السند</Label>
-                    <div 
-                      onClick={() => !isCompressing && fileInputRef.current?.click()}
-                      className="w-full aspect-video md:aspect-[4/3] rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 flex items-center justify-center cursor-pointer group hover:bg-slate-100 transition-all overflow-hidden relative"
-                    >
-                      {formData.invoicePhotoUrl ? (
-                        <img src={formData.invoicePhotoUrl} className="w-full h-full object-cover" alt="invoice" />
-                      ) : (
-                        <div className="flex flex-col items-center gap-1 text-slate-300 group-hover:text-emerald-500">
-                          {isCompressing ? <Loader2 className="w-6 h-6 animate-spin" /> : <UploadCloud className="w-7 h-7" />}
-                          <span className="text-[9px] font-black uppercase tracking-widest">{lang === 'ar' ? 'انقر للرفع' : 'Upload'}</span>
-                        </div>
-                      )}
-                      {formData.invoicePhotoUrl && (
-                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                           <RefreshCcw className="w-5 h-5 text-white" />
-                        </div>
-                      )}
-                    </div>
-                    <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
                   </div>
                 </div>
 
