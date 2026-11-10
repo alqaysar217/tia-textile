@@ -137,12 +137,14 @@ export default function MaterialIssuePage() {
   const workersQuery = useMemo(() => !db ? null : collection(db, 'workers'), [db]);
   const deptsQuery = useMemo(() => !db ? null : collection(db, 'departments'), [db]);
   const materialsQuery = useMemo(() => !db ? null : collection(db, 'materials'), [db]);
+  const productsQuery = useMemo(() => !db ? null : collection(db, 'products'), [db]);
   const vouchersQuery = useMemo(() => !db ? null : query(collection(db, 'vouchers'), where('type', '==', 'material_issue')), [db]);
 
   const { data: allOrders } = useCollection<any>(ordersQuery);
   const { data: allWorkers } = useCollection<any>(workersQuery);
   const { data: allDepartments } = useCollection<any>(deptsQuery);
   const { data: materials } = useCollection<any>(materialsQuery);
+  const { data: allProducts } = useCollection<any>(productsQuery);
   const { data: vouchers, loading: vouchersLoading } = useCollection<any>(vouchersQuery);
 
   const activeOrders = useMemo(() => (allOrders || []).filter(o => o.status === 'active'), [allOrders]);
