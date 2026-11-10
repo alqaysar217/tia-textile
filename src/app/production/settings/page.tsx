@@ -13,7 +13,8 @@ import {
   Building2,
   Lock,
   Bell,
-  Wallet
+  Wallet,
+  Check
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from '@/components/LanguageProvider';
@@ -23,6 +24,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
 import { Card } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { cn } from '@/lib/utils';
 
 export default function GeneralSettingsPage() {
   const { lang, dir } = useTranslation();
