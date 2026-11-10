@@ -35,7 +35,9 @@ import {
   AlertTriangle,
   FileOutput,
   ArrowUpRight,
-  Users2
+  Users2,
+  Tag,
+  Clock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -79,12 +81,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-} from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toPng } from 'html-to-image';
@@ -93,7 +89,7 @@ export default function MaterialReturnPage() {
   const { lang, dir } = useTranslation();
   const db = useFirestore();
 
-  const [activeTab, setActiveTab] = useState('pending');
+  const [activeTab, setActiveTab] = useState<'pending' | 'verified'>('pending');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingVoucherId, setEditingVoucherId] = useState<string | null>(null);
   const [deletingVoucher, setDeletingVoucher] = useState<any | null>(null);
@@ -102,6 +98,10 @@ export default function MaterialReturnPage() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [search, setSearch] = useState('');
   
+  // Sorting State
+  const [sortBy, setSortBy] = useState<'date' | 'voucherNumber'>('date');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
   // Form State
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -112,11 +112,15 @@ export default function MaterialReturnPage() {
     items: [] as any[]
   });
 
+  // Current Item Selection State
+  const [currentItem, setCurrentItem] = useState({ id: '', qty: 0 });
+
   // Fetch Data
   const ordersQuery = useMemo(() => !db ? null : collection(db, 'productionOrders'), [db]);
   const workersQuery = useMemo(() => !db ? null : collection(db, 'workers'), [db]);
   const materialsQuery = useMemo(() => !db ? null : collection(db, 'materials'), [db]);
   const deptsQuery = useMemo(() => !db ? null : collection(db, 'departments'), [db]);
+  const productsQuery = useMemo(() => !db ? null : collection(db, 'products'), [db]);
   const receiptsQuery = useMemo(() => !db ? null : query(collection(db, 'vouchers'), where('type', '==', 'production_receipt')), [db]);
   const returnVouchersQuery = useMemo(() => !db ? null : query(collection(db, 'vouchers'), where('type', '==', 'material_return')), [db]);
 
@@ -124,6 +128,7 @@ export default function MaterialReturnPage() {
   const { data: allWorkers } = useCollection<any>(workersQuery);
   const { data: allMaterials } = useCollection<any>(materialsQuery);
   const { data: allDepartments } = useCollection<any>(deptsQuery);
+  const { data: allProducts } = useCollection<any>(productsQuery);
   const { data: allReceipts, loading: receiptsLoading } = useCollection<any>(receiptsQuery);
   const { data: returnVouchers, loading: returnsLoading } = useCollection<any>(returnVouchersQuery);
 
@@ -131,13 +136,27 @@ export default function MaterialReturnPage() {
 
   const pendingReturns = useMemo(() => {
     if (!allReceipts) return [];
-    return allReceipts.filter(r => 
+    let list = allReceipts.filter(r => 
       r.status !== 'deleted' && 
       r.returnedItems && 
       r.returnedItems.length > 0 && 
       r.returnStatus !== 'verified'
     );
-  }, [allReceipts]);
+
+    if (search) {
+      const s = search.toLowerCase();
+      list = list.filter(r => 
+        r.voucherNumber?.toLowerCase().includes(s) || 
+        allWorkers?.find(w => w.id === r.workerId)?.fullName?.toLowerCase().includes(s)
+      );
+    }
+
+    return list.sort((a, b) => {
+      const timeA = new Date(a.date).getTime();
+      const timeB = new Date(b.date).getTime();
+      return sortOrder === 'asc' ? timeA - timeB : timeB - timeA;
+    });
+  }, [allReceipts, allWorkers, search, sortOrder]);
 
   const verifiedReturns = useMemo(() => {
     if (!returnVouchers) return [];
@@ -149,19 +168,30 @@ export default function MaterialReturnPage() {
         allWorkers?.find(w => w.id === v.workerId)?.fullName?.toLowerCase().includes(s)
       );
     }
-    return list.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [returnVouchers, allWorkers, search]);
+    return list.sort((a, b) => {
+      const timeA = new Date(a.date).getTime();
+      const timeB = new Date(b.date).getTime();
+      return sortOrder === 'asc' ? timeA - timeB : timeB - timeA;
+    });
+  }, [returnVouchers, allWorkers, search, sortOrder]);
 
   const workersWithPending = useMemo(() => {
-    if (!formData.orderId || !pendingReturns) return [];
-    const workerIds = pendingReturns.filter(r => r.orderId === formData.orderId).map(r => r.workerId);
+    if (!formData.orderId || !allReceipts) return [];
+    const workerIds = allReceipts
+      .filter(r => r.orderId === formData.orderId && r.returnedItems?.length > 0 && r.returnStatus !== 'verified')
+      .map(r => r.workerId);
     return allWorkers?.filter(w => workerIds.includes(w.id)) || [];
-  }, [formData.orderId, pendingReturns, allWorkers]);
+  }, [formData.orderId, allReceipts, allWorkers]);
 
   const availableReceipts = useMemo(() => {
-    if (!formData.orderId || !formData.workerId || !pendingReturns) return [];
-    return pendingReturns.filter(r => r.orderId === formData.orderId && r.workerId === formData.workerId);
-  }, [formData.orderId, formData.workerId, pendingReturns]);
+    if (!formData.orderId || !formData.workerId || !allReceipts) return [];
+    return allReceipts.filter(r => 
+      r.orderId === formData.orderId && 
+      r.workerId === formData.workerId && 
+      r.returnedItems?.length > 0 && 
+      r.returnStatus !== 'verified'
+    );
+  }, [formData.orderId, formData.workerId, allReceipts]);
 
   const handleQuickVerify = (receipt: any) => {
     setFormData({
@@ -262,10 +292,15 @@ export default function MaterialReturnPage() {
     setFormData({ date: new Date().toISOString().split('T')[0], orderId: '', workerId: '', linkedReceiptId: '', notes: '', items: [] });
   };
 
+  const toggleSort = (key: typeof sortBy) => {
+    if (sortBy === key) setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    else { setSortBy(key); setSortOrder('desc'); }
+  };
+
   return (
     <div className="flex flex-col h-full bg-[#f8fafc] overflow-hidden" dir={dir}>
       
-      {/* ERP HEADER */}
+      {/* ERP HUB - HEADER */}
       <div className="flex-none bg-white border-b border-slate-200 z-30 px-6 py-4 shadow-sm">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div className="flex items-center gap-4">
@@ -279,144 +314,174 @@ export default function MaterialReturnPage() {
               <h1 className="text-xl font-black text-slate-900 leading-tight">{lang === 'ar' ? 'تأكيد دخول المواد المرتجعة' : 'Warehouse Return Audit'}</h1>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-             <div className="bg-emerald-50 px-4 py-2 rounded-xl border border-emerald-100 hidden md:block">
-                <p className="text-[9px] font-black text-emerald-600 uppercase tracking-tighter">{lang === 'ar' ? 'بانتظار التوثيق' : 'PENDING'}</p>
-                <p className="text-lg font-black text-emerald-700 tabular-nums">{pendingReturns.length}</p>
-             </div>
-             <Button onClick={() => setIsAddDialogOpen(true)} className="h-10 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 transition-all border-none">
-                <Plus className="w-4 h-4" /> {lang === 'ar' ? 'سند يدوي' : 'Manual Entry'}
-             </Button>
+          <Button onClick={() => setIsAddDialogOpen(true)} className="h-10 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 transition-all border-none">
+            <Plus className="w-4 h-4" /> {lang === 'ar' ? 'سند يدوي' : 'Manual Entry'}
+          </Button>
+        </div>
+
+        {/* SMART TOOLBAR: COMBINED TABS, SEARCH, AND FILTERS */}
+        <div className="mt-4 flex flex-col md:flex-row items-center gap-3 bg-slate-50 p-1.5 rounded-xl border border-slate-200">
+          {/* Compact Tab Switcher */}
+          <div className="flex bg-white p-1 rounded-lg border border-slate-200 shadow-sm shrink-0">
+            <button 
+              onClick={() => setActiveTab('pending')}
+              className={cn(
+                "px-4 py-1.5 rounded-md text-[10px] font-black uppercase transition-all flex items-center gap-2",
+                activeTab === 'pending' ? "bg-amber-600 text-white shadow-md" : "text-slate-400 hover:bg-slate-50"
+              )}
+            >
+              <Clock className="w-3 h-3" />
+              {lang === 'ar' ? 'بانتظار التوثيق' : 'Pending'}
+              {pendingReturns.length > 0 && <span className="bg-white/20 px-1.5 rounded-full text-[8px]">{pendingReturns.length}</span>}
+            </button>
+            <button 
+              onClick={() => setActiveTab('verified')}
+              className={cn(
+                "px-4 py-1.5 rounded-md text-[10px] font-black uppercase transition-all flex items-center gap-2",
+                activeTab === 'verified' ? "bg-emerald-600 text-white shadow-md" : "text-slate-400 hover:bg-slate-50"
+              )}
+            >
+              <CheckCircle2 className="w-3 h-3" />
+              {lang === 'ar' ? 'الأرشيف الموثق' : 'Verified'}
+            </button>
+          </div>
+
+          <div className="relative flex-1 w-full">
+            <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300`} />
+            <Input 
+              value={search} 
+              onChange={(e) => setSearch(e.target.value)} 
+              placeholder={lang === 'ar' ? 'بحث برقم السند أو اسم الموظف...' : 'Quick search...'} 
+              className={cn("h-10 bg-white border-slate-200 text-xs font-bold", dir === 'rtl' ? "pr-10" : "pl-10")} 
+            />
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="h-10 px-3 rounded-lg text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent">
+                  <Filter className="w-4 h-4" /> {lang === 'ar' ? 'تصفية' : 'Filter'}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="w-56 rounded-xl shadow-xl">
+                <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400">ORDER BY</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => toggleSort('date')} className="flex justify-between items-center cursor-pointer">
+                  {lang === 'ar' ? 'التاريخ' : 'Date'}
+                  {sortBy === 'date' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5" /> : <SortDesc className="w-3.5 h-3.5" />)}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => toggleSort('voucherNumber')} className="flex justify-between items-center cursor-pointer">
+                  {lang === 'ar' ? 'رقم السند' : 'Reference'}
+                  {sortBy === 'voucherNumber' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5" /> : <SortDesc className="w-3.5 h-3.5" />)}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button onClick={() => verifiedReturns.length > 0 && verifiedReturns[0]} variant="ghost" className="h-10 px-3 rounded-lg text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent">
+              <FileDown className="w-4 h-4 text-emerald-600" /> {lang === 'ar' ? 'تصدير' : 'Export'}
+            </Button>
           </div>
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 flex flex-col p-4 md:p-6 no-scrollbar">
-        <Tabs value={activeTab} onValueChange={setActiveTab} dir={dir} className="w-full h-full flex flex-col">
-          <TabsList className="grid grid-cols-2 w-[400px] mb-6 bg-white border border-slate-200 shadow-sm h-11">
-            <TabsTrigger value="pending" className="font-black text-xs gap-2">
-              <AlertTriangle className="w-3.5 h-3.5 text-amber-500" /> 
-              {lang === 'ar' ? 'بانتظار التوثيق' : 'Pending Verification'}
-            </TabsTrigger>
-            <TabsTrigger value="verified" className="font-black text-xs gap-2">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-              {lang === 'ar' ? 'الأرشيف الموثق' : 'Verified Archive'}
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="pending" className="flex-1 min-h-0 focus-visible:ring-0 outline-none">
-             <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden h-full flex flex-col">
-                <div className="p-4 bg-amber-50 border-b border-amber-100 flex items-center gap-3">
-                   <Info className="w-4 h-4 text-amber-600 shrink-0" />
-                   <p className="text-[11px] font-bold text-amber-800">
-                     {lang === 'ar' ? 'تظهر هنا السندات التي تم فيها إرجاع مواد عند استلام المنتج، وتحتاج إلى تأكيد أمين المستودع لدخول الرصيد.' : 'Receipts with returned materials waiting for warehouse confirmation.'}
-                   </p>
-                </div>
-                <div className="flex-1 overflow-auto">
-                   <Table className="text-right border-separate border-spacing-0">
-                      <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
-                        <TableRow>
-                          <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'سند الاستلام' : 'RECEIPT #'}</TableHead>
-                          <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'الموظف' : 'WORKER'}</TableHead>
-                          <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'ملخص المواد' : 'RETURN SUMMARY'}</TableHead>
-                          <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center">{lang === 'ar' ? 'الأصناف' : 'ITEMS'}</TableHead>
-                          <TableHead className="w-32 px-6 py-4"></TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {pendingReturns.length === 0 ? (
-                          <TableRow><TableCell colSpan={5} className="text-center py-20 font-bold text-slate-300 italic">{lang === 'ar' ? 'لا توجد مرتجعات معلقة حالياً' : 'No pending returns'}</TableCell></TableRow>
-                        ) : pendingReturns.map(r => (
-                          <TableRow key={r.id} className="hover:bg-slate-50/50 border-b border-slate-100 transition-colors">
-                            <TableCell className={cn("px-6 py-3 font-black text-slate-900 text-xs tabular-nums", dir === 'rtl' ? "text-right" : "text-left")}>{r.voucherNumber}</TableCell>
-                            <TableCell className={cn("px-6 py-3 font-bold text-slate-700 text-xs", dir === 'rtl' ? "text-right" : "text-left")}>{allWorkers?.find(w => w.id === r.workerId)?.fullName || '---'}</TableCell>
-                            <TableCell className={cn("px-6 py-3", dir === 'rtl' ? "text-right" : "text-left")}>
-                               <div className="flex items-center gap-2">
-                                  <div className="p-1.5 bg-slate-100 rounded text-slate-500"><Box className="w-3.5 h-3.5" /></div>
-                                  <span className="text-[10px] font-bold text-slate-500 italic truncate max-w-[200px]">
-                                    ({r.returnedItems.slice(0, 2).map((it: any) => it.nameAr).join(', ')}{r.returnedItems.length > 2 ? '...' : ''})
-                                  </span>
-                               </div>
-                            </TableCell>
-                            <TableCell className="px-6 py-3 text-center">
-                               <Badge variant="outline" className="font-black tabular-nums bg-amber-50 text-amber-700 border-amber-100">
-                                  {r.returnedItems.length} {lang === 'ar' ? 'أصناف' : 'Items'}
-                                </Badge>
-                            </TableCell>
-                            <TableCell className="px-6 py-3 text-center">
-                               <Button onClick={() => handleQuickVerify(r)} variant="outline" className="h-8 px-4 rounded-lg text-[10px] font-black uppercase text-emerald-600 border-emerald-100 hover:bg-emerald-600 hover:text-white transition-all shadow-sm gap-2">
-                                  <CheckCircle2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'توثيق المرتجع' : 'Verify'}
-                               </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                   </Table>
-                </div>
-             </div>
-          </TabsContent>
-
-          <TabsContent value="verified" className="flex-1 min-h-0 focus-visible:ring-0 outline-none">
-             <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden h-full flex flex-col">
-                <div className="p-4 border-b border-slate-100 flex gap-3">
-                   <div className="relative flex-1">
-                      <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400`} />
-                      <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={lang === 'ar' ? 'بحث في الأرشيف الموثق...' : 'Search verified archive...'} className={cn("h-10 bg-slate-50 border-none text-xs font-bold", dir === 'rtl' ? "pr-10" : "pl-10")} />
-                   </div>
-                </div>
-                <div className="flex-1 overflow-auto">
-                   <Table className="text-right border-separate border-spacing-0">
-                      <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
-                        <TableRow>
-                          <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'رقم السند' : 'REF #'}</TableHead>
-                          <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'التاريخ' : 'DATE'}</TableHead>
-                          <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'الموظف' : 'WORKER'}</TableHead>
-                          <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center">{lang === 'ar' ? 'الأصناف' : 'ITEMS'}</TableHead>
-                          <TableHead className="w-24 px-6 py-4 text-center">ACTIONS</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {verifiedReturns.length === 0 ? (
-                          <TableRow><TableCell colSpan={5} className="text-center py-20 font-bold text-slate-300 italic">{lang === 'ar' ? 'الأرشيف فارغ' : 'Archive empty'}</TableCell></TableRow>
-                        ) : verifiedReturns.map(v => (
-                          <TableRow key={v.id} className="hover:bg-slate-50/50 border-b border-slate-100 transition-colors">
-                            <TableCell className={cn("px-6 py-3 font-black text-slate-900 text-xs tabular-nums", dir === 'rtl' ? "text-right" : "text-left")}>{v.voucherNumber}</TableCell>
-                            <TableCell className={cn("px-6 py-3 font-bold text-slate-500 text-xs tabular-nums", dir === 'rtl' ? "text-right" : "text-left")}>{v.date}</TableCell>
-                            <TableCell className={cn("px-6 py-3 font-bold text-slate-700 text-xs", dir === 'rtl' ? "text-right" : "text-left")}>{allWorkers?.find(w => w.id === v.workerId)?.fullName || '---'}</TableCell>
-                            <TableCell className="px-6 py-3 text-center">
-                              <Badge variant="outline" className="font-black tabular-nums bg-emerald-50 text-emerald-700 border-emerald-100">
-                                {v.items?.length || 0}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="px-6 py-3 text-center">
-                               <div className="flex items-center justify-center gap-1">
-                                  <Button variant="ghost" size="icon" onClick={() => setPrintingVoucher(v)} className="h-8 w-8 text-slate-400 hover:text-emerald-600 transition-colors"><Eye className="w-4 h-4" /></Button>
-                                  <DropdownMenu>
-                                    <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-slate-100 rounded-lg"><MoreVertical className="w-4 h-4 text-slate-400" /></Button></DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end" className="w-44 rounded-xl shadow-xl">
-                                      <DropdownMenuItem onClick={() => { setEditingVoucherId(v.id); setFormData({ ...v }); setIsAddDialogOpen(true); }} className="gap-2 font-bold py-2 cursor-pointer text-xs"><Edit2 className="w-3.5 h-3.5 text-emerald-600" /> تعديل</DropdownMenuItem>
-                                      <DropdownMenuSeparator />
-                                      <DropdownMenuItem onClick={() => setDeletingVoucher(v)} className="gap-2 font-bold py-2 text-rose-600 cursor-pointer text-xs"><Trash2 className="w-3.5 h-3.5" /> حذف</DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                  </DropdownMenu>
-                               </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                   </Table>
-                </div>
-             </div>
-          </TabsContent>
-        </Tabs>
+      {/* DATA CONTENT AREA */}
+      <div className="flex-1 min-h-0 p-4 md:p-6 no-scrollbar overflow-auto">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-full">
+          {activeTab === 'pending' ? (
+            <>
+              <div className="p-3 bg-amber-50/50 border-b border-amber-100 flex items-center gap-3">
+                <Info className="w-4 h-4 text-amber-600" />
+                <p className="text-[10px] font-bold text-amber-800">
+                  {lang === 'ar' ? 'يتم سحب هذه السندات تلقائياً من واقع سندات الاستلام الميدانية التي تحتوي على مرتجع.' : 'These records are auto-fetched from field receipts containing returns.'}
+                </p>
+              </div>
+              <div className="flex-1 overflow-auto">
+                <Table className="text-right">
+                  <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
+                    <TableRow>
+                      <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'سند الاستلام' : 'RECEIPT #'}</TableHead>
+                      <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'الموظف' : 'WORKER'}</TableHead>
+                      <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'ملخص المرتجع' : 'RETURN LOG'}</TableHead>
+                      <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center">{lang === 'ar' ? 'الأصناف' : 'ITEMS'}</TableHead>
+                      <TableHead className="w-32 px-6 py-4"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pendingReturns.length === 0 ? (
+                      <TableRow><TableCell colSpan={5} className="text-center py-20 font-bold text-slate-300 italic">{lang === 'ar' ? 'لا توجد مرتجعات معلقة' : 'No pending returns'}</TableCell></TableRow>
+                    ) : pendingReturns.map(r => (
+                      <TableRow key={r.id} className="hover:bg-slate-50/50 border-b border-slate-100 transition-colors group">
+                        <TableCell className={cn("px-6 py-3 font-black text-slate-900 text-xs tabular-nums", dir === 'rtl' ? "text-right" : "text-left")}>{r.voucherNumber}</TableCell>
+                        <TableCell className={cn("px-6 py-3 font-bold text-slate-700 text-xs", dir === 'rtl' ? "text-right" : "text-left")}>{allWorkers?.find(w => w.id === r.workerId)?.fullName || '---'}</TableCell>
+                        <TableCell className={cn("px-6 py-3", dir === 'rtl' ? "text-right" : "text-left")}>
+                           <span className="text-[10px] font-bold text-slate-400 italic truncate max-w-[200px] block">
+                             {r.returnedItems.slice(0, 2).map((it: any) => it.nameAr).join(', ')}{r.returnedItems.length > 2 ? '...' : ''}
+                           </span>
+                        </TableCell>
+                        <TableCell className="px-6 py-3 text-center">
+                           <Badge variant="outline" className="font-black tabular-nums bg-amber-50 text-amber-700 border-amber-100">{r.returnedItems.length}</Badge>
+                        </TableCell>
+                        <TableCell className="px-6 py-3 text-center">
+                           <Button onClick={() => handleQuickVerify(r)} variant="outline" className="h-8 px-4 rounded-lg text-[10px] font-black uppercase text-emerald-600 border-emerald-100 hover:bg-emerald-600 hover:text-white transition-all shadow-sm gap-2">
+                              <CheckCircle2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'توثيق' : 'Verify'}
+                           </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 overflow-auto">
+              <Table className="text-right">
+                <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
+                  <TableRow>
+                    <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'رقم السند' : 'MRV #'}</TableHead>
+                    <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'التاريخ' : 'DATE'}</TableHead>
+                    <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'الموظف' : 'WORKER'}</TableHead>
+                    <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center">{lang === 'ar' ? 'الأصناف' : 'ITEMS'}</TableHead>
+                    <TableHead className="w-24 px-6 py-4 text-center">ACTIONS</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {verifiedReturns.length === 0 ? (
+                    <TableRow><TableCell colSpan={5} className="text-center py-20 font-bold text-slate-300 italic">{lang === 'ar' ? 'الأرشيف فارغ' : 'Archive empty'}</TableCell></TableRow>
+                  ) : verifiedReturns.map(v => (
+                    <TableRow key={v.id} className="hover:bg-slate-50/50 border-b border-slate-100 transition-colors">
+                      <TableCell className={cn("px-6 py-3 font-black text-slate-900 text-xs tabular-nums", dir === 'rtl' ? "text-right" : "text-left")}>{v.voucherNumber}</TableCell>
+                      <TableCell className={cn("px-6 py-3 font-bold text-slate-500 text-xs tabular-nums", dir === 'rtl' ? "text-right" : "text-left")}>{v.date}</TableCell>
+                      <TableCell className={cn("px-6 py-3 font-bold text-slate-700 text-xs", dir === 'rtl' ? "text-right" : "text-left")}>{allWorkers?.find(w => w.id === v.workerId)?.fullName || '---'}</TableCell>
+                      <TableCell className="px-6 py-3 text-center">
+                        <Badge variant="outline" className="font-black tabular-nums bg-emerald-50 text-emerald-700 border-emerald-100">{v.items?.length || 0}</Badge>
+                      </TableCell>
+                      <TableCell className="px-6 py-3 text-center">
+                         <div className="flex items-center justify-center gap-1">
+                            <Button variant="ghost" size="icon" onClick={() => setPrintingVoucher(v)} className="h-8 w-8 text-slate-400 hover:text-emerald-600 transition-all rounded-lg"><Eye className="w-4 h-4" /></Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-slate-100 rounded-lg"><MoreVertical className="w-4 h-4 text-slate-400" /></Button></DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-44 rounded-xl shadow-xl">
+                                <DropdownMenuItem onClick={() => { setEditingVoucherId(v.id); setFormData({ ...v }); setIsAddDialogOpen(true); }} className="gap-2 font-bold py-2 cursor-pointer text-xs"><Edit2 className="w-3.5 h-3.5 text-emerald-600" /> تعديل</DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => setDeletingVoucher(v)} className="gap-2 font-bold py-2 text-rose-600 cursor-pointer text-xs"><Trash2 className="w-3.5 h-3.5" /> حذف</DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                         </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </div>
       </div>
 
+      {/* SMART WIZARD DIALOG */}
       <Dialog open={isAddDialogOpen} onOpenChange={(open) => !open && resetDialog()}>
         <DialogContent className="sm:max-w-[850px] rounded-lg p-0 overflow-hidden border-none shadow-2xl">
           <div className="premium-gradient p-6 text-white">
             <DialogHeader className="text-right rtl:text-right ltr:text-left">
               <DialogTitle className="text-xl font-black flex items-center gap-3 text-white"><ShieldCheck className="w-5 h-5 text-emerald-300" /> {lang === 'ar' ? 'توثيق توريد مرتجع مخزني' : 'Verified Material Inward'}</DialogTitle>
-              <DialogDescription className="text-emerald-100/70 font-bold text-[10px] uppercase tracking-widest mt-1">Official warehouse confirmation of returned materials</DialogDescription>
+              <p className="text-emerald-100/70 font-bold text-[10px] uppercase tracking-widest mt-1">Official warehouse confirmation of returned materials</p>
             </DialogHeader>
           </div>
 
@@ -430,7 +495,7 @@ export default function MaterialReturnPage() {
                 </select>
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2"><UserCheck className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'الموظف' : 'WORKER'}</Label>
+                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2"><UserCheck className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'الموظف المسلم' : 'WORKER'}</Label>
                 <select value={formData.workerId} onChange={(e) => setFormData({...formData, workerId: e.target.value, linkedReceiptId: '', items: []})} disabled={!formData.orderId} className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none" required>
                   <option value="">-- اختر الموظف --</option>
                   {workersWithPending.map(w => <option key={w.id} value={w.id}>{w.fullName}</option>)}
@@ -444,7 +509,7 @@ export default function MaterialReturnPage() {
 
             {availableReceipts.length > 0 && (
               <div className="p-4 bg-amber-50/50 border border-amber-100 rounded-xl space-y-3">
-                 <h3 className="text-[10px] font-black text-amber-700 uppercase tracking-widest flex items-center gap-2"><FileOutput className="w-3.5 h-3.5" /> {lang === 'ar' ? 'اختر سند الاستلام الذي سيتم توثيق مرتجعه' : 'LINK TO PRODUCTION RECEIPT'}</h3>
+                 <h3 className="text-[10px] font-black text-amber-700 uppercase tracking-widest flex items-center gap-2"><FileOutput className="w-3.5 h-3.5" /> {lang === 'ar' ? 'اختر سند الاستلام المرتبط' : 'LINK TO PRODUCTION RECEIPT'}</h3>
                  <div className="flex flex-wrap gap-2">
                     {availableReceipts.map(r => (
                       <button key={r.id} type="button" onClick={() => handleReceiptSelection(r.id)} className={cn("px-4 py-2 rounded-lg border text-[10px] font-black transition-all flex items-center gap-2", formData.linkedReceiptId === r.id ? "bg-emerald-600 text-white border-emerald-700 shadow-md scale-105" : "bg-white text-slate-600 border-slate-200 hover:border-amber-300")}>
@@ -458,7 +523,7 @@ export default function MaterialReturnPage() {
 
             {formData.items.length > 0 && (
               <div className="space-y-3 animate-in fade-in">
-                <h3 className="text-[10px] font-black text-emerald-700 uppercase tracking-widest flex items-center gap-2"><Box className="w-3.5 h-3.5" /> {lang === 'ar' ? 'الأصناف المرتجعة المكتشفة في السند' : 'RETURNED ITEMS FROM RECEIPT'}</h3>
+                <h3 className="text-[10px] font-black text-emerald-700 uppercase tracking-widest flex items-center gap-2"><Box className="w-3.5 h-3.5" /> {lang === 'ar' ? 'الأصناف المرتجعة المكتشفة آلياً' : 'AUTO-DETECTED ITEMS'}</h3>
                 <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm bg-white">
                    <Table className="text-right">
                       <TableHeader className="bg-slate-50">
@@ -482,7 +547,7 @@ export default function MaterialReturnPage() {
 
             <div className="space-y-1.5">
               <Label className="text-[10px] font-black uppercase text-slate-400">ملاحظات توثيق المستودع</Label>
-              <Input value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} className="h-12 bg-slate-50 text-xs font-bold" placeholder={lang === 'ar' ? 'حالة المواد عند الاستلام، جودة الخيوط المتبقية...' : 'Condition upon return...'} />
+              <Input value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} className="h-12 bg-slate-50 text-xs font-bold" placeholder={lang === 'ar' ? 'حالة المواد عند الاستلام...' : 'Condition upon return...'} />
             </div>
 
             <div className="flex gap-3 pt-4 border-t border-slate-100">
@@ -496,21 +561,17 @@ export default function MaterialReturnPage() {
         </DialogContent>
       </Dialog>
 
-      {/* PRINT/IMAGE PREVIEW DIALOG */}
+      {/* PRINT/IMAGE PREVIEW DIALOG (Unified Design) */}
       <Dialog open={!!printingVoucher} onOpenChange={(open) => !open && setPrintingVoucher(null)}>
         <DialogContent className="sm:max-w-[850px] p-0 overflow-hidden border-none bg-white">
           <DialogHeader className="sr-only">
-            <DialogTitle>
-              {lang === 'ar' ? 'معاينة طباعة سند توريد المرتجع' : 'Material Return Voucher Print Preview'}
-            </DialogTitle>
+            <DialogTitle>{lang === 'ar' ? 'معاينة طباعة سند توريد المرتجع' : 'Material Return Voucher Preview'}</DialogTitle>
           </DialogHeader>
-          
           <ScrollArea className="max-h-[85vh]">
             <div className="p-12 bg-white relative z-0" id="printable-voucher">
               {printingVoucher && (
                 <div className="flex flex-col h-full text-slate-900 font-sans relative overflow-hidden" dir="rtl">
                   
-                  {/* WATERMARK LOGO */}
                   <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 opacity-[0.04] pointer-events-none -z-10 select-none">
                     <img src="/images/logo.png" alt="watermark" className="w-full h-full object-contain grayscale" />
                   </div>
@@ -522,13 +583,11 @@ export default function MaterialReturnPage() {
                       <p className="text-xs font-bold text-slate-500">الروضة - محافظة شبوة - اليمن</p>
                       <p className="text-[11px] font-bold text-slate-400 tabular-nums" dir="ltr">0777 263 091 | nseeg202020@gmail.com</p>
                     </div>
-
                     <div className="flex justify-center">
                       <div className="w-24 h-24 bg-white border-2 border-emerald-800/10 rounded-full flex items-center justify-center p-2 shadow-sm relative overflow-hidden">
                         <img src="/images/logo.png" alt="Logo" className="w-full h-full object-contain" />
                       </div>
                     </div>
-
                     <div className="text-left space-y-1" dir="ltr">
                       <h2 className="text-[14px] font-black text-emerald-900 uppercase leading-tight tracking-tight">Textile Industries Association</h2>
                       <p className="text-[11px] font-bold text-slate-500">Al-Rawdah - Shabwa - Yemen</p>
@@ -536,16 +595,13 @@ export default function MaterialReturnPage() {
                     </div>
                   </div>
 
-                  {/* VOUCHER TITLE BAR */}
                   <div className="text-center mb-10 relative z-10">
                     <div className="inline-block border-[2.5px] border-emerald-800 px-12 py-2 rounded-full bg-white shadow-sm ring-4 ring-emerald-50">
-                      <h3 className="text-xl font-black text-emerald-900 uppercase tracking-widest">
-                        {lang === 'ar' ? 'سند توريد مرتجع مواد خام' : 'Material Return Voucher'}
-                      </h3>
+                      <h3 className="text-xl font-black text-emerald-900 uppercase tracking-widest">{lang === 'ar' ? 'سند توريد مرتجع مواد خام' : 'Material Return Voucher'}</h3>
                     </div>
                   </div>
 
-                  {/* DATA GRID - 3 COLUMNS */}
+                  {/* UNIFIED 6-FIELD GRID */}
                   <div className="grid grid-cols-3 gap-x-8 gap-y-6 mb-10 bg-slate-50/50 p-8 rounded-[1.5rem] border border-slate-100 relative z-10">
                     <div className="space-y-4">
                       <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
@@ -559,7 +615,6 @@ export default function MaterialReturnPage() {
                         </span>
                       </div>
                     </div>
-
                     <div className="space-y-4">
                       <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'رقم السند' : 'Voucher No.'}</span>
@@ -570,7 +625,6 @@ export default function MaterialReturnPage() {
                         <span className="text-sm font-black text-slate-700 truncate max-w-[150px]">{allOrders?.find(o => o.id === printingVoucher.orderId)?.title}</span>
                       </div>
                     </div>
-
                     <div className="space-y-4">
                       <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'تاريخ السند' : 'Date'}</span>
@@ -585,7 +639,6 @@ export default function MaterialReturnPage() {
                     </div>
                   </div>
 
-                  {/* ITEMS TABLE */}
                   <div className="mb-12 relative z-10">
                     <Table className="text-right border-2 border-emerald-900/10">
                       <TableHeader className="bg-emerald-900/5">
@@ -607,7 +660,6 @@ export default function MaterialReturnPage() {
                     </Table>
                   </div>
 
-                  {/* SIGNATURES SECTION */}
                   <div className="grid grid-cols-3 gap-8 pt-10 border-t-2 border-slate-100 text-center relative z-10 mt-auto">
                     <div className="space-y-12">
                       <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">{lang === 'ar' ? 'أمين المستودع' : 'Store Keeper'}</p>
@@ -625,39 +677,26 @@ export default function MaterialReturnPage() {
                       <p className="text-[8px] font-bold text-slate-300 uppercase tracking-widest">Authorized Signature</p>
                     </div>
                   </div>
-
-                  {/* PRINT FOOTER */}
-                  <div className="mt-14 pt-4 text-center border-t border-slate-50 relative z-10 flex items-center justify-center gap-4">
-                    <span className="text-[8px] font-black text-slate-200 uppercase tracking-[0.4em]">Generated by TIA Production System</span>
-                    <span className="w-1.5 h-1.5 rounded-full bg-slate-100" />
-                    <span className="text-[8px] font-black text-slate-300 tabular-nums uppercase tracking-widest">{new Date().toLocaleString()}</span>
-                  </div>
                 </div>
               )}
             </div>
           </ScrollArea>
-
-          <DialogFooter className="p-6 bg-slate-50 border-t border-slate-100 print:hidden">
-            <Button 
-              onClick={handleDownloadImage} 
-              disabled={isDownloading}
-              className="premium-gradient font-black gap-2 h-12 px-10 rounded-xl shadow-xl hover:opacity-90 active:scale-95 transition-all"
-            >
+          <DialogFooter className="p-6 bg-slate-50 border-t border-slate-100">
+            <Button onClick={handleDownloadImage} disabled={isDownloading} className="premium-gradient font-black gap-2 h-12 px-10 rounded-xl shadow-xl hover:opacity-90 active:scale-95 transition-all">
               {isDownloading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
-              {lang === 'ar' ? 'تحميل السند كصورة' : 'Download as Image'}
+              {lang === 'ar' ? 'تحميل كصورة' : 'Download PNG'}
             </Button>
-            <Button variant="ghost" onClick={() => setPrintingVoucher(null)} className="font-black h-12 px-8 rounded-xl border border-slate-200 text-slate-500">
-              {lang === 'ar' ? 'إغلاق' : 'Close'}
-            </Button>
+            <Button variant="ghost" onClick={() => setPrintingVoucher(null)} className="font-black h-12 px-8 rounded-xl border border-slate-200 text-slate-500">إغلاق</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
+      {/* DELETE CONFIRMATION */}
       <AlertDialog open={!!deletingVoucher} onOpenChange={(open) => !open && setDeletingVoucher(null)}>
         <AlertDialogContent className="max-w-[400px] rounded-lg border-none shadow-2xl p-0 overflow-hidden">
           <div className="bg-slate-950 p-8 text-center">
             <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20 shadow-inner"><History className="w-8 h-8 text-red-500" /></div>
-            <AlertDialogTitle className="text-white text-xl font-black">إلغاء توثيق المرتجع</AlertDialogTitle>
+            <AlertDialogTitle className="text-white text-xl font-black">{lang === 'ar' ? 'إلغاء توثيق المرتجع' : 'Cancel Verification'}</AlertDialogTitle>
             <AlertDialogDescription className="text-slate-400 font-bold mt-2 text-xs leading-relaxed">تحذير: سيتم خصم الكميات من المخزن وإعادة حالة المرتجع إلى "معلق".</AlertDialogDescription>
           </div>
           <div className="bg-white p-6 flex gap-3">
