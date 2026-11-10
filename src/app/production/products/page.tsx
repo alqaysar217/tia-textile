@@ -1,6 +1,7 @@
+
 'use client';
 
-import React, { useState, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { 
   Plus, 
   Search, 
@@ -30,7 +31,8 @@ import {
   Loader2,
   Image as ImageIcon,
   X,
-  PlusCircle
+  PlusCircle,
+  Coins
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -69,7 +71,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
-import { useFirestore, useCollection } from '@/firebase';
+import { useFirestore, useCollection, useDoc } from '@/firebase';
 import { collection, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -95,6 +97,11 @@ export default function ProductsManagementPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCompressing, setIsCompressing] = useState(false);
   
+  // Fetch System Settings for Currency Lock
+  const settingsRef = useMemo(() => !db ? null : doc(db, 'settings', 'global'), [db]);
+  const { data: savedSettings } = useDoc<any>(settingsRef);
+  const systemCurrency = savedSettings?.baseCurrency || 'YER';
+
   const [formData, setFormData] = useState({
     sku: '',
     nameAr: '',
@@ -103,10 +110,18 @@ export default function ProductsManagementPage() {
     descriptionEn: '',
     category: 'شبواني',
     price: 0,
+    currency: systemCurrency,
     status: 'available',
     image: '',
     gallery: [] as string[]
   });
+
+  // Sync currency with system settings when adding new product
+  useEffect(() => {
+    if (!editingProdId && systemCurrency) {
+      setFormData(prev => ({ ...prev, currency: systemCurrency }));
+    }
+  }, [systemCurrency, editingProdId, isAddDialogOpen]);
 
   const productsQuery = useMemo(() => {
     if (!db) return null;
@@ -175,11 +190,12 @@ export default function ProductsManagementPage() {
       descriptionEn: '',
       category: 'شبواني', 
       price: 0, 
+      currency: systemCurrency,
       status: 'available',
       image: '',
       gallery: []
     });
-  }, []);
+  }, [systemCurrency]);
 
   const compressImage = (file: File, maxSize: number = 400): Promise<string> => {
     return new Promise((resolve) => {
@@ -246,6 +262,7 @@ export default function ProductsManagementPage() {
       ...formData,
       sku: generatedSku,
       price: Number(formData.price),
+      currency: formData.currency, // Ensure locked currency is saved
       updatedAt: serverTimestamp(),
     };
 
@@ -288,6 +305,7 @@ export default function ProductsManagementPage() {
       descriptionEn: prod.descriptionEn || '',
       category: prod.category || 'شبواني',
       price: prod.price || 0,
+      currency: prod.currency || systemCurrency,
       status: prod.status || 'available',
       image: prod.image || '',
       gallery: prod.gallery || []
@@ -305,12 +323,13 @@ export default function ProductsManagementPage() {
   };
 
   const handleExportCSV = () => {
-    const headers = ['SKU', 'Name (AR)', 'Category', 'Price (YER)', 'Status'];
+    const headers = ['SKU', 'Name (AR)', 'Category', 'Price', 'Currency', 'Status'];
     const rows = filtered.map(p => [
       p.sku,
       p.nameAr,
       p.category,
       p.price.toLocaleString('en-US'),
+      p.currency || 'YER',
       p.status
     ]);
 
@@ -420,7 +439,7 @@ export default function ProductsManagementPage() {
                 <TableRow>
                   <TableHead className="h-10 font-bold text-[11px] text-slate-500 px-6 text-right">{lang === 'ar' ? 'المنتج' : 'PRODUCT'}</TableHead>
                   <TableHead className="h-10 font-bold text-[11px] text-slate-500 px-6 text-right">{lang === 'ar' ? 'الفئة' : 'CATEGORY'}</TableHead>
-                  <TableHead className="h-10 font-bold text-[11px] text-slate-500 px-6 text-center">{lang === 'ar' ? 'السعر (ريال)' : 'PRICE (YER)'}</TableHead>
+                  <TableHead className="h-10 font-bold text-[11px] text-slate-500 px-6 text-center">{lang === 'ar' ? 'سعر البيع' : 'UNIT PRICE'}</TableHead>
                   <TableHead className="h-10 font-bold text-[11px] text-slate-500 px-6 text-center">{lang === 'ar' ? 'الحالة' : 'STATUS'}</TableHead>
                   <TableHead className="h-10 w-[60px] sticky right-0 bg-inherit shadow-[-2px_0_5px_rgba(0,0,0,0.05)]"></TableHead>
                 </TableRow>
@@ -450,9 +469,12 @@ export default function ProductsManagementPage() {
                       </span>
                     </TableCell>
                     <TableCell className="px-6 py-3 text-center">
-                      <span className="text-xs font-black text-emerald-700 tabular-nums">
-                        {prod.price.toLocaleString('en-US')}
-                      </span>
+                      <div className="flex flex-col items-center">
+                        <span className="text-xs font-black text-emerald-700 tabular-nums">
+                          {prod.price.toLocaleString('en-US')}
+                        </span>
+                        <span className="text-[8px] font-bold text-slate-400 uppercase">{prod.currency || 'YER'}</span>
+                      </div>
                     </TableCell>
                     <TableCell className="px-6 py-3 text-center">
                       <div className={cn(
@@ -605,7 +627,18 @@ export default function ProductsManagementPage() {
                 <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
                   <Wallet className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'سعر البيع' : 'UNIT PRICE'}
                 </Label>
-                <Input type="number" value={formData.price} onChange={(e) => setFormData({...formData, price: Number(e.target.value)})} className="h-10 font-bold text-xs bg-slate-50 tabular-nums" required />
+                <div className="flex gap-2">
+                  <Input type="number" value={formData.price || ''} onChange={(e) => setFormData({...formData, price: Number(e.target.value)})} className="h-10 font-bold text-xs bg-slate-50 tabular-nums flex-1" required />
+                  <select 
+                    value={formData.currency} 
+                    disabled 
+                    className="w-24 h-10 px-2 bg-slate-100 border border-slate-200 rounded-md text-[10px] font-bold outline-none cursor-not-allowed text-slate-500"
+                  >
+                    <option value="YER">YER</option>
+                    <option value="SAR">SAR</option>
+                    <option value="USD">USD</option>
+                  </select>
+                </div>
               </div>
             </div>
 
