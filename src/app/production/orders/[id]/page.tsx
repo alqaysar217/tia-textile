@@ -70,9 +70,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from '@/hooks/use-toast';
 import { toPng } from 'html-to-image';
 
-export default function OrderDetailsDashboard({ params }: { params: Promise<{ id: string }> }) {
-  const resolvedParams = React.use(params);
-  const id = resolvedParams.id;
+export default function OrderDetailsDashboard({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
+  const params = React.use(paramsPromise);
+  const id = params.id;
   const router = useRouter();
   const { lang, dir } = useTranslation();
   const db = useFirestore();
@@ -172,10 +172,8 @@ export default function OrderDetailsDashboard({ params }: { params: Promise<{ id
       const worker = workers?.find(w => w.id === v.workerId);
       const deptIdOfVoucher = v.currentStageId || worker?.departmentId;
       
-      // Special case: overhead costs can be general (linked only to order, not a specific stage)
       const isInStage = activeTab === 'summary' ? true : (deptIdOfVoucher === activeTab || (v.type === 'overhead_cost' && activeTab === 'info'));
       
-      // For stage tabs, we filter by stage
       const matchesStage = deptIdOfVoucher === activeTab;
       if (!matchesStage && v.type !== 'overhead_cost') return false;
       if (v.type === 'overhead_cost' && activeTab !== 'info') return false;
@@ -327,18 +325,18 @@ export default function OrderDetailsDashboard({ params }: { params: Promise<{ id
                <Table className="text-right border-separate border-spacing-0">
                   <TableHeader className="bg-slate-50 shadow-sm">
                     <TableRow>
-                      <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase">DATE</TableHead>
-                      <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase">REF #</TableHead>
-                      <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase">DESCRIPTION</TableHead>
+                      <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>DATE</TableHead>
+                      <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>REF #</TableHead>
+                      <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? "text-right" : "text-left")}>DESCRIPTION</TableHead>
                       <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-center">AMOUNT</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {vouchers.filter(v => v.type === 'overhead_cost' && v.status !== 'deleted').map(v => (
                        <TableRow key={v.id} className="hover:bg-slate-50/50 border-b border-slate-100 transition-colors">
-                          <TableCell className="px-6 py-3 text-[10px] font-bold text-slate-500 tabular-nums">{v.date}</TableCell>
-                          <TableCell className="px-6 py-3 text-[10px] font-black text-slate-900 tabular-nums">{v.voucherNumber}</TableCell>
-                          <TableCell className="px-6 py-3 text-xs font-bold text-slate-700">{v.description}</TableCell>
+                          <TableCell className={cn("px-6 py-3 text-[10px] font-bold text-slate-500 tabular-nums", dir === 'rtl' ? "text-right" : "text-left")}>{v.date}</TableCell>
+                          <TableCell className={cn("px-6 py-3 text-[10px] font-black text-slate-900 tabular-nums", dir === 'rtl' ? "text-right" : "text-left")}>{v.voucherNumber}</TableCell>
+                          <TableCell className={cn("px-6 py-3 text-xs font-bold text-slate-700", dir === 'rtl' ? "text-right" : "text-left")}>{v.description}</TableCell>
                           <TableCell className="px-6 py-3 text-center font-black text-rose-600 tabular-nums">{(v.totalAmount || 0).toLocaleString('en-US')} {v.currency}</TableCell>
                        </TableRow>
                     ))}

@@ -37,7 +37,8 @@ import {
   X,
   PlusCircle,
   Coins,
-  RefreshCcw
+  RefreshCcw,
+  UserCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -104,7 +105,7 @@ export default function OverheadCostsPage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
 
-  // Form State
+  // Unified Form State (Single Item Approach)
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     category: 'other',
@@ -112,16 +113,10 @@ export default function OverheadCostsPage() {
     orderId: '',
     recipient: '',
     supervisorId: '',
-    notes: '',
-    invoicePhotoUrl: '',
-    items: [] as any[]
-  });
-
-  // Current Item Selection State
-  const [currentItem, setCurrentItem] = useState({
-    category: 'other',
     description: '',
-    amount: 0
+    totalAmount: 0,
+    notes: '',
+    invoicePhotoUrl: ''
   });
 
   const costCategories = [
@@ -156,7 +151,8 @@ export default function OverheadCostsPage() {
       const s = search.toLowerCase();
       result = result.filter(v => 
         v.voucherNumber?.toLowerCase().includes(s) || 
-        v.recipient?.toLowerCase().includes(s)
+        v.recipient?.toLowerCase().includes(s) ||
+        v.description?.toLowerCase().includes(s)
       );
     }
     if (categoryFilter !== 'all') result = result.filter(v => v.category === categoryFilter);
@@ -168,22 +164,6 @@ export default function OverheadCostsPage() {
       return sortOrder === 'asc' ? String(valA).localeCompare(String(valB)) : String(valB).localeCompare(String(valA));
     });
   }, [vouchers, search, categoryFilter, sortBy, sortOrder]);
-
-  const handleAddItem = () => {
-    if (!currentItem.description || currentItem.amount <= 0) return;
-    setFormData(prev => ({
-      ...prev,
-      items: [...(prev.items || []), { ...currentItem }]
-    }));
-    setCurrentItem({ category: 'other', description: '', amount: 0 });
-  };
-
-  const removeItem = (idx: number) => {
-    setFormData(prev => ({
-      ...prev,
-      items: (prev.items || []).filter((_, i) => i !== idx)
-    }));
-  };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -212,17 +192,16 @@ export default function OverheadCostsPage() {
 
   const handleSaveVoucher = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!db || isSubmitting || !formData.items || formData.items.length === 0) {
-      toast({ variant: "destructive", title: lang === 'ar' ? "يرجى إضافة بند تكلفة واحد على الأقل" : "Please add at least one expense item" });
+    if (!db || isSubmitting || !formData.recipient || !formData.description || formData.totalAmount <= 0) {
+      toast({ variant: "destructive", title: lang === 'ar' ? "يرجى إكمال البيانات المطلوبة" : "Please complete required fields" });
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const totalAmount = formData.items.reduce((sum, item) => sum + item.amount, 0);
       const voucherData = {
         ...formData,
-        totalAmount,
+        totalAmount: Number(formData.totalAmount),
         type: 'overhead_cost',
         status: 'posted',
         updatedAt: serverTimestamp()
@@ -245,8 +224,18 @@ export default function OverheadCostsPage() {
   const resetDialog = () => {
     setIsAddDialogOpen(false);
     setEditingVoucherId(null);
-    setFormData({ date: new Date().toISOString().split('T')[0], category: 'other', currency: 'YER', orderId: '', recipient: '', supervisorId: '', notes: '', invoicePhotoUrl: '', items: [] });
-    setCurrentItem({ category: 'other', description: '', amount: 0 });
+    setFormData({ 
+      date: new Date().toISOString().split('T')[0], 
+      category: 'other', 
+      currency: 'YER', 
+      orderId: '', 
+      recipient: '', 
+      supervisorId: '', 
+      description: '', 
+      totalAmount: 0, 
+      notes: '', 
+      invoicePhotoUrl: '' 
+    });
   };
 
   const handleDownloadImage = async () => {
@@ -272,10 +261,7 @@ export default function OverheadCostsPage() {
 
   const handleEditVoucher = (v: any) => {
     setEditingVoucherId(v.id);
-    setFormData({ 
-      ...v, 
-      items: v.items || [] // Safeguard: ensure items is always an array
-    });
+    setFormData({ ...v });
     setIsAddDialogOpen(true);
   };
 
@@ -321,8 +307,8 @@ export default function OverheadCostsPage() {
                 <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? "text-right" : "text-left")}>
                    <button onClick={() => toggleSort('date')} className="flex items-center gap-2">DATE {sortBy === 'date' ? (sortOrder === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-30" />}</button>
                 </TableHead>
-                <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'المستفيد' : 'RECIPIENT'}</TableHead>
-                <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">{lang === 'ar' ? 'البنود' : 'ITEMS'}</TableHead>
+                <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'البيان والمستفيد' : 'RECIPIENT'}</TableHead>
+                <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">{lang === 'ar' ? 'التصنيف' : 'CATEGORY'}</TableHead>
                 <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">
                    <button onClick={() => toggleSort('totalAmount')} className="flex items-center gap-2 mx-auto">TOTAL {sortBy === 'totalAmount' ? (sortOrder === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-30" />}</button>
                 </TableHead>
@@ -338,9 +324,14 @@ export default function OverheadCostsPage() {
                 <TableRow key={v.id} className="hover:bg-slate-50/50 border-b border-slate-100 transition-colors group">
                   <TableCell className={cn("px-6 py-3 font-black text-slate-900 text-xs tabular-nums", dir === 'rtl' ? "text-right" : "text-left")}>{v.voucherNumber}</TableCell>
                   <TableCell className={cn("px-6 py-3 font-bold text-slate-500 text-xs tabular-nums", dir === 'rtl' ? "text-right" : "text-left")}>{v.date}</TableCell>
-                  <TableCell className={cn("px-6 py-3 font-bold text-slate-700 text-xs", dir === 'rtl' ? "text-right" : "text-left")}>{v.recipient || '---'}</TableCell>
+                  <TableCell className={cn("px-6 py-3 font-bold text-slate-700 text-xs", dir === 'rtl' ? "text-right" : "text-left")}>
+                    <div className="flex flex-col">
+                      <span className="font-black text-slate-900">{v.description}</span>
+                      <span className="text-[10px] text-slate-400 font-bold">إلى: {v.recipient}</span>
+                    </div>
+                  </TableCell>
                   <TableCell className="px-6 py-3 text-center">
-                    <Badge variant="outline" className="bg-slate-50 text-slate-400 font-black tabular-nums">{v.items?.length || 0}</Badge>
+                    <Badge variant="outline" className="bg-slate-50 text-slate-400 font-black uppercase text-[10px]">{costCategories.find(c => c.value === v.category)?.labelAr || v.category}</Badge>
                   </TableCell>
                   <TableCell className="px-6 py-3 text-center font-black text-emerald-700 tabular-nums">
                     {(v.totalAmount || 0).toLocaleString('en-US')} <span className="text-[9px] text-slate-400 uppercase ms-1">{v.currency}</span>
@@ -365,56 +356,47 @@ export default function OverheadCostsPage() {
         </div>
       </div>
 
-      {/* ADD/EDIT DIALOG */}
+      {/* ADD/EDIT DIALOG (SIMPLIFIED SINGLE ITEM) */}
       <Dialog open={isAddDialogOpen} onOpenChange={(open) => !open && resetDialog()}>
-        <DialogContent className="sm:max-w-[900px] rounded-lg p-0 overflow-hidden border-none shadow-2xl">
+        <DialogContent className="sm:max-w-[700px] rounded-lg p-0 overflow-hidden border-none shadow-2xl">
           <div className="premium-gradient p-6 text-white">
             <DialogHeader className="text-right rtl:text-right ltr:text-left">
               <DialogTitle className="text-xl font-black flex items-center gap-3">
                 <Receipt className="w-5 h-5 text-emerald-300" />
-                {editingVoucherId ? (lang === 'ar' ? 'تعديل سند تكاليف' : 'Update Cost Voucher') : (lang === 'ar' ? 'تسجيل سند مصاريف وتكاليف تشغيل' : 'New Overhead Expenditure')}
+                {editingVoucherId ? (lang === 'ar' ? 'تعديل سند المصروف' : 'Update Expenditure') : (lang === 'ar' ? 'تسجيل سند مصروفات تشغيلية' : 'New Overhead Expenditure')}
               </DialogTitle>
-              <p className="text-emerald-100/70 font-bold text-[10px] uppercase mt-1">Multi-item expense allocation with attachment support</p>
+              <p className="text-emerald-100/70 font-bold text-[10px] uppercase mt-1">Single entry expense allocation for better tracking</p>
             </DialogHeader>
           </div>
 
-          <form onSubmit={handleSaveVoucher} className="p-6 space-y-6 bg-white max-h-[85vh] overflow-y-auto no-scrollbar">
+          <form onSubmit={handleSaveVoucher} className="p-6 space-y-6 bg-white">
             
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
-              {/* Left Column: Core Info */}
-              <div className="md:col-span-8 space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-1.5 text-right">
-                    <Label className="text-[10px] font-black uppercase text-slate-400">PAID TO / المستفيد</Label>
-                    <Input value={formData.recipient} onChange={(e) => setFormData({...formData, recipient: e.target.value})} className="h-11 bg-slate-50 font-bold" placeholder="اسم الجهة أو الشخص" required />
-                  </div>
-                  <div className="space-y-1.5 text-right">
-                    <Label className="text-[10px] font-black uppercase text-slate-400">DATE / التاريخ</Label>
-                    <Input type="date" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} className="h-11 font-bold bg-slate-50 tabular-nums" required />
-                  </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <div className="space-y-1.5 text-right">
+                  <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2 justify-start"><Calendar className="w-3 h-3 text-emerald-600" /> TRANSACTION DATE</Label>
+                  <Input type="date" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} className="h-11 bg-slate-50 font-bold" required />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-1.5 text-right">
-                    <Label className="text-[10px] font-black uppercase text-slate-400">BATCH / الدفعة المرتبطة (اختياري)</Label>
-                    <select value={formData.orderId} onChange={(e) => setFormData({...formData, orderId: e.target.value})} className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold">
-                       <option value="">-- تكلفة عامة --</option>
-                       {allOrders?.filter(o => o.status !== 'deleted').map(o => <option key={o.id} value={o.id}>{o.orderNumber} - {o.title}</option>)}
-                    </select>
-                  </div>
-                  <div className="space-y-1.5 text-right">
-                    <Label className="text-[10px] font-black uppercase text-slate-400">SUPERVISOR / المسؤول</Label>
-                    <select value={formData.supervisorId} onChange={(e) => setFormData({...formData, supervisorId: e.target.value})} className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold" required>
-                       <option value="">-- اختر المسؤول --</option>
-                       {allWorkers?.filter(w => w.status !== 'deleted' && (w.isSupervisor || w.active)).map(w => <option key={w.id} value={w.id}>{w.fullName}</option>)}
-                    </select>
-                  </div>
+                <div className="space-y-1.5 text-right">
+                  <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2 justify-start"><Workflow className="w-3 h-3 text-emerald-600" /> LINKED BATCH (OPTIONAL)</Label>
+                  <select value={formData.orderId} onChange={(e) => setFormData({...formData, orderId: e.target.value})} className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none">
+                     <option value="">-- عام (غير مرتبط بطلب) --</option>
+                     {allOrders?.filter(o => o.status !== 'deleted').map(o => <option key={o.id} value={o.id}>{o.orderNumber} - {o.title}</option>)}
+                  </select>
+                </div>
+
+                <div className="space-y-1.5 text-right">
+                  <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2 justify-start"><UserCheck className="w-3 h-3 text-emerald-600" /> RESPONSIBLE PERSONNEL</Label>
+                  <select value={formData.supervisorId} onChange={(e) => setFormData({...formData, supervisorId: e.target.value})} className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none" required>
+                     <option value="">-- اختر المسؤول عن الصرف --</option>
+                     {allWorkers?.filter(w => w.status !== 'deleted').map(w => <option key={w.id} value={w.id}>{w.fullName} ({w.isSupervisor ? 'مشرف' : 'موظف'})</option>)}
+                  </select>
                 </div>
               </div>
 
-              {/* Right Column: Invoice Photo */}
-              <div className="md:col-span-4 flex flex-col items-center gap-3">
-                 <Label className="text-[10px] font-black uppercase text-slate-400">INVOICE PHOTO / صورة الفاتورة</Label>
+              <div className="space-y-4">
+                 <Label className="text-[10px] font-black uppercase text-slate-400 block text-center">SUPPORTING DOCUMENT / صورة السند</Label>
                  <div 
                   onClick={() => !isCompressing && fileInputRef.current?.click()}
                   className="w-full aspect-[4/3] rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 flex items-center justify-center cursor-pointer group hover:bg-slate-100 transition-all overflow-hidden relative"
@@ -424,7 +406,7 @@ export default function OverheadCostsPage() {
                     ) : (
                       <div className="flex flex-col items-center gap-2 text-slate-300 group-hover:text-emerald-500">
                         {isCompressing ? <Loader2 className="w-8 h-8 animate-spin" /> : <UploadCloud className="w-8 h-8" />}
-                        <span className="text-[10px] font-black uppercase tracking-widest">{lang === 'ar' ? 'انقر للرفع' : 'Upload'}</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest">{lang === 'ar' ? 'انقر للرفع' : 'Upload Image'}</span>
                       </div>
                     )}
                     {formData.invoicePhotoUrl && (
@@ -437,75 +419,48 @@ export default function OverheadCostsPage() {
               </div>
             </div>
 
-            {/* EXPENSE ITEMS ADDITION */}
-            <div className="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100 space-y-4">
-              <h3 className="text-[10px] font-black text-emerald-700 uppercase tracking-widest flex items-center gap-2"><PlusCircle className="w-3.5 h-3.5" /> {lang === 'ar' ? 'إضافة بنود المصاريف في هذا السند' : 'Add Line Items to this Voucher'}</h3>
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
-                <div className="md:col-span-3 space-y-1.5 text-right">
-                  <Label className="text-[9px] font-bold text-slate-500">CATEGORY</Label>
-                  <select value={currentItem.category} onChange={(e) => setCurrentItem({...currentItem, category: e.target.value})} className="w-full h-10 px-3 bg-white border border-emerald-200 rounded-lg text-xs font-bold">
+            <div className="p-5 bg-emerald-50/50 border border-emerald-100 rounded-2xl space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5 text-right">
+                  <Label className="text-[10px] font-black uppercase text-emerald-700">COST CATEGORY / النوع</Label>
+                  <select value={formData.category} onChange={(e) => setFormData({...formData, category: e.target.value})} className="w-full h-11 px-3 bg-white border border-emerald-200 rounded-lg text-sm font-bold">
                      {costCategories.map(c => <option key={c.value} value={c.value}>{c.labelAr}</option>)}
                   </select>
                 </div>
-                <div className="md:col-span-5 space-y-1.5 text-right">
-                  <Label className="text-[9px] font-bold text-slate-500">DESCRIPTION / البيان</Label>
-                  <Input value={currentItem.description} onChange={(e) => setCurrentItem({...currentItem, description: e.target.value})} className="h-10 bg-white text-xs font-bold" placeholder="مثال: فاتورة كهرباء المعرض" />
+                <div className="space-y-1.5 text-right">
+                  <Label className="text-[10px] font-black uppercase text-emerald-700">PAID TO / المستفيد</Label>
+                  <Input value={formData.recipient} onChange={(e) => setFormData({...formData, recipient: e.target.value})} className="h-11 bg-white border-emerald-200 font-bold" placeholder="مثال: شركة الكهرباء / اسم المورد" required />
                 </div>
-                <div className="md:col-span-2 space-y-1.5 text-right">
-                  <Label className="text-[9px] font-bold text-slate-500">AMOUNT</Label>
-                  <Input type="number" value={currentItem.amount || ''} onChange={(e) => setCurrentItem({...currentItem, amount: Number(e.target.value)})} className="h-10 bg-white font-black tabular-nums text-center text-emerald-700" />
-                </div>
-                <Button type="button" onClick={handleAddItem} className="md:col-span-2 h-10 bg-emerald-600 text-white font-black text-xs rounded-lg shadow-md border-none"><Plus className="w-3.5 h-3.5 me-1" /> {lang === 'ar' ? 'إضافة البند' : 'Add'}</Button>
               </div>
 
-              {(formData.items?.length || 0) > 0 && (
-                <div className="border border-emerald-100 rounded-xl overflow-hidden shadow-sm bg-white">
-                  <Table className="text-right">
-                    <TableHeader className="bg-emerald-50">
-                      <TableRow>
-                        <TableHead className="px-4 py-2 text-[9px] font-black text-emerald-700 uppercase">CATEGORY</TableHead>
-                        <TableHead className="px-4 py-2 text-[9px] font-black text-emerald-700 uppercase">DESCRIPTION</TableHead>
-                        <TableHead className="px-4 py-2 text-[9px] font-black text-emerald-700 uppercase text-center">AMOUNT</TableHead>
-                        <TableHead className="w-10"></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {formData.items.map((item, idx) => (
-                        <TableRow key={idx} className="border-b border-emerald-50 bg-white group/row">
-                          <TableCell className="text-[10px] font-black text-slate-500 uppercase">{costCategories.find(c => c.value === item.category)?.labelAr}</TableCell>
-                          <TableCell className="text-xs font-bold text-slate-700">{item.description}</TableCell>
-                          <TableCell className="text-center font-black text-sm text-emerald-700 tabular-nums">{(item.amount).toLocaleString('en-US')}</TableCell>
-                          <TableCell><button type="button" onClick={() => removeItem(idx)} className="text-rose-300 hover:text-rose-600 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button></TableCell>
-                        </TableRow>
-                      ))}
-                      <TableRow className="bg-emerald-900/5">
-                        <TableCell colSpan={2} className="px-6 py-4 font-black text-emerald-900 text-sm uppercase">GRAND TOTAL / الإجمالي النهائي</TableCell>
-                        <TableCell className="text-center font-black text-xl text-emerald-700 tabular-nums">{(formData.items.reduce((s, i) => s + i.amount, 0)).toLocaleString('en-US')} <span className="text-xs">{formData.currency}</span></TableCell>
-                        <TableCell></TableCell>
-                      </TableRow>
-                    </TableBody>
-                  </Table>
+              <div className="space-y-1.5 text-right">
+                <Label className="text-[10px] font-black uppercase text-emerald-700">EXPENDITURE DESCRIPTION / البيان</Label>
+                <Input value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="h-11 bg-white border-emerald-200 font-bold" placeholder="مثال: قيمة فاتورة شهر أكتوبر" required />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5 text-right">
+                   <Label className="text-[10px] font-black uppercase text-emerald-700">AMOUNT / القيمة</Label>
+                   <div className="relative">
+                      <Input type="number" step="any" value={formData.totalAmount || ''} onChange={(e) => setFormData({...formData, totalAmount: Number(e.target.value)})} className="h-14 font-black text-2xl text-center tabular-nums bg-white border-emerald-200 text-emerald-700" required />
+                      <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                        <select value={formData.currency} onChange={(e) => setFormData({...formData, currency: e.target.value})} className="h-9 px-2 bg-emerald-50 border border-emerald-100 rounded-lg text-[10px] font-black outline-none">
+                           <option value="YER">YER</option><option value="SAR">SAR</option><option value="USD">USD</option>
+                        </select>
+                      </div>
+                   </div>
                 </div>
-              )}
+                <div className="space-y-1.5 text-right">
+                   <Label className="text-[10px] font-black uppercase text-slate-400">ADDITIONAL NOTES / ملاحظات</Label>
+                   <Input value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} className="h-14 bg-white border-slate-200 text-xs font-bold" />
+                </div>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-               <div className="space-y-1.5 text-right">
-                  <Label className="text-[10px] font-black uppercase text-slate-400">CURRENCY / العملة</Label>
-                  <select value={formData.currency} onChange={(e) => setFormData({...formData, currency: e.target.value})} className="w-full h-11 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold px-3">
-                     <option value="YER">YER - ريال يمني</option><option value="SAR">SAR - ريال سعودي</option><option value="USD">USD - دولار أمريكي</option>
-                  </select>
-               </div>
-               <div className="space-y-1.5 text-right">
-                  <Label className="text-[10px] font-black uppercase text-slate-400">GENERAL NOTES / ملاحظات عامة</Label>
-                  <Input value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} className="h-11 bg-slate-50 font-bold" />
-               </div>
-            </div>
-
-            <div className="flex gap-3 pt-4 border-t border-slate-100">
-              <Button type="submit" disabled={isSubmitting || !formData.items || formData.items.length === 0} className="flex-1 h-14 premium-gradient text-white rounded-xl font-black text-base shadow-xl">
+            <div className="flex gap-3 pt-2">
+              <Button type="submit" disabled={isSubmitting || isCompressing || formData.totalAmount <= 0} className="flex-1 h-14 premium-gradient text-white rounded-xl font-black text-base shadow-xl">
                 {isSubmitting ? <Loader2 className="animate-spin me-2" /> : <Save className="w-5 h-5 me-2" />}
-                {lang === 'ar' ? 'ترحيل سند المصاريف' : 'Post Cost Voucher'}
+                {lang === 'ar' ? 'ترحيل سند المصروف' : 'Post Cost Voucher'}
               </Button>
               <Button type="button" variant="outline" onClick={resetDialog} className="px-8 h-14 font-black text-slate-400 rounded-xl">إلغاء</Button>
             </div>
@@ -527,6 +482,7 @@ export default function OverheadCostsPage() {
                       <div className="text-right space-y-1">
                         <h2 className="text-xl font-black text-emerald-900 leading-tight">جمعية الصناعات النسيجية</h2>
                         <p className="text-xs font-bold text-slate-500">الروضة - محافظة شبوة - اليمن</p>
+                        <p className="text-[11px] font-bold text-slate-400 tabular-nums" dir="ltr">0777 263 091 | nseeg202020@gmail.com</p>
                       </div>
                       <div className="flex justify-center">
                         <div className="w-24 h-24 border-2 border-emerald-800/10 rounded-full flex items-center justify-center p-2"><img src="/images/logo.png" className="w-full h-full object-contain" /></div>
@@ -534,6 +490,7 @@ export default function OverheadCostsPage() {
                       <div className="text-left space-y-1" dir="ltr">
                         <h2 className="text-[14px] font-black text-emerald-900 uppercase">Textile Industries Association</h2>
                         <p className="text-[11px] font-bold text-slate-500">Al-Rawdah - Shabwa</p>
+                        <p className="text-[10px] font-bold text-slate-400 tabular-nums">0777 263 091 | nseeg202020@gmail.com</p>
                       </div>
                     </div>
 
@@ -546,12 +503,12 @@ export default function OverheadCostsPage() {
                     <div className="grid grid-cols-3 gap-x-8 gap-y-6 mb-10 bg-slate-50/50 p-8 rounded-[1.5rem] border border-slate-100 relative z-10">
                        <div className="space-y-4">
                           <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
-                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'المستفيد' : 'Recipient'}</span>
+                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'المستفيد' : 'Paid To'}</span>
                              <span className="text-sm font-black text-slate-900">{printingVoucher.recipient}</span>
                           </div>
                           <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
-                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'التصنيف الرئيسي' : 'Primary Category'}</span>
-                             <span className="text-sm font-black text-slate-700">{costCategories.find(c => c.value === printingVoucher.category)?.labelAr}</span>
+                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'تصنيف المصروف' : 'Expense Category'}</span>
+                             <span className="text-sm font-black text-slate-700">{costCategories.find(c => c.value === printingVoucher.category)?.labelAr || printingVoucher.category}</span>
                           </div>
                        </div>
                        <div className="space-y-4">
@@ -561,16 +518,16 @@ export default function OverheadCostsPage() {
                           </div>
                           <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
                              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'الدفعة المرتبطة' : 'Linked Batch'}</span>
-                             <span className="text-sm font-black text-slate-700 truncate">{allOrders?.find(o => o.id === printingVoucher.orderId)?.orderNumber || (lang === 'ar' ? 'عام' : 'General')}</span>
+                             <span className="text-sm font-black text-slate-700 truncate">{allOrders?.find(o => o.id === printingVoucher.orderId)?.orderNumber || (lang === 'ar' ? 'مصروف إداري عام' : 'General Admin Expense')}</span>
                           </div>
                        </div>
                        <div className="space-y-4">
                           <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
-                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'تاريخ الصرف' : 'Date'}</span>
+                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'تاريخ الصرف' : 'Payment Date'}</span>
                              <span className="text-sm font-black text-slate-700 tabular-nums">{printingVoucher.date}</span>
                           </div>
                           <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
-                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'المشرف المسؤول' : 'Supervisor'}</span>
+                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{lang === 'ar' ? 'المسؤول / المشرف' : 'Authorized By'}</span>
                              <span className="text-sm font-black text-slate-700">{allWorkers?.find(w => w.id === printingVoucher.supervisorId)?.fullName || '---'}</span>
                           </div>
                        </div>
@@ -580,24 +537,22 @@ export default function OverheadCostsPage() {
                        <Table className="text-right border-2 border-emerald-900/10">
                           <TableHeader className="bg-emerald-900/5">
                              <TableRow className="hover:bg-transparent border-b-2 border-emerald-900/20">
-                                <TableHead className="text-right font-black text-xs py-4 text-emerald-900">EXPENSE / المصروف</TableHead>
-                                <TableHead className="text-center font-black text-xs py-4 text-emerald-900">AMOUNT / المبلغ</TableHead>
+                                <TableHead className="text-right font-black text-xs py-4 text-emerald-900 uppercase">DESCRIPTION / البيان</TableHead>
+                                <TableHead className="text-center font-black text-xs py-4 text-emerald-900 uppercase">AMOUNT / القيمة</TableHead>
                              </TableRow>
                           </TableHeader>
                           <TableBody>
-                             {printingVoucher.items?.map((item: any, i: number) => (
-                               <TableRow key={i} className="bg-white/40 border-b border-slate-100">
-                                  <TableCell className="py-4">
-                                     <div className="flex flex-col">
-                                        <span className="font-bold text-sm text-slate-800">{item.description}</span>
-                                        <span className="text-[9px] font-black text-emerald-600 uppercase tracking-tighter">{costCategories.find(c => c.value === item.category)?.labelAr}</span>
-                                     </div>
-                                  </TableCell>
-                                  <TableCell className="text-center font-black text-sm text-emerald-700 tabular-nums">{(item.amount).toLocaleString('en-US')}</TableCell>
-                               </TableRow>
-                             ))}
+                             <TableRow className="bg-white/40 border-b border-slate-100">
+                                <TableCell className="py-6 px-6">
+                                   <div className="flex flex-col gap-1">
+                                      <span className="font-black text-base text-slate-900">{printingVoucher.description}</span>
+                                      <span className="text-[10px] font-bold text-slate-400 uppercase">{printingVoucher.notes || '---'}</span>
+                                   </div>
+                                </TableCell>
+                                <TableCell className="text-center font-black text-xl text-emerald-700 tabular-nums">{(printingVoucher.totalAmount || 0).toLocaleString('en-US')} <span className="text-xs opacity-60">{printingVoucher.currency}</span></TableCell>
+                             </TableRow>
                              <TableRow className="bg-emerald-900 text-white">
-                                <TableCell className="px-6 py-4 font-black text-sm uppercase tracking-widest">{lang === 'ar' ? 'إجمالي مبلغ السند' : 'GRAND TOTAL'}</TableCell>
+                                <TableCell className="px-6 py-4 font-black text-sm uppercase tracking-widest">{lang === 'ar' ? 'إجمالي السند نقداً' : 'TOTAL AMOUNT IN CASH'}</TableCell>
                                 <TableCell className="text-center font-black text-2xl tabular-nums">{(printingVoucher.totalAmount || 0).toLocaleString('en-US')} <span className="text-xs opacity-70">{printingVoucher.currency}</span></TableCell>
                              </TableRow>
                           </TableBody>
@@ -612,9 +567,9 @@ export default function OverheadCostsPage() {
                     )}
 
                     <div className="grid grid-cols-3 gap-8 pt-10 border-t-2 border-slate-100 text-center relative z-10 mt-auto">
-                      <div className="space-y-12"><p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">{lang === 'ar' ? 'أمين الصندوق' : 'Cashier'}</p><div className="h-px bg-slate-300 w-3/4 mx-auto" /><p className="text-[8px] font-bold text-slate-300 uppercase tracking-widest">Sign & Date</p></div>
-                      <div className="space-y-12"><p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">{lang === 'ar' ? 'المستلم' : 'Recipient'}</p><div className="h-px bg-slate-300 w-3/4 mx-auto" /><p className="text-[8px] font-bold text-slate-300 uppercase tracking-widest">Signature</p></div>
-                      <div className="space-y-12"><p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">{lang === 'ar' ? 'اعتماد الإدارة' : 'General Manager'}</p><div className="h-px bg-slate-300 w-3/4 mx-auto" /><p className="text-[8px] font-bold text-slate-300 uppercase tracking-widest">Authorized</p></div>
+                      <div className="space-y-12"><p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">{lang === 'ar' ? 'أمين الصندوق' : 'Cashier'}</p><div className="h-px bg-slate-300 w-3/4 mx-auto" /><p className="text-[8px] font-bold text-slate-300 uppercase tracking-widest">Signature / التاريخ</p></div>
+                      <div className="space-y-12"><p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">{lang === 'ar' ? 'المستلم' : 'Recipient'}</p><div className="h-px bg-slate-300 w-3/4 mx-auto" /><p className="text-[8px] font-bold text-slate-300 uppercase tracking-widest">Full Name & Sign</p></div>
+                      <div className="space-y-12"><p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">{lang === 'ar' ? 'اعتماد الإدارة' : 'Authorization'}</p><div className="h-px bg-slate-300 w-3/4 mx-auto" /><p className="text-[8px] font-bold text-slate-300 uppercase tracking-widest">Authorized Seal</p></div>
                     </div>
                 </div>
               )}
@@ -647,4 +602,3 @@ export default function OverheadCostsPage() {
     </div>
   );
 }
-
