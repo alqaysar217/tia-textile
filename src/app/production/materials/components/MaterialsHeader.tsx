@@ -13,7 +13,6 @@ import {
   Languages,
   Activity,
   Wallet,
-  Calendar,
   SortAsc,
   SortDesc,
   Check
@@ -58,7 +57,7 @@ export function MaterialsHeader({
   const isRtl = lang === 'ar';
 
   return (
-    <div className="flex-none bg-white border-b border-slate-200 z-30 px-6 py-4">
+    <div className="flex-none bg-white border-b border-slate-200 z-30 px-6 py-4 shadow-sm">
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div className="flex items-center gap-4">
           <div className="p-2.5 premium-gradient rounded-lg text-white shadow-lg shadow-emerald-900/20">

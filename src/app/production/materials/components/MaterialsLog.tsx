@@ -12,9 +12,6 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { 
   Calendar,
-  ArrowUpToLine,
-  PackagePlus,
-  RefreshCcw,
   Clock,
   Box
 } from 'lucide-react';

@@ -12,18 +12,16 @@ import {
   increment,
   query,
   orderBy,
-  where
 } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Info, History, AlertCircle } from 'lucide-react';
+import { Info, History, Box } from 'lucide-react';
 import { 
   AlertDialog, 
   AlertDialogAction, 
   AlertDialogCancel, 
   AlertDialogContent, 
   AlertDialogDescription, 
-  AlertDialogFooter, 
   AlertDialogHeader, 
   AlertDialogTitle 
 } from "@/components/ui/alert-dialog";
