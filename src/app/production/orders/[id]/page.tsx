@@ -99,6 +99,16 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
   const [matSortBy, setMatSortBy] = useState<'date' | 'nameAr' | 'total'>('date');
   const [matSortOrder, setMatSortOrder] = useState<'asc' | 'desc'>('desc');
 
+  // States for Wages Summary Filtering & Sorting
+  const [wageSearch, setWageSearch] = useState('');
+  const [wageSortBy, setWageSortBy] = useState<'date' | 'fullName' | 'amount'>('date');
+  const [wageSortOrder, setWageSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  // States for Costs Summary Filtering & Sorting
+  const [costSearch, setCostSearch] = useState('');
+  const [costSortBy, setCostSortBy] = useState<'date' | 'description' | 'amount'>('date');
+  const [costSortOrder, setCostSortOrder] = useState<'asc' | 'desc'>('desc');
+
   // Fetch Global Settings for Currency
   const settingsRef = useMemo(() => !db ? null : doc(db, 'settings', 'global'), [db]);
   const { data: savedSettings } = useDoc<any>(settingsRef);
@@ -194,7 +204,6 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
     return total;
   }, [vouchers]);
 
-  // Calculations for Summary
   const totalWagesCost = useMemo(() => {
     return vouchers
       .filter(v => v.type === 'production_receipt' && v.status !== 'deleted')
@@ -221,6 +230,7 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
     return finalCompletedQty > 0 ? Math.round(grandTotalCost / finalCompletedQty) : 0;
   }, [grandTotalCost, finalCompletedQty]);
 
+  // Tab Filtering & Sorting Logic
   const filteredMaterialsDetailed = useMemo(() => {
     let list: any[] = [];
     vouchers
@@ -242,29 +252,56 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
 
     if (matSearch) {
       const s = matSearch.toLowerCase();
-      list = list.filter(m => 
-        m.nameAr?.toLowerCase().includes(s) || 
-        m.voucherNumber?.toLowerCase().includes(s)
-      );
+      list = list.filter(m => m.nameAr?.toLowerCase().includes(s) || m.voucherNumber?.toLowerCase().includes(s));
     }
 
     return list.sort((a, b) => {
       let valA = a[matSortBy] ?? '';
       let valB = b[matSortBy] ?? '';
-
-      if (matSortBy === 'date') {
-        const timeA = new Date(valA).getTime();
-        const timeB = new Date(valB).getTime();
-        return matSortOrder === 'asc' ? timeA - timeB : timeB - timeA;
-      }
-      if (matSortBy === 'total') {
-        return matSortOrder === 'asc' ? Number(valA) - Number(valB) : Number(valB) - Number(valA);
-      }
-      
-      const comp = String(valA).localeCompare(String(valB), 'ar', { numeric: true });
-      return matSortOrder === 'asc' ? comp : -comp;
+      if (matSortBy === 'date') return matSortOrder === 'asc' ? new Date(valA).getTime() - new Date(valB).getTime() : new Date(valB).getTime() - new Date(valA).getTime();
+      if (matSortBy === 'total') return matSortOrder === 'asc' ? Number(valA) - Number(valB) : Number(valB) - Number(valA);
+      return matSortOrder === 'asc' ? String(valA).localeCompare(String(valB), 'ar') : String(valB).localeCompare(String(valA), 'ar');
     });
   }, [vouchers, systemCurrency, matSearch, matSortBy, matSortOrder]);
+
+  const filteredWagesDetailed = useMemo(() => {
+    let list = vouchers
+      .filter(v => v.type === 'production_receipt' && v.status !== 'deleted')
+      .map(v => {
+        const worker = workers?.find(w => w.id === v.workerId);
+        return { ...v, fullName: worker?.fullName || '---' };
+      });
+
+    if (wageSearch) {
+      const s = wageSearch.toLowerCase();
+      list = list.filter(v => v.fullName.toLowerCase().includes(s) || v.voucherNumber?.toLowerCase().includes(s));
+    }
+
+    return list.sort((a, b) => {
+      let valA = a[wageSortBy === 'amount' ? 'wageAmount' : wageSortBy] ?? '';
+      let valB = b[wageSortBy === 'amount' ? 'wageAmount' : wageSortBy] ?? '';
+      if (wageSortBy === 'date') return wageSortOrder === 'asc' ? new Date(valA).getTime() - new Date(valB).getTime() : new Date(valB).getTime() - new Date(valA).getTime();
+      if (wageSortBy === 'amount') return wageSortOrder === 'asc' ? Number(valA) - Number(valB) : Number(valB) - Number(valA);
+      return wageSortOrder === 'asc' ? String(valA).localeCompare(String(valB), 'ar') : String(valB).localeCompare(String(valA), 'ar');
+    });
+  }, [vouchers, workers, wageSearch, wageSortBy, wageSortOrder]);
+
+  const filteredCostsDetailed = useMemo(() => {
+    let list = vouchers.filter(v => v.type === 'overhead_cost' && v.status !== 'deleted');
+
+    if (costSearch) {
+      const s = costSearch.toLowerCase();
+      list = list.filter(v => v.description?.toLowerCase().includes(s) || v.voucherNumber?.toLowerCase().includes(s));
+    }
+
+    return list.sort((a, b) => {
+      let valA = a[costSortBy === 'amount' ? 'totalAmount' : costSortBy] ?? '';
+      let valB = b[costSortBy === 'amount' ? 'totalAmount' : costSortBy] ?? '';
+      if (costSortBy === 'date') return costSortOrder === 'asc' ? new Date(valA).getTime() - new Date(valB).getTime() : new Date(valB).getTime() - new Date(valA).getTime();
+      if (costSortBy === 'amount') return costSortOrder === 'asc' ? Number(valA) - Number(valB) : Number(valB) - Number(valA);
+      return costSortOrder === 'asc' ? String(valA).localeCompare(String(valB), 'ar') : String(valB).localeCompare(String(valA), 'ar');
+    });
+  }, [vouchers, costSearch, costSortBy, costSortOrder]);
 
   const product = useMemo(() => products?.find(p => p.id === order?.productId), [products, order]);
 
@@ -282,8 +319,7 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
       const worker = workers?.find(w => w.id === v.workerId);
       const deptIdOfVoucher = v.currentStageId || worker?.departmentId;
       const matchesStage = deptIdOfVoucher === activeTab;
-      if (!matchesStage && v.type !== 'overhead_cost') return false;
-      if (v.type === 'overhead_cost' && activeTab !== 'info') return false;
+      if (!matchesStage) return false;
 
       if (stageTypeFilter !== 'all' && v.type !== stageTypeFilter) return false;
       if (stageSearch) {
@@ -314,26 +350,6 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
       link.click();
       document.body.removeChild(link);
     } catch (err) { console.error(err); } finally { setIsDownloading(false); }
-  };
-
-  const handleExportStageCSV = () => {
-    const headers = ['Date', 'Reference', 'Type', 'Personnel', 'Impact', 'Currency'];
-    const rows = filteredStageVouchers.map(v => {
-      const worker = workers?.find(w => w.id === v.workerId);
-      const impact = v.type === 'production_receipt' ? v.qtyAccepted : v.totalAmount;
-      const unit = v.type === 'production_receipt' ? 'Pcs' : (v.currency || systemCurrency);
-      return [v.date, v.voucherNumber, v.type, worker?.fullName || '---', impact, unit];
-    });
-    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `StageLog_${activeTab}_${order.orderNumber}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast({ title: lang === 'ar' ? "تم تحميل سجل المرحلة" : "Stage Log Exported" });
   };
 
   if (orderLoading || deptsLoading) {
@@ -457,58 +473,14 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                   </Button>
                </div>
 
-               {/* FINANCIAL SUMMARY CARDS */}
                <div className="p-6 border-b border-slate-100 bg-white">
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-                    <SummaryStatCard 
-                      label={lang === 'ar' ? 'إجمالي المواد' : 'MAT. COST'} 
-                      value={totalMaterialsCost} 
-                      currency={systemCurrency} 
-                      icon={<Layers className="w-3.5 h-3.5" />} 
-                      color="text-amber-600" 
-                      bgColor="bg-amber-50/50"
-                    />
-                    <SummaryStatCard 
-                      label={lang === 'ar' ? 'إجمالي الأجور' : 'WAGES'} 
-                      value={totalWagesCost} 
-                      currency={systemCurrency} 
-                      icon={<Wallet className="w-3.5 h-3.5" />} 
-                      color="text-purple-600" 
-                      bgColor="bg-purple-50/50"
-                    />
-                    <SummaryStatCard 
-                      label={lang === 'ar' ? 'تكاليف أخرى' : 'OVERHEAD'} 
-                      value={totalOtherCosts} 
-                      currency={systemCurrency} 
-                      icon={<Receipt className="w-3.5 h-3.5" />} 
-                      color="text-rose-600" 
-                      bgColor="bg-rose-50/50"
-                    />
-                    <SummaryStatCard 
-                      label={lang === 'ar' ? 'الإجمالي الكلي' : 'TOTAL COST'} 
-                      value={grandTotalCost} 
-                      currency={systemCurrency} 
-                      icon={<Coins className="w-3.5 h-3.5" />} 
-                      color="text-emerald-700" 
-                      bgColor="bg-emerald-50"
-                    />
-                    <SummaryStatCard 
-                      label={lang === 'ar' ? 'قطع منجزة' : 'FINISHED'} 
-                      value={finalCompletedQty} 
-                      currency={lang === 'ar' ? 'قطعة' : 'Pcs'} 
-                      icon={<CheckCircle2 className="w-3.5 h-3.5" />} 
-                      color="text-blue-600" 
-                      bgColor="bg-blue-50/50"
-                      isCount
-                    />
-                    <SummaryStatCard 
-                      label={lang === 'ar' ? 'تكلفة القطعة' : 'UNIT COST'} 
-                      value={avgCostPerPiece} 
-                      currency={systemCurrency} 
-                      icon={<Target className="w-3.5 h-3.5" />} 
-                      color="text-slate-900" 
-                      bgColor="bg-slate-100"
-                    />
+                    <SummaryStatCard label={lang === 'ar' ? 'إجمالي المواد' : 'MAT. COST'} value={totalMaterialsCost} currency={systemCurrency} icon={<Layers className="w-3.5 h-3.5" />} color="text-amber-600" bgColor="bg-amber-50/50" />
+                    <SummaryStatCard label={lang === 'ar' ? 'إجمالي الأجور' : 'WAGES'} value={totalWagesCost} currency={systemCurrency} icon={<Wallet className="w-3.5 h-3.5" />} color="text-purple-600" bgColor="bg-purple-50/50" />
+                    <SummaryStatCard label={lang === 'ar' ? 'تكاليف أخرى' : 'OVERHEAD'} value={totalOtherCosts} currency={systemCurrency} icon={<Receipt className="w-3.5 h-3.5" />} color="text-rose-600" bgColor="bg-rose-50/50" />
+                    <SummaryStatCard label={lang === 'ar' ? 'الإجمالي الكلي' : 'TOTAL COST'} value={grandTotalCost} currency={systemCurrency} icon={<Coins className="w-3.5 h-3.5" />} color="text-emerald-700" bgColor="bg-emerald-50" />
+                    <SummaryStatCard label={lang === 'ar' ? 'قطع منجزة' : 'FINISHED'} value={finalCompletedQty} currency={lang === 'ar' ? 'قطعة' : 'Pcs'} icon={<CheckCircle2 className="w-3.5 h-3.5" />} color="text-blue-600" bgColor="bg-blue-50/50" isCount />
+                    <SummaryStatCard label={lang === 'ar' ? 'تكلفة القطعة' : 'UNIT COST'} value={avgCostPerPiece} currency={systemCurrency} icon={<Target className="w-3.5 h-3.5" />} color="text-slate-900" bgColor="bg-slate-100" />
                   </div>
                </div>
 
@@ -547,92 +519,71 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
           {activeTab === 'materials_summary' && (
             <div className="flex-1 flex flex-col animate-in fade-in duration-300 overflow-hidden">
                <div className="p-4 bg-amber-50 border-b border-amber-100 flex items-center justify-between">
-                  <h3 className="text-xs font-black text-amber-900 uppercase tracking-widest flex items-center gap-2">
-                    <Layers className="w-4 h-4" /> 
-                    {lang === 'ar' ? 'سجل تفصيلي للمواد الخام وقيمتها' : 'DETAILED MATERIALS COSTING'}
-                  </h3>
-                  <div className="flex items-center gap-2">
-                     <span className="text-[10px] font-black text-amber-800 uppercase tracking-widest">{lang === 'ar' ? 'إجمالي تكلفة المواد:' : 'TOTAL COST:'}</span>
-                     <Badge className="bg-amber-600 text-white font-black tabular-nums">{totalMaterialsCost.toLocaleString('en-US')} {systemCurrency}</Badge>
-                  </div>
+                  <h3 className="text-xs font-black text-amber-900 uppercase tracking-widest flex items-center gap-2"><Layers className="w-4 h-4" /> {lang === 'ar' ? 'سجل تفصيلي للمواد الخام وقيمتها' : 'DETAILED MATERIALS COSTING'}</h3>
+                  <Badge className="bg-amber-600 text-white font-black tabular-nums">{totalMaterialsCost.toLocaleString('en-US')} {systemCurrency}</Badge>
                </div>
 
+               {/* UNIFIED TOOLBAR */}
                <div className="p-2 bg-slate-50 border-b border-slate-200 flex items-center gap-2 shadow-sm">
                   <div className="relative flex-1">
                     <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300`} />
-                    <Input 
-                      value={matSearch} 
-                      onChange={(e) => setMatSearch(e.target.value)} 
-                      placeholder={lang === 'ar' ? 'بحث في سجل المواد...' : 'Search materials log...'} 
-                      className={cn("h-9 bg-white text-xs font-bold border-slate-200", dir === 'rtl' ? "pr-9" : "pl-9")} 
-                    />
+                    <Input value={matSearch} onChange={(e) => setMatSearch(e.target.value)} placeholder={lang === 'ar' ? 'بحث في سجل المواد...' : 'Search materials log...'} className={cn("h-9 bg-white text-xs font-bold border-slate-200", dir === 'rtl' ? "pr-9" : "pl-9")} />
                   </div>
-                  <div className="flex items-center gap-1.5 px-1.5 border-r border-slate-200">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => {
+                  <div className="flex items-center gap-1.5 px-1.5 border-x border-slate-200">
+                    <Button variant="ghost" size="sm" onClick={() => {
                         const headers = ['Date', 'Voucher', 'Material', 'Qty', 'Unit', 'Price', 'Total', 'Currency'];
                         const rows = filteredMaterialsDetailed.map(m => [m.date, m.voucherNumber, m.nameAr, m.qty, m.unit, m.price, m.total, m.currency]);
                         const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
                         const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
                         const url = URL.createObjectURL(blob);
                         const link = document.createElement('a');
-                        link.href = url;
-                        link.setAttribute('download', `MaterialsLog_${order.orderNumber}_${new Date().toISOString().split('T')[0]}.csv`);
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
+                        link.href = url; link.setAttribute('download', `MaterialsLog_${order.orderNumber}.csv`);
+                        document.body.appendChild(link); link.click(); document.body.removeChild(link);
                         toast({ title: lang === 'ar' ? "تم تحميل ملف CSV" : "CSV Downloaded" });
-                      }}
-                      className="h-9 px-3 text-[10px] font-black gap-2 text-slate-600 hover:bg-white border border-transparent"
-                    >
-                      <FileDown className="w-3.5 h-3.5 text-emerald-600" />
-                      {lang === 'ar' ? 'تصدير' : 'Export'}
+                      }} className="h-9 px-3 text-[10px] font-black gap-2 text-slate-600 hover:bg-white border border-transparent">
+                      <FileDown className="w-3.5 h-3.5 text-emerald-600" />{lang === 'ar' ? 'تصدير' : 'Export'}
                     </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-9 px-3 text-[10px] font-black gap-2 text-slate-600 hover:bg-white">
+                          <Filter className="w-3.5 h-3.5" />{lang === 'ar' ? 'تصفية وترتيب' : 'Filter & Sort'}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="w-64 rounded-xl shadow-xl border-slate-200">
+                        <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">CHRONOLOGY</DropdownMenuLabel>
+                        <DropdownMenuItem onClick={() => { setMatSortBy('date'); setMatSortOrder(matSortOrder === 'asc' ? 'desc' : 'asc'); }} className="text-xs font-bold flex justify-between cursor-pointer py-2.5">
+                           {lang === 'ar' ? 'ترتيب حسب التاريخ' : 'Sort by Date'}
+                           {matSortBy === 'date' && (matSortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => { setMatSortBy('total'); setMatSortOrder(matSortOrder === 'asc' ? 'desc' : 'asc'); }} className="text-xs font-bold flex justify-between cursor-pointer py-2.5">
+                           {lang === 'ar' ? 'ترتيب حسب القيمة' : 'Sort by Total'}
+                           {matSortBy === 'total' && (matSortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
+                  <div className="flex items-center gap-2 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest tabular-nums">{lang === 'ar' ? 'العدد:' : 'COUNT:'} <span className="text-emerald-600">{filteredMaterialsDetailed.length}</span></div>
                </div>
 
                <div className="flex-1 overflow-auto no-scrollbar">
                   <Table className="text-right border-separate border-spacing-0">
                     <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
                       <TableRow>
-                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">
-                          <button onClick={() => { setMatSortBy('date'); setMatSortOrder(matSortOrder === 'asc' ? 'desc' : 'asc'); }} className="flex items-center gap-1 hover:text-emerald-700 transition-colors">
-                            {lang === 'ar' ? 'التاريخ' : 'DATE'}
-                            {matSortBy === 'date' ? (matSortOrder === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-30" />}
-                          </button>
-                        </TableHead>
-                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'رقم السند' : 'REF #'}</TableHead>
-                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">
-                          <button onClick={() => { setMatSortBy('nameAr'); setMatSortOrder(matSortOrder === 'asc' ? 'desc' : 'asc'); }} className="flex items-center gap-1 hover:text-emerald-700 transition-colors">
-                            {lang === 'ar' ? 'اسم المادة' : 'MATERIAL'}
-                            {matSortBy === 'nameAr' ? (sortOrder === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-30" />}
-                          </button>
-                        </TableHead>
-                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'الكمية' : 'QTY'}</TableHead>
-                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'السعر' : 'PRICE'}</TableHead>
-                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">
-                          <button onClick={() => { setMatSortBy('total'); setMatSortOrder(matSortOrder === 'asc' ? 'desc' : 'asc'); }} className="flex items-center gap-1 hover:text-emerald-700 transition-colors">
-                            {lang === 'ar' ? 'الإجمالي' : 'TOTAL'}
-                            {matSortBy === 'total' ? (matSortOrder === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-30" />}
-                          </button>
-                        </TableHead>
+                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">DATE</TableHead>
+                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">REF #</TableHead>
+                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">MATERIAL</TableHead>
+                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">QTY</TableHead>
+                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">TOTAL</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredMaterialsDetailed.length === 0 ? (
-                        <TableRow><TableCell colSpan={6} className="py-20 text-center text-slate-300 font-bold">لم يتم العثور على أي مواد مطابقة للبحث</TableCell></TableRow>
-                      ) : filteredMaterialsDetailed.map((m, idx) => (
+                      {filteredMaterialsDetailed.map((m, idx) => (
                         <TableRow key={idx} className="hover:bg-slate-50 transition-colors border-b border-slate-100">
                            <TableCell className="px-6 py-4 text-[10px] font-bold text-slate-500 tabular-nums text-right">{m.date}</TableCell>
                            <TableCell className="px-6 py-4 text-[10px] font-black text-slate-400 tabular-nums text-right">{m.voucherNumber}</TableCell>
                            <TableCell className="px-6 py-4 font-black text-slate-900 text-xs text-right">{m.nameAr}</TableCell>
-                           <TableCell className="px-6 py-4 text-right font-bold text-slate-700 tabular-nums">
-                              {m.qty.toLocaleString('en-US')} <span className="text-[8px] font-black text-slate-400 uppercase ms-1">{m.unit}</span>
-                           </TableCell>
-                           <TableCell className="px-6 py-4 text-right font-bold text-slate-600 tabular-nums">{m.price.toLocaleString('en-US')}</TableCell>
-                           <TableCell className="px-6 py-4 text-right font-black text-amber-700 tabular-nums">{m.total.toLocaleString('en-US')} <span className="text-[8px] opacity-60 ms-1 uppercase">{m.currency}</span></TableCell>
+                           <TableCell className="px-6 py-4 text-right font-bold text-slate-700 tabular-nums">{m.qty} <span className="text-[8px] font-black text-slate-400 uppercase">{m.unit}</span></TableCell>
+                           <TableCell className="px-6 py-4 text-right font-black text-amber-700 tabular-nums">{m.total.toLocaleString('en-US')} <span className="text-[8px] opacity-60 uppercase">{m.currency}</span></TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -645,43 +596,69 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
             <div className="flex-1 flex flex-col animate-in fade-in duration-300 overflow-hidden">
                <div className="p-4 bg-purple-50 border-b border-purple-100 flex items-center justify-between">
                   <h3 className="text-xs font-black text-purple-900 uppercase tracking-widest flex items-center gap-2"><Wallet className="w-4 h-4" /> {lang === 'ar' ? 'سجل الأجور المستحقة عن عمليات الإنتاج' : 'PRODUCTION WAGES LEDGER'}</h3>
-                  <div className="flex items-center gap-2">
-                     <span className="text-[10px] font-black text-purple-800 uppercase tracking-widest">{lang === 'ar' ? 'إجمالي الأجور المستحقة:' : 'TOTAL WAGES:'}</span>
-                     <Badge className="bg-purple-600 text-white font-black tabular-nums">{totalWagesCost.toLocaleString('en-US')} {systemCurrency}</Badge>
-                  </div>
+                  <Badge className="bg-purple-600 text-white font-black tabular-nums">{totalWagesCost.toLocaleString('en-US')} {systemCurrency}</Badge>
                </div>
+
+               {/* UNIFIED TOOLBAR */}
+               <div className="p-2 bg-slate-50 border-b border-slate-200 flex items-center gap-2 shadow-sm">
+                  <div className="relative flex-1">
+                    <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300`} />
+                    <Input value={wageSearch} onChange={(e) => setWageSearch(e.target.value)} placeholder={lang === 'ar' ? 'بحث في سجل الأجور...' : 'Search wages log...'} className={cn("h-9 bg-white text-xs font-bold border-slate-200", dir === 'rtl' ? "pr-9" : "pl-9")} />
+                  </div>
+                  <div className="flex items-center gap-1.5 px-1.5 border-x border-slate-200">
+                    <Button variant="ghost" size="sm" onClick={() => {
+                        const headers = ['Date', 'Voucher', 'Worker', 'Amount', 'Currency'];
+                        const rows = filteredWagesDetailed.map(v => [v.date, v.voucherNumber, v.fullName, v.wageAmount, v.currency || systemCurrency]);
+                        const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+                        const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+                        const url = URL.createObjectURL(blob);
+                        const link = document.createElement('a'); link.href = url; link.setAttribute('download', `WagesLog_${order.orderNumber}.csv`);
+                        document.body.appendChild(link); link.click(); document.body.removeChild(link);
+                        toast({ title: lang === 'ar' ? "تم تحميل ملف CSV" : "CSV Downloaded" });
+                      }} className="h-9 px-3 text-[10px] font-black gap-2 text-slate-600 hover:bg-white border border-transparent">
+                      <FileDown className="w-3.5 h-3.5 text-emerald-600" />{lang === 'ar' ? 'تصدير' : 'Export'}
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-9 px-3 text-[10px] font-black gap-2 text-slate-600 hover:bg-white">
+                          <Filter className="w-3.5 h-3.5" />{lang === 'ar' ? 'تصفية وترتيب' : 'Filter & Sort'}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="w-64 rounded-xl shadow-xl border-slate-200">
+                        <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">SORTING</DropdownMenuLabel>
+                        <DropdownMenuItem onClick={() => { setWageSortBy('date'); setWageSortOrder(wageSortOrder === 'asc' ? 'desc' : 'asc'); }} className="text-xs font-bold flex justify-between cursor-pointer py-2.5">
+                           {lang === 'ar' ? 'حسب التاريخ' : 'By Date'}
+                           {wageSortBy === 'date' && (wageSortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => { setWageSortBy('amount'); setWageSortOrder(wageSortOrder === 'asc' ? 'desc' : 'asc'); }} className="text-xs font-bold flex justify-between cursor-pointer py-2.5">
+                           {lang === 'ar' ? 'حسب المبلغ' : 'By Amount'}
+                           {wageSortBy === 'amount' && (wageSortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                  <div className="flex items-center gap-2 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest tabular-nums">{lang === 'ar' ? 'العدد:' : 'COUNT:'} <span className="text-emerald-600">{filteredWagesDetailed.length}</span></div>
+               </div>
+
                <div className="flex-1 overflow-auto no-scrollbar">
                   <Table className="text-right border-separate border-spacing-0">
                     <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
                       <TableRow>
-                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'التاريخ' : 'DATE'}</TableHead>
-                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'الموظف' : 'WORKER'}</TableHead>
-                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'العملية / المرحلة' : 'OPERATION'}</TableHead>
-                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'الكمية' : 'QTY'}</TableHead>
-                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'المستحق' : 'EARNED'}</TableHead>
+                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">DATE</TableHead>
+                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">PERSONNEL</TableHead>
+                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">QTY</TableHead>
+                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">EARNED</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {vouchers.filter(v => v.type === 'production_receipt' && v.status !== 'deleted').length === 0 ? (
-                        <TableRow><TableCell colSpan={5} className="py-20 text-center text-slate-300 font-bold">لا يوجد سجل أجور لهذه الدفعة حتى الآن</TableCell></TableRow>
-                      ) : vouchers.filter(v => v.type === 'production_receipt' && v.status !== 'deleted').map((v, idx) => {
-                        const worker = workers?.find(w => w.id === v.workerId);
-                        const dept = departments?.find(d => d.id === v.currentStageId || d.id === worker?.departmentId);
-                        return (
-                          <TableRow key={idx} className="hover:bg-slate-50 transition-colors border-b border-slate-100">
-                             <TableCell className="px-6 py-4 text-[10px] font-bold text-slate-400 tabular-nums text-right">{v.date}</TableCell>
-                             <TableCell className="px-6 py-4 text-right">
-                                <div className="flex items-center gap-2 justify-start">
-                                   <div className="w-7 h-7 rounded bg-slate-100 flex items-center justify-center text-[10px] font-black text-slate-400 shrink-0">{worker?.fullName?.charAt(0)}</div>
-                                   <span className="font-bold text-slate-900 text-xs truncate">{worker?.fullName}</span>
-                                </div>
-                             </TableCell>
-                             <TableCell className="px-6 py-4 font-black text-slate-500 text-[10px] uppercase text-right">{dept?.nameAr || '---'}</TableCell>
-                             <TableCell className="px-6 py-4 text-right font-bold text-slate-700 tabular-nums">{v.qtyAccepted.toLocaleString('en-US')} Pcs</TableCell>
-                             <TableCell className="px-6 py-4 text-right font-black text-purple-700 tabular-nums">{v.wageAmount.toLocaleString('en-US')} {v.currency || systemCurrency}</TableCell>
-                          </TableRow>
-                        );
-                      })}
+                      {filteredWagesDetailed.map((v, idx) => (
+                        <TableRow key={idx} className="hover:bg-slate-50 transition-colors border-b border-slate-100">
+                           <TableCell className="px-6 py-4 text-[10px] font-bold text-slate-400 tabular-nums text-right">{v.date}</TableCell>
+                           <TableCell className="px-6 py-4 text-right font-bold text-slate-900 text-xs">{v.fullName}</TableCell>
+                           <TableCell className="px-6 py-4 text-right font-bold text-slate-700 tabular-nums">{v.qtyAccepted} Pcs</TableCell>
+                           <TableCell className="px-6 py-4 text-right font-black text-purple-700 tabular-nums">{v.wageAmount.toLocaleString('en-US')} {v.currency || systemCurrency}</TableCell>
+                        </TableRow>
+                      ))}
                     </TableBody>
                   </Table>
                </div>
@@ -692,28 +669,63 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
             <div className="flex-1 flex flex-col animate-in fade-in duration-300 overflow-hidden">
                <div className="p-4 bg-rose-50 border-b border-rose-100 flex items-center justify-between">
                   <h3 className="text-xs font-black text-rose-900 uppercase tracking-widest flex items-center gap-2"><Receipt className="w-4 h-4" /> {lang === 'ar' ? 'المصاريف والتكاليف التشغيلية المرتبطة بالدفعة' : 'BATCH OVERHEAD COSTS'}</h3>
-                  <div className="flex items-center gap-2">
-                     <span className="text-[10px] font-black text-rose-800 uppercase tracking-widest">{lang === 'ar' ? 'إجمالي التكاليف الأخرى:' : 'TOTAL OVERHEAD:'}</span>
-                     <Badge className="bg-rose-600 text-white font-black tabular-nums">{totalOtherCosts.toLocaleString('en-US')} {systemCurrency}</Badge>
-                  </div>
+                  <Badge className="bg-rose-600 text-white font-black tabular-nums">{totalOtherCosts.toLocaleString('en-US')} {systemCurrency}</Badge>
                </div>
+
+               {/* UNIFIED TOOLBAR */}
+               <div className="p-2 bg-slate-50 border-b border-slate-200 flex items-center gap-2 shadow-sm">
+                  <div className="relative flex-1">
+                    <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300`} />
+                    <Input value={costSearch} onChange={(e) => setCostSearch(e.target.value)} placeholder={lang === 'ar' ? 'بحث في المصاريف...' : 'Search costs log...'} className={cn("h-9 bg-white text-xs font-bold border-slate-200", dir === 'rtl' ? "pr-9" : "pl-9")} />
+                  </div>
+                  <div className="flex items-center gap-1.5 px-1.5 border-x border-slate-200">
+                    <Button variant="ghost" size="sm" onClick={() => {
+                        const headers = ['Date', 'Voucher', 'Description', 'Amount', 'Currency'];
+                        const rows = filteredCostsDetailed.map(v => [v.date, v.voucherNumber, v.description, v.totalAmount, v.currency || systemCurrency]);
+                        const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+                        const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+                        const url = URL.createObjectURL(blob);
+                        const link = document.createElement('a'); link.href = url; link.setAttribute('download', `CostsLog_${order.orderNumber}.csv`);
+                        document.body.appendChild(link); link.click(); document.body.removeChild(link);
+                        toast({ title: lang === 'ar' ? "تم تحميل ملف CSV" : "CSV Downloaded" });
+                      }} className="h-9 px-3 text-[10px] font-black gap-2 text-slate-600 hover:bg-white border border-transparent">
+                      <FileDown className="w-3.5 h-3.5 text-emerald-600" />{lang === 'ar' ? 'تصدير' : 'Export'}
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-9 px-3 text-[10px] font-black gap-2 text-slate-600 hover:bg-white">
+                          <Filter className="w-3.5 h-3.5" />{lang === 'ar' ? 'تصفية وترتيب' : 'Filter & Sort'}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="w-64 rounded-xl shadow-xl border-slate-200">
+                        <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">SORTING</DropdownMenuLabel>
+                        <DropdownMenuItem onClick={() => { setCostSortBy('date'); setCostSortOrder(costSortOrder === 'asc' ? 'desc' : 'asc'); }} className="text-xs font-bold flex justify-between cursor-pointer py-2.5">
+                           {lang === 'ar' ? 'حسب التاريخ' : 'By Date'}
+                           {costSortBy === 'date' && (costSortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => { setCostSortBy('amount'); setCostSortOrder(costSortOrder === 'asc' ? 'desc' : 'asc'); }} className="text-xs font-bold flex justify-between cursor-pointer py-2.5">
+                           {lang === 'ar' ? 'حسب المبلغ' : 'By Amount'}
+                           {costSortBy === 'amount' && (costSortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                  <div className="flex items-center gap-2 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest tabular-nums">{lang === 'ar' ? 'العدد:' : 'COUNT:'} <span className="text-emerald-600">{filteredCostsDetailed.length}</span></div>
+               </div>
+
                <div className="flex-1 overflow-auto no-scrollbar">
                   <Table className="text-right border-separate border-spacing-0">
                     <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
                       <TableRow>
                         <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">DATE</TableHead>
-                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">REFERENCE</TableHead>
-                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'البيان / الوصف' : 'DESCRIPTION'}</TableHead>
+                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">DESCRIPTION</TableHead>
                         <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">AMOUNT</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {vouchers.filter(v => v.type === 'overhead_cost' && v.status !== 'deleted').length === 0 ? (
-                        <TableRow><TableCell colSpan={4} className="py-20 text-center text-slate-300 font-bold">لم يتم تسجيل تكاليف إضافية لهذه الدفعة</TableCell></TableRow>
-                      ) : vouchers.filter(v => v.type === 'overhead_cost' && v.status !== 'deleted').map((v, idx) => (
+                      {filteredCostsDetailed.map((v, idx) => (
                         <TableRow key={idx} className="hover:bg-slate-50 transition-colors border-b border-slate-100">
                            <TableCell className="px-6 py-4 text-[10px] font-bold text-slate-500 tabular-nums text-right">{v.date}</TableCell>
-                           <TableCell className="px-6 py-4 font-black text-slate-900 text-[10px] tabular-nums text-right">{v.voucherNumber}</TableCell>
                            <TableCell className="px-6 py-4 font-bold text-slate-700 text-xs text-right">{v.description}</TableCell>
                            <TableCell className="px-6 py-4 text-right font-black text-rose-600 tabular-nums">{v.totalAmount.toLocaleString('en-US')} {v.currency || systemCurrency}</TableCell>
                         </TableRow>
@@ -729,75 +741,54 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                <div className="p-2 bg-slate-50 border-b border-slate-200 flex items-center gap-2 shadow-sm">
                   <div className="relative flex-1">
                     <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300`} />
-                    <Input 
-                      value={stageSearch} 
-                      onChange={(e) => setStageSearch(e.target.value)} 
-                      placeholder={lang === 'ar' ? 'بحث في سجل المرحلة...' : 'Search stage log...'} 
-                      className={cn("h-9 bg-white text-xs font-bold border-slate-200", dir === 'rtl' ? "pr-9" : "pl-9")} 
-                    />
+                    <Input value={stageSearch} onChange={(e) => setStageSearch(e.target.value)} placeholder={lang === 'ar' ? 'بحث في سجل المرحلة...' : 'Search stage log...'} className={cn("h-9 bg-white text-xs font-bold border-slate-200", dir === 'rtl' ? "pr-9" : "pl-9")} />
                   </div>
                   <div className="flex items-center gap-1.5 px-1.5 border-x border-slate-200">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={handleExportStageCSV}
-                      className="h-9 px-3 text-[10px] font-black gap-2 text-slate-600 hover:bg-white border border-transparent"
-                    >
-                      <FileDown className="w-3.5 h-3.5 text-emerald-600" />
-                      {lang === 'ar' ? 'تصدير' : 'Export'}
+                    <Button variant="ghost" size="sm" onClick={() => {
+                        const headers = ['Date', 'Reference', 'Type', 'Personnel', 'Impact', 'Currency'];
+                        const rows = filteredStageVouchers.map(v => {
+                          const worker = workers?.find(w => w.id === v.workerId);
+                          const impact = v.type === 'production_receipt' ? v.qtyAccepted : v.totalAmount;
+                          const unit = v.type === 'production_receipt' ? 'Pcs' : (v.currency || systemCurrency);
+                          return [v.date, v.voucherNumber, v.type, worker?.fullName || '---', impact, unit];
+                        });
+                        const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+                        const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+                        const url = URL.createObjectURL(blob);
+                        const link = document.createElement('a'); link.href = url; link.setAttribute('download', `StageLog_${activeTab}.csv`);
+                        document.body.appendChild(link); link.click(); document.body.removeChild(link);
+                        toast({ title: lang === 'ar' ? "تم تحميل سجل المرحلة" : "Stage Log Exported" });
+                      }} className="h-9 px-3 text-[10px] font-black gap-2 text-slate-600 hover:bg-white border border-transparent">
+                      <FileDown className="w-3.5 h-3.5 text-emerald-600" />{lang === 'ar' ? 'تصدير' : 'Export'}
                     </Button>
 
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="sm" className="h-9 px-3 text-[10px] font-black gap-2 text-slate-600 hover:bg-white">
-                          <Filter className="w-3.5 h-3.5" />
-                          {lang === 'ar' ? 'تصفية وترتيب' : 'Filter & Sort'}
-                          {(stageTypeFilter !== 'all' || stageSortOrder !== 'desc') && (
-                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                          )}
+                          <Filter className="w-3.5 h-3.5" />{lang === 'ar' ? 'تصفية وترتيب' : 'Filter & Sort'}
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="w-64 rounded-xl shadow-xl border-slate-200">
-                        <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'الترتيب الزمني' : 'CHRONOLOGY'}</DropdownMenuLabel>
+                        <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">CHRONOLOGY</DropdownMenuLabel>
                         <DropdownMenuItem onClick={() => setStageSortOrder(stageSortOrder === 'asc' ? 'desc' : 'asc')} className="text-xs font-bold flex justify-between cursor-pointer py-2.5">
                           {lang === 'ar' ? 'ترتيب حسب التاريخ' : 'Sort by Date'}
                           {stageSortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />}
                         </DropdownMenuItem>
-
                         <DropdownMenuSeparator />
-                        <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'نوع الحركة' : 'VOUCHER TYPE'}</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => setStageTypeFilter('all')} className="text-xs font-bold flex justify-between cursor-pointer py-2">
-                          {lang === 'ar' ? 'الكل' : 'All Activities'}
-                          {stageTypeFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setStageTypeFilter('material_issue')} className="text-xs font-bold flex justify-between cursor-pointer py-2">
-                          {lang === 'ar' ? 'صرف مواد' : 'Material Issue'}
-                          {stageTypeFilter === 'material_issue' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setStageTypeFilter('production_receipt')} className="text-xs font-bold flex justify-between cursor-pointer py-2">
-                          {lang === 'ar' ? 'استلام انتاج' : 'Production Receipt'}
-                          {stageTypeFilter === 'production_receipt' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setStageTypeFilter('material_return')} className="text-xs font-bold flex justify-between cursor-pointer py-2">
-                          {lang === 'ar' ? 'توريد مرتجع' : 'Material Return'}
-                          {stageTypeFilter === 'material_return' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setStageTypeFilter('wage_payment')} className="text-xs font-bold flex justify-between cursor-pointer py-2">
-                          {lang === 'ar' ? 'صرف أجور' : 'Wage Payment'}
-                          {stageTypeFilter === 'wage_payment' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
-                        </DropdownMenuItem>
+                        <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">VOUCHER TYPE</DropdownMenuLabel>
+                        <DropdownMenuItem onClick={() => setStageTypeFilter('all')} className="text-xs font-bold flex justify-between cursor-pointer py-2">{lang === 'ar' ? 'الكل' : 'All'}{stageTypeFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setStageTypeFilter('material_issue')} className="text-xs font-bold flex justify-between cursor-pointer py-2">{lang === 'ar' ? 'صرف مواد' : 'Material Issue'}{stageTypeFilter === 'material_issue' && <Check className="w-3.5 h-3.5 text-emerald-600" />}</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setStageTypeFilter('production_receipt')} className="text-xs font-bold flex justify-between cursor-pointer py-2">{lang === 'ar' ? 'استلام انتاج' : 'Receipt'}{stageTypeFilter === 'production_receipt' && <Check className="w-3.5 h-3.5 text-emerald-600" />}</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
-                  <div className="flex items-center gap-2 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest tabular-nums">
-                     {lang === 'ar' ? 'عدد العمليات:' : 'LOG COUNT:'} <span className="text-emerald-600">{filteredStageVouchers.length}</span>
-                  </div>
+                  <div className="flex items-center gap-2 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest tabular-nums">{lang === 'ar' ? 'العدد:' : 'LOG COUNT:'} <span className="text-emerald-600">{filteredStageVouchers.length}</span></div>
                </div>
                <div className="flex-1 overflow-auto no-scrollbar">
                   <Table className="text-right border-separate border-spacing-0">
                     <TableHeader className="bg-slate-100 sticky top-0 z-10 shadow-sm">
                       <TableRow>
-                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'التاريخ' : 'DATE'}</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? "text-right" : "text-left")}>DATE</TableHead>
                         <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? "text-right" : "text-left")}>REF #</TableHead>
                         <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? "text-right" : "text-left")}>ACTIVITY</TableHead>
                         <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? "text-right" : "text-left")}>PERSONNEL</TableHead>
@@ -857,7 +848,7 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                   voucher={viewingVoucher}
                   order={order}
                   worker={workers?.find(w => w.id === viewingVoucher.workerId)}
-                  supervisor={allWorkers?.find(w => w.id === (viewingVoucher.supervisorId || workers?.find(work => work.id === viewingVoucher.workerId)?.supervisorId))}
+                  supervisor={workers?.find(w => w.id === (viewingVoucher.supervisorId || workers?.find(work => work.id === viewingVoucher.workerId)?.supervisorId))}
                   departments={departments}
                   products={products}
                   lang={lang}
