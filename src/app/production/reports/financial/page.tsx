@@ -29,8 +29,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useTranslation } from '@/components/LanguageProvider';
-import { useFirestore, useCollection, useDoc } from '@/firebase';
-import { collection, query, where, doc } from 'firebase/firestore';
+import { useFirestore, useCollection } from '@/firebase';
+import { collection, query, doc } from 'firebase/firestore';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -47,16 +47,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { 
-  AreaChart, 
-  Area, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip as RechartsTooltip, 
-  ResponsiveContainer,
-  Legend
-} from 'recharts';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -72,8 +62,8 @@ export default function FinancialGrowthReport() {
 
   // Fetch Global Settings for Currency
   const settingsRef = useMemo(() => !db ? null : doc(db, 'settings', 'global'), [db]);
-  const { data: savedSettings } = useDoc<any>(settingsRef);
-  const systemCurrency = savedSettings?.baseCurrency || 'YER';
+  const { data: savedSettings } = useCollection<any>(settingsRef ? query(collection(db, 'settings')) : null); // Simple fetch
+  const systemCurrency = 'YER'; // Default
 
   // Fetch Data
   const ordersQuery = useMemo(() => !db ? null : collection(db, 'productionOrders'), [db]);
@@ -140,18 +130,6 @@ export default function FinancialGrowthReport() {
     const profit = revenue - costs;
     const avgMargin = filtered.length > 0 ? filtered.reduce((acc, curr) => acc + curr.margin, 0) / filtered.length : 0;
     return { revenue, costs, profit, avgMargin };
-  }, [filtered]);
-
-  // Chart Data Preparation (Monthly)
-  const chartData = useMemo(() => {
-    const monthly: Record<string, { name: string; revenue: number; costs: number }> = {};
-    filtered.forEach(d => {
-      const month = d.startDate.substring(0, 7); // YYYY-MM
-      if (!monthly[month]) monthly[month] = { name: month, revenue: 0, costs: 0 };
-      monthly[month].revenue += d.estimatedRevenue;
-      monthly[month].costs += d.totalCost;
-    });
-    return Object.values(monthly).sort((a, b) => a.name.localeCompare(b.name)).slice(-6); // Last 6 months
   }, [filtered]);
 
   const formatCurrency = (val: number) => {
@@ -297,103 +275,58 @@ export default function FinancialGrowthReport() {
           </div>
         </div>
 
-        {/* GROWTH CHART & DATA SPLIT */}
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 flex-1 min-h-0 overflow-hidden">
-          
-          {/* CHART AREA */}
-          <div className="xl:col-span-4 bg-white rounded-lg border border-slate-200 shadow-sm p-4 flex flex-col gap-4">
-             <div className="flex items-center justify-between border-b border-slate-50 pb-3">
-                <div className="flex items-center gap-2">
-                   <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-                   <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-widest">{isRtl ? 'مقارنة الإنتاج والتكاليف' : 'VALUE VS COST TREND'}</h3>
-                </div>
-                <Badge variant="outline" className="text-[8px] font-black">{isRtl ? 'آخر 6 أشهر' : 'Last 6 Months'}</Badge>
-             </div>
-             <div className="flex-1 min-h-[200px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1}/>
-                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                      </linearGradient>
-                      <linearGradient id="colorCosts" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#ef4444" stopOpacity={0.1}/>
-                        <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: 'bold', fill: '#94a3b8' }} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: 'bold', fill: '#94a3b8' }} />
-                    <RechartsTooltip 
-                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '10px', fontWeight: 'bold' }}
-                    />
-                    <Area type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={2} fillOpacity={1} fill="url(#colorRevenue)" name={isRtl ? 'قيمة الإنتاج' : 'Value'} />
-                    <Area type="monotone" dataKey="costs" stroke="#ef4444" strokeWidth={2} fillOpacity={1} fill="url(#colorCosts)" name={isRtl ? 'التكاليف' : 'Costs'} />
-                  </AreaChart>
-                </ResponsiveContainer>
-             </div>
-             <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100 flex items-center justify-between">
-                <p className="text-[9px] font-bold text-slate-500 leading-tight">
-                  {isRtl ? 'يوضح هذا المخطط الفارق بين القيمة السوقية للإنتاج والتكاليف الفعلية.' : 'Trend showing production market value vs real expenditure.'}
-                </p>
-                <Info className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-             </div>
-          </div>
-
-          {/* DATA TABLE */}
-          <div className="xl:col-span-8 bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-            <div className="flex-1 overflow-auto no-scrollbar relative">
-              <Table className={cn("text-right border-separate border-spacing-0 w-full", !isRtl && "text-left")}>
-                <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
-                   <TableRow>
-                      <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? "text-right" : "text-left")}>{isRtl ? 'أمر الإنتاج / الدفعة' : 'BATCH / ORDER'}</TableHead>
-                      <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">{isRtl ? 'التكاليف الكلية' : 'TOTAL COSTS'}</TableHead>
-                      <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">{isRtl ? 'القيمة التقديرية' : 'EST. VALUE'}</TableHead>
-                      <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200 bg-slate-100/50">{isRtl ? 'صافي الربح' : 'NET PROFIT'}</TableHead>
-                      <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">{isRtl ? 'الهامش' : 'MARGIN'}</TableHead>
+        {/* DATA TABLE - FULL WIDTH */}
+        <div className="flex-1 min-h-0 bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+          <div className="flex-1 overflow-auto no-scrollbar relative">
+            <Table className={cn("text-right border-separate border-spacing-0 w-full", !isRtl && "text-left")}>
+              <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
+                 <TableRow>
+                    <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? "text-right" : "text-left")}>{isRtl ? 'أمر الإنتاج / الدفعة' : 'BATCH / ORDER'}</TableHead>
+                    <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">{isRtl ? 'التكاليف الكلية' : 'TOTAL COSTS'}</TableHead>
+                    <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">{isRtl ? 'القيمة التقديرية' : 'EST. VALUE'}</TableHead>
+                    <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200 bg-slate-100/30">{isRtl ? 'صافي الربح' : 'NET PROFIT'}</TableHead>
+                    <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">{isRtl ? 'الهامش' : 'MARGIN'}</TableHead>
+                 </TableRow>
+              </TableHeader>
+              <TableBody>
+                 {ordersLoading ? (
+                   <TableRow><TableCell colSpan={5} className="text-center py-20 animate-pulse text-slate-400 font-black">{isRtl ? 'جاري التحليل المالي...' : 'Calculating Financials...'}</TableCell></TableRow>
+                 ) : filtered.length === 0 ? (
+                   <TableRow><TableCell colSpan={5} className="text-center py-20 text-slate-300 font-bold">{isRtl ? 'لا توجد بيانات' : 'No records match filters'}</TableCell></TableRow>
+                 ) : filtered.map((d) => (
+                   <TableRow key={d.id} className="hover:bg-slate-50/50 transition-colors border-b border-slate-100 group">
+                      <TableCell className={cn("px-6 py-4", isRtl ? "text-right" : "text-left")}>
+                         <div className="flex flex-col">
+                            <span className="font-black text-slate-900 text-xs">{d.title}</span>
+                            <div className="flex items-center gap-2 mt-0.5">
+                               <Badge variant="outline" className="text-[8px] font-black tabular-nums bg-slate-50">{d.orderNumber}</Badge>
+                               <span className="text-[9px] text-slate-400 font-bold">{d.productName}</span>
+                            </div>
+                         </div>
+                      </TableCell>
+                      <TableCell className="px-6 py-4 text-center font-bold text-rose-700 text-[11px]">{formatCurrency(d.totalCost)}</TableCell>
+                      <TableCell className="px-6 py-4 text-center font-bold text-blue-700 text-[11px]">{formatCurrency(d.estimatedRevenue)}</TableCell>
+                      <TableCell className="px-6 py-4 text-center font-black text-slate-900 text-[11px] bg-slate-100/20 border-x border-slate-100/50">
+                         <div className="flex flex-col items-center">
+                            <span className={cn(d.netProfit >= 0 ? "text-emerald-700" : "text-rose-700")}>{formatCurrency(d.netProfit)}</span>
+                            <span className="text-[8px] text-slate-400 opacity-60 uppercase">YER</span>
+                         </div>
+                      </TableCell>
+                      <TableCell className="px-6 py-4 text-center">
+                         <div className={cn(
+                           "inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-black tabular-nums",
+                           d.margin >= 30 ? "bg-emerald-50 text-emerald-700 border border-emerald-100" : 
+                           d.margin >= 15 ? "bg-blue-50 text-blue-700 border border-blue-100" :
+                           "bg-rose-50 text-rose-700 border border-rose-100"
+                         )}>
+                            {d.margin >= 0 ? <ArrowUpRight className="w-2.5 h-2.5" /> : <ArrowDownRight className="w-2.5 h-2.5" />}
+                            {d.margin.toFixed(1)}%
+                         </div>
+                      </TableCell>
                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                   {ordersLoading ? (
-                     <TableRow><TableCell colSpan={5} className="text-center py-20 animate-pulse text-slate-400 font-black">{isRtl ? 'جاري التحليل المالي...' : 'Calculating Financials...'}</TableCell></TableRow>
-                   ) : filtered.length === 0 ? (
-                     <TableRow><TableCell colSpan={5} className="text-center py-20 text-slate-300 font-bold">{isRtl ? 'لا توجد بيانات' : 'No records match filters'}</TableCell></TableRow>
-                   ) : filtered.map((d) => (
-                     <TableRow key={d.id} className="hover:bg-slate-50/50 transition-colors border-b border-slate-100 group">
-                        <TableCell className={cn("px-6 py-4", isRtl ? "text-right" : "text-left")}>
-                           <div className="flex flex-col">
-                              <span className="font-black text-slate-900 text-xs">{d.title}</span>
-                              <div className="flex items-center gap-2 mt-0.5">
-                                 <Badge variant="outline" className="text-[8px] font-black tabular-nums bg-slate-50">{d.orderNumber}</Badge>
-                                 <span className="text-[9px] text-slate-400 font-bold">{d.productName}</span>
-                              </div>
-                           </div>
-                        </TableCell>
-                        <TableCell className="px-6 py-4 text-center font-bold text-rose-700 text-[11px]">{formatCurrency(d.totalCost)}</TableCell>
-                        <TableCell className="px-6 py-4 text-center font-bold text-blue-700 text-[11px]">{formatCurrency(d.estimatedRevenue)}</TableCell>
-                        <TableCell className="px-6 py-4 text-center font-black text-slate-900 text-[11px] bg-slate-100/30 border-x border-slate-100/50">
-                           <div className="flex flex-col items-center">
-                              <span className={cn(d.netProfit >= 0 ? "text-emerald-700" : "text-rose-700")}>{formatCurrency(d.netProfit)}</span>
-                              <span className="text-[8px] text-slate-400 opacity-60 uppercase">{systemCurrency}</span>
-                           </div>
-                        </TableCell>
-                        <TableCell className="px-6 py-4 text-center">
-                           <div className={cn(
-                             "inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-black tabular-nums",
-                             d.margin >= 30 ? "bg-emerald-50 text-emerald-700 border border-emerald-100" : 
-                             d.margin >= 15 ? "bg-blue-50 text-blue-700 border border-blue-100" :
-                             "bg-rose-50 text-rose-700 border border-rose-100"
-                           )}>
-                              {d.margin >= 0 ? <ArrowUpRight className="w-2.5 h-2.5" /> : <ArrowDownRight className="w-2.5 h-2.5" />}
-                              {d.margin.toFixed(1)}%
-                           </div>
-                        </TableCell>
-                     </TableRow>
-                   ))}
-                </TableBody>
-              </Table>
-            </div>
+                 ))}
+              </TableBody>
+            </Table>
           </div>
         </div>
       </div>
