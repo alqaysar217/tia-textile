@@ -283,6 +283,26 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
     } catch (err) { console.error(err); } finally { setIsDownloading(false); }
   };
 
+  const handleExportStageCSV = () => {
+    const headers = ['Date', 'Reference', 'Type', 'Personnel', 'Impact', 'Currency'];
+    const rows = filteredStageVouchers.map(v => {
+      const worker = workers?.find(w => w.id === v.workerId);
+      const impact = v.type === 'production_receipt' ? v.qtyAccepted : v.totalAmount;
+      const unit = v.type === 'production_receipt' ? 'Pcs' : (v.currency || systemCurrency);
+      return [v.date, v.voucherNumber, v.type, worker?.fullName || '---', impact, unit];
+    });
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `StageLog_${activeTab}_${order.orderNumber}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast({ title: lang === 'ar' ? "تم تحميل سجل المرحلة" : "Stage Log Exported" });
+  };
+
   if (orderLoading || deptsLoading) {
     return (
       <div className="h-full flex flex-col items-center justify-center gap-4 bg-[#f8fafc]">
@@ -559,29 +579,74 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
             </div>
           )}
 
-          {/* TAB 5: DYNAMIC STAGE LOG */}
+          {/* TAB 5: DYNAMIC STAGE LOG (Unified ERP Toolbar) */}
           {(!['info', 'summary', 'materials_summary', 'wages_summary', 'costs_summary'].includes(activeTab)) && (
             <div className="flex-1 flex-col flex animate-in fade-in duration-300 overflow-hidden">
                <div className="p-2 bg-slate-50 border-b border-slate-200 flex items-center gap-2 shadow-sm">
                   <div className="relative flex-1">
                     <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300`} />
-                    <Input value={stageSearch} onChange={(e) => setStageSearch(e.target.value)} placeholder={lang === 'ar' ? 'بحث في سجل المرحلة...' : 'Search stage log...'} className={cn("h-9 bg-white text-xs font-bold border-slate-200", dir === 'rtl' ? "pr-9" : "pl-9")} />
+                    <Input 
+                      value={stageSearch} 
+                      onChange={(e) => setStageSearch(e.target.value)} 
+                      placeholder={lang === 'ar' ? 'بحث في سجل المرحلة...' : 'Search stage log...'} 
+                      className={cn("h-9 bg-white text-xs font-bold border-slate-200", dir === 'rtl' ? "pr-9" : "pl-9")} 
+                    />
                   </div>
                   <div className="flex items-center gap-1.5 px-1.5 border-x border-slate-200">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={handleExportStageCSV}
+                      className="h-9 px-3 text-[10px] font-black gap-2 text-slate-600 hover:bg-white border border-transparent"
+                    >
+                      <FileDown className="w-3.5 h-3.5 text-emerald-600" />
+                      {lang === 'ar' ? 'تصدير' : 'Export'}
+                    </Button>
+
                     <DropdownMenu>
-                      <DropdownMenuTrigger asChild><Button variant="ghost" size="sm" className="h-9 px-3 text-[10px] font-black gap-2 text-slate-600 hover:bg-white"><Filter className="w-3.5 h-3.5" />{lang === 'ar' ? 'تصفية' : 'Filter'}</Button></DropdownMenuTrigger>
-                      <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="w-56 rounded-xl shadow-xl">
-                        <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400">VOUCHER TYPE</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => setStageTypeFilter('all')} className="text-xs font-bold flex justify-between cursor-pointer">{lang === 'ar' ? 'الكل' : 'All'}{stageTypeFilter === 'all' && <Check className="w-3 h-3 text-emerald-600" />}</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setStageTypeFilter('material_issue')} className="text-xs font-bold flex justify-between cursor-pointer">{lang === 'ar' ? 'صرف مواد' : 'Material Issue'}{stageTypeFilter === 'material_issue' && <Check className="w-3 h-3 text-emerald-600" />}</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setStageTypeFilter('production_receipt')} className="text-xs font-bold flex justify-between cursor-pointer">{lang === 'ar' ? 'استلام انتاج' : 'Production Receipt'}{stageTypeFilter === 'production_receipt' && <Check className="w-3 h-3 text-emerald-600" />}</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setStageTypeFilter('material_return')} className="text-xs font-bold flex justify-between cursor-pointer">{lang === 'ar' ? 'توريد مرتجع' : 'Material Return'}{stageTypeFilter === 'material_return' && <Check className="w-3 h-3 text-emerald-600" />}</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setStageTypeFilter('wage_payment')} className="text-xs font-bold flex justify-between cursor-pointer">{lang === 'ar' ? 'صرف أجور' : 'Wage Payment'}{stageTypeFilter === 'wage_payment' && <Check className="w-3 h-3 text-emerald-600" />}</DropdownMenuItem>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-9 px-3 text-[10px] font-black gap-2 text-slate-600 hover:bg-white">
+                          <Filter className="w-3.5 h-3.5" />
+                          {lang === 'ar' ? 'تصفية وترتيب' : 'Filter & Sort'}
+                          {(stageTypeFilter !== 'all' || stageSortOrder !== 'desc') && (
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                          )}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="w-64 rounded-xl shadow-xl border-slate-200">
+                        <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'الترتيب الزمني' : 'CHRONOLOGY'}</DropdownMenuLabel>
+                        <DropdownMenuItem onClick={() => setStageSortOrder(stageSortOrder === 'asc' ? 'desc' : 'asc')} className="text-xs font-bold flex justify-between cursor-pointer py-2.5">
+                          {lang === 'ar' ? 'ترتيب حسب التاريخ' : 'Sort by Date'}
+                          {stageSortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />}
+                        </DropdownMenuItem>
+
+                        <DropdownMenuSeparator />
+                        <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'نوع الحركة' : 'VOUCHER TYPE'}</DropdownMenuLabel>
+                        <DropdownMenuItem onClick={() => setStageTypeFilter('all')} className="text-xs font-bold flex justify-between cursor-pointer py-2">
+                          {lang === 'ar' ? 'الكل' : 'All Activities'}
+                          {stageTypeFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setStageTypeFilter('material_issue')} className="text-xs font-bold flex justify-between cursor-pointer py-2">
+                          {lang === 'ar' ? 'صرف مواد' : 'Material Issue'}
+                          {stageTypeFilter === 'material_issue' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setStageTypeFilter('production_receipt')} className="text-xs font-bold flex justify-between cursor-pointer py-2">
+                          {lang === 'ar' ? 'استلام انتاج' : 'Production Receipt'}
+                          {stageTypeFilter === 'production_receipt' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setStageTypeFilter('material_return')} className="text-xs font-bold flex justify-between cursor-pointer py-2">
+                          {lang === 'ar' ? 'توريد مرتجع' : 'Material Return'}
+                          {stageTypeFilter === 'material_return' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setStageTypeFilter('wage_payment')} className="text-xs font-bold flex justify-between cursor-pointer py-2">
+                          {lang === 'ar' ? 'صرف أجور' : 'Wage Payment'}
+                          {stageTypeFilter === 'wage_payment' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
                   <div className="flex items-center gap-2 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest tabular-nums">
-                     LOG COUNT: <span className="text-emerald-600">{filteredStageVouchers.length}</span>
+                     {lang === 'ar' ? 'عدد العمليات:' : 'LOG COUNT:'} <span className="text-emerald-600">{filteredStageVouchers.length}</span>
                   </div>
                </div>
                <div className="flex-1 overflow-auto no-scrollbar">
