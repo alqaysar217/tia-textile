@@ -17,7 +17,9 @@ import {
   Loader2,
   Info,
   Check,
-  Calendar
+  Calendar,
+  SortAsc,
+  SortDesc
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -145,7 +147,6 @@ export default function WorkerProductivityReport() {
           </div>
 
           <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-xl border border-slate-200">
-            {/* COMPACT SEARCH */}
             <div className="relative w-48 md:w-64">
               <Search className={cn("absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400", isRtl ? "right-3" : "left-3")} />
               <Input 
@@ -157,7 +158,6 @@ export default function WorkerProductivityReport() {
             </div>
 
             <div className="flex items-center gap-1 px-1 border-x border-slate-200">
-               {/* DATE FILTER ICON */}
                <Popover>
                   <PopoverTrigger asChild>
                     <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 transition-all", (dateFrom || dateTo) && "border-emerald-500 bg-emerald-50")}>
@@ -177,14 +177,13 @@ export default function WorkerProductivityReport() {
                   </PopoverContent>
                </Popover>
 
-               {/* WORKER FILTER ICON */}
                <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 transition-all", workerId !== 'all' && "border-emerald-500 bg-emerald-50")}>
                        <Users2 className={cn("w-4 h-4", workerId !== 'all' ? "text-emerald-600" : "text-slate-400")} />
                        {workerId !== 'all' && <span className="absolute top-1 right-1 w-2 h-2 bg-emerald-500 rounded-full animate-pulse border border-white" />}
                     </Button>
-                  </PopoverTrigger>
+                  </DropdownMenuTrigger>
                   <DropdownMenuContent align={isRtl ? "start" : "end"} className="w-64 rounded-xl shadow-xl border-slate-200">
                      <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'تصفية حسب العامل' : 'BY WORKER'}</DropdownMenuLabel>
                      <ScrollArea className="h-48">
@@ -199,7 +198,6 @@ export default function WorkerProductivityReport() {
                   </DropdownMenuContent>
                </DropdownMenu>
 
-               {/* BATCH FILTER ICON */}
                <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 transition-all", orderId !== 'all' && "border-emerald-500 bg-emerald-50")}>
@@ -222,7 +220,6 @@ export default function WorkerProductivityReport() {
                </DropdownMenu>
             </div>
 
-            {/* EXPORT BUTTON */}
             <Button onClick={handleExport} variant="ghost" size="icon" className="h-9 w-9 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 shadow-md">
               <FileDown className="w-4 h-4" />
             </Button>
@@ -231,7 +228,7 @@ export default function WorkerProductivityReport() {
       </div>
 
       <div className="flex-1 min-h-0 flex flex-col p-6 space-y-4 overflow-hidden">
-        {/* COMPACT STATS OVERVIEW - SINGLE ROW */}
+        {/* COMPACT STATS OVERVIEW */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-none">
           <div className="bg-white px-4 py-2.5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4 group hover:border-emerald-200 transition-all">
               <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg group-hover:bg-emerald-600 group-hover:text-white transition-all shrink-0">
@@ -316,7 +313,7 @@ export default function WorkerProductivityReport() {
                   {loading ? (
                     <TableRow><TableCell colSpan={7} className="text-center py-20 animate-pulse text-slate-400 font-black">جاري تحليل الأداء والبيانات المالية...</TableCell></TableRow>
                   ) : filteredData.length === 0 ? (
-                    <TableRow><TableCell colSpan={7} className="text-center py-20 text-slate-300 font-bold">لا توجد بيانات مطابقة لهذه الفلاتر</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={7} className="text-center py-20 text-slate-300 font-bold">لا توجد بيانات مطابقة لهذه الفلاتر</TableRow></TableCell>
                   ) : filteredData.map((r) => {
                      const worker = allWorkers?.find(w => w.id === r.workerId);
                      const order = allOrders?.find(o => o.id === r.orderId);
