@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Eye, Edit2, Trash2, MoreVertical, FileText } from 'lucide-react';
+import { Eye, Edit2, Trash2, MoreVertical, FileText, Truck, CheckCircle2 } from 'lucide-react';
 import { 
   Table, 
   TableBody, 
@@ -19,6 +19,12 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from '@/lib/utils';
 
 interface ReceiptTableProps {
@@ -31,10 +37,11 @@ interface ReceiptTableProps {
   onPrint: (v: any) => void;
   onEdit: (v: any) => void;
   onDelete: (v: any) => void;
+  onTransfer: (v: any) => void;
 }
 
 export function ReceiptTable({
-  loading, vouchers, allWorkers, allOrders, lang, dir, onPrint, onEdit, onDelete
+  loading, vouchers, allWorkers, allOrders, lang, dir, onPrint, onEdit, onDelete, onTransfer
 }: ReceiptTableProps) {
   const isRtl = lang === 'ar';
 
@@ -71,17 +78,44 @@ export function ReceiptTable({
               </TableCell>
               <TableCell className="px-6 py-3 text-center">
                 <div className="flex items-center justify-center gap-1">
+                  {/* VIEW BUTTON */}
                   <Button variant="ghost" size="icon" onClick={() => onPrint(v)} className="h-8 w-8 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors">
                     <Eye className="w-4 h-4" />
                   </Button>
+
+                  {/* TRANSFER TO WAREHOUSE BUTTON */}
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          disabled={v.isTransferred}
+                          onClick={() => onTransfer(v)} 
+                          className={cn(
+                            "h-8 w-8 transition-colors rounded-lg",
+                            v.isTransferred 
+                              ? "text-emerald-600 bg-emerald-50 cursor-default" 
+                              : "text-slate-400 hover:text-blue-600 hover:bg-blue-50"
+                          )}
+                        >
+                          {v.isTransferred ? <CheckCircle2 className="w-4 h-4" /> : <Truck className="w-4 h-4" />}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="text-[10px] font-black">{v.isTransferred ? (isRtl ? 'تم الترحيل' : 'Transferred') : (isRtl ? 'ترحيل للمستودع' : 'Transfer to Warehouse')}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-slate-100 rounded-lg"><MoreVertical className="w-4 h-4 text-slate-400" /></Button></DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-44 rounded-xl shadow-xl">
-                      <DropdownMenuItem onClick={() => onEdit(v)} className="gap-2 font-bold py-2 cursor-pointer">
+                      <DropdownMenuItem onClick={() => onEdit(v)} disabled={v.isTransferred} className="gap-2 font-bold py-2 cursor-pointer">
                         <Edit2 className="w-3.5 h-3.5 text-emerald-600" /> {isRtl ? 'تعديل السند' : 'Edit Voucher'}
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => onDelete(v)} className="gap-2 font-bold py-2 text-rose-600 cursor-pointer">
+                      <DropdownMenuItem onClick={() => onDelete(v)} disabled={v.isTransferred} className="gap-2 font-bold py-2 text-rose-600 cursor-pointer">
                         <Trash2 className="w-3.5 h-3.5" /> {isRtl ? 'نقل للمهملات' : 'Move to Trash'}
                       </DropdownMenuItem>
                     </DropdownMenuContent>

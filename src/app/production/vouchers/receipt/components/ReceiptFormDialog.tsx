@@ -42,7 +42,7 @@ interface ReceiptFormDialogProps {
   isSubmitting: boolean;
   formData: any;
   setFormData: (v: any) => void;
-  allOrders: any[]; // Changed from activeOrders to match state
+  allOrders: any[];
   allWorkers: any[];
   allDepartments: any[];
   allMIVs: any[];
@@ -226,23 +226,6 @@ export function ReceiptFormDialog({
                 </div>
               </div>
               
-              {/* WAREHOUSE TRANSFER SECTION */}
-              <div className="p-4 bg-emerald-900 rounded-xl text-white flex items-center justify-between shadow-xl">
-                 <div className="flex items-center gap-3">
-                    <div className="p-2 bg-white/10 rounded-lg"><Truck className="w-5 h-5 text-emerald-300" /></div>
-                    <div className="text-right">
-                       <p className="text-[11px] font-black uppercase tracking-widest">{isRtl ? 'الترحيل للمستودع العام' : 'Warehouse Transfer'}</p>
-                       <p className="text-[9px] font-bold text-emerald-200/60">{isRtl ? 'إتاحة الكمية للبيع فوراً في مخزن المبيعات' : 'Make items available for sale instantly'}</p>
-                    </div>
-                 </div>
-                 <Checkbox 
-                   id="transfer" 
-                   checked={formData.transferToWarehouse} 
-                   onCheckedChange={(val) => setFormData({...formData, transferToWarehouse: !!val})}
-                   className="w-6 h-6 border-white/20 data-[state=checked]:bg-emerald-500 data-[state=checked]:text-white"
-                 />
-              </div>
-
               <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-white rounded-lg text-emerald-600 shadow-sm"><Wallet className="w-5 h-5" /></div>

@@ -18,7 +18,7 @@ import {
 } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { toPng } from 'html-to-image';
-import { ShieldCheck } from 'lucide-react';
+import { ShieldCheck, Truck, Loader2, AlertCircle } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 
 import { ReceiptHeader } from './components/ReceiptHeader';
@@ -26,6 +26,16 @@ import { ReceiptTable } from './components/ReceiptTable';
 import { ReceiptFormDialog } from './components/ReceiptFormDialog';
 import { ReceiptPrintPreview } from './components/ReceiptPrintPreview';
 import { ReceiptDeleteDialog } from './components/ReceiptDeleteDialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function ProductionReceiptPage() {
   const { lang, dir } = useTranslation();
@@ -37,6 +47,8 @@ export default function ProductionReceiptPage() {
   const [editingVoucherId, setEditingVoucherId] = useState<string | null>(null);
   const [deletingVoucher, setDeletingVoucher] = useState<any | null>(null);
   const [printingVoucher, setPrintingVoucher] = useState<any | null>(null);
+  const [transferringVoucher, setTransferringVoucher] = useState<any | null>(null);
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [search, setSearch] = useState('');
@@ -63,7 +75,6 @@ export default function ProductionReceiptPage() {
     wageRate: 0,
     currency: systemCurrency,
     returnedItems: [] as any[],
-    transferToWarehouse: false 
   });
 
   const ordersQuery = useMemo(() => !db ? null : collection(db, 'productionOrders'), [db]);
@@ -138,30 +149,63 @@ export default function ProductionReceiptPage() {
       batch.update(doc(db, 'productionOrders', formData.orderId), { completedQty: increment(Number(formData.qtyAccepted)) });
       formData.returnedItems.forEach(item => batch.update(doc(db, 'materials', item.id), { currentQty: increment(Number(item.qty)) }));
 
-      // LOGIC: Transfer to Internal ERP Warehouse
-      if (formData.transferToWarehouse) {
-        const whRef = doc(db, 'finishedGoodsWarehouse', selectedOrder?.productId);
-        batch.set(whRef, { 
-          totalQty: increment(Number(formData.qtyAccepted)),
-          updatedAt: serverTimestamp(),
-          history: arrayUnion({ 
-            date: formData.date, 
-            qty: Number(formData.qtyAccepted), 
-            orderId: formData.orderId, 
-            orderNumber: selectedOrder?.orderNumber || '',
-            voucherNo: 'PRV' 
-          })
-        }, { merge: true });
-      }
-
       if (formData.isFinalSettlement) formData.linkedMIVs.forEach(id => batch.update(doc(db, 'vouchers', id), { status: 'settled', updatedAt: serverTimestamp() }));
 
       await batch.commit();
       toast({ title: isRtl ? "تم التوريد والترحيل بنجاح" : "Success" });
       setIsAddDialogOpen(false);
       setEditingVoucherId(null);
-      setFormData({ date: new Date().toISOString().split('T')[0], orderId: '', workerId: '', linkedMIVs: [], isFinalSettlement: true, notes: '', qtyAccepted: 0, wageRate: 0, currency: systemCurrency, returnedItems: [], transferToWarehouse: false });
+      setFormData({ date: new Date().toISOString().split('T')[0], orderId: '', workerId: '', linkedMIVs: [], isFinalSettlement: true, notes: '', qtyAccepted: 0, wageRate: 0, currency: systemCurrency, returnedItems: [] });
     } catch (err) { console.error(err); } finally { setIsSubmitting(false); }
+  };
+
+  const handleTransferToWarehouse = async () => {
+    if (!db || !transferringVoucher || isSubmitting) return;
+    setIsSubmitting(true);
+    const batch = writeBatch(db);
+    
+    try {
+      const selectedOrder = allOrders?.find(o => o.id === transferringVoucher.orderId);
+      const productId = selectedOrder?.productId;
+      if (!productId) throw new Error("Order has no product ID");
+
+      const whRef = doc(db, 'finishedGoodsWarehouse', productId);
+      const logRef = doc(collection(db, 'warehouseTransactions'));
+
+      // 1. Update Warehouse Stock
+      batch.set(whRef, { 
+        totalQty: increment(Number(transferringVoucher.qtyAccepted)),
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+
+      // 2. Log Transaction for Reversal
+      batch.set(logRef, {
+        type: 'in',
+        voucherId: transferringVoucher.id,
+        voucherNumber: transferringVoucher.voucherNumber,
+        orderId: transferringVoucher.orderId,
+        productId: productId,
+        qty: transferringVoucher.qtyAccepted,
+        date: transferringVoucher.date,
+        createdAt: serverTimestamp(),
+        status: 'posted'
+      });
+
+      // 3. Mark Voucher as Transferred
+      batch.update(doc(db, 'vouchers', transferringVoucher.id), { 
+        isTransferred: true,
+        warehouseTransactionId: logRef.id 
+      });
+
+      await batch.commit();
+      toast({ title: isRtl ? "تم ترحيل الكمية للمستودع" : "Transferred to Warehouse" });
+      setTransferringVoucher(null);
+    } catch (err) {
+      console.error(err);
+      toast({ variant: "destructive", title: isRtl ? "خطأ في الترحيل" : "Transfer Error" });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleDeleteRequest = async () => {
@@ -190,6 +234,7 @@ export default function ProductionReceiptPage() {
           loading={vouchersLoading} vouchers={filteredVouchers} allWorkers={allWorkers || []} allOrders={allOrders || []}
           lang={lang} dir={dir} onPrint={(v) => setPrintingVoucher(v)} onEdit={(v) => { setEditingVoucherId(v.id); setFormData({ ...v }); setIsAddDialogOpen(true); }}
           onDelete={(v) => setDeletingVoucher(v)}
+          onTransfer={(v) => setTransferringVoucher(v)}
         />
       </div>
 
@@ -212,6 +257,31 @@ export default function ProductionReceiptPage() {
       />
 
       <ReceiptDeleteDialog isOpen={!!deletingVoucher} onClose={() => setDeletingVoucher(null)} lang={lang} isSubmitting={isSubmitting} onDelete={handleDeleteRequest} />
+
+      {/* TRANSFER CONFIRMATION DIALOG */}
+      <AlertDialog open={!!transferringVoucher} onOpenChange={(open) => !open && setTransferringVoucher(null)}>
+        <AlertDialogContent className="max-w-[450px] rounded-[1.5rem] p-0 overflow-hidden border-none shadow-2xl">
+          <div className="bg-slate-900 p-8 text-center relative overflow-hidden">
+             <div className="absolute top-0 right-0 p-4 opacity-5"><Truck className="w-32 h-32 text-white" /></div>
+             <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-blue-500/20 shadow-inner">
+                <Truck className="w-8 h-8 text-blue-400" />
+             </div>
+             <AlertDialogTitle className="text-white text-xl font-black">{isRtl ? 'تأكيد الترحيل للمستودع' : 'Confirm Warehouse Transfer'}</AlertDialogTitle>
+             <AlertDialogDescription className="text-slate-400 font-bold mt-2 text-xs leading-relaxed">
+                {isRtl 
+                  ? `أنت على وشك ترحيل عدد (${transferringVoucher?.qtyAccepted}) قطعة من سند رقم (${transferringVoucher?.voucherNumber}) إلى مستودع المنجز الجاهز. هل هذا المنتج مكتمل وجاهز للبيع تماماً؟`
+                  : `You are about to transfer (${transferringVoucher?.qtyAccepted}) items to the finished goods warehouse. Is this product fully completed and ready for sale?`}
+             </AlertDialogDescription>
+          </div>
+          <div className="bg-white p-6 flex gap-3">
+             <AlertDialogAction onClick={handleTransferToWarehouse} disabled={isSubmitting} className="flex-1 h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black shadow-lg">
+                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : <Truck className="w-4 h-4 me-2" />}
+                {isRtl ? 'نعم، ترحيل الآن' : 'Yes, Transfer Now'}
+             </AlertDialogAction>
+             <AlertDialogCancel className="flex-1 h-12 bg-slate-50 border-slate-200 text-slate-400 rounded-xl font-black">{isRtl ? 'تراجع' : 'Cancel'}</AlertDialogCancel>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <div className="flex-none p-2.5 bg-slate-900 text-white/50 flex items-center justify-center gap-3">
         <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
