@@ -91,6 +91,11 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
   const [stageTypeFilter, setStageTypeFilter] = useState<'all' | 'material_issue' | 'production_receipt' | 'wage_payment' | 'material_return' | 'overhead_cost'>('all');
   const [stageSortOrder, setStageSortOrder] = useState<'asc' | 'desc'>('desc');
 
+  // Fetch Global Settings for Currency
+  const settingsRef = useMemo(() => !db ? null : doc(db, 'settings', 'global'), [db]);
+  const { data: savedSettings } = useDoc<any>(settingsRef);
+  const systemCurrency = savedSettings?.baseCurrency || 'YER';
+
   const orderRef = useMemo(() => !db ? null : doc(db, 'productionOrders', id as string), [db, id]);
   const vouchersQuery = useMemo(() => !db ? null : query(collection(db, 'vouchers'), where('orderId', '==', id)), [db, id]);
   const deptsQuery = useMemo(() => !db ? null : query(collection(db, 'departments'), where('status', '!=', 'deleted')), [db]);
@@ -166,6 +171,7 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
             qty: Number(item.qty || 0),
             unit: item.unit,
             price: Number(item.price || 0),
+            currency: v.currency || systemCurrency,
             total: Number(item.qty || 0) * Number(item.price || 0)
           });
         });
@@ -175,7 +181,7 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
       const timeB = new Date(b.date || 0).getTime();
       return timeB - timeA;
     });
-  }, [vouchers]);
+  }, [vouchers, systemCurrency]);
 
   const totalMaterialsCost = useMemo(() => {
     return materialsDetailed.reduce((sum, m) => sum + m.total, 0);
@@ -433,7 +439,7 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                   </h3>
                   <div className="flex items-center gap-2">
                      <span className="text-[10px] font-black text-amber-800 uppercase tracking-widest">{lang === 'ar' ? 'إجمالي تكلفة المواد:' : 'TOTAL COST:'}</span>
-                     <Badge className="bg-amber-600 text-white font-black tabular-nums">{totalMaterialsCost.toLocaleString('en-US')} YER</Badge>
+                     <Badge className="bg-amber-600 text-white font-black tabular-nums">{totalMaterialsCost.toLocaleString('en-US')} {systemCurrency}</Badge>
                   </div>
                </div>
                <div className="flex-1 overflow-auto">
@@ -460,7 +466,7 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                               {m.qty.toLocaleString('en-US')} <span className="text-[8px] font-black text-slate-400 uppercase ms-1">{m.unit}</span>
                            </TableCell>
                            <TableCell className="px-6 py-4 text-right font-bold text-slate-600 tabular-nums">{m.price.toLocaleString('en-US')}</TableCell>
-                           <TableCell className="px-6 py-4 text-right font-black text-amber-700 tabular-nums">{m.total.toLocaleString('en-US')}</TableCell>
+                           <TableCell className="px-6 py-4 text-right font-black text-amber-700 tabular-nums">{m.total.toLocaleString('en-US')} <span className="text-[8px] opacity-60 ms-1 uppercase">{m.currency}</span></TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -503,7 +509,7 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                              </TableCell>
                              <TableCell className="px-6 py-4 font-black text-slate-500 text-[10px] uppercase text-right">{dept?.nameAr || '---'}</TableCell>
                              <TableCell className="px-6 py-4 text-right font-bold text-slate-700 tabular-nums">{v.qtyAccepted.toLocaleString('en-US')} Pcs</TableCell>
-                             <TableCell className="px-6 py-4 text-right font-black text-purple-700 tabular-nums">{v.wageAmount.toLocaleString('en-US')} {v.currency}</TableCell>
+                             <TableCell className="px-6 py-4 text-right font-black text-purple-700 tabular-nums">{v.wageAmount.toLocaleString('en-US')} {v.currency || systemCurrency}</TableCell>
                           </TableRow>
                         );
                       })}
@@ -537,7 +543,7 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                            <TableCell className="px-6 py-4 text-[10px] font-bold text-slate-500 tabular-nums text-right">{v.date}</TableCell>
                            <TableCell className="px-6 py-4 font-black text-slate-900 text-[10px] tabular-nums text-right">{v.voucherNumber}</TableCell>
                            <TableCell className="px-6 py-4 font-bold text-slate-700 text-xs text-right">{v.description}</TableCell>
-                           <TableCell className="px-6 py-4 text-right font-black text-rose-600 tabular-nums">{v.totalAmount.toLocaleString('en-US')} {v.currency}</TableCell>
+                           <TableCell className="px-6 py-4 text-right font-black text-rose-600 tabular-nums">{v.totalAmount.toLocaleString('en-US')} {v.currency || systemCurrency}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -585,7 +591,7 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                     </TableHeader>
                     <TableBody>
                       {filteredStageVouchers.map((v) => (
-                        <LedgerTransactionRow key={v.id} voucher={v} worker={workers?.find(w => w.id === v.workerId)} lang={lang} onView={(v) => setViewingVoucher(v)} />
+                        <LedgerTransactionRow key={v.id} voucher={v} worker={workers?.find(w => w.id === v.workerId)} systemCurrency={systemCurrency} lang={lang} onView={(v) => setViewingVoucher(v)} />
                       ))}
                     </TableBody>
                   </Table>
@@ -610,7 +616,7 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                           <TableRow key={d.id} className="hover:bg-slate-50/50 transition-colors border-b border-slate-100">
                              <TableCell className="px-6 py-4 font-black text-slate-900 text-xs text-right">{d.nameAr}</TableCell>
                              <TableCell className="px-6 py-4 text-center font-bold text-slate-700 tabular-nums">{done.toLocaleString('en-US')}</TableCell>
-                             <TableCell className="px-6 py-4 text-center font-black text-emerald-700 tabular-nums">{cost.toLocaleString('en-US')} YER</TableCell>
+                             <TableCell className="px-6 py-4 text-center font-black text-emerald-700 tabular-nums">{cost.toLocaleString('en-US')} {systemCurrency}</TableCell>
                              <TableCell className="px-6 py-4 text-center">
                                 <div className="flex items-center gap-3 justify-center"><div className="flex-1 h-1.5 w-24 bg-slate-100 rounded-full overflow-hidden"><div className="h-full bg-emerald-500" style={{ width: `${p}%` }} /></div><span className="text-[10px] font-black text-slate-400 tabular-nums">{p}%</span></div>
                              </TableCell>
@@ -636,7 +642,7 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                   voucher={viewingVoucher}
                   order={order}
                   worker={workers?.find(w => w.id === viewingVoucher.workerId)}
-                  supervisor={workers?.find(w => w.id === (viewingVoucher.supervisorId || workers?.find(work => work.id === viewingVoucher.workerId)?.supervisorId))}
+                  supervisor={allWorkers?.find(w => w.id === (viewingVoucher.supervisorId || workers?.find(work => work.id === viewingVoucher.workerId)?.supervisorId))}
                   departments={departments}
                   products={products}
                   lang={lang}
@@ -689,7 +695,7 @@ function LedgerRow({ label, value, icon, color = "text-slate-900" }: { label: st
   );
 }
 
-function LedgerTransactionRow({ voucher, worker, lang, onView }: { voucher: any, worker: any, lang: string, onView: (v: any) => void }) {
+function LedgerTransactionRow({ voucher, worker, systemCurrency, lang, onView }: { voucher: any, worker: any, systemCurrency: string, lang: string, onView: (v: any) => void }) {
   const { dir } = useTranslation();
   
   const typeMap: any = {
@@ -736,7 +742,7 @@ function LedgerTransactionRow({ voucher, worker, lang, onView }: { voucher: any,
              {voucher.type === 'production_receipt' ? (voucher.qtyAccepted || 0).toLocaleString('en-US') : (voucher.totalAmount || 0).toLocaleString('en-US')}
            </span>
            <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest">
-             {voucher.type === 'production_receipt' ? 'Pcs' : (voucher.currency || 'YER')}
+             {voucher.type === 'production_receipt' ? 'Pcs' : (voucher.currency || systemCurrency)}
            </span>
         </div>
       </TableCell>
