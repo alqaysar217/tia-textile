@@ -34,6 +34,10 @@ export function VoucherTemplate({
 
   const isRtl = lang === 'ar';
 
+  // Determine contents for dynamic title and table layout
+  const hasMaterials = voucher.items?.some((i: any) => i.itemType === 'material' || !i.itemType);
+  const hasProducts = voucher.items?.some((i: any) => i.itemType === 'product');
+
   const costCategories: Record<string, string> = {
     'electricity': 'كهرباء',
     'internet': 'انترنت',
@@ -59,7 +63,7 @@ export function VoucherTemplate({
 
       {/* PROFESSIONAL BILINGUAL HEADER */}
       <div className={cn("grid grid-cols-3 items-center border-b-[6px] border-emerald-800 pb-8 mb-8 relative z-10", isRtl ? 'rtl' : 'ltr')}>
-        <div className={cn("space-y-1", isRtl ? "text-right" : "text-right")}>
+        <div className={cn("space-y-1", isRtl ? "text-right" : "text-left")}>
           <h2 className="text-xl font-black text-emerald-900 leading-tight">جمعية الصناعات النسيجية</h2>
           <p className="text-xs font-bold text-slate-500">الروضة - محافظة شبوة - اليمن</p>
           <p className="text-[11px] font-bold text-slate-400 tabular-nums" dir="ltr">0777 263 091 | nseeg202020@gmail.com</p>
@@ -71,18 +75,22 @@ export function VoucherTemplate({
           </div>
         </div>
 
-        <div className={cn("space-y-1", isRtl ? "text-left" : "text-left")} dir="ltr">
+        <div className={cn("space-y-1", isRtl ? "text-left" : "text-right")} dir="ltr">
           <h2 className="text-[14px] font-black text-emerald-900 uppercase leading-tight tracking-tight">Textile Industries Association</h2>
           <p className="text-[11px] font-bold text-slate-500">Al-Rawdah - Shabwa - Yemen</p>
           <p className="text-[10px] font-bold text-slate-400 tabular-nums">0777 263 091 | nseeg202020@gmail.com</p>
         </div>
       </div>
 
-      {/* VOUCHER TITLE BAR */}
+      {/* VOUCHER TITLE BAR - DYNAMIC BASED ON CONTENT */}
       <div className="text-center mb-10 relative z-10">
         <div className="inline-block border-[2.5px] border-emerald-800 px-12 py-2 rounded-full bg-white shadow-sm ring-4 ring-emerald-50">
           <h3 className="text-xl font-black text-emerald-900 uppercase tracking-widest">
-            {voucher.type === 'material_issue' ? (isRtl ? 'سند صرف مواد خام' : 'Material Issue Voucher') : 
+            {voucher.type === 'material_issue' ? (
+              hasMaterials && hasProducts ? (isRtl ? 'سند تسليم منتجات وصرف مواد خام' : 'Product Delivery & Material Issue') :
+              hasProducts ? (isRtl ? 'سند تسليم منتجات' : 'Product Delivery Voucher') :
+              (isRtl ? 'سند صرف مواد خام' : 'Raw Material Issue Voucher')
+            ) : 
              voucher.type === 'production_receipt' ? (isRtl ? 'سند استلام وتسوية إنتاج' : 'Production Receipt') :
              voucher.type === 'wage_payment' ? (isRtl ? 'سند صرف أجور مالي' : 'Wage Payment Voucher') :
              voucher.type === 'material_return' ? (isRtl ? 'سند توريد مرتجع مخزني' : 'Material Return Voucher') :
@@ -272,30 +280,64 @@ export function VoucherTemplate({
             </Table>
           </div>
         ) : (
-          <div className="space-y-3">
-            <h4 className={cn("text-[10px] font-black text-emerald-900 uppercase", isRtl ? "border-r-4 border-emerald-600 pr-3" : "border-l-4 border-emerald-600 pl-3")}>
-              {voucher.type === 'material_return' ? (isRtl ? 'تفاصيل المواد المرتجعة للمخزن' : 'RETURNED MATERIALS DETAILS') : (isRtl ? 'تفاصيل السند' : 'VOUCHER DETAILS')}
-            </h4>
-            <Table className={cn("border-2 border-emerald-900/10", isRtl ? "text-right" : "text-left")}>
-              <TableHeader className="bg-emerald-900/5">
-                <TableRow className="hover:bg-transparent border-b-2 border-emerald-900/20">
-                  <TableHead className={cn("font-black text-xs py-4 text-emerald-900 uppercase", isRtl ? "text-right" : "text-left")}>
-                    {voucher.type === 'material_return' ? (isRtl ? 'اسم المادة المرتجعة' : 'Returned Item') : (isRtl ? 'البيان / المادة' : 'Description / Item')}
-                  </TableHead>
-                  <TableHead className="text-center font-black text-xs py-4 text-emerald-900 uppercase">{isRtl ? 'الكمية' : 'Quantity'}</TableHead>
-                  <TableHead className="text-center font-black text-xs py-4 text-emerald-900 uppercase">{isRtl ? 'الوحدة' : 'Unit'}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {(voucher.items || voucher.returnedItems || []).map((item: any, i: number) => (
-                  <TableRow key={i} className="border-b border-slate-100 bg-white/40">
-                    <TableCell className={cn("font-bold text-sm py-4 text-slate-800", isRtl ? "text-right" : "text-left")}>{item.nameAr || item.nameEn}</TableCell>
-                    <TableCell className="text-center font-black text-sm tabular-nums py-4 text-emerald-700">{item.qty}</TableCell>
-                    <TableCell className="text-center text-xs font-bold text-slate-500 uppercase py-4">{item.unit}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+          <div className="space-y-10">
+            {/* Products Table (for material_issue only) */}
+            {hasProducts && voucher.type === 'material_issue' && (
+              <div className="space-y-3">
+                <h4 className={cn("text-[10px] font-black text-blue-900 uppercase", isRtl ? "border-r-4 border-blue-600 pr-3" : "border-l-4 border-blue-600 pl-3")}>
+                  {isRtl ? 'تفاصيل المنتجات المسلمة للمرحلة التالية' : 'DELIVERED PRODUCTS DETAILS'}
+                </h4>
+                <Table className={cn("border-2 border-blue-900/10", isRtl ? "text-right" : "text-left")}>
+                  <TableHeader className="bg-blue-900/5">
+                    <TableRow className="hover:bg-transparent border-b-2 border-blue-900/20">
+                      <TableHead className={cn("font-black text-xs py-4 text-blue-900 uppercase", isRtl ? "text-right" : "text-left")}>{isRtl ? 'المنتج / النوع' : 'Product / Type'}</TableHead>
+                      <TableHead className="text-center font-black text-xs py-4 text-blue-900 uppercase">{isRtl ? 'الكمية' : 'Quantity'}</TableHead>
+                      <TableHead className="text-center font-black text-xs py-4 text-blue-900 uppercase">{isRtl ? 'الوحدة' : 'Unit'}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {voucher.items.filter((item: any) => item.itemType === 'product').map((item: any, i: number) => (
+                      <TableRow key={i} className="border-b border-slate-100 bg-white/40">
+                        <TableCell className={cn("font-bold text-sm py-4 text-slate-800", isRtl ? "text-right" : "text-left")}>{item.nameAr || item.nameEn}</TableCell>
+                        <TableCell className="text-center font-black text-sm tabular-nums py-4 text-blue-700">{item.qty}</TableCell>
+                        <TableCell className="text-center text-xs font-bold text-slate-500 uppercase py-4">{item.unit}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+
+            {/* Materials Table (for material_issue or material_return) */}
+            {hasMaterials && (
+              <div className="space-y-3">
+                <h4 className={cn("text-[10px] font-black text-emerald-900 uppercase", isRtl ? "border-r-4 border-emerald-600 pr-3" : "border-l-4 border-emerald-600 pl-3")}>
+                  {voucher.type === 'material_return' 
+                    ? (isRtl ? 'تفاصيل المواد المرتجعة للمخزن' : 'RETURNED MATERIALS DETAILS') 
+                    : (isRtl ? 'تفاصيل المواد الخام الملحقة بالسند' : 'ATTACHED RAW MATERIALS DETAILS')}
+                </h4>
+                <Table className={cn("border-2 border-emerald-900/10", isRtl ? "text-right" : "text-left")}>
+                  <TableHeader className="bg-emerald-900/5">
+                    <TableRow className="hover:bg-transparent border-b-2 border-emerald-900/20">
+                      <TableHead className={cn("font-black text-xs py-4 text-emerald-900 uppercase", isRtl ? "text-right" : "text-left")}>
+                        {isRtl ? 'اسم المادة الخام' : 'Material Name'}
+                      </TableHead>
+                      <TableHead className="text-center font-black text-xs py-4 text-emerald-900 uppercase">{isRtl ? 'الكمية' : 'Quantity'}</TableHead>
+                      <TableHead className="text-center font-black text-xs py-4 text-emerald-900 uppercase">{isRtl ? 'الوحدة' : 'Unit'}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(voucher.items || voucher.returnedItems || []).filter((item: any) => item.itemType === 'material' || !item.itemType).map((item: any, i: number) => (
+                      <TableRow key={i} className="border-b border-slate-100 bg-white/40">
+                        <TableCell className={cn("font-bold text-sm py-4 text-slate-800", isRtl ? "text-right" : "text-left")}>{item.nameAr || item.nameEn}</TableCell>
+                        <TableCell className="text-center font-black text-sm tabular-nums py-4 text-emerald-700">{item.qty}</TableCell>
+                        <TableCell className="text-center text-xs font-bold text-slate-500 uppercase py-4">{item.unit}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
           </div>
         )}
       </div>
