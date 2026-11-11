@@ -905,7 +905,30 @@ export default function OrderDetailsDashboard() {
 
           {activeTab === 'summary' && (
             <div className="flex-1 flex flex-col animate-in zoom-in-95 duration-300" dir={dir}>
-               <div className="p-4 bg-slate-900 text-white flex items-center justify-between"><h3 className={cn("text-xs font-black uppercase tracking-widest flex items-center gap-2", isRtl ? "text-right" : "text-left")}><BarChart3 className="w-4 h-4 text-emerald-400" /> {isRtl ? 'التحليل الإحصائي لخطوط الإنتاج' : 'ANALYTICS'}</h3></div>
+               <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
+                  <h3 className={cn("text-xs font-black uppercase tracking-widest flex items-center gap-2", isRtl ? "text-right" : "text-left")}>
+                    <BarChart3 className="w-4 h-4 text-emerald-400" /> 
+                    {isRtl ? 'التحليل الإحصائي لخطوط الإنتاج' : 'ANALYTICS'}
+                  </h3>
+               </div>
+               
+               {/* Informative Header / Explanation Box */}
+               <div className="p-4 bg-blue-50 border-b border-blue-100 flex items-start gap-4">
+                  <div className="p-2 bg-white rounded-lg shadow-sm shrink-0">
+                    <Info className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[11px] font-black text-blue-900 uppercase tracking-widest">
+                      {isRtl ? 'ما هو الهدف من هذا التحليل؟' : 'What is the purpose of this analysis?'}
+                    </p>
+                    <p className="text-[10px] text-blue-700 font-bold leading-relaxed">
+                      {isRtl 
+                        ? 'يوفر هذا الجدول رؤية شاملة لمسار الدفعة عبر كافة الأقسام. يمكنك من خلاله معرفة "عنق الزجاجة" (القسم المتأخر)، وتوزيع تكاليف الأجور حسب المرحلة، ونسبة تقدم كل قسم على حدة تجاه الكمية المستهدفة لضمان سلاسة التدفق الإنتاجي.' 
+                        : 'This table provides a holistic view of the batch pipeline across all work centers. It helps you identify bottlenecks (lagging stages), monitor wage distribution by stage, and track the specific progress of each department relative to the total target quantity.'}
+                    </p>
+                  </div>
+               </div>
+
                <div className="flex-1 overflow-auto no-scrollbar">
                   <Table className="text-right border-separate border-spacing-0">
                     <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
