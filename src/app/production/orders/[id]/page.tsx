@@ -41,7 +41,8 @@ import {
   Receipt,
   Layers,
   Wallet,
-  Coins
+  Coins,
+  FileDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from '@/components/LanguageProvider';
@@ -87,9 +88,15 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
   const [viewingVoucher, setViewingVoucher] = useState<any | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
 
+  // States for Stage Log Filtering
   const [stageSearch, setStageSearch] = useState('');
   const [stageTypeFilter, setStageTypeFilter] = useState<'all' | 'material_issue' | 'production_receipt' | 'wage_payment' | 'material_return' | 'overhead_cost'>('all');
   const [stageSortOrder, setStageSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  // States for Materials Summary Filtering & Sorting
+  const [matSearch, setMatSearch] = useState('');
+  const [matSortBy, setMatSortBy] = useState<'date' | 'nameAr' | 'total'>('date');
+  const [matSortOrder, setMatSortOrder] = useState<'asc' | 'desc'>('desc');
 
   // Fetch Global Settings for Currency
   const settingsRef = useMemo(() => !db ? null : doc(db, 'settings', 'global'), [db]);
@@ -157,9 +164,22 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
     });
   }, [rawVouchers]);
 
-  // Detailed Materials Log for accurate costing
-  const materialsDetailed = useMemo(() => {
-    const list: any[] = [];
+  // Total Materials Cost (Base calculation)
+  const totalMaterialsCost = useMemo(() => {
+    let total = 0;
+    vouchers
+      .filter(v => v.type === 'material_issue' && v.status !== 'deleted')
+      .forEach(v => {
+        v.items?.forEach((item: any) => {
+          total += Number(item.qty || 0) * Number(item.price || 0);
+        });
+      });
+    return total;
+  }, [vouchers]);
+
+  // Detailed Materials Log for accurate costing with Filter & Sort
+  const filteredMaterialsDetailed = useMemo(() => {
+    let list: any[] = [];
     vouchers
       .filter(v => v.type === 'material_issue' && v.status !== 'deleted')
       .forEach(v => {
@@ -176,26 +196,34 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
           });
         });
       });
+
+    // 1. Search Filter
+    if (matSearch) {
+      const s = matSearch.toLowerCase();
+      list = list.filter(m => 
+        m.nameAr?.toLowerCase().includes(s) || 
+        m.voucherNumber?.toLowerCase().includes(s)
+      );
+    }
+
+    // 2. Sorting
     return list.sort((a, b) => {
-      const timeA = new Date(a.date || 0).getTime();
-      const timeB = new Date(b.date || 0).getTime();
-      return timeB - timeA;
+      let valA = a[matSortBy] ?? '';
+      let valB = b[matSortBy] ?? '';
+
+      if (matSortBy === 'date') {
+        const timeA = new Date(valA).getTime();
+        const timeB = new Date(valB).getTime();
+        return matSortOrder === 'asc' ? timeA - timeB : timeB - timeA;
+      }
+      if (matSortBy === 'total') {
+        return matSortOrder === 'asc' ? Number(valA) - Number(valB) : Number(valB) - Number(valA);
+      }
+      
+      const comp = String(valA).localeCompare(String(valB), 'ar', { numeric: true });
+      return matSortOrder === 'asc' ? comp : -comp;
     });
-  }, [vouchers, systemCurrency]);
-
-  const totalMaterialsCost = useMemo(() => {
-    return materialsDetailed.reduce((sum, m) => sum + m.total, 0);
-  }, [materialsDetailed]);
-
-  // Aggregation Logic for Wages Tab
-  const wagesSummary = useMemo(() => {
-    return vouchers.filter(v => v.type === 'production_receipt' && v.status !== 'deleted');
-  }, [vouchers]);
-
-  // Aggregation Logic for Overhead Costs Tab
-  const orderCosts = useMemo(() => {
-    return vouchers.filter(v => v.type === 'overhead_cost' && v.status !== 'deleted');
-  }, [vouchers]);
+  }, [vouchers, systemCurrency, matSearch, matSortBy, matSortOrder]);
 
   const product = useMemo(() => products?.find(p => p.id === order?.productId), [products, order]);
 
@@ -218,10 +246,8 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
     
     let list = vouchers.filter(v => {
       if (v.status === 'deleted') return false;
-      
       const worker = workers?.find(w => w.id === v.workerId);
       const deptIdOfVoucher = v.currentStageId || worker?.departmentId;
-      
       const matchesStage = deptIdOfVoucher === activeTab;
       if (!matchesStage && v.type !== 'overhead_cost') return false;
       if (v.type === 'overhead_cost' && activeTab !== 'info') return false;
@@ -229,10 +255,7 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
       if (stageTypeFilter !== 'all' && v.type !== stageTypeFilter) return false;
       if (stageSearch) {
         const s = stageSearch.toLowerCase();
-        return v.voucherNumber?.toLowerCase().includes(s) || 
-               worker?.fullName?.toLowerCase().includes(s) ||
-               v.notes?.toLowerCase().includes(s) ||
-               v.description?.toLowerCase().includes(s);
+        return v.voucherNumber?.toLowerCase().includes(s) || worker?.fullName?.toLowerCase().includes(s);
       }
       return true;
     });
@@ -250,23 +273,14 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
     setIsDownloading(true);
     try {
       await new Promise(resolve => setTimeout(resolve, 1000));
-      const dataUrl = await toPng(element, { 
-        backgroundColor: '#ffffff', 
-        pixelRatio: 2, 
-        cacheBust: true,
-        fontEmbedCSS: '',
-      });
+      const dataUrl = await toPng(element, { backgroundColor: '#ffffff', pixelRatio: 2, cacheBust: true, fontEmbedCSS: '' });
       const link = document.createElement('a');
       link.download = `${viewingVoucher.type}-${viewingVoucher.voucherNumber}.png`;
       link.href = dataUrl;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-    } catch (err) {
-      console.error('Image generation failed:', err);
-    } finally {
-      setIsDownloading(false);
-    }
+    } catch (err) { console.error(err); } finally { setIsDownloading(false); }
   };
 
   if (orderLoading || deptsLoading) {
@@ -286,7 +300,6 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
       {/* UNIFIED NAVIGATION & TAB BAR */}
       <div className="flex-none bg-slate-900 z-30 shadow-2xl border-b border-white/10">
         <div className="flex items-center h-14 gap-0 px-2">
-          {/* Back Button */}
           <Button 
             variant="ghost" 
             size="icon" 
@@ -295,86 +308,31 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
           >
             {dir === 'rtl' ? <ArrowRight className="w-5 h-5" /> : <ArrowLeft className="w-5 h-5" />}
           </Button>
-
           <div className="h-6 w-px bg-white/10 shrink-0 mx-2" />
-
-          {/* Scrollable Tabs */}
           <div className="flex-1 flex items-center h-full gap-0 overflow-x-auto no-scrollbar scroll-smooth pe-4">
-            <button 
-              onClick={() => setActiveTab('info')} 
-              className={cn(
-                "flex items-center gap-2 px-5 h-full transition-all font-black text-[10px] uppercase tracking-wider shrink-0 whitespace-nowrap", 
-                activeTab === 'info' ? "bg-emerald-600 text-white shadow-[inset_0_-3px_0_white]" : "text-white/40 hover:text-white/70"
-              )}
-            >
-              <Info className="w-3.5 h-3.5" />
-              {lang === 'ar' ? 'معلومات الدفعة' : 'Batch Info'}
+            <button onClick={() => setActiveTab('info')} className={cn("flex items-center gap-2 px-5 h-full transition-all font-black text-[10px] uppercase tracking-wider shrink-0 whitespace-nowrap", activeTab === 'info' ? "bg-emerald-600 text-white shadow-[inset_0_-3px_0_white]" : "text-white/40 hover:text-white/70")}>
+              <Info className="w-3.5 h-3.5" />{lang === 'ar' ? 'معلومات الدفعة' : 'Batch Info'}
             </button>
-            
             <div className="h-4 w-px bg-white/5 shrink-0" />
-            
             {departments?.map((dept, idx) => (
-              <button 
-                key={dept.id} 
-                onClick={() => setActiveTab(dept.id)} 
-                className={cn(
-                  "flex items-center gap-2 px-5 h-full transition-all text-[10px] font-black uppercase tracking-wider shrink-0 whitespace-nowrap", 
-                  activeTab === dept.id ? "bg-emerald-600 text-white shadow-[inset_0_-3px_0_white]" : "text-white/40 hover:text-white/70"
-                )}
-              >
-                <span className={cn("w-4 h-4 rounded flex items-center justify-center text-[8px] font-black border", activeTab === dept.id ? "bg-emerald-500 border-white/20" : "bg-white/5 border-white/10")}>
-                  {idx + 1}
-                </span>
+              <button key={dept.id} onClick={() => setActiveTab(dept.id)} className={cn("flex items-center gap-2 px-5 h-full transition-all text-[10px] font-black uppercase tracking-wider shrink-0 whitespace-nowrap", activeTab === dept.id ? "bg-emerald-600 text-white shadow-[inset_0_-3px_0_white]" : "text-white/40 hover:text-white/70")}>
+                <span className={cn("w-4 h-4 rounded flex items-center justify-center text-[8px] font-black border", activeTab === dept.id ? "bg-emerald-500 border-white/20" : "bg-white/5 border-white/10")}>{idx + 1}</span>
                 <span>{dept.nameAr}</span>
               </button>
             ))}
-            
             <div className="h-4 w-px bg-white/5 shrink-0" />
-
-            <button 
-              onClick={() => setActiveTab('materials_summary')} 
-              className={cn(
-                "flex items-center gap-2 px-5 h-full transition-all font-black text-[10px] uppercase tracking-wider shrink-0 whitespace-nowrap", 
-                activeTab === 'materials_summary' ? "bg-amber-600 text-white shadow-[inset_0_-3px_0_white]" : "text-white/40 hover:text-white/70"
-              )}
-            >
-              <Layers className="w-3.5 h-3.5" />
-              {lang === 'ar' ? 'المواد الخام' : 'Materials'}
+            <button onClick={() => setActiveTab('materials_summary')} className={cn("flex items-center gap-2 px-5 h-full transition-all font-black text-[10px] uppercase tracking-wider shrink-0 whitespace-nowrap", activeTab === 'materials_summary' ? "bg-amber-600 text-white shadow-[inset_0_-3px_0_white]" : "text-white/40 hover:text-white/70")}>
+              <Layers className="w-3.5 h-3.5" />{lang === 'ar' ? 'المواد الخام' : 'Materials'}
             </button>
-            
-            <button 
-              onClick={() => setActiveTab('wages_summary')} 
-              className={cn(
-                "flex items-center gap-2 px-5 h-full transition-all font-black text-[10px] uppercase tracking-wider shrink-0 whitespace-nowrap", 
-                activeTab === 'wages_summary' ? "bg-purple-600 text-white shadow-[inset_0_-3px_0_white]" : "text-white/40 hover:text-white/70"
-              )}
-            >
-              <Wallet className="w-3.5 h-3.5" />
-              {lang === 'ar' ? 'الأجور' : 'Wages'}
+            <button onClick={() => setActiveTab('wages_summary')} className={cn("flex items-center gap-2 px-5 h-full transition-all font-black text-[10px] uppercase tracking-wider shrink-0 whitespace-nowrap", activeTab === 'wages_summary' ? "bg-purple-600 text-white shadow-[inset_0_-3px_0_white]" : "text-white/40 hover:text-white/70")}>
+              <Wallet className="w-3.5 h-3.5" />{lang === 'ar' ? 'الأجور' : 'Wages'}
             </button>
-            
-            <button 
-              onClick={() => setActiveTab('costs_summary')} 
-              className={cn(
-                "flex items-center gap-2 px-5 h-full transition-all font-black text-[10px] uppercase tracking-wider shrink-0 whitespace-nowrap", 
-                activeTab === 'costs_summary' ? "bg-rose-600 text-white shadow-[inset_0_-3px_0_white]" : "text-white/40 hover:text-white/70"
-              )}
-            >
-              <Receipt className="w-3.5 h-3.5" />
-              {lang === 'ar' ? 'التكاليف' : 'Costs'}
+            <button onClick={() => setActiveTab('costs_summary')} className={cn("flex items-center gap-2 px-5 h-full transition-all font-black text-[10px] uppercase tracking-wider shrink-0 whitespace-nowrap", activeTab === 'costs_summary' ? "bg-rose-600 text-white shadow-[inset_0_-3px_0_white]" : "text-white/40 hover:text-white/70")}>
+              <Receipt className="w-3.5 h-3.5" />{lang === 'ar' ? 'التكاليف' : 'Costs'}
             </button>
-
             <div className="h-4 w-px bg-white/5 shrink-0" />
-            
-            <button 
-              onClick={() => setActiveTab('summary')} 
-              className={cn(
-                "flex items-center gap-2 px-5 h-full transition-all font-black text-[10px] uppercase tracking-wider shrink-0 whitespace-nowrap", 
-                activeTab === 'summary' ? "bg-blue-600 text-white shadow-[inset_0_-3px_0_white]" : "text-white/40 hover:text-white/70"
-              )}
-            >
-              <BarChart3 className="w-3.5 h-3.5" />
-              {lang === 'ar' ? 'الملخص الإحصائي' : 'Analytics'}
+            <button onClick={() => setActiveTab('summary')} className={cn("flex items-center gap-2 px-5 h-full transition-all font-black text-[10px] uppercase tracking-wider shrink-0 whitespace-nowrap", activeTab === 'summary' ? "bg-blue-600 text-white shadow-[inset_0_-3px_0_white]" : "text-white/40 hover:text-white/70")}>
+              <BarChart3 className="w-3.5 h-3.5" />{lang === 'ar' ? 'الملخص الإحصائي' : 'Analytics'}
             </button>
           </div>
         </div>
@@ -408,18 +366,14 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                         <tr className="hover:bg-slate-50/50 transition-colors group">
                            <td className="px-6 py-4 w-72 border-l border-slate-100 bg-slate-50/30">
                               <div className="flex items-center gap-3 justify-start">
-                                 <div className="p-1.5 bg-white border border-slate-100 rounded text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
-                                    <Activity className="w-4 h-4" />
-                                 </div>
+                                 <div className="p-1.5 bg-white border border-slate-100 rounded text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors"><Activity className="w-4 h-4" /></div>
                                  <span className="font-black text-[10px] text-slate-400 uppercase tracking-widest">{lang === 'ar' ? 'مستوى التقدم الإجمالي' : 'PROGRESS'}</span>
                               </div>
                            </td>
                            <td className="px-6 py-4">
                               <div className="flex items-center gap-4 justify-end">
                                  <span className="text-xs font-black text-emerald-700 tabular-nums">{progress}%</span>
-                                 <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden max-w-[200px]">
-                                    <div className="h-full bg-emerald-500" style={{ width: `${progress}%` }} />
-                                 </div>
+                                 <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden max-w-[200px]"><div className="h-full bg-emerald-500" style={{ width: `${progress}%` }} /></div>
                               </div>
                            </td>
                         </tr>
@@ -442,22 +396,75 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                      <Badge className="bg-amber-600 text-white font-black tabular-nums">{totalMaterialsCost.toLocaleString('en-US')} {systemCurrency}</Badge>
                   </div>
                </div>
-               <div className="flex-1 overflow-auto">
+
+               {/* SEARCH & EXPORT TOOLBAR */}
+               <div className="p-2 bg-slate-50 border-b border-slate-200 flex items-center gap-2 shadow-sm">
+                  <div className="relative flex-1">
+                    <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300`} />
+                    <Input 
+                      value={matSearch} 
+                      onChange={(e) => setMatSearch(e.target.value)} 
+                      placeholder={lang === 'ar' ? 'بحث في سجل المواد...' : 'Search materials log...'} 
+                      className={cn("h-9 bg-white text-xs font-bold border-slate-200", dir === 'rtl' ? "pr-9" : "pl-9")} 
+                    />
+                  </div>
+                  <div className="flex items-center gap-1.5 px-1.5 border-r border-slate-200">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => {
+                        const headers = ['Date', 'Voucher', 'Material', 'Qty', 'Unit', 'Price', 'Total', 'Currency'];
+                        const rows = filteredMaterialsDetailed.map(m => [m.date, m.voucherNumber, m.nameAr, m.qty, m.unit, m.price, m.total, m.currency]);
+                        const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+                        const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+                        const url = URL.createObjectURL(blob);
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.setAttribute('download', `MaterialsLog_${order.orderNumber}_${new Date().toISOString().split('T')[0]}.csv`);
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        toast({ title: lang === 'ar' ? "تم تحميل ملف CSV" : "CSV Downloaded" });
+                      }}
+                      className="h-9 px-3 text-[10px] font-black gap-2 text-slate-600 hover:bg-white border border-transparent"
+                    >
+                      <FileDown className="w-3.5 h-3.5 text-emerald-600" />
+                      {lang === 'ar' ? 'تصدير' : 'Export'}
+                    </Button>
+                  </div>
+               </div>
+
+               <div className="flex-1 overflow-auto no-scrollbar">
                   <Table className="text-right border-separate border-spacing-0">
                     <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
                       <TableRow>
-                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'التاريخ' : 'DATE'}</TableHead>
+                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">
+                          <button onClick={() => { setMatSortBy('date'); setMatSortOrder(matSortOrder === 'asc' ? 'desc' : 'asc'); }} className="flex items-center gap-1 hover:text-emerald-700 transition-colors">
+                            {lang === 'ar' ? 'التاريخ' : 'DATE'}
+                            {matSortBy === 'date' ? (matSortOrder === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-30" />}
+                          </button>
+                        </TableHead>
                         <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'رقم السند' : 'REF #'}</TableHead>
-                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'اسم المادة' : 'MATERIAL'}</TableHead>
+                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">
+                          <button onClick={() => { setMatSortBy('nameAr'); setMatSortOrder(matSortOrder === 'asc' ? 'desc' : 'asc'); }} className="flex items-center gap-1 hover:text-emerald-700 transition-colors">
+                            {lang === 'ar' ? 'اسم المادة' : 'MATERIAL'}
+                            {matSortBy === 'nameAr' ? (matSortOrder === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-30" />}
+                          </button>
+                        </TableHead>
                         <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'الكمية' : 'QTY'}</TableHead>
                         <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'السعر' : 'PRICE'}</TableHead>
-                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'الإجمالي' : 'TOTAL'}</TableHead>
+                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">
+                          <button onClick={() => { setMatSortBy('total'); setMatSortOrder(matSortOrder === 'asc' ? 'desc' : 'asc'); }} className="flex items-center gap-1 hover:text-emerald-700 transition-colors">
+                            {lang === 'ar' ? 'الإجمالي' : 'TOTAL'}
+                            {matSortBy === 'total' ? (matSortOrder === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-30" />}
+                          </button>
+                        </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {materialsDetailed.length === 0 ? (
-                        <TableRow><TableCell colSpan={6} className="py-20 text-center text-slate-300 font-bold">لم يتم صرف أي مواد لهذه الدفعة بعد</TableCell></TableRow>
-                      ) : materialsDetailed.map((m, idx) => (
+                      {filteredMaterialsDetailed.length === 0 ? (
+                        <TableRow><TableCell colSpan={6} className="py-20 text-center text-slate-300 font-bold">لم يتم العثور على أي مواد مطابقة للبحث</TableCell></TableRow>
+                      ) : filteredMaterialsDetailed.map((m, idx) => (
                         <TableRow key={idx} className="hover:bg-slate-50 transition-colors border-b border-slate-100">
                            <TableCell className="px-6 py-4 text-[10px] font-bold text-slate-500 tabular-nums text-right">{m.date}</TableCell>
                            <TableCell className="px-6 py-4 text-[10px] font-black text-slate-400 tabular-nums text-right">{m.voucherNumber}</TableCell>
@@ -481,7 +488,7 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                <div className="p-4 bg-purple-50 border-b border-purple-100">
                   <h3 className="text-xs font-black text-purple-900 uppercase tracking-widest flex items-center gap-2"><Wallet className="w-4 h-4" /> {lang === 'ar' ? 'سجل الأجور المستحقة عن عمليات الإنتاج' : 'PRODUCTION WAGES LEDGER'}</h3>
                </div>
-               <div className="flex-1 overflow-auto">
+               <div className="flex-1 overflow-auto no-scrollbar">
                   <Table className="text-right border-separate border-spacing-0">
                     <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
                       <TableRow>
@@ -493,9 +500,9 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {wagesSummary.length === 0 ? (
+                      {vouchers.filter(v => v.type === 'production_receipt' && v.status !== 'deleted').length === 0 ? (
                         <TableRow><TableCell colSpan={5} className="py-20 text-center text-slate-300 font-bold">لا يوجد سجل أجور لهذه الدفعة حتى الآن</TableCell></TableRow>
-                      ) : wagesSummary.map((v, idx) => {
+                      ) : vouchers.filter(v => v.type === 'production_receipt' && v.status !== 'deleted').map((v, idx) => {
                         const worker = workers?.find(w => w.id === v.workerId);
                         const dept = departments?.find(d => d.id === v.currentStageId || d.id === worker?.departmentId);
                         return (
@@ -525,7 +532,7 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                <div className="p-4 bg-rose-50 border-b border-rose-100">
                   <h3 className="text-xs font-black text-rose-900 uppercase tracking-widest flex items-center gap-2"><Receipt className="w-4 h-4" /> {lang === 'ar' ? 'المصاريف والتكاليف التشغيلية المرتبطة بالدفعة' : 'BATCH OVERHEAD COSTS'}</h3>
                </div>
-               <div className="flex-1 overflow-auto">
+               <div className="flex-1 overflow-auto no-scrollbar">
                   <Table className="text-right border-separate border-spacing-0">
                     <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
                       <TableRow>
@@ -536,9 +543,9 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {orderCosts.length === 0 ? (
+                      {vouchers.filter(v => v.type === 'overhead_cost' && v.status !== 'deleted').length === 0 ? (
                         <TableRow><TableCell colSpan={4} className="py-20 text-center text-slate-300 font-bold">لم يتم تسجيل تكاليف إضافية لهذه الدفعة</TableCell></TableRow>
-                      ) : orderCosts.map((v, idx) => (
+                      ) : vouchers.filter(v => v.type === 'overhead_cost' && v.status !== 'deleted').map((v, idx) => (
                         <TableRow key={idx} className="hover:bg-slate-50 transition-colors border-b border-slate-100">
                            <TableCell className="px-6 py-4 text-[10px] font-bold text-slate-500 tabular-nums text-right">{v.date}</TableCell>
                            <TableCell className="px-6 py-4 font-black text-slate-900 text-[10px] tabular-nums text-right">{v.voucherNumber}</TableCell>
@@ -577,7 +584,7 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                      LOG COUNT: <span className="text-emerald-600">{filteredStageVouchers.length}</span>
                   </div>
                </div>
-               <div className="flex-1 overflow-auto">
+               <div className="flex-1 overflow-auto no-scrollbar">
                   <Table className="text-right border-separate border-spacing-0">
                     <TableHeader className="bg-slate-100 sticky top-0 z-10 shadow-sm">
                       <TableRow>
@@ -603,7 +610,7 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
           {activeTab === 'summary' && (
             <div className="flex-1 flex flex-col animate-in zoom-in-95 duration-300">
                <div className="p-4 bg-slate-900 text-white flex items-center justify-between"><h3 className="text-xs font-black uppercase tracking-widest flex items-center gap-2"><BarChart3 className="w-4 h-4 text-emerald-400" /> {lang === 'ar' ? 'التحليل الإحصائي لخطوط الإنتاج' : 'ANALYTICS'}</h3></div>
-               <div className="flex-1 overflow-auto">
+               <div className="flex-1 overflow-auto no-scrollbar">
                   <Table className="text-right border-separate border-spacing-0">
                     <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm"><TableRow><TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 text-right">WORK CENTER</TableHead><TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 text-center">COMPLETED</TableHead><TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 text-center">WAGE COST</TableHead><TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 text-center">PROGRESS</TableHead></TableRow></TableHeader>
                     <TableBody>
@@ -646,7 +653,7 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                   departments={departments}
                   products={products}
                   lang={lang}
-                  allReceipts={rawVouchers?.filter(v => v.type === 'production_receipt')}
+                  allReceipts={vouchers?.filter(v => v.type === 'production_receipt')}
                   allOrders={allOrders}
                 />
               )}
