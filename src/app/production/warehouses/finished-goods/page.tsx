@@ -23,7 +23,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useTranslation } from '@/components/LanguageProvider';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy, writeBatch, doc, getDoc, increment, limit } from 'firebase/firestore';
+import { collection, query, orderBy, writeBatch, doc, serverTimestamp, increment, limit } from 'firebase/firestore';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -262,7 +262,6 @@ export default function FinishedGoodsWarehousePage() {
         </Tabs>
       </div>
 
-      {/* REVERSAL DIALOG */}
       <AlertDialog open={!!reversingTx} onOpenChange={(open) => !open && setReversingTx(null)}>
         <AlertDialogContent className="max-w-[400px] rounded-[1.5rem] p-0 overflow-hidden border-none shadow-2xl">
            <div className="bg-rose-950 p-8 text-center relative">
@@ -286,7 +285,6 @@ export default function FinishedGoodsWarehousePage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* FOOTER NOTE */}
       <div className="flex-none p-3 bg-slate-900 text-white/40 flex items-center justify-center gap-4">
          <Info className="w-4 h-4 text-emerald-500" />
          <p className="text-[10px] font-bold tracking-tight">

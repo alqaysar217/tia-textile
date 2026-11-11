@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { cn } from '@/lib/utils';
 
 interface ReturnFormDialogProps {
   isOpen: boolean;
@@ -48,9 +49,9 @@ export function ReturnFormDialog({
         </div>
         <form onSubmit={onSubmit} className="p-6 space-y-6 bg-white max-h-[85vh] overflow-y-auto no-scrollbar">
            <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-1.5 text-right"><Label className="text-[10px] font-black uppercase text-slate-400">DATE</Label><Input type="date" value={formData.date} className="h-11 bg-slate-50 font-bold" disabled /></div>
-              <div className="space-y-1.5 text-right"><Label className="text-[10px] font-black uppercase text-slate-400">WORKER</Label><Input value={allWorkers?.find(w => w.id === formData.workerId)?.fullName || ''} className="h-11 bg-slate-50 font-bold" disabled /></div>
-              <div className="space-y-1.5 text-right"><Label className="text-[10px] font-black uppercase text-slate-400">BATCH</Label><Input value={allOrders?.find(o => o.id === formData.orderId)?.title || ''} className="h-11 bg-slate-50 font-bold" disabled /></div>
+              <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}><Label className="text-[10px] font-black uppercase text-slate-400">DATE</Label><Input type="date" value={formData.date} className="h-11 bg-slate-50 font-bold" disabled /></div>
+              <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}><Label className="text-[10px] font-black uppercase text-slate-400">WORKER</Label><Input value={allWorkers?.find(w => w.id === formData.workerId)?.fullName || ''} className="h-11 bg-slate-50 font-bold" disabled /></div>
+              <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}><Label className="text-[10px] font-black uppercase text-slate-400">BATCH</Label><Input value={allOrders?.find(o => o.id === formData.orderId)?.title || ''} className="h-11 bg-slate-50 font-bold" disabled /></div>
            </div>
            
            <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
@@ -74,7 +75,7 @@ export function ReturnFormDialog({
               </Table>
            </div>
            
-           <div className="space-y-1.5 text-right">
+           <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
               <Label className="text-[10px] font-black uppercase text-slate-400">AUDIT NOTES</Label>
               <textarea value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} className="w-full min-h-[80px] p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium resize-none outline-none focus:bg-white" />
            </div>

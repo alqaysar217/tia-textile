@@ -13,8 +13,7 @@ import {
   where, 
   writeBatch, 
   getDoc, 
-  increment,
-  arrayUnion
+  increment
 } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { toPng } from 'html-to-image';
@@ -258,7 +257,6 @@ export default function ProductionReceiptPage() {
 
       <ReceiptDeleteDialog isOpen={!!deletingVoucher} onClose={() => setDeletingVoucher(null)} lang={lang} isSubmitting={isSubmitting} onDelete={handleDeleteRequest} />
 
-      {/* TRANSFER CONFIRMATION DIALOG */}
       <AlertDialog open={!!transferringVoucher} onOpenChange={(open) => !open && setTransferringVoucher(null)}>
         <AlertDialogContent className="max-w-[450px] rounded-[1.5rem] p-0 overflow-hidden border-none shadow-2xl">
           <div className="bg-slate-900 p-8 text-center relative overflow-hidden">

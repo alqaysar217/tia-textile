@@ -111,11 +111,11 @@ export function ReceiptTable({
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-slate-100 rounded-lg"><MoreVertical className="w-4 h-4 text-slate-400" /></Button></DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-44 rounded-xl shadow-xl">
-                      <DropdownMenuItem onClick={() => onEdit(v)} disabled={v.isTransferred} className="gap-2 font-bold py-2 cursor-pointer">
+                      <DropdownMenuItem onClick={() => onEdit(v)} disabled={v.isTransferred} className="gap-2 font-bold py-2 cursor-pointer text-xs">
                         <Edit2 className="w-3.5 h-3.5 text-emerald-600" /> {isRtl ? 'تعديل السند' : 'Edit Voucher'}
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => onDelete(v)} disabled={v.isTransferred} className="gap-2 font-bold py-2 text-rose-600 cursor-pointer">
+                      <DropdownMenuItem onClick={() => onDelete(v)} disabled={v.isTransferred} className="gap-2 font-bold py-2 text-rose-600 cursor-pointer text-xs">
                         <Trash2 className="w-3.5 h-3.5" /> {isRtl ? 'نقل للمهملات' : 'Move to Trash'}
                       </DropdownMenuItem>
                     </DropdownMenuContent>

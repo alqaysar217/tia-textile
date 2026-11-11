@@ -134,7 +134,7 @@ export function ReceiptFormDialog({
               </Label>
               <select value={formData.orderId} onChange={(e) => setFormData({...formData, orderId: e.target.value, workerId: '', linkedMIVs: []})} className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none" required>
                 <option value="">{isRtl ? '-- اختر أمر الإنتاج --' : '-- Select Batch --'}</option>
-                {allOrders?.filter(o => o.status === 'active' || (editingId && o.id === formData.orderId)).map(o => (
+                {allOrders?.map(o => (
                   <option key={o.id} value={o.id}>{o.orderNumber} - {o.title}</option>
                 ))}
               </select>
