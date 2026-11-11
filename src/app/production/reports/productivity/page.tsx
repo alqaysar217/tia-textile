@@ -78,9 +78,12 @@ export default function WorkerProductivityReport() {
     
     if (search) {
       const s = search.toLowerCase();
-      const workerName = (wid: string) => allWorkers?.find(w => w.id === wid)?.fullName?.toLowerCase() || '';
-      const voucherNo = (r.voucherNumber || '').toLowerCase();
-      list = list.filter(r => workerName(r.workerId).includes(s) || voucherNo.includes(s));
+      const getWorkerName = (wid: string) => allWorkers?.find(w => w.id === wid)?.fullName?.toLowerCase() || '';
+      list = list.filter(r => {
+        const workerName = getWorkerName(r.workerId);
+        const voucherNo = (r.voucherNumber || '').toLowerCase();
+        return workerName.includes(s) || voucherNo.includes(s);
+      });
     }
 
     return list.sort((a, b) => {
@@ -198,7 +201,6 @@ export default function WorkerProductivityReport() {
                   <PopoverTrigger asChild>
                     <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 transition-all", (dateFrom || dateTo) && "border-emerald-500 bg-emerald-50")}>
                        <CalendarDays className={cn("w-4 h-4", (dateFrom || dateTo) ? "text-emerald-600" : "text-slate-400")} />
-                       {(dateFrom || dateTo) && <span className="absolute top-1 right-1 w-2 h-2 bg-emerald-500 rounded-full animate-pulse border border-white" />}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent align={isRtl ? "start" : "end"} className="w-72 p-4 rounded-xl shadow-2xl border-slate-200">
@@ -217,7 +219,6 @@ export default function WorkerProductivityReport() {
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 transition-all", workerId !== 'all' && "border-emerald-500 bg-emerald-50")}>
                        <Users2 className={cn("w-4 h-4", workerId !== 'all' ? "text-emerald-600" : "text-slate-400")} />
-                       {workerId !== 'all' && <span className="absolute top-1 right-1 w-2 h-2 bg-emerald-500 rounded-full animate-pulse border border-white" />}
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align={isRtl ? "start" : "end"} className="w-64 rounded-xl shadow-xl border-slate-200">
@@ -238,7 +239,6 @@ export default function WorkerProductivityReport() {
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 transition-all", orderId !== 'all' && "border-emerald-500 bg-emerald-50")}>
                        <Workflow className={cn("w-4 h-4", orderId !== 'all' ? "text-emerald-600" : "text-slate-400")} />
-                       {orderId !== 'all' && <span className="absolute top-1 right-1 w-2 h-2 bg-emerald-500 rounded-full animate-pulse border border-white" />}
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align={isRtl ? "start" : "end"} className="w-64 rounded-xl shadow-xl border-slate-200">
@@ -288,7 +288,7 @@ export default function WorkerProductivityReport() {
       </div>
 
       <div className="flex-1 min-h-0 flex flex-col p-4 md:p-6 md:pt-4 space-y-4 overflow-hidden">
-        {/* COMPACT STATS OVERVIEW - FULL WIDTH ROW */}
+        {/* COMPACT STATS OVERVIEW - FULL WIDTH ROW, NO MARGINS */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 flex-none">
           <div className="flex items-center gap-3 overflow-x-auto no-scrollbar pb-1 flex-1 w-full">
             <div className="bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3 group hover:border-emerald-200 transition-all flex-1 min-w-[140px]">
