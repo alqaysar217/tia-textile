@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { 
   ArrowRight, 
@@ -81,6 +81,7 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
   const router = useRouter();
   const { lang, dir } = useTranslation();
   const db = useFirestore();
+  const tabsContainerRef = useRef<HTMLDivElement>(null);
 
   const [activeTab, setActiveTab] = useState<string>('info');
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -102,6 +103,23 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
   const settingsRef = useMemo(() => !db ? null : doc(db, 'settings', 'global'), [db]);
   const { data: savedSettings } = useDoc<any>(settingsRef);
   const systemCurrency = savedSettings?.baseCurrency || 'YER';
+
+  // Smart Horizontal Scroll with Mouse Wheel
+  useEffect(() => {
+    const el = tabsContainerRef.current;
+    if (el) {
+      const onWheel = (e: WheelEvent) => {
+        if (e.deltaY === 0) return;
+        e.preventDefault();
+        el.scrollTo({
+          left: el.scrollLeft + (dir === 'rtl' ? -e.deltaY : e.deltaY) * 1.5,
+          behavior: 'auto'
+        });
+      };
+      el.addEventListener('wheel', onWheel, { passive: false });
+      return () => el.removeEventListener('wheel', onWheel);
+    }
+  }, [dir]);
 
   const orderRef = useMemo(() => !db ? null : doc(db, 'productionOrders', id as string), [db, id]);
   const vouchersQuery = useMemo(() => !db ? null : query(collection(db, 'vouchers'), where('orderId', '==', id)), [db, id]);
@@ -164,7 +182,6 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
     });
   }, [rawVouchers]);
 
-  // Total Materials Cost (Base calculation)
   const totalMaterialsCost = useMemo(() => {
     let total = 0;
     vouchers
@@ -177,7 +194,6 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
     return total;
   }, [vouchers]);
 
-  // Detailed Materials Log for accurate costing with Filter & Sort
   const filteredMaterialsDetailed = useMemo(() => {
     let list: any[] = [];
     vouchers
@@ -197,7 +213,6 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
         });
       });
 
-    // 1. Search Filter
     if (matSearch) {
       const s = matSearch.toLowerCase();
       list = list.filter(m => 
@@ -206,7 +221,6 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
       );
     }
 
-    // 2. Sorting
     return list.sort((a, b) => {
       let valA = a[matSortBy] ?? '';
       let valB = b[matSortBy] ?? '';
@@ -317,7 +331,7 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
   return (
     <div className="flex flex-col h-full bg-[#f1f5f9] overflow-hidden" dir={dir}>
       
-      {/* UNIFIED NAVIGATION & TAB BAR - WITH HORIZONTAL SCROLL */}
+      {/* UNIFIED NAVIGATION & TAB BAR - ENHANCED SCROLL */}
       <div className="flex-none bg-slate-900 z-30 shadow-2xl border-b border-white/10 w-full">
         <div className="flex items-center h-14 gap-0 px-2 overflow-hidden">
           <Button 
@@ -330,8 +344,12 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
           </Button>
           <div className="h-6 w-px bg-white/10 shrink-0 mx-2" />
           
-          {/* SCROLLABLE TAB CONTAINER */}
-          <div className="flex-1 flex items-center h-full gap-0 overflow-x-auto no-scrollbar scroll-smooth pe-4 min-w-0">
+          {/* SCROLLABLE TAB CONTAINER WITH SMART MOUSE WHEEL CONTROL */}
+          <div 
+            ref={tabsContainerRef}
+            className="flex-1 flex items-center h-full gap-0 overflow-x-auto scroll-smooth pe-4 min-w-0 scrollbar-thin scrollbar-thumb-emerald-600/50 scrollbar-track-transparent hover:scrollbar-thumb-emerald-500"
+            style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(16, 185, 129, 0.5) transparent' }}
+          >
             <button 
               onClick={() => setActiveTab('info')} 
               className={cn(
@@ -411,7 +429,6 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
       <div className="flex-1 min-h-0 flex flex-col p-4 no-scrollbar">
         <div className="flex-1 bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden flex flex-col">
           
-          {/* TAB 1: MASTER LEDGER INFO */}
           {activeTab === 'info' && (
             <ScrollArea className="flex-1 animate-in fade-in duration-300">
                <div className="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
@@ -453,7 +470,6 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
             </ScrollArea>
           )}
 
-          {/* TAB 2: RAW MATERIALS DETAILED COSTING */}
           {activeTab === 'materials_summary' && (
             <div className="flex-1 flex flex-col animate-in fade-in duration-300 overflow-hidden">
                <div className="p-4 bg-amber-50 border-b border-amber-100 flex items-center justify-between">
@@ -467,7 +483,6 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                   </div>
                </div>
 
-               {/* SEARCH & EXPORT TOOLBAR */}
                <div className="p-2 bg-slate-50 border-b border-slate-200 flex items-center gap-2 shadow-sm">
                   <div className="relative flex-1">
                     <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300`} />
@@ -552,7 +567,6 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
             </div>
           )}
 
-          {/* TAB 3: WAGES SUMMARY */}
           {activeTab === 'wages_summary' && (
             <div className="flex-1 flex flex-col animate-in fade-in duration-300 overflow-hidden">
                <div className="p-4 bg-purple-50 border-b border-purple-100">
@@ -596,7 +610,6 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
             </div>
           )}
 
-          {/* TAB 4: COSTS SUMMARY */}
           {activeTab === 'costs_summary' && (
             <div className="flex-1 flex flex-col animate-in fade-in duration-300 overflow-hidden">
                <div className="p-4 bg-rose-50 border-b border-rose-100">
@@ -629,7 +642,6 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
             </div>
           )}
 
-          {/* TAB 5: DYNAMIC STAGE LOG (Unified ERP Toolbar) */}
           {(!['info', 'summary', 'materials_summary', 'wages_summary', 'costs_summary'].includes(activeTab)) && (
             <div className="flex-1 flex-col flex animate-in fade-in duration-300 overflow-hidden">
                <div className="p-2 bg-slate-50 border-b border-slate-200 flex items-center gap-2 shadow-sm">
@@ -721,7 +733,6 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
             </div>
           )}
 
-          {/* TAB 6: SUMMARY ANALYTICS */}
           {activeTab === 'summary' && (
             <div className="flex-1 flex flex-col animate-in zoom-in-95 duration-300">
                <div className="p-4 bg-slate-900 text-white flex items-center justify-between"><h3 className="text-xs font-black uppercase tracking-widest flex items-center gap-2"><BarChart3 className="w-4 h-4 text-emerald-400" /> {lang === 'ar' ? 'التحليل الإحصائي لخطوط الإنتاج' : 'ANALYTICS'}</h3></div>
