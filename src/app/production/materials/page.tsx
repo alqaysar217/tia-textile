@@ -12,9 +12,10 @@ import {
   increment,
   query,
   orderBy,
+  getDoc
 } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Info, History, Box } from 'lucide-react';
 import { 
   AlertDialog, 
@@ -54,9 +55,14 @@ export default function MaterialsPage() {
   const [isCompressing, setIsCompressing] = useState(false);
 
   // Fetch Global Settings for Currency
-  const settingsRef = useMemo(() => !db ? null : doc(db, 'settings', 'global'), [db]);
-  const { data: savedSettings } = useDoc<any>(settingsRef);
-  const systemCurrency = savedSettings?.baseCurrency || 'YER';
+  const [systemCurrency, setSystemCurrency] = useState('YER');
+  
+  useEffect(() => {
+    if (!db) return;
+    getDoc(doc(db, 'settings', 'global')).then(snap => {
+      if (snap.exists()) setSystemCurrency(snap.data().baseCurrency || 'YER');
+    });
+  }, [db]);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -215,7 +221,8 @@ export default function MaterialsPage() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#f1f5f9] overflow-hidden" dir={dir}>
+    <Tabs value={activeTab} onValueChange={setActiveTab} dir={dir} className="flex flex-col h-full bg-[#f1f5f9] overflow-hidden">
+      {/* HEADER WITH INTEGRATED TABS */}
       <MaterialsHeader 
         lang={lang} dir={dir} search={search} setSearch={setSearch} stats={stats} loading={mLoading}
         onExport={() => {}} onAdd={() => setIsAddDialogOpen(true)} onStockIn={() => setIsStockInDialogOpen(true)}
@@ -226,29 +233,18 @@ export default function MaterialsPage() {
       />
 
       <div className="flex-1 min-h-0 flex flex-col p-4 no-scrollbar">
-        <Tabs value={activeTab} onValueChange={setActiveTab} dir={dir} className="w-full h-full flex flex-col">
-          <TabsList className="grid grid-cols-2 w-[400px] h-10 mb-4 bg-white border border-slate-200 p-1 rounded-xl shadow-sm">
-            <TabsTrigger value="catalog" className="font-black text-xs">
-              <Box className="w-3.5 h-3.5 me-2" /> {isRtl ? 'دليل الأصناف' : 'Catalog'}
-            </TabsTrigger>
-            <TabsTrigger value="logs" className="font-black text-xs">
-              <History className="w-3.5 h-3.5 me-2" /> {isRtl ? 'سجل التوريدات' : 'Supply Log'}
-            </TabsTrigger>
-          </TabsList>
+        <TabsContent value="catalog" className="flex-1 min-h-0 focus-visible:ring-0 mt-0">
+            <MaterialsCatalog 
+              loading={mLoading} filteredMaterials={filteredMaterials} categories={categories} 
+              lang={lang} dir={dir} onStockIn={(id) => { setStockInForm({ materialId: id, qty: 1 }); setIsStockInDialogOpen(true); }}
+              onEdit={(mat) => { setEditingMatId(mat.id); setFormData({...mat}); setIsAddDialogOpen(true); }}
+              onDelete={(id) => setDeletingMatId(id)} sortBy={sortBy} sortOrder={sortOrder} toggleSort={(k) => setSortBy(k)}
+            />
+        </TabsContent>
 
-          <TabsContent value="catalog" className="flex-1 min-h-0 focus-visible:ring-0">
-             <MaterialsCatalog 
-                loading={mLoading} filteredMaterials={filteredMaterials} categories={categories} 
-                lang={lang} dir={dir} onStockIn={(id) => { setStockInForm({ materialId: id, qty: 1 }); setIsStockInDialogOpen(true); }}
-                onEdit={(mat) => { setEditingMatId(mat.id); setFormData({...mat}); setIsAddDialogOpen(true); }}
-                onDelete={(id) => setDeletingMatId(id)} sortBy={sortBy} sortOrder={sortOrder} toggleSort={(k) => setSortBy(k)}
-             />
-          </TabsContent>
-
-          <TabsContent value="logs" className="flex-1 min-h-0 focus-visible:ring-0">
-             <MaterialsLog loading={tLoading} transactions={transactions || []} materials={materials || []} lang={lang} />
-          </TabsContent>
-        </Tabs>
+        <TabsContent value="logs" className="flex-1 min-h-0 focus-visible:ring-0 mt-0">
+            <MaterialsLog loading={tLoading} transactions={transactions || []} materials={materials || []} lang={lang} />
+        </TabsContent>
 
         {/* SYSTEM FOOTER */}
         <div className="mt-4 flex-none bg-slate-900 rounded-lg p-3 text-white flex items-center gap-4 border border-slate-800 shadow-inner">
@@ -298,6 +294,6 @@ export default function MaterialsPage() {
           </div>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </Tabs>
   );
 }

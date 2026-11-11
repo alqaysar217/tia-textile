@@ -15,7 +15,8 @@ import {
   Wallet,
   SortAsc,
   SortDesc,
-  Check
+  Check,
+  History
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +28,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
+import { TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 
 interface MaterialsHeaderProps {
@@ -110,11 +112,23 @@ export function MaterialsHeader({
             className={cn("h-9 bg-white border-slate-200 text-xs font-bold focus:ring-emerald-500/10", dir === 'rtl' ? "pr-10" : "pl-10")}
           />
         </div>
+
+        {/* INTEGRATED TABS SWITCHER */}
+        <TabsList className="flex h-9 bg-white border border-slate-200 p-1 rounded-lg shadow-sm shrink-0">
+          <TabsTrigger value="catalog" className="font-black text-[10px] uppercase px-4 h-7 data-[state=active]:bg-emerald-600 data-[state=active]:text-white">
+            <Box className="w-3 h-3 me-2" />
+            {isRtl ? 'الأصناف' : 'Catalog'}
+          </TabsTrigger>
+          <TabsTrigger value="logs" className="font-black text-[10px] uppercase px-4 h-7 data-[state=active]:bg-emerald-600 data-[state=active]:text-white">
+            <History className="w-3 h-3 me-2" />
+            {isRtl ? 'السجل' : 'Log'}
+          </TabsTrigger>
+        </TabsList>
         
-        <div className="flex items-center gap-1.5 px-1.5">
+        <div className="flex items-center gap-1.5 px-1.5 border-s border-slate-200">
           <Button onClick={onExport} variant="ghost" className="h-9 px-4 rounded-md text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent hover:border-slate-200">
             <FileDown className="w-3.5 h-3.5 text-emerald-600" />
-            {isRtl ? 'تصدير CSV' : 'Export CSV'}
+            {isRtl ? 'تصدير' : 'Export'}
           </Button>
 
           <DropdownMenu>
