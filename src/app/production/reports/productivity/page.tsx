@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -17,7 +16,9 @@ import {
   TrendingUp,
   Download,
   Loader2,
-  Info
+  Info,
+  BarChart3,
+  PieChart
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,6 +31,22 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { 
+  Bar, 
+  BarChart, 
+  ResponsiveContainer, 
+  XAxis, 
+  YAxis, 
+  Tooltip as RechartsTooltip, 
+  CartesianGrid, 
+  Area, 
+  AreaChart 
+} from 'recharts';
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
 
 export default function WorkerProductivityReport() {
   const { lang, dir } = useTranslation();
@@ -64,7 +81,7 @@ export default function WorkerProductivityReport() {
       list = list.filter(r => workerName(r.workerId).includes(s) || r.voucherNumber?.toLowerCase().includes(s));
     }
 
-    return list.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    return list.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }, [allReceipts, allWorkers, workerId, dateFrom, dateTo, search]);
 
   const stats = useMemo(() => {
@@ -73,6 +90,28 @@ export default function WorkerProductivityReport() {
     const uniqueWorkers = new Set(filteredData.map(r => r.workerId)).size;
     return { totalQty, totalWages, uniqueWorkers };
   }, [filteredData]);
+
+  // Data for Trends Chart (Daily production)
+  const trendData = useMemo(() => {
+    const daily: Record<string, number> = {};
+    filteredData.forEach(r => {
+      daily[r.date] = (daily[r.date] || 0) + (r.qtyAccepted || 0);
+    });
+    return Object.entries(daily).map(([date, qty]) => ({ date, qty })).sort((a, b) => a.date.localeCompare(b.date));
+  }, [filteredData]);
+
+  // Data for Worker Performance (Pieces per worker)
+  const workerPerformanceData = useMemo(() => {
+    const perWorker: Record<string, number> = {};
+    filteredData.forEach(r => {
+      const wName = allWorkers?.find(w => w.id === r.workerId)?.fullName || r.workerId;
+      perWorker[wName] = (perWorker[wName] || 0) + (r.qtyAccepted || 0);
+    });
+    return Object.entries(perWorker)
+      .map(([name, qty]) => ({ name, qty }))
+      .sort((a, b) => b.qty - a.qty)
+      .slice(0, 8); // Top 8 workers
+  }, [filteredData, allWorkers]);
 
   const handleExport = () => {
     const headers = ['Date', 'Voucher', 'Worker', 'Batch', 'Qty', 'Wage', 'Status'];
@@ -139,36 +178,119 @@ export default function WorkerProductivityReport() {
         </div>
       </div>
 
-      {/* STATS OVERVIEW */}
-      <div className="flex-none p-6 grid grid-cols-1 md:grid-cols-3 gap-6 bg-slate-50/50">
-         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
-            <div className="space-y-1">
-               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'إجمالي القطع المنجزة' : 'TOTAL PIECES'}</p>
-               <h3 className="text-2xl font-black text-slate-900 tabular-nums">{stats.totalQty.toLocaleString('en-US')}</h3>
+      <ScrollArea className="flex-1 min-h-0 no-scrollbar">
+        <div className="p-6 space-y-8">
+          {/* STATS OVERVIEW */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between group hover:border-emerald-200 transition-all">
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'إجمالي القطع المنجزة' : 'TOTAL PIECES'}</p>
+                  <h3 className="text-3xl font-black text-slate-900 tabular-nums">{stats.totalQty.toLocaleString('en-US')}</h3>
+                </div>
+                <div className="p-4 bg-emerald-50 text-emerald-600 rounded-2xl group-hover:bg-emerald-600 group-hover:text-white transition-all"><TrendingUp className="w-6 h-6" /></div>
             </div>
-            <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl"><TrendingUp className="w-6 h-6" /></div>
-         </div>
-         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
-            <div className="space-y-1">
-               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'إجمالي الأجور المستحقة' : 'TOTAL WAGES'}</p>
-               <h3 className="text-2xl font-black text-purple-700 tabular-nums">{stats.totalWages.toLocaleString('en-US', { minimumFractionDigits: 2 })}</h3>
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between group hover:border-purple-200 transition-all">
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'إجمالي الأجور المستحقة' : 'TOTAL WAGES'}</p>
+                  <h3 className="text-3xl font-black text-purple-700 tabular-nums">{stats.totalWages.toLocaleString('en-US', { minimumFractionDigits: 2 })}</h3>
+                </div>
+                <div className="p-4 bg-purple-50 text-purple-600 rounded-2xl group-hover:bg-purple-600 group-hover:text-white transition-all"><Wallet className="w-6 h-6" /></div>
             </div>
-            <div className="p-3 bg-purple-50 text-purple-600 rounded-xl"><Wallet className="w-6 h-6" /></div>
-         </div>
-         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
-            <div className="space-y-1">
-               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'عدد العمال المشاركين' : 'WORKFORCE'}</p>
-               <h3 className="text-2xl font-black text-blue-700 tabular-nums">{stats.uniqueWorkers}</h3>
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between group hover:border-blue-200 transition-all">
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'عدد العمال المشاركين' : 'WORKFORCE'}</p>
+                  <h3 className="text-3xl font-black text-blue-700 tabular-nums">{stats.uniqueWorkers}</h3>
+                </div>
+                <div className="p-4 bg-blue-50 text-blue-600 rounded-2xl group-hover:bg-blue-600 group-hover:text-white transition-all"><Users2 className="w-6 h-6" /></div>
             </div>
-            <div className="p-3 bg-blue-50 text-blue-600 rounded-xl"><Users2 className="w-6 h-6" /></div>
-         </div>
-      </div>
+          </div>
 
-      {/* DATA TABLE */}
-      <div className="flex-1 min-h-0 p-6 pt-0 overflow-auto no-scrollbar">
-         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          {/* CHARTS SECTION */}
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+            {/* Trends Chart */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <h4 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-emerald-500" />
+                    {isRtl ? 'اتجاهات الإنتاج اليومي' : 'Daily Production Trend'}
+                  </h4>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase">{isRtl ? 'حجم القطع المنتجة حسب التاريخ' : 'Pieces volume by date'}</p>
+                </div>
+              </div>
+              <div className="h-[300px] w-full">
+                <ChartContainer config={{ qty: { label: isRtl ? 'القطع' : 'Pieces', color: "hsl(var(--primary))" } }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={trendData}>
+                      <defs>
+                        <linearGradient id="colorQty" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <XAxis 
+                        dataKey="date" 
+                        axisLine={false} 
+                        tickLine={false} 
+                        tick={{fontSize: 10, fontWeight: 'bold', fill: '#94a3b8'}} 
+                        dy={10}
+                      />
+                      <YAxis 
+                        axisLine={false} 
+                        tickLine={false} 
+                        tick={{fontSize: 10, fontWeight: 'bold', fill: '#94a3b8'}}
+                      />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Area type="monotone" dataKey="qty" stroke="hsl(var(--primary))" strokeWidth={3} fillOpacity={1} fill="url(#colorQty)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </ChartContainer>
+              </div>
+            </div>
+
+            {/* Performance Chart */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <h4 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                    <BarChart3 className="w-4 h-4 text-emerald-500" />
+                    {isRtl ? 'أداء أفضل 8 حرفيين' : 'Top 8 Artisans Performance'}
+                  </h4>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase">{isRtl ? 'مقارنة الإنتاج الكلي لكل عامل' : 'Comparative pieces by worker'}</p>
+                </div>
+              </div>
+              <div className="h-[300px] w-full">
+                <ChartContainer config={{ qty: { label: isRtl ? 'قطعة' : 'Pcs', color: "#10b981" } }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={workerPerformanceData} layout="vertical" margin={{ left: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+                      <XAxis type="number" axisLine={false} tickLine={false} hide />
+                      <YAxis 
+                        dataKey="name" 
+                        type="category" 
+                        axisLine={false} 
+                        tickLine={false} 
+                        tick={{fontSize: 10, fontWeight: 'black', fill: '#475569'}}
+                        width={100}
+                      />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Bar dataKey="qty" fill="#10b981" radius={[0, 4, 4, 0]} barSize={20} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </ChartContainer>
+              </div>
+            </div>
+          </div>
+
+          {/* DATA TABLE */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="p-4 bg-slate-50 border-b border-slate-100 flex items-center gap-2">
+              <div className="p-1.5 bg-white rounded-lg shadow-sm"><Info className="w-4 h-4 text-emerald-600" /></div>
+              <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest">{isRtl ? 'سجل التفاصيل الميدانية' : 'FIELD ACTIVITY LEDGER'}</h4>
+            </div>
             <Table className="text-right border-separate border-spacing-0">
-               <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
+               <TableHeader className="bg-slate-50/50 sticky top-0 z-10 shadow-sm">
                   <TableRow>
                      <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", isRtl ? "text-right" : "text-left")}>DATE</TableHead>
                      <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", isRtl ? "text-right" : "text-left")}>WORKER</TableHead>
@@ -203,16 +325,17 @@ export default function WorkerProductivityReport() {
                   })}
                </TableBody>
             </Table>
-         </div>
-      </div>
+          </div>
+        </div>
+      </ScrollArea>
 
       {/* FOOTER NOTE */}
-      <div className="flex-none p-3 bg-slate-900 text-white/40 flex items-center justify-center gap-4">
+      <div className="flex-none p-3 bg-slate-900 text-white/40 flex items-center justify-center gap-4 border-t border-white/5">
          <Info className="w-4 h-4 text-emerald-500" />
          <p className="text-[10px] font-bold tracking-tight">
            {isRtl 
-             ? 'ملاحظة: البيانات المستخرجة مبنية على سندات استلام الإنتاج الفعلية والمؤرشفة في النظام.' 
-             : 'Note: Data is generated from actual production receipt vouchers archived in the system.'}
+             ? 'ملاحظة: البيانات والرسومات البيانية مبنية على سندات استلام الإنتاج الفعلية والمؤرشفة في النظام.' 
+             : 'Note: Charts and data are generated from actual production receipt vouchers archived in the system.'}
          </p>
       </div>
     </div>
