@@ -133,7 +133,7 @@ export function IssueHeader({
                   </DropdownMenuItem>
                   {activeOrders?.map(o => (
                     <DropdownMenuItem key={o.id} onClick={() => setBatchFilter(o.id)} className="flex items-center justify-between text-xs font-bold cursor-pointer">
-                      <span className="truncate max-w-[180px]">{o.orderNumber} - {o.title}</span>
+                      <span className="truncate max-w-[150px]">{o.orderNumber} - {o.title}</span>
                       {batchFilter === o.id && <Check className="w-3.5 h-3.5 text-emerald-600" />}
                     </DropdownMenuItem>
                   ))}

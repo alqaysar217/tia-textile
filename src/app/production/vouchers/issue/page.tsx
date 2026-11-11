@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useTranslation } from '@/components/LanguageProvider';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, addDoc, updateDoc, doc, serverTimestamp, query, where, writeBatch, getDoc } from 'firebase/firestore';
@@ -36,7 +36,6 @@ export default function MaterialIssuePage() {
   const [deptFilter, setDeptFilter] = useState<string>('all');
 
   // Fetch Global Settings for Currency
-  const settingsRef = useMemo(() => !db ? null : doc(db, 'settings', 'global'), [db]);
   const [systemCurrency, setSystemCurrency] = useState('YER');
   
   useEffect(() => {
@@ -101,6 +100,7 @@ export default function MaterialIssuePage() {
     const product = allProducts?.find(p => p.id === order?.productId);
     if (!product) return [];
 
+    // Calculate available based on all previous receipts for this order minus previous transfers in MIVs
     const totalReceived = productionReceipts.filter(r => r.orderId === formData.orderId).reduce((sum, r) => sum + (r.qtyAccepted || 0), 0);
     const totalIssued = vouchers.filter(v => v.orderId === formData.orderId && v.id !== editingVoucherId).reduce((sum, v) => {
       const productItems = v.items?.filter((i: any) => i.itemType === 'product') || [];
