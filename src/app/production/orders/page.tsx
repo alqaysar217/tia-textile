@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useCallback } from 'react';
@@ -68,7 +69,6 @@ import { useFirestore, useCollection } from '@/firebase';
 import { collection, addDoc, updateDoc, doc, serverTimestamp, query, where } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
@@ -110,6 +110,11 @@ export default function ProductionOrdersPage() {
   const { data: orders, loading: ordersLoading } = useCollection<any>(ordersQuery);
   const { data: departments } = useCollection<any>(deptsQuery);
   const { data: allReceipts } = useCollection<any>(vouchersQuery);
+
+  const sortedDepts = useMemo(() => {
+    if (!departments) return [];
+    return [...departments].sort((a, b) => (a.code || '').localeCompare(b.code || ''));
+  }, [departments]);
 
   const filteredOrders = useMemo(() => {
     if (!orders) return [];
@@ -300,12 +305,16 @@ export default function ProductionOrdersPage() {
         ) : filteredOrders.map((order) => {
           const product = products?.find(p => p.id === order.productId);
           
-          const finalStage = departments?.[departments.length - 1];
-          const finalStageReceipts = allReceipts?.filter(r => r.orderId === order.id && r.type === 'production_receipt' && r.currentStageId === finalStage?.id) || [];
-          const finalCompletedQty = finalStageReceipts.reduce((acc, curr) => acc + (curr.qtyAccepted || 0), 0);
+          // Logic: Only output from the LAST stage is considered "READY" (Finished Good)
+          const finalStage = sortedDepts[sortedDepts.length - 1];
+          const finalStageReceipts = allReceipts?.filter(r => 
+            r.orderId === order.id && 
+            r.type === 'production_receipt' && 
+            r.currentStageId === finalStage?.id
+          ) || [];
           
-          const progress = Math.round((finalCompletedQty / order.targetQty) * 100) || 0;
-          const wip = Math.max(0, order.targetQty - finalCompletedQty);
+          const finalCompletedQty = finalStageReceipts.reduce((acc, curr) => acc + (curr.qtyAccepted || 0), 0);
+          const progress = Math.round((finalCompletedQty / (order.targetQty || 1)) * 100) || 0;
           
           return (
             <div 
@@ -329,25 +338,35 @@ export default function ProductionOrdersPage() {
 
                 <div className="w-48 flex flex-col justify-center gap-1.5 px-4 border-x border-slate-100 h-full">
                   <div className="flex justify-between items-center text-[10px] font-black">
-                    <span className="text-slate-400 uppercase tracking-tighter">{lang === 'ar' ? 'الإنجاز' : 'PROGRESS'}</span>
+                    <span className="text-slate-400 uppercase tracking-tighter">{lang === 'ar' ? 'الإنجاز النهائي' : 'READY PROGRESS'}</span>
                     <span className="text-emerald-600 tabular-nums">{progress}%</span>
                   </div>
                   <Progress value={progress} className="h-1.5 bg-slate-100" />
                 </div>
 
-                <div className="flex items-center gap-6 px-4">
+                {/* TARGET & READY STATS */}
+                <div className="flex items-center gap-8 px-4">
                   <div className="text-center">
-                    <p className="text-[8px] font-black text-slate-400 uppercase leading-none">{lang === 'ar' ? 'هدف' : 'TARGET'}</p>
+                    <p className="text-[8px] font-black text-slate-400 uppercase leading-none">{lang === 'ar' ? 'المستهدف' : 'TARGET'}</p>
                     <p className="text-xs font-black text-slate-700 tabular-nums mt-1">{order.targetQty}</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-[8px] font-black text-emerald-600 uppercase leading-none">{lang === 'ar' ? 'منجز' : 'READY'}</p>
+                    <p className="text-[8px] font-black text-emerald-600 uppercase leading-none">{lang === 'ar' ? 'جاهز نهائي' : 'READY'}</p>
                     <p className="text-xs font-black text-emerald-700 tabular-nums mt-1">{finalCompletedQty}</p>
                   </div>
-                  <div className="text-center">
-                    <p className="text-[8px] font-black text-rose-500 uppercase leading-none">{lang === 'ar' ? 'قيد العمل' : 'WIP'}</p>
-                    <p className="text-xs font-black text-rose-600 tabular-nums mt-1">{wip}</p>
-                  </div>
+                </div>
+
+                {/* STATUS TEXT LABEL */}
+                <div className="hidden md:flex items-center gap-2 border-r border-slate-100 px-4 h-full">
+                  <div className={cn(
+                    "w-2 h-2 rounded-full",
+                    progress >= 100 ? "bg-emerald-500" : "bg-amber-500 animate-pulse"
+                  )} />
+                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-tight">
+                    {progress >= 100 
+                      ? (lang === 'ar' ? 'مكتمل' : 'COMPLETED') 
+                      : (lang === 'ar' ? 'قيد التصنيع' : 'IN PROGRESS')}
+                  </span>
                 </div>
 
                 <div className="flex items-center gap-2 border-r border-slate-100 h-full px-2">
@@ -369,9 +388,9 @@ export default function ProductionOrdersPage() {
                         <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-slate-100" onClick={(e) => e.stopPropagation()}><MoreVertical className="w-4 h-4 text-slate-400" /></Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-40 rounded-xl shadow-xl">
-                        <DropdownMenuItem onClick={(e) => handleEditClick(order, e)} className="gap-2 font-bold text-xs"><Edit2 className="w-3.5 h-3.5 text-emerald-600" /> {lang === 'ar' ? 'تعديل البيانات' : 'Edit Specs'}</DropdownMenuItem>
+                        <DropdownMenuItem onClick={(e) => handleEditClick(order, e)} className="gap-2 font-bold py-2 cursor-pointer text-xs"><Edit2 className="w-3.5 h-3.5 text-emerald-600" /> {lang === 'ar' ? 'تعديل البيانات' : 'Edit Specs'}</DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setDeletingOrder(order); }} className="gap-2 font-bold text-xs text-rose-600"><Trash2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'نقل للأرشيف' : 'Archive Order'}</DropdownMenuItem>
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setDeletingOrder(order); }} className="gap-2 font-bold py-2 text-rose-600 cursor-pointer text-xs"><Trash2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'نقل للأرشيف' : 'Archive Order'}</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TooltipProvider>
@@ -516,3 +535,4 @@ export default function ProductionOrdersPage() {
     </div>
   );
 }
+
