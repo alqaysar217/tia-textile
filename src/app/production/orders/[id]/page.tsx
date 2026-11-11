@@ -96,23 +96,25 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
 
   // States for Materials Summary Filtering & Sorting
   const [matSearch, setMatSearch] = useState('');
-  const [matSortBy, setMatSortBy] = useState<'date' | 'nameAr' | 'total'>('date');
+  const [matSortBy, setMatSortBy] = useState<'date' | 'nameAr' | 'total' | 'workerName'>('date');
   const [matSortOrder, setMatSortOrder] = useState<'asc' | 'desc'>('desc');
 
   // States for Wages Summary Filtering & Sorting
   const [wageSearch, setWageSearch] = useState('');
-  const [wageSortBy, setWageSortBy] = useState<'date' | 'fullName' | 'amount'>('date');
+  const [wageSortBy, setWageSortBy] = useState<'date' | 'fullName' | 'amount' | 'qtyAccepted' | 'voucherNumber'>('date');
   const [wageSortOrder, setWageSortOrder] = useState<'asc' | 'desc'>('desc');
 
   // States for Costs Summary Filtering & Sorting
   const [costSearch, setCostSearch] = useState('');
-  const [costSortBy, setCostSortBy] = useState<'date' | 'description' | 'amount'>('date');
-  const [costSortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [costSortBy, setSortByState] = useState<'date' | 'description' | 'amount'>('date');
+  const [costSortOrder, setCostSortOrder] = useState<'asc' | 'desc'>('desc');
 
   // Fetch Global Settings for Currency
   const settingsRef = useMemo(() => !db ? null : doc(db, 'settings', 'global'), [db]);
   const { data: savedSettings } = useDoc<any>(settingsRef);
   const systemCurrency = savedSettings?.baseCurrency || 'YER';
+
+  const isRtl = lang === 'ar';
 
   // Smart Horizontal Scroll with Mouse Wheel
   useEffect(() => {
@@ -286,7 +288,7 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
       let valA = a[wageSortBy === 'amount' ? 'wageAmount' : wageSortBy] ?? '';
       let valB = b[wageSortBy === 'amount' ? 'wageAmount' : wageSortBy] ?? '';
       if (wageSortBy === 'date') return wageSortOrder === 'asc' ? new Date(valA).getTime() - new Date(valB).getTime() : new Date(valB).getTime() - new Date(valA).getTime();
-      if (wageSortBy === 'amount') return wageSortOrder === 'asc' ? Number(valA) - Number(valB) : Number(valB) - Number(valA);
+      if (wageSortBy === 'amount' || wageSortBy === 'qtyAccepted') return wageSortOrder === 'asc' ? Number(valA) - Number(valB) : Number(valB) - Number(valA);
       return wageSortOrder === 'asc' ? String(valA).localeCompare(String(valB), 'ar') : String(valB).localeCompare(String(valA), 'ar');
     });
   }, [vouchers, workers, wageSearch, wageSortBy, wageSortOrder]);
@@ -304,7 +306,7 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
       let valB = b[costSortBy === 'amount' ? 'totalAmount' : costSortBy] ?? '';
       if (costSortBy === 'date') return costSortOrder === 'asc' ? new Date(valA).getTime() - new Date(valB).getTime() : new Date(valB).getTime() - new Date(valA).getTime();
       if (costSortBy === 'amount') return costSortOrder === 'asc' ? Number(valA) - Number(valB) : Number(valB) - Number(valA);
-      return sortOrder === 'asc' ? String(valA).localeCompare(String(valB), 'ar') : String(valB).localeCompare(String(valA), 'ar');
+      return costSortOrder === 'asc' ? String(valA).localeCompare(String(valB), 'ar') : String(valB).localeCompare(String(valA), 'ar');
     });
   }, [vouchers, costSearch, costSortBy, costSortOrder]);
 
@@ -359,7 +361,7 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
 
   function SummaryStatCard({ label, value, currency, icon, color, bgColor, isCount = false }: any) {
     return (
-      <div className={cn("p-4 rounded-xl border shadow-sm transition-all hover:shadow-md", bgColor, dir === 'rtl' ? 'text-right border-slate-200/50' : 'text-left border-slate-200/50')}>
+      <div className={cn("p-4 rounded-xl border shadow-sm transition-all hover:shadow-md", bgColor, isRtl ? 'text-right border-slate-200/50' : 'text-left border-slate-200/50')} dir={isRtl ? 'rtl' : 'ltr'}>
          <div className={cn("flex items-center gap-2 mb-2")}>
             <div className={cn("p-1.5 rounded-lg bg-white/80 shadow-sm", color)}>
                {icon}
@@ -375,14 +377,13 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
   }
 
   function InfoItem({ label, value, icon, color = "text-slate-900" }: { label: string, value: string | number, icon: any, color?: string }) {
-    const isRtl = dir === 'rtl';
     return (
       <div className={cn("flex flex-col gap-1.5", isRtl ? 'text-right' : 'text-left')}>
-        <div className={cn("flex items-center gap-2 opacity-50", isRtl ? "justify-start" : "justify-start")}>
+        <div className={cn("flex items-center gap-2 opacity-50")}>
           {icon}
           <span className="text-[9px] font-black uppercase tracking-widest">{label}</span>
         </div>
-        <div className={cn("text-sm font-black", isRtl ? "pr-6" : "pl-6", color)}>
+        <div className={cn("text-sm font-black", color)}>
           {value || '---'}
         </div>
       </div>
@@ -525,21 +526,18 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
 
                <div className="p-8 bg-white space-y-10" dir={dir}>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-y-10 gap-x-12" dir={dir}>
-                    {/* Column 1 */}
                     <div className="space-y-8">
                       <InfoItem label={lang === 'ar' ? 'رقم السجل الموحد' : 'REFERENCE'} value={order.orderNumber} icon={<Hash className="w-4 h-4 text-slate-400" />} />
                       <InfoItem label={lang === 'ar' ? 'تاريخ البدء' : 'LAUNCH DATE'} value={order.startDate} icon={<Calendar className="w-4 h-4 text-slate-400" />} />
                       <InfoItem label={lang === 'ar' ? 'عنوان الدفعة' : 'BATCH TITLE'} value={order.title} icon={<Type className="w-4 h-4 text-slate-400" />} />
                     </div>
                     
-                    {/* Column 2 */}
                     <div className="space-y-8">
                       <InfoItem label={lang === 'ar' ? 'المنتج المستهدف' : 'TARGET PRODUCT'} value={product?.nameAr} icon={<ShoppingBag className="w-4 h-4 text-slate-400" />} />
                       <InfoItem label={lang === 'ar' ? 'الكمية المستهدف' : 'TARGET QTY'} value={`${order.targetQty} قطعة`} icon={<Target className="w-4 h-4 text-slate-400" />} />
                       <InfoItem label={lang === 'ar' ? 'الكمية المنجزة (النهائية)' : 'COMPLETED'} value={`${finalCompletedQty} قطعة`} icon={<CheckCircle2 className="w-4 h-4 text-emerald-500" />} color="text-emerald-700" />
                     </div>
 
-                    {/* Column 3 */}
                     <div className="space-y-8">
                       <InfoItem label={lang === 'ar' ? 'قيد العمل (WIP)' : 'WIP'} value={`${Math.max(0, order.targetQty - finalCompletedQty)} قطعة`} icon={<Package className="w-4 h-4 text-blue-400" />} color="text-blue-600" />
                       <InfoItem label={lang === 'ar' ? 'الأولوية' : 'PRIORITY'} value={order.priority} icon={<ShieldCheck className="w-4 h-4 text-slate-400" />} />
@@ -547,7 +545,6 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                     </div>
                   </div>
 
-                  {/* Progress Bar Footer */}
                   <div className="pt-8 border-t border-slate-100">
                      <div className={cn("flex items-center justify-between mb-3")}>
                         <div className="flex items-center gap-2">
@@ -579,8 +576,8 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
 
                <div className="p-2 bg-slate-50 border-b border-slate-200 flex items-center gap-2 shadow-sm">
                   <div className="relative flex-1">
-                    <Search className={cn("absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300", dir === 'rtl' ? "right-3" : "left-3")} />
-                    <Input value={matSearch} onChange={(e) => setMatSearch(e.target.value)} placeholder={lang === 'ar' ? 'بحث في سجل المواد أو الموظف...' : 'Search materials or worker...'} className={cn("h-9 bg-white text-xs font-bold border-slate-200", dir === 'rtl' ? "pr-9 pl-3" : "pl-9 pr-3")} />
+                    <Search className={cn("absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300", isRtl ? "right-3" : "left-3")} />
+                    <Input value={matSearch} onChange={(e) => setMatSearch(e.target.value)} placeholder={lang === 'ar' ? 'بحث في سجل المواد أو الموظف...' : 'Search materials or worker...'} className={cn("h-9 bg-white text-xs font-bold border-slate-200", isRtl ? "pr-9 pl-3" : "pl-9 pr-3")} />
                   </div>
                   <div className="flex items-center gap-1.5 px-1.5 border-x border-slate-200">
                     <Button variant="ghost" size="sm" onClick={() => {
@@ -602,7 +599,7 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                           <Filter className="w-3.5 h-3.5" />{lang === 'ar' ? 'تصفية وترتيب' : 'Filter & Sort'}
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="w-64 rounded-xl shadow-xl border-slate-200">
+                      <DropdownMenuContent align={isRtl ? 'start' : 'end'} className="w-64 rounded-xl shadow-xl border-slate-200">
                         <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">CHRONOLOGY</DropdownMenuLabel>
                         <DropdownMenuItem onClick={() => { setMatSortBy('date'); setMatSortOrder(matSortOrder === 'asc' ? 'desc' : 'asc'); }} className="text-xs font-bold flex justify-between cursor-pointer py-2.5">
                            {lang === 'ar' ? 'ترتيب حسب التاريخ' : 'Sort by Date'}
@@ -622,23 +619,23 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                   <Table className="text-right border-separate border-spacing-0">
                     <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
                       <TableRow>
-                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? 'text-right' : 'text-left')}>DATE</TableHead>
-                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? 'text-right' : 'text-left')}>REF #</TableHead>
-                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? 'text-right' : 'text-left')}>PERSONNEL</TableHead>
-                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? 'text-right' : 'text-left')}>MATERIAL</TableHead>
-                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? 'text-right' : 'text-left')}>QTY</TableHead>
-                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? 'text-right' : 'text-left')}>TOTAL</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", isRtl ? 'text-right' : 'text-left')}>DATE</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", isRtl ? 'text-right' : 'text-left')}>REF #</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", isRtl ? 'text-right' : 'text-left')}>PERSONNEL</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", isRtl ? 'text-right' : 'text-left')}>MATERIAL</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", isRtl ? 'text-right' : 'text-left')}>QTY</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", isRtl ? 'text-right' : 'text-left')}>TOTAL</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredMaterialsDetailed.map((m, idx) => (
                         <TableRow key={idx} className="hover:bg-slate-50 transition-colors border-b border-slate-100">
-                           <TableCell className={cn("px-6 py-4 text-[10px] font-bold text-slate-500 tabular-nums", dir === 'rtl' ? 'text-right' : 'text-left')}>{m.date}</TableCell>
-                           <TableCell className={cn("px-6 py-4 text-[10px] font-black text-slate-400 tabular-nums", dir === 'rtl' ? 'text-right' : 'text-left')}>{m.voucherNumber}</TableCell>
-                           <TableCell className={cn("px-6 py-4 font-bold text-slate-700 text-xs", dir === 'rtl' ? 'text-right' : 'text-left')}>{m.workerName}</TableCell>
-                           <TableCell className={cn("px-6 py-4 font-black text-slate-900 text-xs", dir === 'rtl' ? 'text-right' : 'text-left')}>{m.nameAr}</TableCell>
-                           <TableCell className={cn("px-6 py-4 font-bold text-slate-700 tabular-nums", dir === 'rtl' ? 'text-right' : 'text-left')}>{m.qty} <span className="text-[8px] font-black text-slate-400 uppercase">{m.unit}</span></TableCell>
-                           <TableCell className={cn("px-6 py-4 font-black text-amber-700 tabular-nums", dir === 'rtl' ? 'text-right' : 'text-left')}>{m.total.toLocaleString('en-US')} <span className="text-[8px] opacity-60 uppercase">{m.currency}</span></TableCell>
+                           <TableCell className={cn("px-6 py-4 text-[10px] font-bold text-slate-500 tabular-nums", isRtl ? 'text-right' : 'text-left')}>{m.date}</TableCell>
+                           <TableCell className={cn("px-6 py-4 text-[10px] font-black text-slate-400 tabular-nums", isRtl ? 'text-right' : 'text-left')}>{m.voucherNumber}</TableCell>
+                           <TableCell className={cn("px-6 py-4 font-bold text-slate-700 text-xs", isRtl ? 'text-right' : 'text-left')}>{m.workerName}</TableCell>
+                           <TableCell className={cn("px-6 py-4 font-black text-slate-900 text-xs", isRtl ? 'text-right' : 'text-left')}>{m.nameAr}</TableCell>
+                           <TableCell className={cn("px-6 py-4 font-bold text-slate-700 tabular-nums", isRtl ? 'text-right' : 'text-left')}>{m.qty} <span className="text-[8px] font-black text-slate-400 uppercase">{m.unit}</span></TableCell>
+                           <TableCell className={cn("px-6 py-4 font-black text-amber-700 tabular-nums", isRtl ? 'text-right' : 'text-left')}>{m.total.toLocaleString('en-US')} <span className="text-[8px] opacity-60 uppercase">{m.currency}</span></TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -659,13 +656,13 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
 
                <div className="p-2 bg-slate-50 border-b border-slate-200 flex items-center gap-2 shadow-sm">
                   <div className="relative flex-1">
-                    <Search className={cn("absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300", dir === 'rtl' ? "right-3" : "left-3")} />
-                    <Input value={wageSearch} onChange={(e) => setWageSearch(e.target.value)} placeholder={lang === 'ar' ? 'بحث في سجل الأجور...' : 'Search wages log...'} className={cn("h-9 bg-white text-xs font-bold border-slate-200", dir === 'rtl' ? "pr-9 pl-3" : "pl-9 pr-3")} />
+                    <Search className={cn("absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300", isRtl ? "right-3" : "left-3")} />
+                    <Input value={wageSearch} onChange={(e) => setWageSearch(e.target.value)} placeholder={lang === 'ar' ? 'بحث في سجل الأجور...' : 'Search wages log...'} className={cn("h-9 bg-white text-xs font-bold border-slate-200", isRtl ? "pr-9 pl-3" : "pl-9 pr-3")} />
                   </div>
                   <div className="flex items-center gap-1.5 px-1.5 border-x border-slate-200">
                     <Button variant="ghost" size="sm" onClick={() => {
-                        const headers = ['Date', 'Voucher', 'Worker', 'Amount', 'Currency'];
-                        const rows = filteredWagesDetailed.map(v => [v.date, v.voucherNumber, v.fullName, v.wageAmount, v.currency || systemCurrency]);
+                        const headers = ['Date', 'Voucher', 'Worker', 'Qty', 'Rate', 'Total', 'Currency'];
+                        const rows = filteredWagesDetailed.map(v => [v.date, v.voucherNumber, v.fullName, v.qtyAccepted, v.wageRate, v.wageAmount, v.currency || systemCurrency]);
                         const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
                         const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
                         const url = URL.createObjectURL(blob);
@@ -681,7 +678,7 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                           <Filter className="w-3.5 h-3.5" />{lang === 'ar' ? 'تصفية وترتيب' : 'Filter & Sort'}
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="w-64 rounded-xl shadow-xl border-slate-200">
+                      <DropdownMenuContent align={isRtl ? 'start' : 'end'} className="w-64 rounded-xl shadow-xl border-slate-200">
                         <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">SORTING</DropdownMenuLabel>
                         <DropdownMenuItem onClick={() => { setWageSortBy('date'); setWageSortOrder(wageSortOrder === 'asc' ? 'desc' : 'asc'); }} className="text-xs font-bold flex justify-between cursor-pointer py-2.5">
                            {lang === 'ar' ? 'حسب التاريخ' : 'By Date'}
@@ -690,6 +687,10 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                         <DropdownMenuItem onClick={() => { setWageSortBy('amount'); setWageSortOrder(wageSortOrder === 'asc' ? 'desc' : 'asc'); }} className="text-xs font-bold flex justify-between cursor-pointer py-2.5">
                            {lang === 'ar' ? 'حسب المبلغ' : 'By Amount'}
                            {wageSortBy === 'amount' && (wageSortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => { setWageSortBy('qtyAccepted'); setWageSortOrder(wageSortOrder === 'asc' ? 'desc' : 'asc'); }} className="text-xs font-bold flex justify-between cursor-pointer py-2.5">
+                           {lang === 'ar' ? 'حسب الكمية' : 'By Qty'}
+                           {wageSortBy === 'qtyAccepted' && (wageSortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -701,19 +702,23 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                   <Table className="text-right border-separate border-spacing-0">
                     <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
                       <TableRow>
-                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? 'text-right' : 'text-left')}>DATE</TableHead>
-                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? 'text-right' : 'text-left')}>PERSONNEL</TableHead>
-                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? 'text-right' : 'text-left')}>QTY</TableHead>
-                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? 'text-right' : 'text-left')}>EARNED</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", isRtl ? 'text-right' : 'text-left')}>DATE</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", isRtl ? 'text-right' : 'text-left')}>REF #</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", isRtl ? 'text-right' : 'text-left')}>PERSONNEL</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-center", isRtl ? 'text-right' : 'text-left')}>QTY</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-center", isRtl ? 'text-right' : 'text-left')}>RATE</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", isRtl ? 'text-right' : 'text-left')}>TOTAL</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredWagesDetailed.map((v, idx) => (
                         <TableRow key={idx} className="hover:bg-slate-50 transition-colors border-b border-slate-100">
-                           <TableCell className={cn("px-6 py-4 text-[10px] font-bold text-slate-400 tabular-nums", dir === 'rtl' ? 'text-right' : 'text-left')}>{v.date}</TableCell>
-                           <TableCell className={cn("px-6 py-4 font-bold text-slate-900 text-xs", dir === 'rtl' ? 'text-right' : 'text-left')}>{v.fullName}</TableCell>
-                           <TableCell className={cn("px-6 py-4 font-bold text-slate-700 tabular-nums", dir === 'rtl' ? 'text-right' : 'text-left')}>{v.qtyAccepted} Pcs</TableCell>
-                           <TableCell className={cn("px-6 py-4 font-black text-purple-700 tabular-nums", dir === 'rtl' ? 'text-right' : 'text-left')}>{v.wageAmount.toLocaleString('en-US')} {v.currency || systemCurrency}</TableCell>
+                           <TableCell className={cn("px-6 py-4 text-[10px] font-bold text-slate-400 tabular-nums", isRtl ? 'text-right' : 'text-left')}>{v.date}</TableCell>
+                           <TableCell className={cn("px-6 py-4 text-[10px] font-black text-slate-900 tabular-nums", isRtl ? 'text-right' : 'text-left')}>{v.voucherNumber}</TableCell>
+                           <TableCell className={cn("px-6 py-4 font-bold text-slate-900 text-xs", isRtl ? 'text-right' : 'text-left')}>{v.fullName}</TableCell>
+                           <TableCell className={cn("px-6 py-4 font-black text-emerald-700 tabular-nums text-center", isRtl ? 'text-right' : 'text-left')}>{v.qtyAccepted} <span className="text-[8px] opacity-60">Pcs</span></TableCell>
+                           <TableCell className={cn("px-6 py-4 font-bold text-slate-500 tabular-nums text-center", isRtl ? 'text-right' : 'text-left')}>{v.wageRate.toLocaleString('en-US')}</TableCell>
+                           <TableCell className={cn("px-6 py-4 font-black text-purple-700 tabular-nums", isRtl ? 'text-right' : 'text-left')}>{v.wageAmount.toLocaleString('en-US')} <span className="text-[8px] opacity-60 uppercase">{v.currency || systemCurrency}</span></TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -734,8 +739,8 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
 
                <div className="p-2 bg-slate-50 border-b border-slate-200 flex items-center gap-2 shadow-sm">
                   <div className="relative flex-1">
-                    <Search className={cn("absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300", dir === 'rtl' ? "right-3" : "left-3")} />
-                    <Input value={costSearch} onChange={(e) => setCostSearch(e.target.value)} placeholder={lang === 'ar' ? 'بحث في المصاريف...' : 'Search costs log...'} className={cn("h-9 bg-white text-xs font-bold border-slate-200", dir === 'rtl' ? "pr-9 pl-3" : "pl-9 pr-3")} />
+                    <Search className={cn("absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300", isRtl ? "right-3" : "left-3")} />
+                    <Input value={costSearch} onChange={(e) => setCostSearch(e.target.value)} placeholder={lang === 'ar' ? 'بحث في المصاريف...' : 'Search costs log...'} className={cn("h-9 bg-white text-xs font-bold border-slate-200", isRtl ? "pr-9 pl-3" : "pl-9 pr-3")} />
                   </div>
                   <div className="flex items-center gap-1.5 px-1.5 border-x border-slate-200">
                     <Button variant="ghost" size="sm" onClick={() => {
@@ -756,13 +761,13 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                           <Filter className="w-3.5 h-3.5" />{lang === 'ar' ? 'تصفية وترتيب' : 'Filter & Sort'}
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="w-64 rounded-xl shadow-xl border-slate-200">
+                      <DropdownMenuContent align={isRtl ? 'start' : 'end'} className="w-64 rounded-xl shadow-xl border-slate-200">
                         <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">SORTING</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => { setCostSortBy('date'); setCostSortOrder(costSortOrder === 'asc' ? 'desc' : 'asc'); }} className="text-xs font-bold flex justify-between cursor-pointer py-2.5">
+                        <DropdownMenuItem onClick={() => { setSortByState('date'); setCostSortOrder(costSortOrder === 'asc' ? 'desc' : 'asc'); }} className="text-xs font-bold flex justify-between cursor-pointer py-2.5">
                            {lang === 'ar' ? 'حسب التاريخ' : 'By Date'}
                            {costSortBy === 'date' && (costSortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => { setCostSortBy('amount'); setCostSortOrder(costSortOrder === 'asc' ? 'desc' : 'asc'); }} className="text-xs font-bold flex justify-between cursor-pointer py-2.5">
+                        <DropdownMenuItem onClick={() => { setSortByState('amount'); setCostSortOrder(costSortOrder === 'asc' ? 'desc' : 'asc'); }} className="text-xs font-bold flex justify-between cursor-pointer py-2.5">
                            {lang === 'ar' ? 'حسب المبلغ' : 'By Amount'}
                            {costSortBy === 'amount' && (costSortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
                         </DropdownMenuItem>
@@ -776,17 +781,17 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                   <Table className="text-right border-separate border-spacing-0">
                     <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
                       <TableRow>
-                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? 'text-right' : 'text-left')}>DATE</TableHead>
-                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? 'text-right' : 'text-left')}>DESCRIPTION</TableHead>
-                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? 'text-right' : 'text-left')}>AMOUNT</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? 'text-right' : 'text-left')}>DATE</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? 'text-right' : 'text-left')}>DESCRIPTION</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? 'text-right' : 'text-left')}>AMOUNT</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredCostsDetailed.map((v, idx) => (
                         <TableRow key={idx} className="hover:bg-slate-50 transition-colors border-b border-slate-100">
-                           <TableCell className={cn("px-6 py-4 text-[10px] font-bold text-slate-500 tabular-nums", dir === 'rtl' ? 'text-right' : 'text-left')}>{v.date}</TableCell>
-                           <TableCell className={cn("px-6 py-4 font-bold text-slate-700 text-xs", dir === 'rtl' ? 'text-right' : 'text-left')}>{v.description}</TableCell>
-                           <TableCell className={cn("px-6 py-4 font-black text-rose-600 tabular-nums", dir === 'rtl' ? 'text-right' : 'text-left')}>{v.totalAmount.toLocaleString('en-US')} {v.currency || systemCurrency}</TableCell>
+                           <TableCell className={cn("px-6 py-4 text-[10px] font-bold text-slate-500 tabular-nums", isRtl ? 'text-right' : 'text-left')}>{v.date}</TableCell>
+                           <TableCell className={cn("px-6 py-4 font-bold text-slate-700 text-xs", isRtl ? 'text-right' : 'text-left')}>{v.description}</TableCell>
+                           <TableCell className={cn("px-6 py-4 font-black text-rose-600 tabular-nums", isRtl ? 'text-right' : 'text-left')}>{v.totalAmount.toLocaleString('en-US')} <span className="text-[8px] opacity-60 uppercase">{v.currency || systemCurrency}</span></TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -799,8 +804,8 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
             <div className="flex-1 flex-col flex animate-in fade-in duration-300 overflow-hidden" dir={dir}>
                <div className="p-2 bg-slate-50 border-b border-slate-200 flex items-center gap-2 shadow-sm">
                   <div className="relative flex-1">
-                    <Search className={cn("absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300", dir === 'rtl' ? "right-3" : "left-3")} />
-                    <Input value={stageSearch} onChange={(e) => setStageSearch(e.target.value)} placeholder={lang === 'ar' ? 'بحث في سجل المرحلة...' : 'Search stage log...'} className={cn("h-9 bg-white text-xs font-bold border-slate-200", dir === 'rtl' ? "pr-9 pl-3" : "pl-9 pr-3")} />
+                    <Search className={cn("absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300", isRtl ? "right-3" : "left-3")} />
+                    <Input value={stageSearch} onChange={(e) => setStageSearch(e.target.value)} placeholder={lang === 'ar' ? 'بحث في سجل المرحلة...' : 'Search stage log...'} className={cn("h-9 bg-white text-xs font-bold border-slate-200", isRtl ? "pr-9 pl-3" : "pl-9 pr-3")} />
                   </div>
                   <div className="flex items-center gap-1.5 px-1.5 border-x border-slate-200">
                     <Button variant="ghost" size="sm" onClick={() => {
@@ -827,7 +832,7 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                           <Filter className="w-3.5 h-3.5" />{lang === 'ar' ? 'تصفية وترتيب' : 'Filter & Sort'}
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="w-64 rounded-xl shadow-xl border-slate-200">
+                      <DropdownMenuContent align={isRtl ? 'start' : 'end'} className="w-64 rounded-xl shadow-xl border-slate-200">
                         <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">CHRONOLOGY</DropdownMenuLabel>
                         <DropdownMenuItem onClick={() => setStageSortOrder(stageSortOrder === 'asc' ? 'desc' : 'asc')} className="text-xs font-bold flex justify-between cursor-pointer py-2.5">
                           {lang === 'ar' ? 'ترتيب حسب التاريخ' : 'Sort by Date'}
@@ -847,10 +852,10 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                   <Table className="text-right border-separate border-spacing-0">
                     <TableHeader className="bg-slate-100 sticky top-0 z-10 shadow-sm">
                       <TableRow>
-                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? "text-right" : "text-left")}>DATE</TableHead>
-                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? "text-right" : "text-left")}>REF #</TableHead>
-                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? "text-right" : "text-left")}>ACTIVITY</TableHead>
-                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? "text-right" : "text-left")}>PERSONNEL</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? "text-right" : "text-left")}>DATE</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? "text-right" : "text-left")}>REF #</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? "text-right" : "text-left")}>ACTIVITY</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? "text-right" : "text-left")}>PERSONNEL</TableHead>
                         <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">IMPACT</TableHead>
                         <TableHead className="px-6 py-4 w-16 border-b border-slate-200"></TableHead>
                       </TableRow>
@@ -867,12 +872,12 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
 
           {activeTab === 'summary' && (
             <div className="flex-1 flex flex-col animate-in zoom-in-95 duration-300" dir={dir}>
-               <div className="p-4 bg-slate-900 text-white flex items-center justify-between"><h3 className={cn("text-xs font-black uppercase tracking-widest flex items-center gap-2", dir === 'rtl' ? "text-right" : "text-left")}><BarChart3 className="w-4 h-4 text-emerald-400" /> {lang === 'ar' ? 'التحليل الإحصائي لخطوط الإنتاج' : 'ANALYTICS'}</h3></div>
+               <div className="p-4 bg-slate-900 text-white flex items-center justify-between"><h3 className={cn("text-xs font-black uppercase tracking-widest flex items-center gap-2", isRtl ? "text-right" : "text-left")}><BarChart3 className="w-4 h-4 text-emerald-400" /> {lang === 'ar' ? 'التحليل الإحصائي لخطوط الإنتاج' : 'ANALYTICS'}</h3></div>
                <div className="flex-1 overflow-auto no-scrollbar">
                   <Table className="text-right border-separate border-spacing-0">
                     <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
                       <TableRow>
-                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500", dir === 'rtl' ? 'text-right' : 'text-left')}>WORK CENTER</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500", isRtl ? 'text-right' : 'text-left')}>WORK CENTER</TableHead>
                         <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 text-center">COMPLETED</TableHead>
                         <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 text-center">WAGE COST</TableHead>
                         <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 text-center">PROGRESS</TableHead>
@@ -886,11 +891,11 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                         const p = Math.round((done / (order.targetQty || 1)) * 100);
                         return (
                           <TableRow key={d.id} className="hover:bg-slate-50/50 transition-colors border-b border-slate-100">
-                             <TableCell className={cn("px-6 py-4 font-black text-slate-900 text-xs", dir === 'rtl' ? 'text-right' : 'text-left')}>{d.nameAr}</TableCell>
+                             <TableCell className={cn("px-6 py-4 font-black text-slate-900 text-xs", isRtl ? 'text-right' : 'text-left')}>{d.nameAr}</TableCell>
                              <TableCell className="px-6 py-4 text-center font-bold text-slate-700 tabular-nums">{done.toLocaleString('en-US')}</TableCell>
                              <TableCell className="px-6 py-4 text-center font-black text-emerald-700 tabular-nums">{cost.toLocaleString('en-US')} {systemCurrency}</TableCell>
                              <TableCell className="px-6 py-4 text-center">
-                                <div className="flex items-center gap-3 justify-center"><div className="flex-1 h-1.5 w-24 bg-slate-100 rounded-full overflow-hidden relative"><div className={cn("h-full bg-emerald-500 absolute", dir === 'rtl' ? "right-0" : "left-0")} style={{ width: `${p}%` }} /></div><span className="text-[10px] font-black text-slate-400 tabular-nums">{p}%</span></div>
+                                <div className="flex items-center gap-3 justify-center"><div className="flex-1 h-1.5 w-24 bg-slate-100 rounded-full overflow-hidden relative"><div className={cn("h-full bg-emerald-500 absolute", isRtl ? "right-0" : "left-0")} style={{ width: `${p}%` }} /></div><span className="text-[10px] font-black text-slate-400 tabular-nums">{p}%</span></div>
                              </TableCell>
                           </TableRow>
                         );
@@ -952,7 +957,7 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
 }
 
 function LedgerTransactionRow({ voucher, worker, systemCurrency, lang, onView }: { voucher: any, worker: any, systemCurrency: string, lang: string, onView: (v: any) => void }) {
-  const { dir } = useTranslation();
+  const isRtl = lang === 'ar';
   const typeMap: any = {
     'material_issue': { labelAr: 'صرف مواد', icon: <FileInput className="w-3.5 h-3.5" />, color: 'text-amber-600 bg-amber-50 border-amber-100' },
     'production_receipt': { labelAr: 'استلام انتاج', icon: <FileOutput className="w-3.5 h-3.5" />, color: 'text-blue-600 bg-blue-50 border-blue-100' },
@@ -965,19 +970,19 @@ function LedgerTransactionRow({ voucher, worker, systemCurrency, lang, onView }:
 
   return (
     <TableRow className="hover:bg-slate-50/50 border-b border-slate-100 transition-colors group">
-      <TableCell className={cn("px-6 py-3 font-bold text-slate-400 text-[10px] tabular-nums", dir === 'rtl' ? 'text-right' : 'text-left')}>
+      <TableCell className={cn("px-6 py-3 font-bold text-slate-400 text-[10px] tabular-nums", isRtl ? 'text-right' : 'text-left')}>
         {voucher.date}
       </TableCell>
-      <TableCell className={cn("px-6 py-3 font-black text-slate-900 text-[10px] tabular-nums tracking-wider", dir === 'rtl' ? 'text-right' : 'text-left')}>
+      <TableCell className={cn("px-6 py-3 font-black text-slate-900 text-[10px] tabular-nums tracking-wider", isRtl ? 'text-right' : 'text-left')}>
         {voucher.voucherNumber}
       </TableCell>
-      <TableCell className={cn("px-6 py-3", dir === 'rtl' ? 'text-right' : 'text-left')}>
+      <TableCell className={cn("px-6 py-3", isRtl ? 'text-right' : 'text-left')}>
         <div className={cn("inline-flex items-center gap-2 px-2 py-0.5 rounded text-[9px] font-black uppercase border", config.color)}>
           {config.icon}
           {lang === 'ar' ? config.labelAr : voucher.type}
         </div>
       </TableCell>
-      <TableCell className={cn("px-6 py-3", dir === 'rtl' ? 'text-right' : 'text-left')}>
+      <TableCell className={cn("px-6 py-3", isRtl ? 'text-right' : 'text-left')}>
         <div className={cn("flex items-center gap-2")}>
           <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center border border-slate-200 overflow-hidden shrink-0">
             {worker?.photoUrl ? <img src={worker.photoUrl} className="w-full h-full object-cover" /> : <User className="w-3.5 h-3.5 text-slate-400" />}
