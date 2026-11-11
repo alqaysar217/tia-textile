@@ -8,11 +8,9 @@ import {
   FileDown, 
   History, 
   ShoppingBag, 
-  ArrowUpRight, 
   TrendingUp, 
   Info, 
   Package, 
-  Target, 
   RefreshCcw, 
   Loader2,
   CheckCircle2,
@@ -42,7 +40,7 @@ import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
 export default function FinishedGoodsWarehousePage() {
-  const { lang, dir } = useTranslation();
+  const { lang, dir, t } = useTranslation();
   const db = useFirestore();
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState('inventory');
@@ -81,17 +79,14 @@ export default function FinishedGoodsWarehousePage() {
     try {
       const { productId, qty, voucherId, id: txId } = reversingTx;
       
-      // 1. Decrease Warehouse Stock
       const whRef = doc(db, 'finishedGoodsWarehouse', productId);
       batch.update(whRef, { totalQty: increment(-qty), updatedAt: serverTimestamp() });
 
-      // 2. Reset Voucher Status
       batch.update(doc(db, 'vouchers', voucherId), { 
         isTransferred: false,
         warehouseTransactionId: null 
       });
 
-      // 3. Mark Transaction as Reversed instead of deleting (for audit trail)
       batch.update(doc(db, 'warehouseTransactions', txId), { 
         status: 'reversed', 
         reversedAt: serverTimestamp() 
@@ -102,10 +97,31 @@ export default function FinishedGoodsWarehousePage() {
       setReversingTx(null);
     } catch (err) {
       console.error(err);
-      toast({ variant: "destructive", title: "Error reversing operation" });
+      toast({ variant: "destructive", title: isRtl ? "خطأ في معالجة العملية" : "Error reversing operation" });
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const dictionary = {
+    title: isRtl ? 'مستودع المنتجات الجاهزة' : 'Finished Goods Warehouse',
+    inventoryTab: isRtl ? 'الجرد الحالي' : 'Current Stock',
+    historyTab: isRtl ? 'سجل العمليات' : 'Transaction History',
+    searchPlaceholder: isRtl ? 'بحث في المخزن...' : 'Search stock...',
+    productCol: isRtl ? 'المنتج' : 'Product',
+    categoryCol: isRtl ? 'الفئة' : 'Category',
+    stockCol: isRtl ? 'الرصيد المتاح' : 'Available Stock',
+    lastInCol: isRtl ? 'آخر دخول' : 'Last In',
+    txCol: isRtl ? 'الحركة' : 'Transaction',
+    qtyCol: isRtl ? 'الكمية' : 'Quantity',
+    statusCol: isRtl ? 'الحالة' : 'Status',
+    pcsLabel: isRtl ? 'قطعة' : 'Pcs',
+    reverseBtn: isRtl ? 'إلغاء الترحيل' : 'Reverse Transfer',
+    postedStatus: isRtl ? 'تم التوريد' : 'Posted',
+    reversedStatus: isRtl ? 'ملغي' : 'Reversed',
+    auditNote: isRtl 
+      ? 'مخزن المبيعات المكتملة: يمكنك عكس أي عملية ترحيل تمت بالخطأ من خلال تبويب (سجل العمليات) لاستعادة الرصيد الأصلي.' 
+      : 'Finished Goods: You can reverse any erroneous transfer from the (History) tab to restore original balance.'
   };
 
   return (
@@ -119,21 +135,26 @@ export default function FinishedGoodsWarehousePage() {
               <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                 <span>{isRtl ? 'المستودعات' : 'Warehousing'}</span>
                 <ChevronRight className={cn("w-3 h-3", dir === 'rtl' ? "rotate-180" : "")} />
-                <span className="text-emerald-600">{isRtl ? 'مخزن المنتجات الجاهزة' : 'Finished Goods'}</span>
+                <span className="text-emerald-600">{isRtl ? 'المنتجات الجاهزة' : 'Finished Goods'}</span>
               </div>
-              <h1 className="text-xl font-black text-slate-900 leading-tight">{isRtl ? 'جرد المعاوز المكتملة والجاهزة للبيع' : 'Sellable Stock Master'}</h1>
+              <h1 className="text-xl font-black text-slate-900 leading-tight">{dictionary.title}</h1>
             </div>
           </div>
           
           <div className="flex items-center gap-3">
              <div className="relative">
                 <Search className={cn("absolute top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400", isRtl ? "right-3" : "left-3")} />
-                <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={isRtl ? 'بحث في المخزن...' : 'Search stock...'} className={cn("h-10 w-64 bg-slate-50 text-xs font-bold", isRtl ? "pr-10" : "pl-10")} />
+                <Input 
+                  value={search} 
+                  onChange={(e) => setSearch(e.target.value)} 
+                  placeholder={dictionary.searchPlaceholder} 
+                  className={cn("h-10 w-64 bg-slate-50 text-xs font-bold", isRtl ? "pr-10" : "pl-10")} 
+                />
              </div>
              <Tabs value={activeTab} onValueChange={setActiveTab} className="bg-slate-100 p-1 rounded-lg">
                 <TabsList className="bg-transparent h-8">
-                   <TabsTrigger value="inventory" className="text-[10px] font-black uppercase px-4 h-6 data-[state=active]:bg-white data-[state=active]:shadow-sm">{isRtl ? 'الجرد الحالي' : 'Stock'}</TabsTrigger>
-                   <TabsTrigger value="history" className="text-[10px] font-black uppercase px-4 h-6 data-[state=active]:bg-white data-[state=active]:shadow-sm">{isRtl ? 'سجل العمليات' : 'History'}</TabsTrigger>
+                   <TabsTrigger value="inventory" className="text-[10px] font-black uppercase px-4 h-6 data-[state=active]:bg-white data-[state=active]:shadow-sm">{dictionary.inventoryTab}</TabsTrigger>
+                   <TabsTrigger value="history" className="text-[10px] font-black uppercase px-4 h-6 data-[state=active]:bg-white data-[state=active]:shadow-sm">{dictionary.historyTab}</TabsTrigger>
                 </TabsList>
              </Tabs>
           </div>
@@ -146,20 +167,28 @@ export default function FinishedGoodsWarehousePage() {
            <TabsContent value="inventory" className="flex-1 min-h-0 m-0 focus-visible:ring-0">
               <div className="bg-white rounded-[1.5rem] border border-slate-200 shadow-sm overflow-hidden flex flex-col h-full">
                  <div className="flex-1 overflow-auto no-scrollbar">
-                    <Table className={cn("text-right border-separate border-spacing-0", !isRtl && "text-left")}>
-                      <TableHeader className="bg-slate-50 sticky top-0 z-10">
+                    <Table className={cn("border-separate border-spacing-0")}>
+                      <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
                         <TableRow>
-                          <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? "text-right" : "text-left")}>PRODUCT / المنتج</TableHead>
-                          <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? "text-right" : "text-left")}>CATEGORY / الفئة</TableHead>
-                          <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">AVAILABLE STOCK / الرصيد</TableHead>
-                          <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? "text-right" : "text-left")}>LAST IN / آخر دخول</TableHead>
+                          <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? "text-right" : "text-left")}>
+                            {dictionary.productCol}
+                          </TableHead>
+                          <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? "text-right" : "text-left")}>
+                            {dictionary.categoryCol}
+                          </TableHead>
+                          <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? "text-right" : "text-left")}>
+                            {dictionary.stockCol}
+                          </TableHead>
+                          <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? "text-right" : "text-left")}>
+                            {dictionary.lastInCol}
+                          </TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                          {filteredInventory.map(p => (
                            <TableRow key={p.id} className="hover:bg-slate-50/50 border-b border-slate-100 transition-colors">
                               <TableCell className={cn("px-6 py-4", isRtl ? "text-right" : "text-left")}>
-                                 <div className="flex items-center gap-3">
+                                 <div className={cn("flex items-center gap-3", isRtl ? "flex-row" : "flex-row")}>
                                     <Avatar className="h-10 w-10 rounded-xl border shadow-sm shrink-0">
                                        <AvatarImage src={p.image} className="object-cover" />
                                        <AvatarFallback>FG</AvatarFallback>
@@ -173,10 +202,10 @@ export default function FinishedGoodsWarehousePage() {
                               <TableCell className={cn("px-6 py-4", isRtl ? "text-right" : "text-left")}>
                                  <span className="inline-block px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[9px] font-black uppercase">{p.category}</span>
                               </TableCell>
-                              <TableCell className="px-6 py-4 text-center">
-                                 <div className="flex flex-col items-center">
+                              <TableCell className={cn("px-6 py-4", isRtl ? "text-right" : "text-left")}>
+                                 <div className="flex flex-col">
                                     <span className="text-lg font-black text-slate-900 tabular-nums">{(p.currentStock || 0).toLocaleString('en-US')}</span>
-                                    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">{isRtl ? 'قطعة جاهزة' : 'Finished Pcs'}</span>
+                                    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">{dictionary.pcsLabel}</span>
                                  </div>
                               </TableCell>
                               <TableCell className={cn("px-6 py-4", isRtl ? "text-right" : "text-left")}>
@@ -196,14 +225,22 @@ export default function FinishedGoodsWarehousePage() {
            <TabsContent value="history" className="flex-1 min-h-0 m-0 focus-visible:ring-0">
               <div className="bg-white rounded-[1.5rem] border border-slate-200 shadow-sm overflow-hidden h-full flex flex-col">
                  <div className="flex-1 overflow-auto no-scrollbar">
-                    <Table className={cn("text-right border-separate border-spacing-0", !isRtl && "text-left")}>
-                       <TableHeader className="bg-slate-50 sticky top-0 z-10">
+                    <Table className={cn("border-separate border-spacing-0")}>
+                       <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
                           <TableRow>
-                             <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? "text-right" : "text-left")}>TRANSACTION / الحركة</TableHead>
-                             <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? "text-right" : "text-left")}>PRODUCT / الصنف</TableHead>
-                             <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">QTY / الكمية</TableHead>
-                             <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">STATUS / الحالة</TableHead>
-                             <TableHead className="w-32 px-6 py-4 text-center border-b border-slate-200"></TableHead>
+                             <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? "text-right" : "text-left")}>
+                               {dictionary.txCol}
+                             </TableHead>
+                             <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? "text-right" : "text-left")}>
+                               {dictionary.productCol}
+                             </TableHead>
+                             <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? "text-right" : "text-left")}>
+                               {dictionary.qtyCol}
+                             </TableHead>
+                             <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? "text-right" : "text-left")}>
+                               {dictionary.statusCol}
+                             </TableHead>
+                             <TableHead className="w-32 px-6 py-4 border-b border-slate-200"></TableHead>
                           </TableRow>
                        </TableHeader>
                        <TableBody>
@@ -225,20 +262,20 @@ export default function FinishedGoodsWarehousePage() {
                                        <span className="font-bold text-slate-700 text-xs">{product?.nameAr || '---'}</span>
                                     </div>
                                  </TableCell>
-                                 <TableCell className="px-6 py-3 text-center">
+                                 <TableCell className={cn("px-6 py-3", isRtl ? "text-right" : "text-left")}>
                                     <span className={cn("text-xs font-black tabular-nums", isReversed ? "text-slate-400 line-through" : "text-blue-700")}>
-                                       {tx.qty} {isRtl ? 'قطعة' : 'Pcs'}
+                                       {tx.qty} {dictionary.pcsLabel}
                                     </span>
                                  </TableCell>
-                                 <TableCell className="px-6 py-3 text-center">
+                                 <TableCell className={cn("px-6 py-3", isRtl ? "text-right" : "text-left")}>
                                     <Badge variant="outline" className={cn(
                                        "text-[8px] font-black uppercase",
                                        isReversed ? "bg-rose-50 text-rose-600 border-rose-100" : "bg-emerald-50 text-emerald-700 border-emerald-100"
                                     )}>
-                                       {isReversed ? (isRtl ? 'ملغي' : 'Reversed') : (isRtl ? 'تم التوريد' : 'Posted')}
+                                       {isReversed ? dictionary.reversedStatus : dictionary.postedStatus}
                                     </Badge>
                                  </TableCell>
-                                 <TableCell className="px-6 py-3 text-center">
+                                 <TableCell className="px-6 py-3">
                                     {!isReversed && (
                                        <Button 
                                           variant="ghost" 
@@ -247,7 +284,7 @@ export default function FinishedGoodsWarehousePage() {
                                           className="h-8 px-3 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50 font-black text-[9px] gap-2 transition-all opacity-0 group-hover:opacity-100"
                                        >
                                           <RefreshCcw className="w-3 h-3" />
-                                          {isRtl ? 'إلغاء الترحيل' : 'Reverse'}
+                                          {dictionary.reverseBtn}
                                        </Button>
                                     )}
                                  </TableCell>
@@ -263,13 +300,15 @@ export default function FinishedGoodsWarehousePage() {
       </div>
 
       <AlertDialog open={!!reversingTx} onOpenChange={(open) => !open && setReversingTx(null)}>
-        <AlertDialogContent className="max-w-[400px] rounded-[1.5rem] p-0 overflow-hidden border-none shadow-2xl">
+        <AlertDialogContent className="max-w-[450px] rounded-[1.5rem] p-0 overflow-hidden border-none shadow-2xl">
            <div className="bg-rose-950 p-8 text-center relative">
               <div className="w-16 h-16 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-rose-500/20 shadow-inner">
                  <RefreshCcw className="w-8 h-8 text-rose-500" />
               </div>
-              <AlertDialogTitle className="text-white text-xl font-black">{isRtl ? 'إلغاء ترحيل المنجز' : 'Reverse Stock Entry'}</AlertDialogTitle>
-              <AlertDialogDescription className="text-slate-400 font-bold mt-2 text-xs leading-relaxed">
+              <AlertDialogTitle className="text-white text-xl font-black">
+                {isRtl ? 'إلغاء ترحيل المنجز' : 'Reverse Stock Entry'}
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-slate-400 font-bold mt-2 text-xs leading-relaxed text-center">
                  {isRtl 
                    ? `سيتم سحب عدد (${reversingTx?.qty}) قطعة من رصيد المستودع الحالي، وإعادة فتح السند في خطوط الإنتاج. هل أنت متأكد من هذا التراجع؟` 
                    : `This will deduct (${reversingTx?.qty}) items from current stock and reopen the production voucher. Confirm?`}
@@ -287,10 +326,8 @@ export default function FinishedGoodsWarehousePage() {
 
       <div className="flex-none p-3 bg-slate-900 text-white/40 flex items-center justify-center gap-4">
          <Info className="w-4 h-4 text-emerald-500" />
-         <p className="text-[10px] font-bold tracking-tight">
-            {isRtl 
-              ? 'مخزن المبيعات المكتملة: يمكنك عكس أي عملية ترحيل تمت بالخطأ من خلال تبويب (سجل العمليات) لاستعادة الرصيد الأصلي.' 
-              : 'Finished Goods: You can reverse any erroneous transfer from the (History) tab to restore original balance.'}
+         <p className="text-[10px] font-bold tracking-tight text-center">
+            {dictionary.auditNote}
          </p>
       </div>
     </div>
