@@ -42,7 +42,7 @@ interface ReceiptFormDialogProps {
   isSubmitting: boolean;
   formData: any;
   setFormData: (v: any) => void;
-  activeOrders: any[];
+  allOrders: any[];
   allWorkers: any[];
   allDepartments: any[];
   allMIVs: any[];
@@ -54,7 +54,7 @@ interface ReceiptFormDialogProps {
 
 export function ReceiptFormDialog({
   isOpen, onClose, editingId, lang, dir, isSubmitting, formData, setFormData,
-  activeOrders, allWorkers, allDepartments, allMIVs, allProducts, vouchers, 
+  allOrders, allWorkers, allDepartments, allMIVs, allProducts, vouchers, 
   systemCurrency, onSubmit
 }: ReceiptFormDialogProps) {
   const isRtl = lang === 'ar';
@@ -112,7 +112,7 @@ export function ReceiptFormDialog({
       <DialogContent className="sm:max-w-[900px] rounded-lg p-0 overflow-hidden border-none shadow-2xl">
         <div className="premium-gradient p-6 text-white">
           <DialogHeader className={cn("text-right rtl:text-right ltr:text-left")}>
-            <DialogTitle className="text-xl font-black flex items-center gap-3">
+            <DialogTitle className="text-xl font-black flex items-center gap-3 text-white">
               <ShieldCheck className="w-5 h-5 text-emerald-300" />
               {editingId ? (isRtl ? 'تعديل سند تسوية' : 'Edit Settlement') : (isRtl ? 'إغلاق عهدة واستلام إنتاج' : 'New Production Settlement')}
             </DialogTitle>

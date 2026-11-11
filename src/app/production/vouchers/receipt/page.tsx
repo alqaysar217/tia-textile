@@ -19,6 +19,7 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { toPng } from 'html-to-image';
 import { ShieldCheck } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 
 import { ReceiptHeader } from './components/ReceiptHeader';
 import { ReceiptTable } from './components/ReceiptTable';
@@ -29,6 +30,7 @@ import { ReceiptDeleteDialog } from './components/ReceiptDeleteDialog';
 export default function ProductionReceiptPage() {
   const { lang, dir } = useTranslation();
   const db = useFirestore();
+  const searchParams = useSearchParams();
   const isRtl = lang === 'ar';
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -94,7 +96,7 @@ export default function ProductionReceiptPage() {
     return list.sort((a, b) => {
       let vA = a[sortBy] ?? '', vB = b[sortBy] ?? '';
       if (sortBy === 'date') return sortOrder === 'asc' ? new Date(vA).getTime() - new Date(vB).getTime() : new Date(vB).getTime() - new Date(vA).getTime();
-      if (sortBy === 'qtyAccepted') return sortOrder === 'asc' ? Number(vA) - Number(vB) : Number(vB) - Number(vA);
+      if (sortBy === 'qtyAccepted') return sortOrder === 'asc' ? Number(vA) - Number(vB) : Number(vB) - Number(valA);
       return sortOrder === 'asc' ? String(vA).localeCompare(String(vB)) : String(vB).localeCompare(String(vA));
     });
   }, [vouchers, allOrders, allWorkers, search, batchFilter, sortBy, sortOrder]);
@@ -149,7 +151,7 @@ export default function ProductionReceiptPage() {
       if (formData.isFinalSettlement) formData.linkedMIVs.forEach(id => batch.update(doc(db, 'vouchers', id), { status: 'settled', updatedAt: serverTimestamp() }));
 
       await batch.commit();
-      toast({ title: isRtl ? "تم الترحيل بنجاح" : "Success" });
+      toast({ title: isRtl ? "تم التوريد والترحيل بنجاح" : "Success" });
       setIsAddDialogOpen(false);
       setEditingVoucherId(null);
       setFormData({ date: new Date().toISOString().split('T')[0], orderId: '', workerId: '', linkedMIVs: [], isFinalSettlement: true, notes: '', qtyAccepted: 0, wageRate: 0, currency: systemCurrency, returnedItems: [], transferToWarehouse: false });
@@ -166,7 +168,7 @@ export default function ProductionReceiptPage() {
       deletingVoucher.linkedMIVs?.forEach((id: string) => batch.update(doc(db, 'vouchers', id), { status: 'posted' }));
       batch.update(doc(db, 'vouchers', deletingVoucher.id), { status: 'deleted', deletedAt: serverTimestamp() });
       await batch.commit();
-      toast({ title: isRtl ? "تم النقل للأرشيف" : "Archived" });
+      toast({ title: isRtl ? "تم الإلغاء وعكس التأثير" : "Archived & Reversed" });
     } finally { setIsSubmitting(false); setDeletingVoucher(null); }
   };
 
@@ -188,7 +190,7 @@ export default function ProductionReceiptPage() {
       <ReceiptFormDialog 
         isOpen={isAddDialogOpen} onClose={() => { setIsAddDialogOpen(false); setEditingVoucherId(null); }}
         editingId={editingVoucherId} lang={lang} dir={dir} isSubmitting={isSubmitting} formData={formData} setFormData={setFormData}
-        activeOrders={allOrders || []} allWorkers={allWorkers || []} allDepartments={allDepartments || []} allMIVs={allMIVs || []}
+        allOrders={allOrders || []} allWorkers={allWorkers || []} allDepartments={allDepartments || []} allMIVs={allMIVs || []}
         allProducts={allProducts || []} vouchers={vouchers || []} systemCurrency={systemCurrency} onSubmit={handleSaveVoucher}
       />
 
@@ -207,7 +209,7 @@ export default function ProductionReceiptPage() {
 
       <div className="flex-none p-2.5 bg-slate-900 text-white/50 flex items-center justify-center gap-3">
         <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-        <p className="text-[10px] font-bold tracking-tight">{isRtl ? 'نظام تتبع الإنتاج: كل قطعة يتم استلامها تزيد المنجز وتغلق العهدة آلياً.' : 'Production Tracking Active.'}</p>
+        <p className="text-[10px] font-bold tracking-tight">{isRtl ? 'نظام الرقابة الميدانية: تصفية العهد المفتوحة وتوريد المنجز للمستودع النهائي.' : 'Production Control Active.'}</p>
       </div>
     </div>
   );
