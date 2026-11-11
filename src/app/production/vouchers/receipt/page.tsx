@@ -694,7 +694,11 @@ export default function ProductionReceiptPage() {
                       />
                     </div>
                     <div className="flex items-center gap-2 bg-white px-3 py-1 rounded-lg border border-amber-200">
-                      <Checkbox id="finalSettlement" checked={formData.isFinalSettlement} onValueChange={(val) => setFormData({...formData, isFinalSettlement: !!val})} />
+                      <Checkbox 
+                        id="finalSettlement" 
+                        checked={formData.isFinalSettlement} 
+                        onCheckedChange={(val) => setFormData({...formData, isFinalSettlement: !!val})} 
+                      />
                       <label htmlFor="finalSettlement" className="text-[10px] font-black text-slate-600 cursor-pointer">{lang === 'ar' ? 'إغلاق نهائي' : 'Final Closure'}</label>
                     </div>
                   </div>
