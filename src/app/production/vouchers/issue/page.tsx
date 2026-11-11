@@ -2,50 +2,34 @@
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { 
-  Plus, 
   Search, 
   ChevronRight, 
   FileInput, 
   Save, 
   Loader2, 
   Calendar,
-  User,
-  Workflow,
-  Package,
   Trash2,
-  AlertCircle,
   FileText,
-  Printer,
   Edit2,
-  CheckCircle2,
   Box,
-  LayoutGrid,
   Users2,
   Building2,
   Check,
-  UserCheck,
   ShieldCheck,
-  UserPlus,
   ChevronDown,
-  X,
   MoreVertical,
   History,
-  ArrowRight,
   Download,
   Eye,
-  FileDown,
-  Filter,
-  SortAsc,
-  SortDesc,
-  ArrowUpDown,
-  Hash,
-  Wallet
+  Workflow,
+  Package,
+  Plus
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useTranslation } from '@/components/LanguageProvider';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, addDoc, updateDoc, doc, serverTimestamp, query, where, writeBatch, deleteDoc, getDoc } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc, serverTimestamp, query, where, writeBatch, getDoc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import {
@@ -80,7 +64,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
-  DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 import { useSearchParams } from 'next/navigation';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -88,6 +71,10 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { toPng } from 'html-to-image';
 import { Badge } from '@/components/ui/badge';
 import { VoucherTemplate } from '@/components/production/VoucherTemplate';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
+
+// New Component Import
+import { IssueHeader } from './components/IssueHeader';
 
 export default function MaterialIssuePage() {
   const { lang, dir } = useTranslation();
@@ -105,7 +92,6 @@ export default function MaterialIssuePage() {
   const [search, setSearch] = useState('');
   
   // Advanced Filtering & Sorting State
-  // FIXED: Default sorting set to 'date' and 'desc' to show newest records at the top
   const [sortBy, setSortBy] = useState<'voucherNumber' | 'date' | 'totalAmount'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [batchFilter, setBatchFilter] = useState<string>('all');
@@ -160,22 +146,17 @@ export default function MaterialIssuePage() {
       const order = allOrders?.find(o => o.id === v.orderId);
       const worker = allWorkers?.find(w => w.id === v.workerId);
       
-      // Text Search
       const s = search.toLowerCase();
       const matchesSearch = v.voucherNumber?.toLowerCase().includes(s) ||
                            order?.orderNumber?.toLowerCase().includes(s) ||
                            worker?.fullName?.toLowerCase().includes(s);
       
-      // Batch Filter
       const matchesBatch = batchFilter === 'all' || v.orderId === batchFilter;
-      
-      // Department Filter
       const matchesDept = deptFilter === 'all' || worker?.departmentId === deptFilter;
 
       return matchesSearch && matchesBatch && matchesDept;
     });
 
-    // Sorting logic - ensures desc puts newest dates first
     return result.sort((a, b) => {
       let valA = a[sortBy] ?? '';
       let valB = b[sortBy] ?? '';
@@ -217,7 +198,6 @@ export default function MaterialIssuePage() {
     return allWorkers?.find(w => w.id === selectedWorker.supervisorId);
   }, [allWorkers, selectedWorker]);
 
-  // Click outside listener for the custom dropdown
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (workerDropdownRef.current && !workerDropdownRef.current.contains(event.target as Node)) {
@@ -453,7 +433,7 @@ export default function MaterialIssuePage() {
     toast({ title: lang === 'ar' ? "تم تصدير البيانات" : "Data Exported" });
   };
 
-  const toggleSort = (field: typeof sortBy) => {
+  const toggleSort = (field: 'voucherNumber' | 'date' | 'totalAmount') => {
     if (sortBy === field) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     } else {
@@ -463,102 +443,26 @@ export default function MaterialIssuePage() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#f8fafc] overflow-hidden">
+    <div className="flex flex-col h-full bg-[#f8fafc] overflow-hidden" dir={dir}>
       
-      <div className="flex-none bg-white border-b border-slate-200 z-30 px-6 py-4 shadow-sm">
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-          <div className="flex items-center gap-4">
-            <div className="p-2.5 bg-slate-900 rounded-lg text-white shadow-lg">
-              <FileInput className="w-5 h-5 text-emerald-400" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                <span>{lang === 'ar' ? 'المخازن' : 'WMS'}</span>
-                <ChevronRight className={`w-3 h-3 ${dir === 'rtl' ? 'rotate-180' : ''}`} />
-                <span className="text-emerald-600">{lang === 'ar' ? 'سندات الصرف' : 'Material Issues'}</span>
-              </div>
-              <h1 className="text-xl font-black text-slate-900 leading-tight">
-                {lang === 'ar' ? 'صرف المواد الخام للإنتاج' : 'Material Issue Vouchers'}
-              </h1>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400`} />
-              <Input 
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={lang === 'ar' ? 'بحث برقم السند أو العامل...' : 'Search by voucher or worker...'}
-                className={`${dir === 'rtl' ? 'pr-10' : 'pl-10'} h-10 w-64 bg-slate-50 border-slate-200 text-xs font-bold`}
-              />
-            </div>
-
-            <div className="flex items-center gap-1.5 px-1.5 border-x border-slate-100">
-              <Button onClick={handleExportCSV} variant="ghost" className="h-10 px-3 rounded-lg text-xs font-bold gap-2 text-slate-600 hover:bg-slate-50 border border-transparent">
-                <FileDown className="w-4 h-4 text-emerald-600" />
-                {lang === 'ar' ? 'تصدير' : 'Export'}
-              </Button>
-
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="h-10 px-3 rounded-lg text-xs font-bold gap-2 text-slate-600 hover:bg-slate-50 border border-transparent">
-                    <Filter className="w-4 h-4" />
-                    {lang === 'ar' ? 'تصفية' : 'Filter'}
-                    {(batchFilter !== 'all' || deptFilter !== 'all' || sortOrder !== 'desc') && (
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                    )}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="w-64 rounded-xl border-slate-200 shadow-xl">
-                  <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'ترتيب النتائج' : 'SORTING'}</DropdownMenuLabel>
-                  <DropdownMenuItem onClick={() => toggleSort('date')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2.5">
-                    <div className="flex items-center gap-2"><Calendar className="w-3.5 h-3.5 text-slate-400" /> {lang === 'ar' ? 'حسب التاريخ' : 'By Date'}</div>
-                    {sortBy === 'date' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => toggleSort('voucherNumber')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2.5">
-                    <div className="flex items-center gap-2"><Hash className="w-3.5 h-3.5 text-slate-400" /> {lang === 'ar' ? 'حسب رقم السند' : 'By Reference'}</div>
-                    {sortBy === 'voucherNumber' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => toggleSort('totalAmount')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2.5">
-                    <div className="flex items-center gap-2"><Wallet className="w-3.5 h-3.5 text-slate-400" /> {lang === 'ar' ? 'حسب القيمة' : 'By Total'}</div>
-                    {sortBy === 'totalAmount' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
-                  </DropdownMenuItem>
-
-                  <DropdownMenuSeparator />
-                  <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'تصفية حسب الدفعة' : 'FILTER BY BATCH'}</DropdownMenuLabel>
-                  <ScrollArea className="h-40">
-                    <DropdownMenuItem onClick={() => setBatchFilter('all')} className="flex items-center justify-between text-xs font-bold cursor-pointer">
-                      {lang === 'ar' ? 'جميع الدفعات' : 'All Batches'}
-                      {batchFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
-                    </DropdownMenuItem>
-                    {activeOrders?.map(o => (
-                      <DropdownMenuItem key={o.id} onClick={() => setBatchFilter(o.id)} className="flex items-center justify-between text-xs font-bold cursor-pointer">
-                        <span className="truncate max-w-[180px]">{o.orderNumber} - {o.title}</span>
-                        {batchFilter === o.id && <Check className="w-3.5 h-3.5 text-emerald-600" />}
-                      </DropdownMenuItem>
-                    ))}
-                  </ScrollArea>
-
-                  <DropdownMenuSeparator />
-                  <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'حسب القسم' : 'BY DEPARTMENT'}</DropdownMenuLabel>
-                  {activeDepartments?.map(d => (
-                    <DropdownMenuItem key={d.id} onClick={() => setDeptFilter(d.id)} className="flex items-center justify-between text-xs font-bold cursor-pointer">
-                      {lang === 'ar' ? d.nameAr : d.nameEn}
-                      {deptFilter === d.id && <Check className="w-3.5 h-3.5 text-emerald-600" />}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-
-            <Button onClick={() => setIsAddDialogOpen(true)} className="h-10 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 transition-all border-none">
-              <Plus className="w-4 h-4" />
-              {lang === 'ar' ? 'سند جديد' : 'New Issue'}
-            </Button>
-          </div>
-        </div>
-      </div>
+      {/* COMPONENT REPLACED BY IssueHeader */}
+      <IssueHeader 
+        lang={lang}
+        dir={dir}
+        search={search}
+        setSearch={setSearch}
+        handleExportCSV={handleExportCSV}
+        batchFilter={batchFilter}
+        setBatchFilter={setBatchFilter}
+        deptFilter={deptFilter}
+        setDeptFilter={setDeptFilter}
+        toggleSort={toggleSort}
+        sortBy={sortBy}
+        sortOrder={sortOrder}
+        activeOrders={activeOrders}
+        activeDepartments={activeDepartments}
+        setIsAddDialogOpen={setIsAddDialogOpen}
+      />
 
       <div className="flex-1 min-h-0 overflow-auto p-4 md:p-6 no-scrollbar">
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
@@ -759,7 +663,6 @@ export default function MaterialIssuePage() {
               </div>
             </div>
 
-            {/* SUPERVISOR INFO BAR */}
             {selectedWorker && (
               <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center justify-between animate-in slide-in-from-top-2">
                 <div className="flex items-center gap-3">
