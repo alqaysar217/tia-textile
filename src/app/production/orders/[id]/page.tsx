@@ -106,8 +106,8 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
 
   // States for Costs Summary Filtering & Sorting
   const [costSearch, setCostSearch] = useState('');
-  const [costSortBy, setCostSortBy] = useState<'date' | 'description' | 'amount'>('date');
-  const [costSortOrder, setCostSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [costSortBy, setSortBy] = useState<'date' | 'description' | 'amount'>('date');
+  const [costSortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   // Fetch Global Settings for Currency
   const settingsRef = useMemo(() => !db ? null : doc(db, 'settings', 'global'), [db]);
@@ -366,7 +366,6 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
   return (
     <div className="flex flex-col h-full bg-[#f1f5f9] overflow-hidden" dir={dir}>
       
-      {/* UNIFIED NAVIGATION & TAB BAR - ENHANCED SCROLL */}
       <div className="flex-none bg-slate-900 z-30 shadow-2xl border-b border-white/10 w-full">
         <div className="flex items-center h-14 gap-0 px-2 overflow-hidden">
           <Button 
@@ -484,46 +483,54 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                   </div>
                </div>
 
-               <div className="overflow-hidden">
-                  <table className="w-full text-right border-separate border-spacing-0" dir={dir}>
-                     <tbody className="divide-y divide-slate-100">
-                        <LedgerRow label={lang === 'ar' ? 'رقم السجل الموحد' : 'REFERENCE'} value={order.orderNumber} icon={<Hash className="w-4 h-4" />} />
-                        <LedgerRow label={lang === 'ar' ? 'تاريخ البدء' : 'LAUNCH DATE'} value={order.startDate} icon={<Calendar className="w-4 h-4" />} />
-                        <LedgerRow label={lang === 'ar' ? 'عنوان الدفعة' : 'BATCH TITLE'} value={order.title} icon={<Type className="w-4 h-4" />} />
-                        <LedgerRow label={lang === 'ar' ? 'المنتج المستهدف' : 'TARGET PRODUCT'} value={product?.nameAr} icon={<ShoppingBag className="w-4 h-4" />} />
-                        <LedgerRow label={lang === 'ar' ? 'الكمية المستهدفة' : 'TARGET QTY'} value={`${order.targetQty} قطعة`} icon={<Target className="w-4 h-4" />} />
-                        <LedgerRow label={lang === 'ar' ? 'الكمية المنجزة (النهائية)' : 'COMPLETED'} value={`${finalCompletedQty} قطعة`} icon={<CheckCircle2 className="w-4 h-4" />} color="text-emerald-700" />
-                        <LedgerRow label={lang === 'ar' ? 'قيد العمل (WIP)' : 'WIP'} value={`${Math.max(0, order.targetQty - finalCompletedQty)} قطعة`} icon={<Package className="w-4 h-4" />} color="text-blue-600" />
-                        <LedgerRow label={lang === 'ar' ? 'الأولوية' : 'PRIORITY'} value={order.priority} icon={<ShieldCheck className="w-4 h-4" />} />
-                        <LedgerRow label={lang === 'ar' ? 'الحالة' : 'STATUS'} value={order.status} icon={<Tag className="w-4 h-4" />} />
-                        <tr className="hover:bg-slate-50/50 transition-colors group">
-                           <td className="px-6 py-4 w-72 border-l border-slate-100 bg-slate-50/30">
-                              <div className="flex items-center gap-3 justify-start">
-                                 <div className="p-1.5 bg-white border border-slate-100 rounded text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors"><Activity className="w-4 h-4" /></div>
-                                 <span className="font-black text-[10px] text-slate-400 uppercase tracking-widest">{lang === 'ar' ? 'مستوى التقدم الإجمالي' : 'PROGRESS'}</span>
-                              </div>
-                           </td>
-                           <td className="px-6 py-4">
-                              <div className="flex items-center gap-4 justify-end">
-                                 <span className="text-xs font-black text-emerald-700 tabular-nums">{progress}%</span>
-                                 <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden max-w-[200px]"><div className="h-full bg-emerald-500" style={{ width: `${progress}%` }} /></div>
-                              </div>
-                           </td>
-                        </tr>
-                     </tbody>
-                  </table>
+               <div className="p-8 bg-white space-y-10">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-y-10 gap-x-12">
+                    {/* Column 1 */}
+                    <div className="space-y-8">
+                      <InfoItem label={lang === 'ar' ? 'رقم السجل الموحد' : 'REFERENCE'} value={order.orderNumber} icon={<Hash className="w-4 h-4" />} />
+                      <InfoItem label={lang === 'ar' ? 'تاريخ البدء' : 'LAUNCH DATE'} value={order.startDate} icon={<Calendar className="w-4 h-4" />} />
+                      <InfoItem label={lang === 'ar' ? 'عنوان الدفعة' : 'BATCH TITLE'} value={order.title} icon={<Type className="w-4 h-4" />} />
+                    </div>
+                    
+                    {/* Column 2 */}
+                    <div className="space-y-8">
+                      <InfoItem label={lang === 'ar' ? 'المنتج المستهدف' : 'TARGET PRODUCT'} value={product?.nameAr} icon={<ShoppingBag className="w-4 h-4" />} />
+                      <InfoItem label={lang === 'ar' ? 'الكمية المستهدفة' : 'TARGET QTY'} value={`${order.targetQty} قطعة`} icon={<Target className="w-4 h-4" />} />
+                      <InfoItem label={lang === 'ar' ? 'الكمية المنجزة (النهائية)' : 'COMPLETED'} value={`${finalCompletedQty} قطعة`} icon={<CheckCircle2 className="w-4 h-4" />} color="text-emerald-700" />
+                    </div>
+
+                    {/* Column 3 */}
+                    <div className="space-y-8">
+                      <InfoItem label={lang === 'ar' ? 'قيد العمل (WIP)' : 'WIP'} value={`${Math.max(0, order.targetQty - finalCompletedQty)} قطعة`} icon={<Package className="w-4 h-4" />} color="text-blue-600" />
+                      <InfoItem label={lang === 'ar' ? 'الأولوية' : 'PRIORITY'} value={order.priority} icon={<ShieldCheck className="w-4 h-4" />} />
+                      <InfoItem label={lang === 'ar' ? 'الحالة' : 'STATUS'} value={order.status} icon={<Tag className="w-4 h-4" />} />
+                    </div>
+                  </div>
+
+                  {/* Progress Bar Footer */}
+                  <div className="pt-8 border-t border-slate-100">
+                     <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                           <div className="p-1.5 bg-emerald-50 text-emerald-600 rounded"><Activity className="w-4 h-4" /></div>
+                           <span className="font-black text-[10px] text-slate-400 uppercase tracking-widest">{lang === 'ar' ? 'مستوى التقدم الإجمالي' : 'PROGRESS'}</span>
+                        </div>
+                        <span className="text-sm font-black text-emerald-700 tabular-nums">{progress}%</span>
+                     </div>
+                     <div className="h-3 bg-slate-100 rounded-full overflow-hidden shadow-inner">
+                        <div className="h-full bg-emerald-500 transition-all duration-1000 ease-out" style={{ width: `${progress}%` }} />
+                     </div>
+                  </div>
                </div>
             </ScrollArea>
           )}
 
           {activeTab === 'materials_summary' && (
-            <div className="flex-1 flex flex-col animate-in fade-in duration-300 overflow-hidden">
+            <div className="flex-1 flex-col flex animate-in fade-in duration-300 overflow-hidden">
                <div className="p-4 bg-amber-50 border-b border-amber-100 flex items-center justify-between">
                   <h3 className="text-xs font-black text-amber-900 uppercase tracking-widest flex items-center gap-2"><Layers className="w-4 h-4" /> {lang === 'ar' ? 'سجل تفصيلي للمواد الخام وقيمتها' : 'DETAILED MATERIALS COSTING'}</h3>
                   <Badge className="bg-amber-600 text-white font-black tabular-nums">{totalMaterialsCost.toLocaleString('en-US')} {systemCurrency}</Badge>
                </div>
 
-               {/* UNIFIED TOOLBAR */}
                <div className="p-2 bg-slate-50 border-b border-slate-200 flex items-center gap-2 shadow-sm">
                   <div className="relative flex-1">
                     <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300`} />
@@ -599,7 +606,6 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                   <Badge className="bg-purple-600 text-white font-black tabular-nums">{totalWagesCost.toLocaleString('en-US')} {systemCurrency}</Badge>
                </div>
 
-               {/* UNIFIED TOOLBAR */}
                <div className="p-2 bg-slate-50 border-b border-slate-200 flex items-center gap-2 shadow-sm">
                   <div className="relative flex-1">
                     <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300`} />
@@ -672,7 +678,6 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                   <Badge className="bg-rose-600 text-white font-black tabular-nums">{totalOtherCosts.toLocaleString('en-US')} {systemCurrency}</Badge>
                </div>
 
-               {/* UNIFIED TOOLBAR */}
                <div className="p-2 bg-slate-50 border-b border-slate-200 flex items-center gap-2 shadow-sm">
                   <div className="relative flex-1">
                     <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300`} />
@@ -699,11 +704,11 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="w-64 rounded-xl shadow-xl border-slate-200">
                         <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">SORTING</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => { setCostSortBy('date'); setCostSortOrder(costSortOrder === 'asc' ? 'desc' : 'asc'); }} className="text-xs font-bold flex justify-between cursor-pointer py-2.5">
+                        <DropdownMenuItem onClick={() => { setSortBy('date'); setSortOrder(costSortOrder === 'asc' ? 'desc' : 'asc'); }} className="text-xs font-bold flex justify-between cursor-pointer py-2.5">
                            {lang === 'ar' ? 'حسب التاريخ' : 'By Date'}
                            {costSortBy === 'date' && (costSortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => { setCostSortBy('amount'); setCostSortOrder(costSortOrder === 'asc' ? 'desc' : 'asc'); }} className="text-xs font-bold flex justify-between cursor-pointer py-2.5">
+                        <DropdownMenuItem onClick={() => { setSortBy('amount'); setSortOrder(costSortOrder === 'asc' ? 'desc' : 'asc'); }} className="text-xs font-bold flex justify-between cursor-pointer py-2.5">
                            {lang === 'ar' ? 'حسب المبلغ' : 'By Amount'}
                            {costSortBy === 'amount' && (costSortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
                         </DropdownMenuItem>
@@ -900,19 +905,17 @@ function SummaryStatCard({ label, value, currency, icon, color, bgColor, isCount
   );
 }
 
-function LedgerRow({ label, value, icon, color = "text-slate-900" }: { label: string, value: string | number, icon: any, color?: string }) {
+function InfoItem({ label, value, icon, color = "text-slate-900" }: { label: string, value: string | number, icon: any, color?: string }) {
   return (
-    <tr className="hover:bg-slate-50/50 transition-colors group">
-       <td className="px-6 py-4 w-72 border-l border-slate-100 bg-slate-50/30">
-          <div className="flex items-center gap-3 justify-start">
-             <div className="p-1.5 bg-white border border-slate-100 rounded text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">{icon}</div>
-             <span className="font-black text-[10px] text-slate-400 uppercase tracking-widest">{label}</span>
-          </div>
-       </td>
-       <td className={cn("px-6 py-4 text-xs font-black tabular-nums text-left", color)}>
-         {value || '---'}
-       </td>
-    </tr>
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-2 opacity-50">
+        {icon}
+        <span className="text-[10px] font-black uppercase tracking-widest">{label}</span>
+      </div>
+      <div className={cn("text-sm font-black ps-6", color)}>
+        {value || '---'}
+      </div>
+    </div>
   );
 }
 
