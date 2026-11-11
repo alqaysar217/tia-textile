@@ -39,7 +39,10 @@ import {
   ArrowUp01,
   ArrowDown10,
   Coins,
-  AlertTriangle
+  AlertTriangle,
+  PlusCircle,
+  ArrowUpToLine,
+  PackagePlus
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -79,7 +82,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { useFirestore, useCollection, useDoc } from '@/firebase';
-import { collection, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc, serverTimestamp, increment } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { toast } from '@/hooks/use-toast';
@@ -99,6 +102,7 @@ export default function MaterialsPage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isStockInDialogOpen, setIsStockInDialogOpen] = useState(false);
   const [editingMatId, setEditingMatId] = useState<string | null>(null);
   const [deletingMatId, setDeletingMatId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -121,6 +125,11 @@ export default function MaterialsPage() {
     currency: systemCurrency,
     photoUrl: '',
     status: 'active'
+  });
+
+  const [stockInForm, setStockInForm] = useState({
+    materialId: '',
+    qty: 0
   });
 
   // Sync currency with system settings when adding new material
@@ -229,6 +238,12 @@ export default function MaterialsPage() {
     });
   }, [systemCurrency]);
 
+  const resetStockInForm = useCallback(() => {
+    setIsStockInDialogOpen(false);
+    setIsSubmitting(false);
+    setStockInForm({ materialId: '', qty: 0 });
+  }, []);
+
   const toggleSort = (key: 'code' | 'nameAr' | 'currentQty' | 'price') => {
     if (sortBy === key) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -316,6 +331,30 @@ export default function MaterialsPage() {
     }, 0);
   };
 
+  const handleStockInSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!db || isSubmitting || !stockInForm.materialId || stockInForm.qty <= 0) return;
+
+    setIsSubmitting(true);
+    try {
+      const docRef = doc(db, 'materials', stockInForm.materialId);
+      await updateDoc(docRef, {
+        currentQty: increment(stockInForm.qty),
+        updatedAt: serverTimestamp()
+      });
+      toast({ 
+        title: lang === 'ar' ? "تم توريد الكمية بنجاح" : "Stock In Success",
+        description: lang === 'ar' ? `تمت إضافة ${stockInForm.qty} إلى رصيد المخزن.` : `Added ${stockInForm.qty} to inventory balance.`
+      });
+      resetStockInForm();
+    } catch (error) {
+      console.error(error);
+      toast({ variant: "destructive", title: "Error during Stock In" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleArchiveMaterial = () => {
     if (!db || !deletingMatId) return;
     const targetId = deletingMatId;
@@ -378,10 +417,7 @@ export default function MaterialsPage() {
       ];
     });
 
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.join(','))
-    ].join('\n');
+    const csvContent = [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
 
     const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -425,15 +461,20 @@ export default function MaterialsPage() {
             <div className="flex gap-2 bg-slate-50 p-1 rounded-lg border border-slate-100">
               <div className="px-3 py-1 text-center">
                 <p className="text-[9px] font-bold text-slate-400 uppercase">{lang === 'ar' ? 'المواد' : 'Items'}</p>
-                <p className="text-sm font-black text-emerald-600 tabular-nums">{(filtered.length).toLocaleString('en-US')}</p>
+                <p className="text-sm font-black text-emerald-600 tabular-nums">{loading ? '..' : (filtered.length).toLocaleString('en-US')}</p>
               </div>
               <div className="w-px h-6 bg-slate-200 self-center" />
               <div className="px-3 py-1 text-center">
                 <p className="text-[9px] font-bold text-slate-400 uppercase">{lang === 'ar' ? 'نقص مخزون' : 'Low Stock'}</p>
-                <p className="text-sm font-black text-rose-600 tabular-nums">{(filtered.filter(m => (m.currentQty || 0) <= (m.minQty || 0)).length).toLocaleString('en-US')}</p>
+                <p className="text-sm font-black text-rose-600 tabular-nums">{loading ? '..' : (filtered.filter(m => (m.currentQty || 0) <= (m.minQty || 0)).length).toLocaleString('en-US')}</p>
               </div>
             </div>
             
+            <Button onClick={() => setIsStockInDialogOpen(true)} variant="outline" className="h-10 px-6 border-slate-200 text-emerald-600 hover:bg-emerald-50 rounded-lg shadow-sm font-black gap-2 transition-all">
+              <PlusCircle className="w-4 h-4" />
+              {lang === 'ar' ? 'توريد كمية' : 'Stock In'}
+            </Button>
+
             <Button onClick={() => setIsAddDialogOpen(true)} className="h-10 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 transition-all border-none">
               <Plus className="w-4 h-4" />
               {lang === 'ar' ? 'إضافة مادة' : 'Add Material'}
@@ -449,7 +490,7 @@ export default function MaterialsPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={lang === 'ar' ? 'بحث بالكود أو اسم المادة...' : 'Quick catalog search...'}
-              className={`${dir === 'rtl' ? 'pr-10' : 'pl-10'} h-9 bg-white border-slate-200 text-xs font-bold`}
+              className={`${dir === 'rtl' ? 'pr-10' : 'pl-10'} h-9 bg-white border-slate-200 text-xs font-bold focus:ring-emerald-500/10 focus:border-emerald-500`}
             />
           </div>
           
@@ -616,7 +657,11 @@ export default function MaterialsPage() {
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-slate-200"><MoreVertical className="w-4 h-4 text-slate-400" /></Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="rounded-lg border-slate-200 shadow-xl min-w-[180px]">
+                          <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="rounded-lg border-slate-200 shadow-xl min-w-[200px]">
+                            <DropdownMenuItem onClick={() => { setStockInForm({ materialId: mat.id, qty: 1 }); setIsStockInDialogOpen(true); }} className="gap-3 font-bold text-xs py-2.5">
+                              <PlusCircle className="w-3.5 h-3.5 text-emerald-600" /> {lang === 'ar' ? 'توريد كمية' : 'Add Stock'}
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => handleEditClick(mat)} className="gap-3 font-bold text-xs py-2.5">
                               <Edit2 className="w-3.5 h-3.5 text-emerald-600" /> {lang === 'ar' ? 'تعديل البيانات' : 'Update Record'}
                             </DropdownMenuItem>
@@ -776,6 +821,81 @@ export default function MaterialsPage() {
         </DialogContent>
       </Dialog>
 
+      {/* STOCK IN DIALOG */}
+      <Dialog open={isStockInDialogOpen} onOpenChange={(open) => !open && resetStockInForm()}>
+        <DialogContent className="sm:max-w-[450px] rounded-lg p-0 overflow-hidden border-none shadow-2xl">
+          <div className="bg-slate-900 p-6 text-white">
+            <DialogHeader className="text-right rtl:text-right ltr:text-left">
+              <DialogTitle className="text-xl font-black flex items-center gap-3">
+                <PackagePlus className="w-5 h-5 text-emerald-400" />
+                {lang === 'ar' ? 'توريد كمية جديدة' : 'Stock Replenishment'}
+              </DialogTitle>
+              <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest mt-1">Increasing existing inventory balance</p>
+            </DialogHeader>
+          </div>
+
+          <form onSubmit={handleStockInSubmit} className="p-6 space-y-5 bg-white">
+            <div className="space-y-1.5">
+              <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
+                <Box className="w-3 h-3 text-emerald-600" />
+                {lang === 'ar' ? 'اختر الصنف المراد توريده' : 'SELECT MATERIAL'}
+              </Label>
+              <select 
+                value={stockInForm.materialId} 
+                onChange={(e) => setStockInForm({...stockInForm, materialId: e.target.value})}
+                className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none"
+                required
+              >
+                <option value="">-- {lang === 'ar' ? 'اختر الصنف' : 'Select Material'} --</option>
+                {materials?.filter(m => m.status !== 'deleted').map(m => (
+                  <option key={m.id} value={m.id}>{m.nameAr} ({m.code})</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
+                <ArrowUpToLine className="w-3 h-3 text-emerald-600" />
+                {lang === 'ar' ? 'الكمية الواردة الجديدة' : 'QUANTITY TO ADD'}
+              </Label>
+              <div className="relative">
+                <Input 
+                  type="number" 
+                  min="0.01" 
+                  step="any"
+                  value={stockInForm.qty || ''} 
+                  onChange={(e) => setStockInForm({...stockInForm, qty: Number(e.target.value)})} 
+                  className="h-14 font-black text-2xl text-center tabular-nums bg-emerald-50 border-emerald-100 text-emerald-700" 
+                  required 
+                />
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-emerald-600/40 uppercase">
+                  {materials?.find(m => m.id === stockInForm.materialId)?.unit || ''}
+                </div>
+              </div>
+            </div>
+
+            <div className="p-3 bg-amber-50 border border-amber-100 rounded-lg flex items-start gap-3">
+              <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <p className="text-[10px] font-bold text-amber-800 leading-relaxed">
+                {lang === 'ar' 
+                  ? 'سيتم إضافة هذه الكمية إلى الرصيد الحالي فوراً. لا يمكن التراجع عن هذه العملية إلا بحذف السجل يدوياً أو التعديل.' 
+                  : 'This quantity will be added to the current balance instantly.'}
+              </p>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <Button type="submit" disabled={isSubmitting || !stockInForm.materialId || stockInForm.qty <= 0} className="flex-1 h-12 premium-gradient text-white rounded-md font-black text-sm border-none shadow-lg">
+                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : <Save className="w-4 h-4 me-2" />}
+                {lang === 'ar' ? 'تأكيد التوريد' : 'Confirm Stock In'}
+              </Button>
+              <Button type="button" variant="outline" onClick={resetStockInForm} className="px-6 h-12 font-black text-slate-400 rounded-md">
+                {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       {/* ARCHIVE DIALOG */}
       <AlertDialog open={!!deletingMatId} onOpenChange={(open) => !open && setDeletingMatId(null)}>
         <AlertDialogContent className="max-w-[400px] rounded-lg border-none shadow-2xl p-0 overflow-hidden">
@@ -802,3 +922,4 @@ export default function MaterialsPage() {
     </div>
   );
 }
+
