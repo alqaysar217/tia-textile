@@ -313,7 +313,7 @@ export default function WorkerProductivityReport() {
                   {loading ? (
                     <TableRow><TableCell colSpan={7} className="text-center py-20 animate-pulse text-slate-400 font-black">جاري تحليل الأداء والبيانات المالية...</TableCell></TableRow>
                   ) : filteredData.length === 0 ? (
-                    <TableRow><TableCell colSpan={7} className="text-center py-20 text-slate-300 font-bold">لا توجد بيانات مطابقة لهذه الفلاتر</TableRow></TableCell>
+                    <TableRow><TableCell colSpan={7} className="text-center py-20 text-slate-300 font-bold">لا توجد بيانات مطابقة لهذه الفلاتر</TableCell></TableRow>
                   ) : filteredData.map((r) => {
                      const worker = allWorkers?.find(w => w.id === r.workerId);
                      const order = allOrders?.find(o => o.id === r.orderId);
