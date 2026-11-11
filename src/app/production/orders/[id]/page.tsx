@@ -298,7 +298,7 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
       let valB = b[costSortBy === 'amount' ? 'totalAmount' : costSortBy] ?? '';
       if (costSortBy === 'date') return costSortOrder === 'asc' ? new Date(valA).getTime() - new Date(valB).getTime() : new Date(valB).getTime() - new Date(valA).getTime();
       if (costSortBy === 'amount') return costSortOrder === 'asc' ? Number(valA) - Number(valB) : Number(valB) - Number(valA);
-      return costSortOrder === 'asc' ? String(valA).localeCompare(String(valB), 'ar') : String(valB).localeCompare(String(valA), 'ar');
+      return sortOrder === 'asc' ? String(valA).localeCompare(String(valB), 'ar') : String(valB).localeCompare(String(valA), 'ar');
     });
   }, [vouchers, costSearch, costSortBy, costSortOrder]);
 
@@ -353,27 +353,30 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
 
   function SummaryStatCard({ label, value, currency, icon, color, bgColor, isCount = false }: any) {
     return (
-      <div className={cn("p-3 rounded-xl border border-slate-100 shadow-sm", bgColor, dir === 'rtl' ? 'text-right' : 'text-left')}>
-         <div className={cn("flex items-center gap-2 mb-1 opacity-60", dir === 'rtl' ? 'justify-start' : 'justify-start')}>
-            {icon}
-            <span className="text-[8px] font-black uppercase tracking-widest">{label}</span>
+      <div className={cn("p-4 rounded-xl border shadow-sm transition-all hover:shadow-md", bgColor, dir === 'rtl' ? 'text-right border-slate-200/50' : 'text-left border-slate-200/50')}>
+         <div className={cn("flex items-center gap-2 mb-2")}>
+            <div className={cn("p-1.5 rounded-lg bg-white/80 shadow-sm", color)}>
+               {icon}
+            </div>
+            <span className={cn("text-[9px] font-black uppercase tracking-widest opacity-70", color)}>{label}</span>
          </div>
-         <div className={cn("flex items-baseline gap-1", dir === 'rtl' ? 'flex-row' : 'flex-row')}>
-            <span className={cn("text-sm font-black tabular-nums", color)}>{value.toLocaleString('en-US')}</span>
-            <span className="text-[8px] font-bold text-slate-400 uppercase">{currency}</span>
+         <div className="flex items-baseline gap-1.5">
+            <span className={cn("text-lg font-black tabular-nums leading-none", color)}>{value.toLocaleString('en-US')}</span>
+            <span className="text-[9px] font-bold text-slate-500 uppercase">{currency}</span>
          </div>
       </div>
     );
   }
 
   function InfoItem({ label, value, icon, color = "text-slate-900" }: { label: string, value: string | number, icon: any, color?: string }) {
+    const isRtl = dir === 'rtl';
     return (
-      <div className={cn("flex flex-col gap-1.5", dir === 'rtl' ? 'text-right' : 'text-left')}>
-        <div className={cn("flex items-center gap-2 opacity-50")}>
+      <div className={cn("flex flex-col gap-1.5", isRtl ? 'text-right' : 'text-left')}>
+        <div className={cn("flex items-center gap-2 opacity-50", isRtl ? "justify-start" : "justify-start")}>
           {icon}
           <span className="text-[9px] font-black uppercase tracking-widest">{label}</span>
         </div>
-        <div className={cn("text-sm font-black ps-6", color)}>
+        <div className={cn("text-sm font-black", isRtl ? "pr-6" : "pl-6", color)}>
           {value || '---'}
         </div>
       </div>
@@ -408,7 +411,7 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
           
           <div 
             ref={tabsContainerRef}
-            className="flex-1 flex items-center h-full gap-0 overflow-x-auto scroll-smooth pe-4 min-w-0 scrollbar-thin scrollbar-thumb-emerald-600/50 scrollbar-track-transparent hover:scrollbar-thumb-emerald-500"
+            className="flex-1 flex items-center h-full gap-0 overflow-x-auto scroll-smooth pe-4 min-w-0 scrollbar-thin scrollbar-thumb-emerald-600/50 scrollbar-track-transparent hover:scrollbar-thumb-emerald-500 no-scrollbar"
             style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(16, 185, 129, 0.5) transparent' }}
           >
             <button 
@@ -492,7 +495,7 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
           
           {activeTab === 'info' && (
             <ScrollArea className="flex-1 animate-in fade-in duration-300">
-               <div className="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+               <div className="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between" dir={dir}>
                   <h3 className={cn("text-xs font-black text-slate-900 uppercase tracking-widest flex items-center gap-2")}>
                     <ClipboardList className="w-4 h-4 text-emerald-600" />
                     {lang === 'ar' ? 'سجل المواصفات الفنية المعتمد' : 'MASTER LEDGER'}
@@ -503,19 +506,19 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                   </Button>
                </div>
 
-               <div className="p-6 border-b border-slate-100 bg-white">
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-                    <SummaryStatCard label={lang === 'ar' ? 'إجمالي المواد' : 'MAT. COST'} value={totalMaterialsCost} currency={systemCurrency} icon={<Layers className="w-3.5 h-3.5" />} color="text-amber-600" bgColor="bg-amber-50/50" />
-                    <SummaryStatCard label={lang === 'ar' ? 'إجمالي الأجور' : 'WAGES'} value={totalWagesCost} currency={systemCurrency} icon={<Wallet className="w-3.5 h-3.5" />} color="text-purple-600" bgColor="bg-purple-50/50" />
-                    <SummaryStatCard label={lang === 'ar' ? 'تكاليف أخرى' : 'OVERHEAD'} value={totalOtherCosts} currency={systemCurrency} icon={<Receipt className="w-3.5 h-3.5" />} color="text-rose-600" bgColor="bg-rose-50/50" />
-                    <SummaryStatCard label={lang === 'ar' ? 'الإجمالي الكلي' : 'TOTAL COST'} value={grandTotalCost} currency={systemCurrency} icon={<Coins className="w-3.5 h-3.5" />} color="text-emerald-700" bgColor="bg-emerald-50" />
-                    <SummaryStatCard label={lang === 'ar' ? 'قطع منجزة' : 'FINISHED'} value={finalCompletedQty} currency={lang === 'ar' ? 'قطعة' : 'Pcs'} icon={<CheckCircle2 className="w-3.5 h-3.5" />} color="text-blue-600" bgColor="bg-blue-50/50" isCount />
-                    <SummaryStatCard label={lang === 'ar' ? 'تكلفة القطعة' : 'UNIT COST'} value={avgCostPerPiece} currency={systemCurrency} icon={<Target className="w-3.5 h-3.5" />} color="text-slate-900" bgColor="bg-slate-100" />
+               <div className="p-6 border-b border-slate-100 bg-white" dir={dir}>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3" dir={dir}>
+                    <SummaryStatCard label={lang === 'ar' ? 'إجمالي المواد' : 'MAT. COST'} value={totalMaterialsCost} currency={systemCurrency} icon={<Layers className="w-4 h-4" />} color="text-amber-700" bgColor="bg-amber-500/10" />
+                    <SummaryStatCard label={lang === 'ar' ? 'إجمالي الأجور' : 'WAGES'} value={totalWagesCost} currency={systemCurrency} icon={<Wallet className="w-4 h-4" />} color="text-purple-700" bgColor="bg-purple-500/10" />
+                    <SummaryStatCard label={lang === 'ar' ? 'تكاليف أخرى' : 'OVERHEAD'} value={totalOtherCosts} currency={systemCurrency} icon={<Receipt className="w-4 h-4" />} color="text-rose-700" bgColor="bg-rose-500/10" />
+                    <SummaryStatCard label={lang === 'ar' ? 'الإجمالي الكلي' : 'TOTAL COST'} value={grandTotalCost} currency={systemCurrency} icon={<Coins className="w-4 h-4" />} color="text-emerald-800" bgColor="bg-emerald-600/10" />
+                    <SummaryStatCard label={lang === 'ar' ? 'قطع منجزة' : 'FINISHED'} value={finalCompletedQty} currency={lang === 'ar' ? 'قطعة' : 'Pcs'} icon={<CheckCircle2 className="w-4 h-4" />} color="text-blue-700" bgColor="bg-blue-500/10" isCount />
+                    <SummaryStatCard label={lang === 'ar' ? 'تكلفة القطعة' : 'UNIT COST'} value={avgCostPerPiece} currency={systemCurrency} icon={<Target className="w-4 h-4" />} color="text-slate-900" bgColor="bg-slate-900/5" />
                   </div>
                </div>
 
                <div className="p-8 bg-white space-y-10" dir={dir}>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-y-10 gap-x-12">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-y-10 gap-x-12" dir={dir}>
                     {/* Column 1 */}
                     <div className="space-y-8">
                       <InfoItem label={lang === 'ar' ? 'رقم السجل الموحد' : 'REFERENCE'} value={order.orderNumber} icon={<Hash className="w-4 h-4 text-slate-400" />} />
@@ -526,7 +529,7 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                     {/* Column 2 */}
                     <div className="space-y-8">
                       <InfoItem label={lang === 'ar' ? 'المنتج المستهدف' : 'TARGET PRODUCT'} value={product?.nameAr} icon={<ShoppingBag className="w-4 h-4 text-slate-400" />} />
-                      <InfoItem label={lang === 'ar' ? 'الكمية المستهدفة' : 'TARGET QTY'} value={`${order.targetQty} قطعة`} icon={<Target className="w-4 h-4 text-slate-400" />} />
+                      <InfoItem label={lang === 'ar' ? 'الكمية المستهدف' : 'TARGET QTY'} value={`${order.targetQty} قطعة`} icon={<Target className="w-4 h-4 text-slate-400" />} />
                       <InfoItem label={lang === 'ar' ? 'الكمية المنجزة (النهائية)' : 'COMPLETED'} value={`${finalCompletedQty} قطعة`} icon={<CheckCircle2 className="w-4 h-4 text-emerald-500" />} color="text-emerald-700" />
                     </div>
 
@@ -559,7 +562,7 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
           )}
 
           {activeTab === 'materials_summary' && (
-            <div className="flex-1 flex-col flex animate-in fade-in duration-300 overflow-hidden">
+            <div className="flex-1 flex-col flex animate-in fade-in duration-300 overflow-hidden" dir={dir}>
                <div className={cn("p-4 bg-amber-50 border-b border-amber-100 flex items-center justify-between")}>
                   <h3 className={cn("text-xs font-black text-amber-900 uppercase tracking-widest flex items-center gap-2")}>
                     <Layers className="w-4 h-4" /> 
@@ -637,7 +640,7 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
           )}
 
           {activeTab === 'wages_summary' && (
-            <div className="flex-1 flex flex-col animate-in fade-in duration-300 overflow-hidden">
+            <div className="flex-1 flex flex-col animate-in fade-in duration-300 overflow-hidden" dir={dir}>
                <div className={cn("p-4 bg-purple-50 border-b border-purple-100 flex items-center justify-between")}>
                   <h3 className={cn("text-xs font-black text-purple-900 uppercase tracking-widest flex items-center gap-2")}>
                     <Wallet className="w-4 h-4" /> 
@@ -712,7 +715,7 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
           )}
 
           {activeTab === 'costs_summary' && (
-            <div className="flex-1 flex flex-col animate-in fade-in duration-300 overflow-hidden">
+            <div className="flex-1 flex flex-col animate-in fade-in duration-300 overflow-hidden" dir={dir}>
                <div className={cn("p-4 bg-rose-50 border-b border-rose-100 flex items-center justify-between")}>
                   <h3 className={cn("text-xs font-black text-rose-900 uppercase tracking-widest flex items-center gap-2")}>
                     <Receipt className="w-4 h-4" /> 
@@ -747,11 +750,11 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="w-64 rounded-xl shadow-xl border-slate-200">
                         <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">SORTING</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => { setSortBy('date'); setSortOrder(costSortOrder === 'asc' ? 'desc' : 'asc'); }} className="text-xs font-bold flex justify-between cursor-pointer py-2.5">
+                        <DropdownMenuItem onClick={() => { setCostSortBy('date'); setCostSortOrder(costSortOrder === 'asc' ? 'desc' : 'asc'); }} className="text-xs font-bold flex justify-between cursor-pointer py-2.5">
                            {lang === 'ar' ? 'حسب التاريخ' : 'By Date'}
                            {costSortBy === 'date' && (costSortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => { setSortBy('amount'); setSortOrder(costSortOrder === 'asc' ? 'desc' : 'asc'); }} className="text-xs font-bold flex justify-between cursor-pointer py-2.5">
+                        <DropdownMenuItem onClick={() => { setCostSortBy('amount'); setCostSortOrder(costSortOrder === 'asc' ? 'desc' : 'asc'); }} className="text-xs font-bold flex justify-between cursor-pointer py-2.5">
                            {lang === 'ar' ? 'حسب المبلغ' : 'By Amount'}
                            {costSortBy === 'amount' && (costSortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
                         </DropdownMenuItem>
@@ -785,7 +788,7 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
           )}
 
           {(!['info', 'summary', 'materials_summary', 'wages_summary', 'costs_summary'].includes(activeTab)) && (
-            <div className="flex-1 flex-col flex animate-in fade-in duration-300 overflow-hidden">
+            <div className="flex-1 flex-col flex animate-in fade-in duration-300 overflow-hidden" dir={dir}>
                <div className="p-2 bg-slate-50 border-b border-slate-200 flex items-center gap-2 shadow-sm">
                   <div className="relative flex-1">
                     <Search className={cn("absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300", dir === 'rtl' ? "right-3" : "left-3")} />
@@ -836,10 +839,10 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                   <Table className="text-right border-separate border-spacing-0">
                     <TableHeader className="bg-slate-100 sticky top-0 z-10 shadow-sm">
                       <TableRow>
-                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? 'text-right' : 'text-left')}>DATE</TableHead>
-                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? 'text-right' : 'text-left')}>REF #</TableHead>
-                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? 'text-right' : 'text-left')}>ACTIVITY</TableHead>
-                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? 'text-right' : 'text-left')}>PERSONNEL</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? "text-right" : "text-left")}>DATE</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? "text-right" : "text-left")}>REF #</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? "text-right" : "text-left")}>ACTIVITY</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? "text-right" : "text-left")}>PERSONNEL</TableHead>
                         <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">IMPACT</TableHead>
                         <TableHead className="px-6 py-4 w-16 border-b border-slate-200"></TableHead>
                       </TableRow>
@@ -855,8 +858,8 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
           )}
 
           {activeTab === 'summary' && (
-            <div className="flex-1 flex flex-col animate-in zoom-in-95 duration-300">
-               <div className="p-4 bg-slate-900 text-white flex items-center justify-between"><h3 className={cn("text-xs font-black uppercase tracking-widest flex items-center gap-2", dir === 'rtl' ? 'text-right' : 'text-left')}><BarChart3 className="w-4 h-4 text-emerald-400" /> {lang === 'ar' ? 'التحليل الإحصائي لخطوط الإنتاج' : 'ANALYTICS'}</h3></div>
+            <div className="flex-1 flex flex-col animate-in zoom-in-95 duration-300" dir={dir}>
+               <div className="p-4 bg-slate-900 text-white flex items-center justify-between"><h3 className={cn("text-xs font-black uppercase tracking-widest flex items-center gap-2", dir === 'rtl' ? "text-right" : "text-left")}><BarChart3 className="w-4 h-4 text-emerald-400" /> {lang === 'ar' ? 'التحليل الإحصائي لخطوط الإنتاج' : 'ANALYTICS'}</h3></div>
                <div className="flex-1 overflow-auto no-scrollbar">
                   <Table className="text-right border-separate border-spacing-0">
                     <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
