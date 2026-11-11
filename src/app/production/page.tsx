@@ -18,13 +18,14 @@ import {
   Wallet,
   Receipt,
   Activity,
-  BarChart3
+  BarChart3,
+  ChevronRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useTranslation } from '@/components/LanguageProvider';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, where, limit, orderBy } from 'firebase/firestore';
+import { collection, query, where, orderBy } from 'firebase/firestore';
 import { 
   Area, 
   AreaChart, 
