@@ -184,7 +184,7 @@ export default function WorkerProductivityReport() {
                        <Users2 className={cn("w-4 h-4", workerId !== 'all' ? "text-emerald-600" : "text-slate-400")} />
                        {workerId !== 'all' && <span className="absolute top-1 right-1 w-2 h-2 bg-emerald-500 rounded-full animate-pulse border border-white" />}
                     </Button>
-                  </DropdownMenuTrigger>
+                  </PopoverTrigger>
                   <DropdownMenuContent align={isRtl ? "start" : "end"} className="w-64 rounded-xl shadow-xl border-slate-200">
                      <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'تصفية حسب العامل' : 'BY WORKER'}</DropdownMenuLabel>
                      <ScrollArea className="h-48">
@@ -230,29 +230,35 @@ export default function WorkerProductivityReport() {
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 flex flex-col p-6 space-y-6 overflow-hidden">
-        {/* STATS OVERVIEW */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 flex-none">
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between group hover:border-emerald-200 transition-all">
-              <div className="space-y-1">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'إجمالي القطع المنجزة' : 'TOTAL PIECES'}</p>
-                <h3 className="text-3xl font-black text-slate-900 tabular-nums">{stats.totalQty.toLocaleString('en-US')}</h3>
+      <div className="flex-1 min-h-0 flex flex-col p-6 space-y-4 overflow-hidden">
+        {/* COMPACT STATS OVERVIEW - SINGLE ROW */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-none">
+          <div className="bg-white px-4 py-2.5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4 group hover:border-emerald-200 transition-all">
+              <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg group-hover:bg-emerald-600 group-hover:text-white transition-all shrink-0">
+                <TrendingUp className="w-4 h-4" />
               </div>
-              <div className="p-4 bg-emerald-50 text-emerald-600 rounded-2xl group-hover:bg-emerald-600 group-hover:text-white transition-all"><TrendingUp className="w-6 h-6" /></div>
+              <div className="flex flex-col overflow-hidden">
+                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest truncate">{isRtl ? 'إجمالي القطع المنجزة' : 'TOTAL PIECES'}</p>
+                <h3 className="text-sm font-black text-slate-900 tabular-nums truncate">{stats.totalQty.toLocaleString('en-US')}</h3>
+              </div>
           </div>
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between group hover:border-purple-200 transition-all">
-              <div className="space-y-1">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'إجمالي الأجور المفلترة' : 'TOTAL WAGES'}</p>
-                <h3 className="text-3xl font-black text-purple-700 tabular-nums">{stats.totalWages.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
+          <div className="bg-white px-4 py-2.5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4 group hover:border-purple-200 transition-all">
+              <div className="p-2 bg-purple-50 text-purple-600 rounded-lg group-hover:bg-purple-600 group-hover:text-white transition-all shrink-0">
+                <Wallet className="w-4 h-4" />
               </div>
-              <div className="p-4 bg-purple-50 text-purple-600 rounded-2xl group-hover:bg-purple-600 group-hover:text-white transition-all"><Wallet className="w-6 h-6" /></div>
+              <div className="flex flex-col overflow-hidden">
+                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest truncate">{isRtl ? 'إجمالي الأجور المفلترة' : 'TOTAL WAGES'}</p>
+                <h3 className="text-sm font-black text-purple-700 tabular-nums">{stats.totalWages.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
+              </div>
           </div>
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between group hover:border-blue-200 transition-all">
-              <div className="space-y-1">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'القوى العاملة المشمولة' : 'FILTERED WORKFORCE'}</p>
-                <h3 className="text-3xl font-black text-blue-700 tabular-nums">{stats.uniqueWorkers}</h3>
+          <div className="bg-white px-4 py-2.5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4 group hover:border-blue-200 transition-all">
+              <div className="p-2 bg-blue-50 text-blue-600 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-all shrink-0">
+                <Users2 className="w-4 h-4" />
               </div>
-              <div className="p-4 bg-blue-50 text-blue-600 rounded-2xl group-hover:bg-blue-600 group-hover:text-white transition-all"><Users2 className="w-6 h-6" /></div>
+              <div className="flex flex-col overflow-hidden">
+                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest truncate">{isRtl ? 'القوى العاملة المشمولة' : 'FILTERED WORKFORCE'}</p>
+                <h3 className="text-sm font-black text-blue-700 tabular-nums">{stats.uniqueWorkers}</h3>
+              </div>
           </div>
         </div>
 
