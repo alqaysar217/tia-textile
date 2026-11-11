@@ -339,21 +339,33 @@ export default function OrderDetailsDashboard() {
     return Math.round((finalCompletedQty / order.targetQty) * 100);
   }, [finalCompletedQty, order]);
 
+  // REFINED FILTERING LOGIC FOR STAGE TABS
   const filteredStageVouchers = useMemo(() => {
     const specialTabs = ['info', 'summary', 'materials_summary', 'wages_summary', 'costs_summary'];
     if (!vouchers || specialTabs.includes(activeTab)) return [];
     
     let list = vouchers.filter(v => {
       if (v.status === 'deleted') return false;
+      
       const worker = workers?.find(w => w.id === v.workerId);
-      const deptIdOfVoucher = v.currentStageId || worker?.departmentId;
-      const matchesStage = deptIdOfVoucher === activeTab;
+      const supervisor = workers?.find(w => w.id === v.supervisorId);
+
+      // Check if the activity "pertains" to this section/stage
+      const isDirectStageMatch = v.currentStageId === activeTab;
+      const isWorkerInStage = worker?.departmentId === activeTab;
+      const isSupervisorInStage = supervisor?.departmentId === activeTab;
+
+      const matchesStage = isDirectStageMatch || isWorkerInStage || isSupervisorInStage;
       if (!matchesStage) return false;
 
       if (stageTypeFilter !== 'all' && v.type !== stageTypeFilter) return false;
+      
       if (stageSearch) {
         const s = stageSearch.toLowerCase();
-        return v.voucherNumber?.toLowerCase().includes(s) || worker?.fullName?.toLowerCase().includes(s);
+        const workerName = worker?.fullName?.toLowerCase() || '';
+        const voucherNo = v.voucherNumber?.toLowerCase() || '';
+        const desc = v.description?.toLowerCase() || '';
+        return voucherNo.includes(s) || workerName.includes(s) || desc.includes(s);
       }
       return true;
     });
@@ -876,6 +888,8 @@ export default function OrderDetailsDashboard() {
                         <DropdownMenuItem onClick={() => setStageTypeFilter('all')} className="text-xs font-bold flex justify-between cursor-pointer py-2">{isRtl ? 'الكل' : 'All'}{stageTypeFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}</DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setStageTypeFilter('material_issue')} className="text-xs font-bold flex justify-between cursor-pointer py-2">{isRtl ? 'صرف مواد' : 'Material Issue'}{stageTypeFilter === 'material_issue' && <Check className="w-3.5 h-3.5 text-emerald-600" />}</DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setStageTypeFilter('production_receipt')} className="text-xs font-bold flex justify-between cursor-pointer py-2">{isRtl ? 'استلام انتاج' : 'Receipt'}{stageTypeFilter === 'production_receipt' && <Check className="w-3.5 h-3.5 text-emerald-600" />}</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setStageTypeFilter('wage_payment')} className="text-xs font-bold flex justify-between cursor-pointer py-2">{isRtl ? 'صرف أجور' : 'Wage Payment'}{stageTypeFilter === 'wage_payment' && <Check className="w-3.5 h-3.5 text-emerald-600" />}</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setStageTypeFilter('overhead_cost')} className="text-xs font-bold flex justify-between cursor-pointer py-2">{isRtl ? 'تكاليف تشغيل' : 'Overhead'}{stageTypeFilter === 'overhead_cost' && <Check className="w-3.5 h-3.5 text-emerald-600" />}</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
