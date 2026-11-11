@@ -12,10 +12,20 @@ import {
   Loader2,
   XCircle,
   Truck,
-  Info
+  Info,
+  Filter,
+  CalendarDays,
+  Check,
+  SortAsc,
+  SortDesc,
+  ArrowUpDown,
+  Hash,
+  Activity,
+  Layers
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useTranslation } from '@/components/LanguageProvider';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, writeBatch, doc, serverTimestamp, increment, limit } from 'firebase/firestore';
@@ -32,6 +42,20 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from '@/components/ui/dropdown-menu';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -43,12 +67,18 @@ export default function FinishedGoodsWarehousePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [reversingTx, setReversingTx] = useState<any | null>(null);
 
+  // Filter & Sort State
+  const [sortBy, setSortBy] = useState<'nameAr' | 'currentStock' | 'sku'>('nameAr');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+
   const isRtl = lang === 'ar';
 
   // Fetch Data
   const productsQuery = useMemo(() => !db ? null : collection(db, 'products'), [db]);
   const whQuery = useMemo(() => !db ? null : collection(db, 'finishedGoodsWarehouse'), [db]);
-  const txQuery = useMemo(() => !db ? null : query(collection(db, 'warehouseTransactions'), orderBy('createdAt', 'desc'), limit(50)), [db]);
+  const txQuery = useMemo(() => !db ? null : query(collection(db, 'warehouseTransactions'), orderBy('createdAt', 'desc'), limit(100)), [db]);
 
   const { data: allProducts, loading: pL } = useCollection<any>(productsQuery);
   const { data: whData, loading: wL } = useCollection<any>(whQuery);
@@ -57,15 +87,69 @@ export default function FinishedGoodsWarehousePage() {
   const filteredInventory = useMemo(() => {
     if (!allProducts) return [];
     let list = allProducts.filter(p => p.status !== 'deleted');
+    
     if (search) {
       const s = search.toLowerCase();
       list = list.filter(p => p.nameAr?.includes(s) || p.sku?.toLowerCase().includes(s));
     }
-    return list.map(p => {
+
+    const mapped = list.map(p => {
       const wh = whData?.find(w => w.id === p.id);
       return { ...p, currentStock: wh?.totalQty || 0, lastIn: wh?.updatedAt };
     });
-  }, [allProducts, whData, search]);
+
+    return mapped.sort((a, b) => {
+      let valA = a[sortBy] ?? '';
+      let valB = b[sortBy] ?? '';
+      if (sortBy === 'currentStock') return sortOrder === 'asc' ? Number(valA) - Number(valB) : Number(valB) - Number(valA);
+      return sortOrder === 'asc' ? String(valA).localeCompare(String(valB)) : String(valB).localeCompare(String(valA));
+    });
+  }, [allProducts, whData, search, sortBy, sortOrder]);
+
+  const filteredHistory = useMemo(() => {
+    if (!transactions) return [];
+    let list = [...transactions];
+    
+    if (search) {
+      const s = search.toLowerCase();
+      list = list.filter(tx => tx.voucherNumber?.toLowerCase().includes(s));
+    }
+
+    if (dateFrom) list = list.filter(tx => tx.date >= dateFrom);
+    if (dateTo) list = list.filter(tx => tx.date <= dateTo);
+
+    return list;
+  }, [transactions, search, dateFrom, dateTo]);
+
+  const handleExportCSV = () => {
+    const list = activeTab === 'inventory' ? filteredInventory : filteredHistory;
+    if (list.length === 0) return;
+
+    let headers = [];
+    let rows = [];
+
+    if (activeTab === 'inventory') {
+      headers = [isRtl ? 'المنتج' : 'Product', 'SKU', isRtl ? 'الفئة' : 'Category', isRtl ? 'الرصيد' : 'Stock'];
+      rows = list.map(p => [p.nameAr, p.sku, p.category, p.currentStock]);
+    } else {
+      headers = [isRtl ? 'رقم السند' : 'Ref #', isRtl ? 'التاريخ' : 'Date', isRtl ? 'المنتج' : 'Product', isRtl ? 'الكمية' : 'Qty', isRtl ? 'الحالة' : 'Status'];
+      rows = list.map(tx => {
+        const p = allProducts?.find(prod => prod.id === tx.productId);
+        return [tx.voucherNumber, tx.date, p?.nameAr || '---', tx.qty, tx.status];
+      });
+    }
+
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `Warehouse_${activeTab}_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast({ title: isRtl ? "تم تحميل الملف بنجاح" : "Exported Successfully" });
+  };
 
   const handleReverseTransfer = async () => {
     if (!db || !reversingTx || isSubmitting) return;
@@ -93,7 +177,7 @@ export default function FinishedGoodsWarehousePage() {
       setReversingTx(null);
     } catch (err) {
       console.error(err);
-      toast({ variant: "destructive", title: isRtl ? "خطأ في معالجة العملية" : "Error reversing operation" });
+      toast({ variant: "destructive", title: isRtl ? "خطأ في معالجة العملية" : "Error" });
     } finally {
       setIsSubmitting(false);
     }
@@ -102,36 +186,37 @@ export default function FinishedGoodsWarehousePage() {
   const dictionary = {
     title: isRtl ? 'مستودع المنتجات الجاهزة' : 'Finished Goods Warehouse',
     inventoryTab: isRtl ? 'الجرد الحالي' : 'Current Stock',
-    historyTab: isRtl ? 'سجل العمليات' : 'Transaction History',
-    searchPlaceholder: isRtl ? 'بحث في المخزن...' : 'Search stock...',
-    productCol: isRtl ? 'المنتج' : 'Product',
-    categoryCol: isRtl ? 'الفئة' : 'Category',
-    stockCol: isRtl ? 'الرصيد المتاح' : 'Available Stock',
-    lastInCol: isRtl ? 'آخر دخول' : 'Last In',
-    txCol: isRtl ? 'الحركة' : 'Transaction',
-    qtyCol: isRtl ? 'الكمية' : 'Quantity',
-    statusCol: isRtl ? 'الحالة' : 'Status',
-    pcsLabel: isRtl ? 'قطعة جاهزة' : 'Ready Pieces',
-    reverseBtn: isRtl ? 'إلغاء الترحيل' : 'Reverse Transfer',
-    postedStatus: isRtl ? 'تم التوريد' : 'Posted',
+    historyTab: isRtl ? 'سجل العمليات' : 'Transactions',
+    searchPlaceholder: isRtl ? 'بحث...' : 'Search...',
+    productCol: isRtl ? 'المنتج' : 'PRODUCT',
+    categoryCol: isRtl ? 'الفئة' : 'CATEGORY',
+    stockCol: isRtl ? 'الرصيد المتاح' : 'STOCK',
+    lastInCol: isRtl ? 'آخر دخول' : 'LAST IN',
+    txCol: isRtl ? 'رقم السند' : 'REF #',
+    qtyCol: isRtl ? 'الكمية' : 'QTY',
+    statusCol: isRtl ? 'الحالة' : 'STATUS',
+    pcsLabel: isRtl ? 'قطعة' : 'Pcs',
+    reverseBtn: isRtl ? 'إلغاء الترحيل' : 'Reverse',
+    postedStatus: isRtl ? 'مرحل' : 'Posted',
     reversedStatus: isRtl ? 'ملغي' : 'Reversed',
     auditNote: isRtl 
-      ? 'مخزن المبيعات المكتملة: يمكنك عكس أي عملية ترحيل تمت بالخطأ من خلال تبويب (سجل العمليات) لاستعادة الرصيد الأصلي.' 
-      : 'Finished Goods: You can reverse any erroneous transfer from the (History) tab to restore original balance.',
+      ? 'نظام الرقابة المخزنية: يمكنك عكس أي عملية ترحيل من سجل العمليات لاستعادة الرصيد الأصلي.' 
+      : 'Inventory Audit: You can reverse transfers from history to restore balance.',
     navWarehouse: isRtl ? 'المستودعات' : 'Warehousing',
     navFinished: isRtl ? 'المنتجات الجاهزة' : 'Finished Goods'
   };
 
   return (
     <div className="flex flex-col h-full bg-[#f8fafc] overflow-hidden" dir={dir}>
-      {/* HEADER SECTION */}
+      
+      {/* ERP HEADER */}
       <div className="flex-none bg-white border-b border-slate-200 z-30 px-6 py-4 shadow-sm">
-        <div className={cn("flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 w-full", isRtl ? "text-right" : "text-left")}>
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div className="flex items-center gap-4">
             <div className="p-2.5 bg-slate-900 rounded-lg text-white shadow-lg">
               <PackageCheck className="w-5 h-5 text-emerald-400" />
             </div>
-            <div className="flex flex-col">
+            <div>
               <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                 <span>{dictionary.navWarehouse}</span>
                 <ChevronRight className={cn("w-3 h-3", isRtl ? "rotate-180" : "")} />
@@ -141,204 +226,207 @@ export default function FinishedGoodsWarehousePage() {
             </div>
           </div>
           
-          <div className="flex items-center gap-3 w-full lg:w-auto">
-             <div className="relative flex-1 lg:flex-none">
-                <Search className={cn("absolute top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400", isRtl ? "right-3" : "left-3")} />
-                <Input 
-                  value={search} 
-                  onChange={(e) => setSearch(e.target.value)} 
-                  placeholder={dictionary.searchPlaceholder} 
-                  className={cn("h-10 w-full lg:w-64 bg-slate-50 text-xs font-bold", isRtl ? "pr-10 pl-4" : "pl-10 pr-4")} 
-                />
-             </div>
-             <div className="bg-slate-100 p-1 rounded-lg shrink-0 flex items-center gap-1">
-                <button 
-                  onClick={() => setActiveTab('inventory')}
-                  className={cn(
-                    "text-[10px] font-black uppercase px-4 h-7 rounded-md transition-all",
-                    activeTab === 'inventory' ? "bg-white text-emerald-600 shadow-sm" : "text-slate-400 hover:text-slate-600"
-                  )}
-                >
-                  {dictionary.inventoryTab}
-                </button>
-                <button 
-                  onClick={() => setActiveTab('history')}
-                  className={cn(
-                    "text-[10px] font-black uppercase px-4 h-7 rounded-md transition-all",
-                    activeTab === 'history' ? "bg-white text-emerald-600 shadow-sm" : "text-slate-400 hover:text-slate-600"
-                  )}
-                >
-                  {dictionary.historyTab}
-                </button>
-             </div>
+          <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-lg">
+             <button onClick={() => setActiveTab('inventory')} className={cn("px-4 py-1.5 rounded-md text-[10px] font-black uppercase transition-all", activeTab === 'inventory' ? "bg-white text-emerald-600 shadow-sm" : "text-slate-400 hover:text-slate-600")}>
+               {dictionary.inventoryTab}
+             </button>
+             <button onClick={() => setActiveTab('history')} className={cn("px-4 py-1.5 rounded-md text-[10px] font-black uppercase transition-all", activeTab === 'history' ? "bg-white text-emerald-600 shadow-sm" : "text-slate-400 hover:text-slate-600")}>
+               {dictionary.historyTab}
+             </button>
           </div>
+        </div>
+
+        {/* TOOLBAR */}
+        <div className="mt-4 flex items-center gap-2 bg-slate-50 p-1.5 rounded-lg border border-slate-200">
+           <div className="relative flex-1">
+              <Search className={cn("absolute top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400", isRtl ? "right-3" : "left-3")} />
+              <Input 
+                value={search} 
+                onChange={(e) => setSearch(e.target.value)} 
+                placeholder={dictionary.searchPlaceholder} 
+                className={cn("h-9 w-full bg-white border-slate-200 text-xs font-bold", isRtl ? "pr-10" : "pl-10")} 
+              />
+           </div>
+
+           <div className="flex items-center gap-1.5 px-1.5">
+              <Button onClick={handleExportCSV} variant="ghost" className="h-9 px-3 rounded-md text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent hover:border-slate-200">
+                <FileDown className="w-3.5 h-3.5 text-emerald-600" />
+                {isRtl ? 'تصدير' : 'Export'}
+              </Button>
+
+              <Popover>
+                <PopoverTrigger asChild>
+                   <Button variant="ghost" className={cn("h-9 px-3 rounded-md text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent hover:border-slate-200", (dateFrom || dateTo) && "bg-emerald-50 text-emerald-700")}>
+                     <CalendarDays className="w-3.5 h-3.5" />
+                     {isRtl ? 'الفترة' : 'Date Range'}
+                   </Button>
+                </PopoverTrigger>
+                <PopoverContent align={isRtl ? "start" : "end"} className="w-72 p-4 rounded-xl shadow-2xl border-slate-200">
+                   <div className="space-y-4 text-right">
+                      <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b pb-2"><CalendarDays className="w-3 h-3" />{isRtl ? 'تصفية زمنية' : 'DATE FILTER'}</div>
+                      <div className="grid grid-cols-2 gap-3">
+                         <div className="space-y-1.5"><Label className="text-[9px] font-black text-slate-400">من</Label><Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-9 text-[10px] font-bold" /></div>
+                         <div className="space-y-1.5"><Label className="text-[9px] font-black text-slate-400">إلى</Label><Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-9 text-[10px] font-bold" /></div>
+                      </div>
+                      {(dateFrom || dateTo) && <Button onClick={() => { setDateFrom(''); setDateTo(''); }} variant="link" className="text-[9px] h-auto p-0 font-bold text-rose-500 underline uppercase w-full">إعادة تعيين</Button>}
+                   </div>
+                </PopoverContent>
+              </Popover>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                   <Button variant="ghost" className="h-9 px-3 rounded-md text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent hover:border-slate-200">
+                     <Filter className="w-3.5 h-3.5" />
+                     {isRtl ? 'تصفية' : 'Filter'}
+                   </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align={isRtl ? "start" : "end"} className="w-64 rounded-xl border-slate-200 shadow-xl">
+                   <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'ترتيب حسب' : 'SORT BY'}</DropdownMenuLabel>
+                   <DropdownMenuItem onClick={() => { setSortBy('nameAr'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }} className="flex justify-between text-xs font-bold cursor-pointer py-2.5">
+                      <div className="flex items-center gap-2"><Layers className="w-3.5 h-3.5 text-slate-400" /> {isRtl ? 'اسم المنتج' : 'Product Name'}</div>
+                      {sortBy === 'nameAr' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
+                   </DropdownMenuItem>
+                   <DropdownMenuItem onClick={() => { setSortBy('currentStock'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }} className="flex justify-between text-xs font-bold cursor-pointer py-2.5">
+                      <div className="flex items-center gap-2"><Activity className="w-3.5 h-3.5 text-slate-400" /> {isRtl ? 'الرصيد المتاح' : 'Available Stock'}</div>
+                      {sortBy === 'currentStock' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
+                   </DropdownMenuItem>
+                   <DropdownMenuItem onClick={() => { setSortBy('sku'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }} className="flex justify-between text-xs font-bold cursor-pointer py-2.5">
+                      <div className="flex items-center gap-2"><Hash className="w-3.5 h-3.5 text-slate-400" /> {isRtl ? 'كود الصنف' : 'Product SKU'}</div>
+                      {sortBy === 'sku' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
+                   </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+           </div>
         </div>
       </div>
 
-      {/* CONTENT AREA */}
+      {/* CONTENT GRID */}
       <div className="flex-1 min-h-0 overflow-auto p-4 md:p-6 no-scrollbar">
-        {activeTab === 'inventory' ? (
-          <div className="bg-white rounded-[1.5rem] border border-slate-200 shadow-sm overflow-hidden flex flex-col h-full">
-            <div className="flex-1 overflow-auto no-scrollbar relative">
+        <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden flex flex-col h-full">
+           <div className="flex-1 overflow-auto no-scrollbar relative">
               <Table className={cn("border-separate border-spacing-0 w-full", isRtl ? "text-right" : "text-left")}>
                 <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
-                  <TableRow>
-                    <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? "text-right" : "text-left")}>
-                      {dictionary.productCol}
-                    </TableHead>
-                    <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? "text-right" : "text-left")}>
-                      {dictionary.categoryCol}
-                    </TableHead>
-                    <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200 text-center")}>
-                      {dictionary.stockCol}
-                    </TableHead>
-                    <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? "text-right" : "text-left")}>
-                      {dictionary.lastInCol}
-                    </TableHead>
-                  </TableRow>
+                   <TableRow className="border-b border-slate-200">
+                     <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", isRtl ? "text-right" : "text-left")}>
+                       {activeTab === 'inventory' ? dictionary.productCol : dictionary.txCol}
+                     </TableHead>
+                     <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", isRtl ? "text-right" : "text-left")}>
+                       {activeTab === 'inventory' ? dictionary.categoryCol : dictionary.productCol}
+                     </TableHead>
+                     <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center">
+                       {dictionary.qtyCol}
+                     </TableHead>
+                     <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", isRtl ? "text-right" : "text-left")}>
+                       {activeTab === 'inventory' ? dictionary.lastInCol : dictionary.statusCol}
+                     </TableHead>
+                     {activeTab === 'history' && <TableHead className="w-32"></TableHead>}
+                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                   {filteredInventory.map(p => (
-                     <TableRow key={p.id} className="hover:bg-slate-50/50 border-b border-slate-100 transition-colors">
-                        <TableCell className={cn("px-6 py-4", isRtl ? "text-right" : "text-left")}>
-                           <div className="flex items-center gap-3">
-                              <Avatar className="h-10 w-10 rounded-xl border shadow-sm shrink-0">
-                                 <AvatarImage src={p.image} className="object-cover" />
-                                 <AvatarFallback>FG</AvatarFallback>
-                              </Avatar>
-                              <div className="flex flex-col">
-                                 <span className="font-black text-slate-900 text-xs">{p.nameAr}</span>
-                                 <span className="text-[9px] text-emerald-700 font-bold tabular-nums tracking-widest uppercase">{p.sku}</span>
-                              </div>
-                           </div>
-                        </TableCell>
-                        <TableCell className={cn("px-6 py-4", isRtl ? "text-right" : "text-left")}>
-                           <span className="inline-block px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[9px] font-black uppercase">{p.category}</span>
-                        </TableCell>
-                        <TableCell className="px-6 py-4 text-center">
-                           <div className="flex flex-col items-center">
-                              <span className="text-lg font-black text-emerald-700 tabular-nums">{(p.currentStock || 0).toLocaleString('en-US')}</span>
-                              <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">{dictionary.pcsLabel}</span>
-                           </div>
-                        </TableCell>
-                        <TableCell className={cn("px-6 py-4", isRtl ? "text-right" : "text-left")}>
-                           <div className={cn("flex items-center gap-2 text-slate-400 text-[9px] font-bold tabular-nums", isRtl ? "justify-start" : "justify-start")}>
-                              <History className="w-3 h-3 opacity-40" />
-                              {p.lastIn?.toDate?.().toLocaleString(isRtl ? 'ar-YE' : 'en-US') || '---'}
-                           </div>
-                        </TableCell>
-                     </TableRow>
-                   ))}
+                   {activeTab === 'inventory' ? (
+                     filteredInventory.map(p => (
+                       <TableRow key={p.id} className="hover:bg-slate-50/50 border-b border-slate-100 transition-colors">
+                          <TableCell className={cn("px-6 py-3", isRtl ? "text-right" : "text-left")}>
+                             <div className="flex items-center gap-3">
+                                <Avatar className="h-10 w-10 rounded-lg border shadow-sm shrink-0">
+                                   <AvatarImage src={p.image} className="object-cover" />
+                                   <AvatarFallback>FG</AvatarFallback>
+                                </Avatar>
+                                <div className="flex flex-col">
+                                   <span className="font-black text-slate-900 text-xs">{p.nameAr}</span>
+                                   <span className="text-[9px] text-emerald-700 font-bold tabular-nums tracking-widest uppercase">{p.sku}</span>
+                                </div>
+                             </div>
+                          </TableCell>
+                          <TableCell className={cn("px-6 py-3", isRtl ? "text-right" : "text-left")}>
+                             <span className="inline-block px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[9px] font-black uppercase">{p.category}</span>
+                          </TableCell>
+                          <TableCell className="px-6 py-3 text-center">
+                             <div className="flex flex-col items-center">
+                                <span className="text-base font-black text-emerald-700 tabular-nums">{(p.currentStock || 0).toLocaleString('en-US')}</span>
+                                <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">{dictionary.pcsLabel}</span>
+                             </div>
+                          </TableCell>
+                          <TableCell className={cn("px-6 py-3", isRtl ? "text-right" : "text-left")}>
+                             <div className="flex items-center gap-2 text-slate-400 text-[9px] font-bold tabular-nums">
+                                <History className="w-3 h-3 opacity-40" />
+                                {p.lastIn?.toDate?.().toLocaleString(isRtl ? 'ar-YE' : 'en-US') || '---'}
+                             </div>
+                          </TableCell>
+                       </TableRow>
+                     ))
+                   ) : (
+                     filteredHistory.map(tx => {
+                       const p = allProducts?.find(prod => prod.id === tx.productId);
+                       const isReversed = tx.status === 'reversed';
+                       return (
+                         <TableRow key={tx.id} className={cn("border-b border-slate-100 transition-all", isReversed && "opacity-50 grayscale bg-slate-50/50")}>
+                            <TableCell className={cn("px-6 py-3", isRtl ? "text-right" : "text-left")}>
+                               <div className="flex flex-col">
+                                  <span className="font-black text-slate-900 text-xs tabular-nums">{tx.voucherNumber}</span>
+                                  <span className="text-[9px] text-slate-400 font-bold tabular-nums">{tx.date}</span>
+                               </div>
+                            </TableCell>
+                            <TableCell className={cn("px-6 py-3", isRtl ? "text-right" : "text-left")}>
+                               <div className="flex items-center gap-2">
+                                  <ShoppingBag className="w-3.5 h-3.5 text-slate-300" />
+                                  <span className="font-bold text-slate-700 text-xs">{p?.nameAr || '---'}</span>
+                               </div>
+                            </TableCell>
+                            <TableCell className="px-6 py-3 text-center">
+                               <span className={cn("text-xs font-black tabular-nums", isReversed ? "text-slate-400 line-through" : "text-blue-700")}>
+                                  {tx.qty} {isRtl ? 'قطعة' : 'Pcs'}
+                                </span>
+                            </TableCell>
+                            <TableCell className={cn("px-6 py-3", isRtl ? "text-right" : "text-left")}>
+                               <Badge variant="outline" className={cn("text-[8px] font-black uppercase", isReversed ? "bg-rose-50 text-rose-600 border-rose-100" : "bg-emerald-50 text-emerald-700 border-emerald-100")}>
+                                  {isReversed ? dictionary.reversedStatus : dictionary.postedStatus}
+                               </Badge>
+                            </TableCell>
+                            <TableCell className="px-6 py-3">
+                               {!isReversed && (
+                                  <Button variant="ghost" size="sm" onClick={() => setReversingTx(tx)} className="h-8 px-3 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50 font-black text-[9px] gap-2 transition-all">
+                                     <RefreshCcw className="w-3 h-3" /> {dictionary.reverseBtn}
+                                  </Button>
+                               )}
+                            </TableCell>
+                         </TableRow>
+                       );
+                     })
+                   )}
+                   {((activeTab === 'inventory' ? filteredInventory : filteredHistory).length === 0) && (
+                     <TableRow><TableCell colSpan={5} className="py-20 text-center text-slate-300 font-bold">{isRtl ? 'لا توجد بيانات' : 'No data available'}</TableCell></TableRow>
+                   )}
                 </TableBody>
               </Table>
-            </div>
-          </div>
-        ) : (
-          <div className="bg-white rounded-[1.5rem] border border-slate-200 shadow-sm overflow-hidden h-full flex flex-col">
-             <div className="flex-1 overflow-auto no-scrollbar relative">
-                <Table className={cn("border-separate border-spacing-0 w-full", isRtl ? "text-right" : "text-left")}>
-                   <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
-                      <TableRow>
-                         <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? "text-right" : "text-left")}>
-                           {dictionary.txCol}
-                         </TableHead>
-                         <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? "text-right" : "text-left")}>
-                           {dictionary.productCol}
-                         </TableHead>
-                         <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200 text-center")}>
-                           {dictionary.qtyCol}
-                         </TableHead>
-                         <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? "text-right" : "text-left")}>
-                           {dictionary.statusCol}
-                         </TableHead>
-                         <TableHead className="w-32 px-6 py-4 border-b border-slate-200"></TableHead>
-                      </TableRow>
-                   </TableHeader>
-                   <TableBody>
-                      {transactions?.map(tx => {
-                        const product = allProducts?.find(p => p.id === tx.productId);
-                        const isReversed = tx.status === 'reversed';
-
-                        return (
-                          <TableRow key={tx.id} className={cn("border-b border-slate-100 group transition-all", isReversed && "opacity-50 grayscale bg-slate-50/50")}>
-                             <TableCell className={cn("px-6 py-3", isRtl ? "text-right" : "text-left")}>
-                                <div className="flex flex-col">
-                                   <span className="font-black text-slate-900 text-xs tabular-nums">{tx.voucherNumber}</span>
-                                   <span className="text-[9px] text-slate-400 font-bold tabular-nums">{tx.date}</span>
-                                </div>
-                             </TableCell>
-                             <TableCell className={cn("px-6 py-3", isRtl ? "text-right" : "text-left")}>
-                                <div className="flex items-center gap-2">
-                                   <ShoppingBag className="w-3.5 h-3.5 text-slate-300" />
-                                   <span className="font-bold text-slate-700 text-xs">{product?.nameAr || '---'}</span>
-                                </div>
-                             </TableCell>
-                             <TableCell className="px-6 py-3 text-center">
-                                <span className={cn("text-xs font-black tabular-nums", isReversed ? "text-slate-400 line-through" : "text-blue-700")}>
-                                   {tx.qty} {isRtl ? 'قطعة' : 'Pcs'}
-                                </span>
-                             </TableCell>
-                             <TableCell className={cn("px-6 py-3", isRtl ? "text-right" : "text-left")}>
-                                <Badge variant="outline" className={cn(
-                                   "text-[8px] font-black uppercase",
-                                   isReversed ? "bg-rose-50 text-rose-600 border-rose-100" : "bg-emerald-50 text-emerald-700 border-emerald-100"
-                                )}>
-                                   {isReversed ? dictionary.reversedStatus : dictionary.postedStatus}
-                                </Badge>
-                             </TableCell>
-                             <TableCell className="px-6 py-3">
-                                {!isReversed && (
-                                   <Button 
-                                      variant="ghost" 
-                                      size="sm" 
-                                      onClick={() => setReversingTx(tx)}
-                                      className="h-8 px-3 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50 font-black text-[9px] gap-2 transition-all"
-                                   >
-                                      <RefreshCcw className="w-3 h-3" />
-                                      {dictionary.reverseBtn}
-                                   </Button>
-                                )}
-                             </TableCell>
-                          </TableRow>
-                        )
-                      })}
-                   </TableBody>
-                </Table>
-             </div>
-          </div>
-        )}
+           </div>
+        </div>
       </div>
 
-      {/* FOOTER */}
+      {/* SYSTEM NOTE */}
       <div className="flex-none p-3 bg-slate-900 text-white/40 flex items-center justify-center gap-4 border-t border-white/5">
          <Info className="w-4 h-4 text-emerald-500" />
-         <p className="text-[10px] font-bold tracking-tight">
-            {dictionary.auditNote}
-         </p>
+         <p className="text-[10px] font-bold tracking-tight">{dictionary.auditNote}</p>
       </div>
 
       {/* REVERSE DIALOG */}
       <AlertDialog open={!!reversingTx} onOpenChange={(open) => !open && setReversingTx(null)}>
-        <AlertDialogContent className="max-w-[450px] rounded-[1.5rem] p-0 overflow-hidden border-none shadow-2xl">
+        <AlertDialogContent className="max-w-[400px] rounded-lg p-0 overflow-hidden border-none shadow-2xl">
            <div className="bg-rose-950 p-8 text-center relative">
               <div className="w-16 h-16 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-rose-500/20 shadow-inner">
                  <RefreshCcw className="w-8 h-8 text-rose-500" />
               </div>
-              <AlertDialogTitle className="text-white text-xl font-black">
-                {isRtl ? 'إلغاء ترحيل المنجز' : 'Reverse Stock Entry'}
-              </AlertDialogTitle>
+              <AlertDialogTitle className="text-white text-xl font-black">{isRtl ? 'إلغاء ترحيل المنجز' : 'Reverse Stock Entry'}</AlertDialogTitle>
               <AlertDialogDescription className="text-slate-400 font-bold mt-2 text-xs leading-relaxed text-center">
-                 {isRtl 
-                   ? `سيتم سحب عدد (${reversingTx?.qty}) قطعة من رصيد المستودع الحالي، وإعادة فتح السند في خطوط الإنتاج. هل أنت متأكد من هذا التراجع؟` 
-                   : `This will deduct (${reversingTx?.qty}) items from current stock and reopen the production voucher. Confirm?`}
+                 {isRtl ? `سيتم سحب عدد (${reversingTx?.qty}) قطعة من رصيد المستودع الحالي. هل أنت متأكد؟` : `This will deduct (${reversingTx?.qty}) items from current stock. Confirm?`}
               </AlertDialogDescription>
            </div>
            <div className="bg-white p-6 flex gap-3">
-              <AlertDialogAction onClick={handleReverseTransfer} disabled={isSubmitting} className="flex-1 h-12 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-black shadow-lg">
+              <AlertDialogAction onClick={handleReverseTransfer} disabled={isSubmitting} className="flex-1 h-12 bg-rose-600 hover:bg-rose-700 text-white rounded-md font-black shadow-lg">
                  {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : <XCircle className="w-4 h-4 me-2" />}
                  {isRtl ? 'تأكيد التراجع' : 'Confirm Reverse'}
               </AlertDialogAction>
-              <AlertDialogCancel className="flex-1 h-12 bg-slate-50 border-slate-200 text-slate-400 rounded-xl font-black">{isRtl ? 'تراجع' : 'Cancel'}</AlertDialogCancel>
+              <AlertDialogCancel className="flex-1 h-12 bg-slate-50 border-slate-200 text-slate-400 rounded-md font-black">{isRtl ? 'تراجع' : 'Cancel'}</AlertDialogCancel>
            </div>
         </AlertDialogContent>
       </AlertDialog>
