@@ -1,85 +1,19 @@
 'use client';
 
-import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { 
-  Search, 
-  ChevronRight, 
-  FileInput, 
-  Save, 
-  Loader2, 
-  Calendar,
-  Trash2,
-  FileText,
-  Edit2,
-  Box,
-  Users2,
-  Building2,
-  Check,
-  ShieldCheck,
-  ChevronDown,
-  MoreVertical,
-  History,
-  Download,
-  Eye,
-  Workflow,
-  Package,
-  Plus,
-  UserCheck,
-  LayoutGrid,
-  ShoppingBag,
-  ArrowRightLeft
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useTranslation } from '@/components/LanguageProvider';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, addDoc, updateDoc, doc, serverTimestamp, query, where, writeBatch, getDoc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Label } from "@/components/ui/label";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from '@/components/ui/dropdown-menu';
-import { useSearchParams } from 'next/navigation';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { toPng } from 'html-to-image';
-import { Badge } from '@/components/ui/badge';
-import { VoucherTemplate } from '@/components/production/VoucherTemplate';
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
+import { ShieldCheck } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 
-// استيراد المكونات الفرعية
 import { IssueHeader } from './components/IssueHeader';
+import { IssueTable } from './components/IssueTable';
+import { IssueFormDialog } from './components/IssueFormDialog';
+import { IssuePrintPreview } from './components/IssuePrintPreview';
+import { IssueDeleteDialog } from './components/IssueDeleteDialog';
 
 export default function MaterialIssuePage() {
   const { lang, dir } = useTranslation();
@@ -93,55 +27,48 @@ export default function MaterialIssuePage() {
   const [printingVoucher, setPrintingVoucher] = useState<any | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [showWorkerDropdown, setShowWorkerDropdown] = useState(false);
-  const [showProductDropdown, setShowProductDropdown] = useState(false);
-  const [productSearch, setProductSearch] = useState('');
   const [search, setSearch] = useState('');
   
-  // Advanced Filtering & Sorting State
+  // Filtering & Sorting State
   const [sortBy, setSortBy] = useState<'voucherNumber' | 'date' | 'totalAmount'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [batchFilter, setBatchFilter] = useState<string>('all');
   const [deptFilter, setDeptFilter] = useState<string>('all');
 
-  const workerDropdownRef = useRef<HTMLDivElement>(null);
-  const productDropdownRef = useRef<HTMLDivElement>(null);
+  // Fetch Global Settings for Currency
+  const settingsRef = useMemo(() => !db ? null : doc(db, 'settings', 'global'), [db]);
+  const [systemCurrency, setSystemCurrency] = useState('YER');
   
-  // Selection filtering state
-  const [selectedDeptId, setSelectedDeptId] = useState<string>('');
-  const [workerSearch, setWorkerSearch] = useState('');
+  useEffect(() => {
+    if (!db) return;
+    getDoc(doc(db, 'settings', 'global')).then(snap => {
+      if (snap.exists()) setSystemCurrency(snap.data().baseCurrency || 'YER');
+    });
+  }, [db]);
 
   // Form State
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     orderId: filterOrderId || '',
     workerId: '',
-    supervisorId: '', 
     notes: '',
     items: [] as any[]
   });
 
-  // Current Selection State
-  const [currentItem, setCurrentItem] = useState({
-    id: '',
-    qty: 1,
-    type: 'material' as 'material' | 'product'
-  });
-
-  // Fetch Data
+  // Data Fetching
   const ordersQuery = useMemo(() => !db ? null : collection(db, 'productionOrders'), [db]);
   const workersQuery = useMemo(() => !db ? null : collection(db, 'workers'), [db]);
   const deptsQuery = useMemo(() => !db ? null : collection(db, 'departments'), [db]);
   const materialsQuery = useMemo(() => !db ? null : collection(db, 'materials'), [db]);
   const productsQuery = useMemo(() => !db ? null : collection(db, 'products'), [db]);
-  const vouchersQuery = useMemo(() => !db ? null : query(collection(db, 'vouchers'), where('status', '!=', 'deleted')), [db]);
+  const allVouchersQuery = useMemo(() => !db ? null : query(collection(db, 'vouchers'), where('status', '!=', 'deleted')), [db]);
 
   const { data: allOrders } = useCollection<any>(ordersQuery);
   const { data: allWorkers } = useCollection<any>(workersQuery);
   const { data: allDepartments } = useCollection<any>(deptsQuery);
   const { data: materials } = useCollection<any>(materialsQuery);
   const { data: allProducts } = useCollection<any>(productsQuery);
-  const { data: allVouchers, loading: vouchersLoading } = useCollection<any>(vouchersQuery);
+  const { data: allVouchers, loading: vouchersLoading } = useCollection<any>(allVouchersQuery);
 
   const vouchers = useMemo(() => (allVouchers || []).filter(v => v.type === 'material_issue'), [allVouchers]);
   const productionReceipts = useMemo(() => (allVouchers || []).filter(v => v.type === 'production_receipt'), [allVouchers]);
@@ -150,192 +77,45 @@ export default function MaterialIssuePage() {
   const activeDepartments = useMemo(() => (allDepartments || []).filter(d => d.status === 'active'), [allDepartments]);
 
   const filteredVouchers = useMemo(() => {
-    if (!vouchers) return [];
-    
     let result = vouchers.filter(v => {
-      if (v.status === 'deleted') return false;
-      
       const order = allOrders?.find(o => o.id === v.orderId);
       const worker = allWorkers?.find(w => w.id === v.workerId);
-      
       const s = search.toLowerCase();
-      const matchesSearch = v.voucherNumber?.toLowerCase().includes(s) ||
-                           order?.orderNumber?.toLowerCase().includes(s) ||
-                           worker?.fullName?.toLowerCase().includes(s);
-      
+      const matchesSearch = v.voucherNumber?.toLowerCase().includes(s) || order?.orderNumber?.toLowerCase().includes(s) || worker?.fullName?.toLowerCase().includes(s);
       const matchesBatch = batchFilter === 'all' || v.orderId === batchFilter;
       const matchesDept = deptFilter === 'all' || worker?.departmentId === deptFilter;
-
       return matchesSearch && matchesBatch && matchesDept;
     });
-
     return result.sort((a, b) => {
       let valA = a[sortBy] ?? '';
       let valB = b[sortBy] ?? '';
-
-      if (sortBy === 'date') {
-        const timeA = new Date(valA).getTime();
-        const timeB = new Date(valB).getTime();
-        return sortOrder === 'asc' ? timeA - timeB : timeB - timeA;
-      }
-
-      if (sortBy === 'totalAmount') {
-        const numA = Number(valA);
-        const numB = Number(valB);
-        return sortOrder === 'asc' ? numA - numB : numB - numA;
-      }
-
-      const comp = String(valA).localeCompare(String(valB), undefined, { numeric: true });
-      return sortOrder === 'asc' ? comp : -comp;
+      if (sortBy === 'date') return sortOrder === 'asc' ? new Date(valA).getTime() - new Date(valB).getTime() : new Date(valB).getTime() - new Date(valA).getTime();
+      if (sortBy === 'totalAmount') return sortOrder === 'asc' ? Number(valA) - Number(valB) : Number(valB) - Number(valA);
+      return sortOrder === 'asc' ? String(valA).localeCompare(String(valB)) : String(valB).localeCompare(String(valA));
     });
   }, [vouchers, allOrders, allWorkers, search, batchFilter, deptFilter, sortBy, sortOrder]);
 
-  const filteredWorkers = useMemo(() => {
-    if (!allWorkers) return [];
-    return allWorkers.filter(w => {
-      if (w.status === 'deleted') return false;
-      const matchesDept = selectedDeptId ? w.departmentId === selectedDeptId : true;
-      const matchesSearch = (w.fullName || '').toLowerCase().includes(workerSearch.toLowerCase()) || 
-                           (w.workerId || '').toLowerCase().includes(workerSearch.toLowerCase());
-      return matchesDept && matchesSearch && (w.active !== false);
-    });
-  }, [allWorkers, selectedDeptId, workerSearch]);
-
-  const selectedWorker = useMemo(() => {
-    return allWorkers?.find(w => w.id === formData.workerId);
-  }, [allWorkers, formData.workerId]);
-
-  // حساب القطع المتاحة للصرف من واقع الاستلامات السابقة
   const availableOrderProducts = useMemo(() => {
-    if (!formData.orderId || !productionReceipts) return [];
+    if (!formData.orderId || !productionReceipts || !allProducts) return [];
     const order = allOrders?.find(o => o.id === formData.orderId);
     const product = allProducts?.find(p => p.id === order?.productId);
     if (!product) return [];
 
-    // إجمالي المستلم في هذه الدفعة
-    const totalReceived = productionReceipts
-      .filter(r => r.orderId === formData.orderId && r.status !== 'deleted')
-      .reduce((sum, r) => sum + (r.qtyAccepted || 0), 0);
-    
-    // إجمالي ما تم صرفه كمنتجات في هذه الدفعة (لربط المراحل)
-    const totalIssued = allVouchers
-      .filter(v => v.orderId === formData.orderId && v.type === 'material_issue' && v.status !== 'deleted' && v.id !== editingVoucherId)
-      .reduce((sum, v) => {
-        const productItems = v.items?.filter((i: any) => i.itemType === 'product') || [];
-        return sum + productItems.reduce((s: number, i: any) => s + i.qty, 0);
-      }, 0);
+    const totalReceived = productionReceipts.filter(r => r.orderId === formData.orderId).reduce((sum, r) => sum + (r.qtyAccepted || 0), 0);
+    const totalIssued = vouchers.filter(v => v.orderId === formData.orderId && v.id !== editingVoucherId).reduce((sum, v) => {
+      const productItems = v.items?.filter((i: any) => i.itemType === 'product') || [];
+      return sum + productItems.reduce((s: number, i: any) => s + i.qty, 0);
+    }, 0);
 
     const left = Math.max(0, totalReceived - totalIssued);
-    
-    return left > 0 ? [{
-      id: product.id,
-      nameAr: product.nameAr,
-      image: product.image,
-      sku: product.sku,
-      availableQty: left,
-      unit: lang === 'ar' ? 'قطعة' : 'Pcs'
-    }] : [];
-  }, [formData.orderId, productionReceipts, allOrders, allProducts, allVouchers, editingVoucherId, lang]);
+    return left > 0 ? [{ id: product.id, nameAr: product.nameAr, image: product.image, sku: product.sku, availableQty: left, unit: 'Pcs' }] : [];
+  }, [formData.orderId, productionReceipts, allOrders, allProducts, vouchers, editingVoucherId]);
 
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (workerDropdownRef.current && !workerDropdownRef.current.contains(event.target as Node)) {
-        setShowWorkerDropdown(false);
-      }
-      if (productDropdownRef.current && !productDropdownRef.current.contains(event.target as Node)) {
-        setShowProductDropdown(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+  const resetDialog = useCallback(() => {
+    setIsAddDialogOpen(false);
+    setEditingVoucherId(null);
+    setFormData({ date: new Date().toISOString().split('T')[0], orderId: '', workerId: '', notes: '', items: [] });
   }, []);
-
-  const handleAddItem = (type: 'material' | 'product') => {
-    const id = type === 'material' ? currentItem.id : currentItem.id;
-    if (!id || currentItem.qty <= 0) return;
-
-    if (type === 'material') {
-      const material = materials?.find(m => m.id === id);
-      if (!material) return;
-      if (material.currentQty < currentItem.qty) {
-        toast({ 
-          variant: "destructive", 
-          title: lang === 'ar' ? "كمية غير كافية" : "Insufficient Stock",
-          description: lang === 'ar' ? `المتوفر في المخزن فقط ${material.currentQty}` : `Available stock is only ${material.currentQty}`
-        });
-        return;
-      }
-      
-      const existingIdx = formData.items.findIndex(i => i.id === id && i.itemType === 'material');
-      if (existingIdx > -1) {
-        const newItems = [...formData.items];
-        newItems[existingIdx].qty += currentItem.qty;
-        setFormData({ ...formData, items: newItems });
-      } else {
-        setFormData({ 
-          ...formData, 
-          items: [...formData.items, { 
-            id: material.id, 
-            nameAr: material.nameAr, 
-            qty: currentItem.qty, 
-            unit: material.unit,
-            price: material.price || 0,
-            itemType: 'material'
-          }] 
-        });
-      }
-    } else {
-      const prod = availableOrderProducts.find(p => p.id === id);
-      if (!prod) return;
-      if (prod.availableQty < currentItem.qty) {
-        toast({ variant: "destructive", title: lang === 'ar' ? "الكمية المتاحة أقل" : "Qty not available" });
-        return;
-      }
-
-      const existingIdx = formData.items.findIndex(i => i.id === id && i.itemType === 'product');
-      if (existingIdx > -1) {
-        const newItems = [...formData.items];
-        newItems[existingIdx].qty += currentItem.qty;
-        setFormData({ ...formData, items: newItems });
-      } else {
-        setFormData({ 
-          ...formData, 
-          items: [...formData.items, { 
-            id: prod.id, 
-            nameAr: prod.nameAr, 
-            qty: currentItem.qty, 
-            unit: prod.unit,
-            price: 0,
-            itemType: 'product'
-          }] 
-        });
-      }
-    }
-    
-    setCurrentItem({ id: '', qty: 1, type: 'material' });
-    setProductSearch('');
-  };
-
-  const removeItem = (id: string, type: string) => {
-    setFormData({ ...formData, items: formData.items.filter(i => !(i.id === id && i.itemType === type)) });
-  };
-
-  const handleEditVoucher = (voucher: any) => {
-    setEditingVoucherId(voucher.id);
-    setFormData({
-      date: voucher.date,
-      orderId: voucher.orderId,
-      workerId: voucher.workerId,
-      supervisorId: voucher.supervisorId || '',
-      notes: voucher.notes || '',
-      items: [...voucher.items]
-    });
-    
-    const worker = allWorkers?.find(w => w.id === voucher.workerId);
-    if (worker) setSelectedDeptId(worker.departmentId);
-    
-    setIsAddDialogOpen(true);
-  };
 
   const handleSaveVoucher = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -344,709 +124,135 @@ export default function MaterialIssuePage() {
     setIsSubmitting(true);
     const batch = writeBatch(db);
     
-    const totalAmount = formData.items.reduce((acc, item) => acc + (item.qty * (item.price || 0)), 0);
+    // Financial Impact: Only materials count towards total amount
+    const totalAmount = formData.items.filter(i => i.itemType === 'material').reduce((acc, i) => acc + (i.qty * (i.price || 0)), 0);
+    
+    const worker = allWorkers?.find(w => w.id === formData.workerId);
     const voucherData = {
       ...formData,
-      supervisorId: selectedWorker?.supervisorId || '', 
+      supervisorId: worker?.supervisorId || '',
       type: 'material_issue',
       totalAmount,
+      currency: systemCurrency,
       status: 'posted',
       updatedAt: serverTimestamp()
     };
 
     try {
       if (editingVoucherId) {
-        const oldVoucherSnap = await getDoc(doc(db, 'vouchers', editingVoucherId));
-        const oldV = oldVoucherSnap.data();
-        
-        oldV?.items.forEach((oldItem: any) => {
-          if (oldItem.itemType === 'material') {
-            const material = materials?.find(m => m.id === oldItem.id);
-            if (material) {
-              batch.update(doc(db, 'materials', oldItem.id), {
-                currentQty: (material.currentQty || 0) + oldItem.qty
-              });
-            }
+        const oldSnap = await getDoc(doc(db, 'vouchers', editingVoucherId));
+        const oldV = oldSnap.data();
+        oldV?.items.forEach((item: any) => {
+          if (item.itemType === 'material') {
+            const m = materials?.find(mat => mat.id === item.id);
+            if (m) batch.update(doc(db, 'materials', item.id), { currentQty: (m.currentQty || 0) + item.qty });
           }
         });
-
         batch.update(doc(db, 'vouchers', editingVoucherId), voucherData);
       } else {
         const voucherNumber = `MIV-${Date.now().toString().slice(-6)}`;
-        const voucherRef = doc(collection(db, 'vouchers'));
-        batch.set(voucherRef, { ...voucherData, voucherNumber, createdAt: serverTimestamp() });
+        batch.set(doc(collection(db, 'vouchers')), { ...voucherData, voucherNumber, createdAt: serverTimestamp() });
       }
 
       formData.items.forEach(item => {
         if (item.itemType === 'material') {
-          const material = materials?.find(m => m.id === item.id);
-          if (material) {
-            const matRef = doc(db, 'materials', item.id);
-            batch.update(matRef, {
-              currentQty: (material.currentQty || 0) - item.qty,
-              updatedAt: serverTimestamp()
-            });
-          }
+          const m = materials?.find(mat => mat.id === item.id);
+          if (m) batch.update(doc(db, 'materials', item.id), { currentQty: (m.currentQty || 0) - item.qty });
         }
       });
 
       await batch.commit();
-      toast({ title: lang === 'ar' ? "تم حفظ السند بنجاح" : "Voucher Saved Successfully" });
+      toast({ title: lang === 'ar' ? "تم الحفظ وتحديث المخزون" : "Success" });
       resetDialog();
-    } catch (error) {
-      console.error(error);
-      toast({ variant: "destructive", title: "Error saving voucher" });
-    } finally {
-      setIsSubmitting(false);
-    }
+    } catch (err) { console.error(err); } finally { setIsSubmitting(false); }
   };
 
   const handleDeleteVoucher = async () => {
     if (!db || !deletingVoucher) return;
-    
     setIsSubmitting(true);
     const batch = writeBatch(db);
-
     try {
       deletingVoucher.items.forEach((item: any) => {
         if (item.itemType === 'material') {
-          const material = materials?.find(m => m.id === item.id);
-          if (material) {
-            batch.update(doc(db, 'materials', item.id), {
-              currentQty: (material.currentQty || 0) + item.qty
-            });
-          }
+          const m = materials?.find(mat => mat.id === item.id);
+          if (m) batch.update(doc(db, 'materials', item.id), { currentQty: (m.currentQty || 0) + item.qty });
         }
       });
-
-      batch.update(doc(db, 'vouchers', deletingVoucher.id), {
-        status: 'deleted',
-        deletedAt: serverTimestamp()
-      });
-
+      batch.update(doc(db, 'vouchers', deletingVoucher.id), { status: 'deleted', deletedAt: serverTimestamp() });
       await batch.commit();
-      toast({ title: lang === 'ar' ? "تم حذف السند وإرجاع المخزون" : "Voucher deleted and stock returned" });
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setIsSubmitting(false);
-      setDeletingVoucher(null);
-    }
-  };
-
-  const resetDialog = () => {
-    setIsAddDialogOpen(false);
-    setEditingVoucherId(null);
-    setSelectedDeptId('');
-    setWorkerSearch('');
-    setProductSearch('');
-    setShowWorkerDropdown(false);
-    setShowProductDropdown(false);
-    setFormData({ date: new Date().toISOString().split('T')[0], orderId: '', workerId: '', supervisorId: '', notes: '', items: [] });
+      toast({ title: lang === 'ar' ? "تم الإلغاء وإرجاع المخزون" : "Reversed" });
+    } finally { setIsSubmitting(false); setDeletingVoucher(null); }
   };
 
   const handleDownloadImage = async () => {
-    const element = document.getElementById('printable-voucher');
-    if (!element || !printingVoucher) return;
-    
+    const el = document.getElementById('printable-voucher');
+    if (!el || !printingVoucher) return;
     setIsDownloading(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      const dataUrl = await toPng(element, { 
-        backgroundColor: '#ffffff',
-        pixelRatio: 2,
-        cacheBust: true,
-        fontEmbedCSS: '', 
-      });
-      
+      await new Promise(r => setTimeout(r, 800));
+      const dataUrl = await toPng(el, { backgroundColor: '#ffffff', pixelRatio: 2, cacheBust: true });
       const link = document.createElement('a');
-      link.download = `Issue-${printingVoucher.voucherNumber}.png`;
-      link.href = dataUrl;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      toast({ title: lang === 'ar' ? "تم تحميل السند" : "Voucher Downloaded" });
-    } catch (err) {
-      console.error('Download error:', err);
-    } finally {
-      setIsDownloading(false);
-    }
+      link.download = `MIV-${printingVoucher.voucherNumber}.png`;
+      link.href = dataUrl; link.click();
+    } finally { setIsDownloading(false); }
   };
 
   const handleExportCSV = () => {
-    const headers = [
-      lang === 'ar' ? 'رقم السند' : 'Voucher No',
-      lang === 'ar' ? 'التاريخ' : 'Date',
-      lang === 'ar' ? 'أمر الإنتاج' : 'Order',
-      lang === 'ar' ? 'المستلم' : 'Recipient',
-      lang === 'ar' ? 'المشرف المسؤول' : 'Supervisor',
-      lang === 'ar' ? 'القيمة الإجمالية' : 'Total Value'
-    ];
-
-    const rows = filteredVouchers.map(v => {
-      const order = allOrders?.find(o => o.id === v.orderId);
-      const worker = allWorkers?.find(w => w.id === v.workerId);
-      const supervisor = allWorkers?.find(w => w.id === v.supervisorId);
-      return [
-        v.voucherNumber,
-        v.date,
-        order?.orderNumber || '---',
-        worker?.fullName || '---',
-        supervisor?.fullName || '---',
-        v.totalAmount || 0
-      ];
-    });
-
-    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const headers = ['Ref', 'Date', 'Worker', 'Amount', 'Currency'];
+    const rows = filteredVouchers.map(v => [v.voucherNumber, v.date, allWorkers?.find(w => w.id === v.workerId)?.fullName, v.totalAmount, systemCurrency]);
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `MaterialIssues_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
+    link.href = url; link.setAttribute('download', `MIV_Export_${new Date().toISOString().split('T')[0]}.csv`);
     link.click();
-    document.body.removeChild(link);
-    toast({ title: lang === 'ar' ? "تم تصدير البيانات" : "Data Exported" });
-  };
-
-  const toggleSort = (field: 'voucherNumber' | 'date' | 'totalAmount') => {
-    if (sortBy === field) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortBy(field);
-      setSortOrder('asc');
-    }
   };
 
   return (
     <div className="flex flex-col h-full bg-[#f8fafc] overflow-hidden" dir={dir}>
-      
       <IssueHeader 
-        lang={lang}
-        dir={dir}
-        search={search}
-        setSearch={setSearch}
-        handleExportCSV={handleExportCSV}
-        batchFilter={batchFilter}
-        setBatchFilter={setBatchFilter}
-        deptFilter={deptFilter}
-        setDeptFilter={setDeptFilter}
-        toggleSort={toggleSort}
-        sortBy={sortBy}
-        sortOrder={sortOrder}
-        activeOrders={activeOrders}
-        activeDepartments={activeDepartments}
+        lang={lang} dir={dir} search={search} setSearch={setSearch} 
+        handleExportCSV={handleExportCSV} batchFilter={batchFilter} setBatchFilter={setBatchFilter}
+        deptFilter={deptFilter} setDeptFilter={setDeptFilter}
+        toggleSort={(f) => { setSortBy(f); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}
+        sortBy={sortBy} sortOrder={sortOrder} activeOrders={activeOrders} activeDepartments={activeDepartments}
         setIsAddDialogOpen={setIsAddDialogOpen}
       />
 
       <div className="flex-1 min-h-0 overflow-auto p-4 md:p-6 no-scrollbar">
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <Table className="text-right border-separate border-spacing-0">
-            <TableHeader className="bg-slate-50 sticky top-0 z-10">
-              <TableRow>
-                <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'رقم السند' : 'REF #'}</TableHead>
-                <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'التاريخ' : 'DATE'}</TableHead>
-                <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'أمر الإنتاج' : 'ORDER'}</TableHead>
-                <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'العامل / المشرف' : 'RECIPIENT / SUP'}</TableHead>
-                <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">{lang === 'ar' ? 'الأصناف' : 'ITEMS'}</TableHead>
-                <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">{lang === 'ar' ? 'العمليات' : 'ACTIONS'}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {vouchersLoading ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-20 font-bold text-slate-400 animate-pulse">جاري سحب الأرشيف...</TableCell></TableRow>
-              ) : filteredVouchers.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-20 font-bold text-slate-300">لا توجد سندات مسجلة</TableCell></TableRow>
-              ) : filteredVouchers.map((v) => {
-                const order = allOrders?.find(o => o.id === v.orderId);
-                const worker = allWorkers?.find(w => w.id === v.workerId);
-                const supervisor = allWorkers?.find(w => w.id === v.supervisorId);
-                return (
-                  <TableRow key={v.id} className="hover:bg-slate-50/50 border-b border-slate-100 transition-colors group">
-                    <TableCell className={cn("px-6 py-3", dir === 'rtl' ? "text-right" : "text-left")}>
-                      <div className={cn("flex items-center gap-2", dir === 'rtl' ? "justify-start" : "justify-start")}>
-                        <div className="p-1.5 bg-emerald-50 text-emerald-600 rounded-md"><FileText className="w-3.5 h-3.5" /></div>
-                        <span className="font-black text-slate-900 text-xs tabular-nums">{v.voucherNumber}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className={cn("px-6 py-3 font-bold text-slate-500 text-xs tabular-nums", dir === 'rtl' ? "text-right" : "text-left")}>{v.date}</TableCell>
-                    <TableCell className={cn("px-6 py-3", dir === 'rtl' ? "text-right" : "text-left")}>
-                      <div className={cn("flex flex-col", dir === 'rtl' ? "items-start" : "items-start")}>
-                        <span className="font-black text-slate-800 text-xs">{order?.orderNumber || '---'}</span>
-                        <span className="text-[10px] text-slate-400 font-bold truncate max-w-[150px]">{order?.title}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className={cn("px-6 py-3", dir === 'rtl' ? "text-right" : "text-left")}>
-                      <div className="flex flex-col">
-                        <span className="font-bold text-slate-700 text-xs">{worker?.fullName || '---'}</span>
-                        {supervisor && (
-                          <span className="text-[9px] font-black text-emerald-600 flex items-center gap-1">
-                            <ShieldCheck className="w-2 h-2" />
-                            {lang === 'ar' ? 'بمسؤولية:' : 'Under:'} {supervisor.fullName}
-                          </span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="px-6 py-3 text-center">
-                      <Badge variant="outline" className="bg-emerald-50 text-emerald-700 font-black">
-                        {v.items?.length || 0}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="px-6 py-3 text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8 rounded-md text-slate-400 hover:text-emerald-600 hover:bg-emerald-50"
-                          onClick={() => setPrintingVoucher(v)}
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-md hover:bg-slate-100"><MoreVertical className="w-4 h-4 text-slate-400" /></Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-44 rounded-lg shadow-xl">
-                            <DropdownMenuItem onClick={() => setPrintingVoucher(v)} className="gap-2 font-bold py-1.5 cursor-pointer text-xs">
-                              <Eye className="w-3.5 h-3.5 text-emerald-600" /> {lang === 'ar' ? 'عرض السند' : 'View Voucher'}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleEditVoucher(v)} className="gap-2 font-bold py-1.5 cursor-pointer text-xs">
-                              <Edit2 className="w-3.5 h-3.5 text-emerald-600" /> {lang === 'ar' ? 'تعديل السند' : 'Edit Voucher'}
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => setDeletingVoucher(v)} className="gap-2 font-bold py-1.5 text-rose-600 cursor-pointer text-xs">
-                              <Trash2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'حذف السند' : 'Delete Voucher'}
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
+        <IssueTable 
+          loading={vouchersLoading} vouchers={filteredVouchers} allOrders={allOrders || []} 
+          allWorkers={allWorkers || []} lang={lang} dir={dir}
+          onView={(v) => setPrintingVoucher(v)}
+          onEdit={(v) => { setEditingVoucherId(v.id); setFormData({ ...v }); setIsAddDialogOpen(true); }}
+          onDelete={(v) => setDeletingVoucher(v)}
+        />
       </div>
 
-      <Dialog open={isAddDialogOpen} onOpenChange={(open) => !open && resetDialog()}>
-        <DialogContent className="sm:max-w-[850px] rounded-lg p-0 overflow-hidden border-none shadow-2xl">
-          <div className="premium-gradient p-6 text-white">
-            <DialogHeader className="text-right rtl:text-right ltr:text-left">
-              <DialogTitle className="text-xl font-black flex items-center gap-3 text-white">
-                <FileInput className="w-5 h-5 text-emerald-300" />
-                {editingVoucherId ? (lang === 'ar' ? 'تعديل سند صرف مواد ومنتجات' : 'Update Issue Voucher') : (lang === 'ar' ? 'إنشاء سند صرف مواد ومنتجات للإنتاج' : 'New Issue Voucher')}
-              </DialogTitle>
-              <p className="text-emerald-100/70 font-bold text-[10px] uppercase tracking-widest mt-1">
-                Issuing raw materials and semi-finished products to accountability groups
-              </p>
-            </DialogHeader>
-          </div>
+      <IssueFormDialog 
+        isOpen={isAddDialogOpen} onClose={resetDialog} editingId={editingVoucherId}
+        lang={lang} dir={dir} isSubmitting={isSubmitting} formData={formData} setFormData={setFormData}
+        activeOrders={activeOrders} activeDepartments={activeDepartments} allWorkers={allWorkers || []}
+        materials={materials || []} availableOrderProducts={availableOrderProducts} handleSave={handleSaveVoucher}
+      />
 
-          <form onSubmit={handleSaveVoucher} className="p-6 space-y-6 bg-white max-h-[85vh] overflow-y-auto no-scrollbar">
-            
-            {/* الحقول الأربعة الأساسية */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
-                  <Calendar className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'تاريخ السند' : 'TRANSACTION DATE'}
-                </Label>
-                <Input type="date" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} className="h-12 font-bold text-xs bg-slate-50 border-slate-200" required />
-              </div>
+      <IssuePrintPreview 
+        isOpen={!!printingVoucher} onClose={() => setPrintingVoucher(null)} voucher={printingVoucher}
+        lang={lang} allOrders={allOrders || []} allWorkers={allWorkers || []} allDepartments={allDepartments || []}
+        allProducts={allProducts || []} isDownloading={isDownloading} handleDownload={handleDownloadImage}
+      />
 
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
-                  <Workflow className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'أمر الإنتاج' : 'BATCH / أمر الإنتاج'}
-                </Label>
-                <select value={formData.orderId} onChange={(e) => setFormData({...formData, orderId: e.target.value, items: []})} className="w-full h-12 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none focus:ring-1 focus:ring-emerald-500" required>
-                  <option value="">{lang === 'ar' ? '-- اختر أمر الإنتاج --' : '-- Select Order --'}</option>
-                  {activeOrders?.map(o => <option key={o.id} value={o.id}>{o.orderNumber} - {o.title}</option>)}
-                </select>
-              </div>
+      <IssueDeleteDialog 
+        isOpen={!!deletingVoucher} onClose={() => setDeletingVoucher(null)} lang={lang}
+        isSubmitting={isSubmitting} handleDelete={handleDeleteVoucher}
+      />
 
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
-                  <Building2 className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'فلترة حسب القسم' : 'FILTER BY DEPARTMENT'}
-                </Label>
-                <select 
-                  value={selectedDeptId} 
-                  onChange={(e) => {
-                    setSelectedDeptId(e.target.value);
-                    setFormData({...formData, workerId: ''});
-                    setWorkerSearch('');
-                  }} 
-                  className="w-full h-12 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none focus:ring-1 focus:ring-emerald-500"
-                >
-                  <option value="">{lang === 'ar' ? 'عرض جميع الأقسام' : 'All Departments'}</option>
-                  {activeDepartments?.map(d => <option key={d.id} value={d.id}>{lang === 'ar' ? d.nameAr : d.nameEn}</option>)}
-                </select>
-              </div>
-
-              <div className="space-y-1.5 relative" ref={workerDropdownRef}>
-                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
-                  <Users2 className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'العامل المستلم للمواد' : 'RECEIVING PERSONNEL'}
-                </Label>
-                
-                <button
-                  type="button"
-                  onClick={() => setShowWorkerDropdown(!showWorkerDropdown)}
-                  className={cn(
-                    "flex h-12 w-full items-center justify-between rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm transition-all focus:outline-none focus:ring-1 focus:ring-emerald-500",
-                    !formData.workerId && "text-slate-400 font-bold"
-                  )}
-                >
-                  {selectedWorker ? (
-                    <div className="flex items-center gap-3 text-right">
-                      <Avatar className="h-7 w-7 border border-slate-200">
-                        <AvatarImage src={selectedWorker.photoUrl} className="object-cover" />
-                        <AvatarFallback className="text-[9px] font-black bg-slate-200 text-slate-600">{selectedWorker.fullName?.charAt(0)}</AvatarFallback>
-                      </Avatar>
-                      <div className="flex flex-col items-start overflow-hidden text-right">
-                        <span className="text-[11px] font-black text-slate-900 truncate">{selectedWorker.fullName}</span>
-                        <span className="text-[8px] font-bold text-slate-400 tabular-nums uppercase">{selectedWorker.workerId}</span>
-                      </div>
-                    </div>
-                  ) : (
-                    <span>{lang === 'ar' ? '-- اختر العامل --' : '-- Select Worker --'}</span>
-                  )}
-                  <ChevronDown className={cn("h-4 w-4 opacity-50 transition-transform", showWorkerDropdown && "rotate-180")} />
-                </button>
-
-                {showWorkerDropdown && (
-                  <div className={cn(
-                    "absolute top-full left-0 right-0 z-50 mt-1 bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200",
-                    dir === 'rtl' ? "text-right" : "text-left"
-                  )}>
-                    <div className="p-2 bg-slate-50 border-b border-slate-100 flex flex-col gap-2">
-                      <div className="relative">
-                        <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400`} />
-                        <Input 
-                          autoFocus
-                          value={workerSearch}
-                          onChange={(e) => setWorkerSearch(e.target.value)}
-                          placeholder={lang === 'ar' ? 'بحث باسم العامل...' : 'Search personnel...'}
-                          className={`${dir === 'rtl' ? 'pr-9 pl-3' : 'pl-9 pr-3'} h-9 bg-white border-slate-200 text-xs font-bold`}
-                        />
-                      </div>
-                    </div>
-                    <ScrollArea className="h-[240px]">
-                      <div className="p-1">
-                        {filteredWorkers.length === 0 ? (
-                          <div className="text-center py-10">
-                            <p className="text-xs font-bold text-slate-400">{lang === 'ar' ? 'لا يوجد عمال' : 'No personnel'}</p>
-                          </div>
-                        ) : filteredWorkers.map(w => (
-                          <button
-                            key={w.id}
-                            type="button"
-                            onClick={() => {
-                              setFormData({...formData, workerId: w.id});
-                              setSelectedDeptId(w.departmentId); 
-                              setShowWorkerDropdown(false);
-                            }}
-                            className={cn(
-                              "flex items-center gap-3 w-full p-2 rounded-lg transition-all text-right hover:bg-slate-50 mb-0.5",
-                              formData.workerId === w.id && "bg-emerald-50"
-                            )}
-                          >
-                            <Avatar className="h-8 w-8 border border-white shadow-sm shrink-0">
-                              <AvatarImage src={w.photoUrl} className="object-cover" />
-                              <AvatarFallback className="text-[9px] font-black bg-slate-100 text-slate-500">{w.fullName?.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 overflow-hidden text-right">
-                              <p className={cn("text-[11px] font-black leading-tight", formData.workerId === w.id ? "text-emerald-700" : "text-slate-800")}>{w.fullName}</p>
-                              <p className="text-[8px] font-bold text-slate-400 mt-0.5 tabular-nums uppercase">{w.workerId}</p>
-                            </div>
-                            {formData.workerId === w.id && <Check className="w-3.5 h-3.5 text-emerald-600" />}
-                          </button>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* قسم صرف المنتجات (المعاوز نصف المصنعة) - واجهة بحث مطورة بالصور */}
-            {formData.orderId && (
-              <div className="p-4 bg-blue-50/30 rounded-xl border border-blue-100 shadow-sm space-y-4">
-                <h3 className="text-[10px] font-black text-blue-700 uppercase tracking-widest flex items-center gap-2">
-                  <ArrowRightLeft className="w-3.5 h-3.5" /> {lang === 'ar' ? 'إضافة منتجات من مراحل سابقة (ربط المراحل)' : 'ISSUE SEMI-FINISHED PRODUCTS'}
-                </h3>
-                <div className="flex flex-col md:flex-row gap-3 items-end">
-                  <div className="flex-1 space-y-1.5 relative" ref={productDropdownRef}>
-                    <Label className="text-[9px] font-bold text-slate-500">{lang === 'ar' ? 'المنتج المتاح للصرف' : 'AVAILABLE PRODUCT'}</Label>
-                    
-                    <button
-                      type="button"
-                      onClick={() => setShowProductDropdown(!showProductDropdown)}
-                      className={cn(
-                        "flex h-10 w-full items-center justify-between rounded-md border border-slate-200 bg-white px-3 py-2 text-sm transition-all focus:outline-none focus:ring-1 focus:ring-blue-500",
-                        !currentItem.id && "text-slate-400 font-bold"
-                      )}
-                    >
-                      {currentItem.id && currentItem.type === 'product' ? (
-                        <div className="flex items-center gap-3 text-right">
-                          <Avatar className="h-6 w-6 border border-slate-200">
-                            <AvatarImage src={availableOrderProducts.find(p => p.id === currentItem.id)?.image} className="object-cover" />
-                            <AvatarFallback className="text-[8px] font-black bg-slate-100 text-slate-500">
-                              {availableOrderProducts.find(p => p.id === currentItem.id)?.nameAr?.charAt(0)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="text-[11px] font-black text-slate-900 truncate">
-                            {availableOrderProducts.find(p => p.id === currentItem.id)?.nameAr}
-                          </span>
-                        </div>
-                      ) : (
-                        <span className="text-xs">{lang === 'ar' ? '-- اختر المنتج المنجز سابقا --' : '-- Select Completed Product --'}</span>
-                      )}
-                      <ChevronDown className={cn("h-4 w-4 opacity-50 transition-transform", showProductDropdown && "rotate-180")} />
-                    </button>
-
-                    {showProductDropdown && (
-                      <div className={cn(
-                        "absolute top-full left-0 right-0 z-50 mt-1 bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200",
-                        dir === 'rtl' ? "text-right" : "text-left"
-                      )}>
-                        <div className="p-2 bg-slate-50 border-b border-slate-100">
-                          <div className="relative">
-                            <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400`} />
-                            <Input 
-                              autoFocus
-                              value={productSearch}
-                              onChange={(e) => setProductSearch(e.target.value)}
-                              placeholder={lang === 'ar' ? 'بحث باسم المنتج...' : 'Search product...'}
-                              className={`${dir === 'rtl' ? 'pr-9 pl-3' : 'pl-9 pr-3'} h-9 bg-white border-slate-200 text-xs font-bold`}
-                            />
-                          </div>
-                        </div>
-                        <ScrollArea className="h-[200px]">
-                          <div className="p-1">
-                            {availableOrderProducts.filter(p => p.nameAr.toLowerCase().includes(productSearch.toLowerCase())).length === 0 ? (
-                              <div className="text-center py-6">
-                                <p className="text-xs font-bold text-slate-400">{lang === 'ar' ? 'لا توجد منتجات متاحة' : 'No available products'}</p>
-                              </div>
-                            ) : availableOrderProducts.filter(p => p.nameAr.toLowerCase().includes(productSearch.toLowerCase())).map(p => (
-                              <button
-                                key={p.id}
-                                type="button"
-                                onClick={() => {
-                                  setCurrentItem({ ...currentItem, id: p.id, type: 'product' });
-                                  setShowProductDropdown(false);
-                                }}
-                                className={cn(
-                                  "flex items-center gap-3 w-full p-2 rounded-lg transition-all text-right hover:bg-slate-50 mb-0.5",
-                                  currentItem.id === p.id && "bg-blue-50"
-                                )}
-                              >
-                                <Avatar className="h-8 w-8 border border-white shadow-sm shrink-0">
-                                  <AvatarImage src={p.image} className="object-cover" />
-                                  <AvatarFallback className="text-[9px] font-black bg-slate-100 text-slate-500">{p.nameAr?.charAt(0)}</AvatarFallback>
-                                </Avatar>
-                                <div className="flex-1 overflow-hidden text-right">
-                                  <p className={cn("text-[11px] font-black leading-tight", currentItem.id === p.id ? "text-blue-700" : "text-slate-800")}>{p.nameAr}</p>
-                                  <div className="flex items-center justify-between mt-0.5">
-                                    <span className="text-[8px] font-bold text-slate-400 tabular-nums uppercase">{p.sku}</span>
-                                    <span className="text-[9px] font-black text-emerald-600">{lang === 'ar' ? 'المتاح:' : 'Stock:'} {p.availableQty} {p.unit}</span>
-                                  </div>
-                                </div>
-                                {currentItem.id === p.id && <Check className="w-3.5 h-3.5 text-blue-600" />}
-                              </button>
-                            ))}
-                          </div>
-                        </ScrollArea>
-                      </div>
-                    )}
-                  </div>
-                  <div className="w-32 space-y-1.5">
-                    <Label className="text-[9px] font-bold text-slate-500">{lang === 'ar' ? 'الكمية' : 'QTY'}</Label>
-                    <Input 
-                      type="number" 
-                      value={currentItem.type === 'product' ? currentItem.qty : 1} 
-                      onChange={(e) => setCurrentItem({ ...currentItem, qty: Number(e.target.value), type: 'product' })}
-                      className="h-10 font-bold text-xs bg-white text-slate-900 border border-slate-200 tabular-nums" 
-                    />
-                  </div>
-                  <Button type="button" onClick={() => handleAddItem('product')} className="h-10 px-6 bg-blue-600 hover:bg-blue-500 text-white rounded-md font-black text-xs gap-2 border-none shadow-lg">
-                    <Plus className="w-3.5 h-3.5" /> {lang === 'ar' ? 'إدراج منتج' : 'Insert Product'}
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* قسم صرف المواد الخام */}
-            <div className="p-4 bg-emerald-50/30 rounded-xl border border-emerald-100 shadow-sm space-y-4">
-              <h3 className="text-[10px] font-black text-emerald-700 uppercase tracking-widest flex items-center gap-2">
-                <Box className="w-3.5 h-3.5" /> {lang === 'ar' ? 'إضافة أصناف الخيوط والمواد الخام من المخزن' : 'ADD RAW MATERIALS FROM INVENTORY'}
-              </h3>
-              <div className="flex flex-col md:flex-row gap-3 items-end">
-                <div className="flex-1 space-y-1.5">
-                  <Label className="text-[9px] font-bold text-slate-500">{lang === 'ar' ? 'الصنف المتوفر' : 'RAW MATERIAL'}</Label>
-                  <select 
-                    value={currentItem.type === 'material' ? currentItem.id : ''} 
-                    onChange={(e) => setCurrentItem({ ...currentItem, id: e.target.value, type: 'material' })}
-                    className="w-full h-10 px-3 bg-white text-slate-900 border border-slate-200 rounded-md text-xs font-bold outline-none focus:ring-1 focus:ring-emerald-500"
-                  >
-                    <option value="">{lang === 'ar' ? '-- اختر مادة من المخزن --' : '-- Select Material --'}</option>
-                    {materials?.filter(m => (m.currentQty || 0) > 0 || m.id === currentItem.id).map(m => (
-                      <option key={m.id} value={m.id} className="text-slate-900">{m.nameAr} ({m.currentQty} {m.unit})</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="w-32 space-y-1.5">
-                  <Label className="text-[9px] font-bold text-slate-500">{lang === 'ar' ? 'الكمية' : 'QTY'}</Label>
-                  <Input 
-                    type="number" 
-                    value={currentItem.type === 'material' ? currentItem.qty : 1} 
-                    onChange={(e) => setCurrentItem({ ...currentItem, qty: Number(e.target.value), type: 'material' })}
-                    className="h-10 font-bold text-xs bg-white text-slate-900 border border-slate-200 tabular-nums" 
-                  />
-                </div>
-                <Button type="button" onClick={() => handleAddItem('material')} className="h-10 px-6 bg-emerald-600 hover:bg-emerald-500 text-white rounded-md font-black text-xs gap-2 border-none shadow-lg">
-                  <Plus className="w-3.5 h-3.5" /> {lang === 'ar' ? 'إدراج مادة' : 'Insert Material'}
-                </Button>
-              </div>
-            </div>
-
-            {formData.items.length > 0 && (
-              <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-                <Table className="text-right">
-                  <TableHeader className="bg-slate-50">
-                    <TableRow>
-                      <TableHead className="px-4 py-2 text-[9px] font-black text-slate-500 uppercase text-right">{lang === 'ar' ? 'الصنف' : 'ITEM'}</TableHead>
-                      <TableHead className="px-4 py-2 text-[9px] font-black text-slate-500 uppercase text-center">{lang === 'ar' ? 'النوع' : 'TYPE'}</TableHead>
-                      <TableHead className="px-4 py-2 text-[9px] font-black text-slate-500 uppercase text-center">{lang === 'ar' ? 'الكمية المصروفة' : 'ISSUED QTY'}</TableHead>
-                      <TableHead className="px-4 py-2 text-[9px] font-black text-slate-500 uppercase text-center">{lang === 'ar' ? 'الوحدة' : 'UNIT'}</TableHead>
-                      <TableHead className="px-4 py-2 w-16"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {formData.items.map((item, idx) => (
-                      <TableRow key={idx} className="border-b border-slate-100 bg-white group/row">
-                        <TableCell className="px-4 py-2 font-black text-slate-800 text-xs text-right">
-                          <div className="flex items-center gap-2">
-                             {item.itemType === 'product' ? <ShoppingBag className="w-3 h-3 text-blue-500" /> : <Box className="w-3 h-3 text-emerald-500" />}
-                             {item.nameAr}
-                          </div>
-                        </TableCell>
-                        <TableCell className="px-4 py-2 text-center">
-                          <Badge variant="outline" className={cn("text-[8px] font-black uppercase", item.itemType === 'product' ? "text-blue-600 bg-blue-50 border-blue-100" : "text-emerald-600 bg-emerald-50 border-emerald-100")}>
-                            {item.itemType === 'product' ? (lang === 'ar' ? 'منتج' : 'PRODUCT') : (lang === 'ar' ? 'مادة' : 'MATERIAL')}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="px-4 py-2 text-center font-black text-slate-900 text-sm tabular-nums">{item.qty}</TableCell>
-                        <TableCell className="px-4 py-2 text-center text-[10px] font-bold text-slate-400 uppercase">{item.unit}</TableCell>
-                        <TableCell className="px-4 py-2">
-                          <Button type="button" variant="ghost" size="icon" onClick={() => removeItem(item.id, item.itemType)} className="h-7 w-7 text-rose-300 hover:text-rose-600 hover:bg-rose-50">
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-
-            <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase text-slate-400">{lang === 'ar' ? 'ملاحظات وتوجيهات السند' : 'VOUCHER NOTES / توجيهات السند'}</Label>
-              <textarea 
-                value={formData.notes} 
-                onChange={(e) => setFormData({...formData, notes: e.target.value})} 
-                className="w-full min-h-[80px] p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium resize-none outline-none focus:bg-white focus:border-emerald-500 transition-all" 
-                placeholder={lang === 'ar' ? 'اكتب أي ملاحظات تتعلق بصرف هذه العهدة للعامل...' : 'Enter any specific instructions for this issue...'} 
-              />
-            </div>
-
-            <div className="flex gap-3 pt-6 border-t border-slate-100">
-              <Button type="submit" disabled={isSubmitting || formData.items.length === 0 || !formData.workerId} className="flex-1 h-14 premium-gradient hover:opacity-90 text-white rounded-xl font-black text-base border-none shadow-xl shadow-emerald-900/10">
-                {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin me-2" /> : <UserCheck className="w-5 h-5 me-2" />}
-                {lang === 'ar' ? (editingVoucherId ? 'تحديث السند والمخزون' : 'ترحيل السند وتحديث المخزون') : (editingVoucherId ? 'Update Voucher & WMS' : 'Post Voucher & Update WMS')}
-              </Button>
-              <Button type="button" variant="outline" onClick={resetDialog} className="px-8 h-14 font-black text-slate-400 rounded-xl border-slate-200">
-                {lang === 'ar' ? 'إلغاء' : 'Cancel'}
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* PRINT/IMAGE PREVIEW DIALOG */}
-      <Dialog open={!!printingVoucher} onOpenChange={(open) => !open && setPrintingVoucher(null)}>
-        <DialogContent className="sm:max-w-[850px] p-0 overflow-hidden border-none bg-white">
-          <DialogHeader className="sr-only">
-            <DialogTitle>
-              {lang === 'ar' ? 'معاينة طباعة سند الصرف' : 'Material Issue Voucher Print Preview'}
-            </DialogTitle>
-          </DialogHeader>
-          
-          <ScrollArea className="max-h-[85vh]">
-            <div className="p-12 bg-white relative z-0" id="printable-voucher">
-              {printingVoucher && (
-                <VoucherTemplate 
-                  voucher={printingVoucher}
-                  order={allOrders?.find(o => o.id === printingVoucher.orderId)}
-                  worker={allWorkers?.find(w => w.id === printingVoucher.workerId)}
-                  supervisor={allWorkers?.find(w => w.id === printingVoucher.supervisorId)}
-                  departments={allDepartments}
-                  products={allProducts}
-                  lang={lang}
-                />
-              )}
-            </div>
-          </ScrollArea>
-
-          <DialogFooter className="p-6 bg-slate-50 border-t border-slate-100 print:hidden">
-            <Button 
-              onClick={handleDownloadImage} 
-              disabled={isDownloading}
-              className="premium-gradient font-black gap-2 h-12 px-10 rounded-xl shadow-xl hover:opacity-90 active:scale-95 transition-all"
-            >
-              {isDownloading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
-              {lang === 'ar' ? 'تحميل السند كصورة' : 'Download as Image'}
-            </Button>
-            <Button variant="ghost" onClick={() => setPrintingVoucher(null)} className="font-black h-12 px-8 rounded-xl border border-slate-200 text-slate-500">
-              {lang === 'ar' ? 'إغلاق' : 'Close'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* DELETE CONFIRMATION */}
-      <AlertDialog open={!!deletingVoucher} onOpenChange={(open) => !open && setDeletingVoucher(null)}>
-        <AlertDialogContent className="max-w-[400px] rounded-lg border-none shadow-2xl p-0 overflow-hidden">
-          <div className="bg-slate-950 p-8 text-center">
-            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20 shadow-inner">
-              <History className="w-8 h-8 text-red-500" />
-            </div>
-            <AlertDialogTitle className="text-white text-xl font-black">{lang === 'ar' ? 'إلغاء سند الصرف' : 'Cancel Voucher'}</AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-400 font-bold mt-2 text-xs leading-relaxed">
-              {lang === 'ar' 
-                ? 'تحذير: حذف السند سيؤدي لإلغاء الحركة المالية وإرجاع كافة الكميات المصروفة إلى مخازن الجمعية تلقائياً.' 
-                : 'Warning: Deleting will reverse the financial entry and return all items to inventory.'}
-            </AlertDialogDescription>
-          </div>
-          <div className="bg-white p-6 flex gap-3">
-            <AlertDialogAction onClick={handleDeleteVoucher} disabled={isSubmitting} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-md font-black">
-              {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : (lang === 'ar' ? 'تأكيد الحذف' : 'Confirm')}
-            </AlertDialogAction>
-            <AlertDialogCancel onClick={() => setDeletingVoucher(null)} className="flex-1 h-11 bg-slate-50 border-slate-200 text-slate-400 rounded-md font-black">
-              {lang === 'ar' ? 'تراجع' : 'Cancel'}
-            </AlertDialogCancel>
-          </div>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* SYSTEM NOTE */}
-      <div className="flex-none p-2.5 bg-slate-900 text-white/50 flex items-center justify-center gap-3 print:hidden">
-        <div className="w-6 h-6 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500"><ShieldCheck className="w-3.5 h-3.5" /></div>
+      <div className="flex-none p-2.5 bg-slate-900 text-white/50 flex items-center justify-center gap-3">
+        <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
         <p className="text-[10px] font-bold tracking-tight">
-          {lang === 'ar' 
-            ? 'بروتوكول الأمان: ترحيل السند يؤدي إلى تقييد المواد والمنتجات فوراً كـ "عهدة" على العامل وتكاليف على أمر الإنتاج.' 
-            : 'Security Protocol: Posting instantly assigns items as worker liability and production costs.'}
+          {lang === 'ar' ? 'نظام الرقابة المخزنية: صرف المواد الخام يقلل الرصيد المباشر ويحمل التكلفة على الدفعة.' : 'Inventory Audit System Active.'}
         </p>
       </div>
-
     </div>
   );
 }
