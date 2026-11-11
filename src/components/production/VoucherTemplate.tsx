@@ -201,7 +201,7 @@ export function VoucherTemplate({
                         <TableCell className="text-center font-black text-sm text-blue-700 tabular-nums">
                           {(item.qty || 0).toLocaleString('en-US')}
                         </TableCell>
-                        <TableCell className="text-center text-xs font-bold text-slate-50 uppercase py-4">{item.unit}</TableCell>
+                        <TableCell className="text-center text-xs font-bold text-slate-500 uppercase py-4">{item.unit}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
