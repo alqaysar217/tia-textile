@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
@@ -39,7 +40,10 @@ import {
   Scale,
   RefreshCcw,
   Tag,
-  Info
+  Info,
+  Box,
+  ShoppingBag,
+  ArrowRightLeft
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -107,6 +111,10 @@ export default function ProductionReceiptPage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [batchFilter, setBatchFilter] = useState<string>('all');
 
+  // Dialog Specific Local UI State
+  const [selectedDeptId, setSelectedDeptId] = useState<string>('');
+  const [mivSearch, setMivSearch] = useState('');
+
   // Fetch System Settings for Currency Lock
   const settingsRef = useMemo(() => !db ? null : doc(db, 'settings', 'global'), [db]);
   const { data: savedSettings } = useDoc<any>(settingsRef);
@@ -114,7 +122,7 @@ export default function ProductionReceiptPage() {
 
   // Form State
   const [formData, setFormData] = useState({
-    date: new Date().toISOString().split('T', 1)[0],
+    date: new Date().toISOString().split('T')[0],
     orderId: '',
     workerId: '',
     linkedMIVs: [] as string[], 
@@ -157,20 +165,36 @@ export default function ProductionReceiptPage() {
   
   const relevantWorkers = useMemo(() => {
     if (!formData.orderId || !allWorkers || !allMIVs) return [];
+    
+    // Filter by Dept if selected
+    let filteredWorkers = allWorkers.filter(w => w.status !== 'deleted');
+    if (selectedDeptId) {
+      filteredWorkers = filteredWorkers.filter(w => w.departmentId === selectedDeptId);
+    }
+
+    // Only workers who have MIVs for this specific order
     const workerIdsWithOpenIssues = allMIVs
       .filter(m => m.orderId === formData.orderId && (m.status === 'posted' || m.status === 'settled'))
       .map(m => m.workerId);
-    return allWorkers.filter(w => workerIdsWithOpenIssues.includes(w.id));
-  }, [formData.orderId, allWorkers, allMIVs]);
+      
+    return filteredWorkers.filter(w => workerIdsWithOpenIssues.includes(w.id));
+  }, [formData.orderId, selectedDeptId, allWorkers, allMIVs]);
 
   const openMIVs = useMemo(() => {
     if (!formData.orderId || !formData.workerId || !allMIVs) return [];
-    return allMIVs.filter(m => 
+    let list = allMIVs.filter(m => 
       m.orderId === formData.orderId && 
       m.workerId === formData.workerId && 
       (m.status === 'posted' || (editingVoucherId && formData.linkedMIVs.includes(m.id)))
     );
-  }, [formData.orderId, formData.workerId, allMIVs, editingVoucherId, formData.linkedMIVs]);
+
+    if (mivSearch) {
+      const s = mivSearch.toLowerCase();
+      list = list.filter(m => m.voucherNumber?.toLowerCase().includes(s));
+    }
+
+    return list;
+  }, [formData.orderId, formData.workerId, allMIVs, editingVoucherId, formData.linkedMIVs, mivSearch]);
 
   const issuedMaterialsPool = useMemo(() => {
     if (!formData.linkedMIVs.length || !allMIVs || !vouchers) return [];
@@ -214,7 +238,7 @@ export default function ProductionReceiptPage() {
       setFormData(prev => ({ 
         ...prev, 
         wageRate: targetProduct.wageRate || 0,
-        currency: systemCurrency // Overriding product currency with system lock
+        currency: systemCurrency 
       }));
     }
   }, [targetProduct, editingVoucherId, systemCurrency]);
@@ -423,8 +447,10 @@ export default function ProductionReceiptPage() {
   const resetDialog = () => {
     setIsAddDialogOpen(false);
     setEditingVoucherId(null);
+    setSelectedDeptId('');
+    setMivSearch('');
     setFormData({ 
-      date: new Date().toISOString().split('T', 1)[0], 
+      date: new Date().toISOString().split('T')[0], 
       orderId: '', 
       workerId: '', 
       linkedMIVs: [], 
@@ -464,7 +490,7 @@ export default function ProductionReceiptPage() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#f8fafc] overflow-hidden">
+    <div className="flex flex-col h-full bg-[#f8fafc] overflow-hidden" dir={dir}>
       
       {/* ERP HUB - HEADER */}
       <div className="flex-none bg-white border-b border-slate-200 z-30 px-6 py-4 shadow-sm">
@@ -578,7 +604,7 @@ export default function ProductionReceiptPage() {
                         <Eye className="w-4 h-4" />
                       </Button>
                       <DropdownMenu>
-                        <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-slate-100"><MoreVertical className="w-4 h-4 text-slate-400" /></Button></DropdownMenuTrigger>
+                        <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-slate-100 rounded-lg"><MoreVertical className="w-4 h-4 text-slate-400" /></Button></DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-44 rounded-xl shadow-xl">
                           <DropdownMenuItem onClick={() => { setEditingVoucherId(v.id); setFormData({ ...v }); setIsAddDialogOpen(true); }} className="gap-2 font-bold py-2 cursor-pointer">
                             <Edit2 className="w-3.5 h-3.5 text-emerald-600" /> {lang === 'ar' ? 'تعديل السند' : 'Edit Voucher'}
@@ -612,12 +638,28 @@ export default function ProductionReceiptPage() {
           </div>
 
           <form onSubmit={handleSaveVoucher} className="p-6 space-y-6 bg-white max-h-[85vh] overflow-y-auto no-scrollbar">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* TOP INFO ROW */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2"><Calendar className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'تاريخ التسوية' : 'DATE'}</Label>
+                <Input type="date" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} className="h-11 font-bold bg-slate-50 tabular-nums" required />
+              </div>
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2"><Workflow className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'أمر الإنتاج' : 'BATCH'}</Label>
                 <select value={formData.orderId} onChange={(e) => setFormData({...formData, orderId: e.target.value, workerId: '', linkedMIVs: []})} className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none" required>
                   <option value="">{lang === 'ar' ? '-- اختر أمر الإنتاج --' : '-- Select Batch --'}</option>
                   {activeOrders?.map(o => <option key={o.id} value={o.id}>{o.orderNumber} - {o.title}</option>)}
+                </select>
+              </div>
+            </div>
+
+            {/* SELECTION ROW (DEPT -> WORKER) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2"><Building2 className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'فلترة حسب القسم' : 'FILTER BY DEPT'}</Label>
+                <select value={selectedDeptId} onChange={(e) => { setSelectedDeptId(e.target.value); setFormData({...formData, workerId: '', linkedMIVs: []}); }} className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none">
+                   <option value="">{lang === 'ar' ? 'جميع الأقسام' : 'All Departments'}</option>
+                   {allDepartments?.filter(d => d.status === 'active').map(d => <option key={d.id} value={d.id}>{d.nameAr}</option>)}
                 </select>
               </div>
               <div className="space-y-1.5">
@@ -627,35 +669,100 @@ export default function ProductionReceiptPage() {
                   {relevantWorkers.map(w => <option key={w.id} value={w.id}>{w.fullName}</option>)}
                 </select>
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2"><Calendar className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'تاريخ التسوية' : 'DATE'}</Label>
-                <Input type="date" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} className="h-11 font-bold bg-slate-50 tabular-nums" required />
-              </div>
             </div>
 
-            {openMIVs.length > 0 && (
-              <div className="p-4 bg-amber-50/50 border border-amber-100 rounded-xl space-y-3">
-                <div className="flex items-center justify-between">
-                   <h3 className="text-[10px] font-black text-amber-700 uppercase tracking-widest flex items-center gap-2"><Hash className="w-3.5 h-3.5" /> {lang === 'ar' ? 'سندات الصرف المفتوحة (التي سيتم تسويتها)' : 'Open Issue Vouchers (Liability)'}</h3>
-                   <div className="flex items-center gap-2 bg-white px-3 py-1 rounded-lg border border-amber-200">
-                      <Checkbox id="finalSettlement" checked={formData.isFinalSettlement} onCheckedChange={(val) => setFormData({...formData, isFinalSettlement: !!val})} />
-                      <label htmlFor="finalSettlement" className="text-[10px] font-black text-slate-600 cursor-pointer">{lang === 'ar' ? 'إغلاق السندات المختارة نهائياً' : 'Final Closure'}</label>
-                   </div>
+            {/* LIABILITIES (MIVs) GRID SELECTION */}
+            {formData.workerId && (
+              <div className="p-4 bg-amber-50/50 border border-amber-100 rounded-[1.5rem] space-y-4">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <h3 className="text-[10px] font-black text-amber-700 uppercase tracking-widest flex items-center gap-2">
+                      <Hash className="w-3.5 h-3.5" /> 
+                      {lang === 'ar' ? 'سندات الصرف المفتوحة (التي سيتم تسويتها)' : 'Open Issue Vouchers (Liability)'}
+                    </h3>
+                    <p className="text-[9px] text-amber-600/60 font-bold">{lang === 'ar' ? 'اختر السندات التي تم إنجاز العمل المطلوب فيها' : 'Select vouchers that have been completed'}</p>
+                  </div>
+                  
+                  <div className="flex items-center gap-3">
+                    <div className="relative">
+                      <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-amber-300" />
+                      <Input 
+                        value={mivSearch}
+                        onChange={(e) => setMivSearch(e.target.value)}
+                        placeholder={lang === 'ar' ? 'بحث بالسند...' : 'Search voucher...'} 
+                        className="h-8 w-40 bg-white/80 border-amber-200 text-[10px] font-bold pr-8" 
+                      />
+                    </div>
+                    <div className="flex items-center gap-2 bg-white px-3 py-1 rounded-lg border border-amber-200">
+                      <Checkbox id="finalSettlement" checked={formData.isFinalSettlement} onValueChange={(val) => setFormData({...formData, isFinalSettlement: !!val})} />
+                      <label htmlFor="finalSettlement" className="text-[10px] font-black text-slate-600 cursor-pointer">{lang === 'ar' ? 'إغلاق نهائي' : 'Final Closure'}</label>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {openMIVs.map(m => (
-                    <button key={m.id} type="button" onClick={() => {
-                      const exists = formData.linkedMIVs.includes(m.id);
-                      setFormData({ ...formData, linkedMIVs: exists ? formData.linkedMIVs.filter(id => id !== m.id) : [...formData.linkedMIVs, m.id], returnedItems: [] });
-                    }} className={cn("px-3 py-1.5 rounded-lg border text-[10px] font-black transition-all flex items-center gap-2", formData.linkedMIVs.includes(m.id) ? "bg-emerald-600 text-white border-emerald-700 shadow-md" : "bg-white text-slate-600 border-slate-200 hover:border-amber-300")}>
-                      {formData.linkedMIVs.includes(m.id) ? <CheckCircle2 className="w-3 h-3" /> : <FileText className="w-3 h-3" />}
-                      {m.voucherNumber} ({(m.items?.length || 0).toLocaleString('en-US')} {lang === 'ar' ? 'أصناف' : 'Items'})
-                    </button>
-                  ))}
-                </div>
+
+                <ScrollArea className="h-[180px] w-full pr-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pb-4">
+                    {openMIVs.map(m => {
+                      const matCount = m.items?.filter((i: any) => i.itemType === 'material' || !i.itemType).length || 0;
+                      const prodCount = m.items?.filter((i: any) => i.itemType === 'product').length || 0;
+                      const isSelected = formData.linkedMIVs.includes(m.id);
+                      
+                      return (
+                        <div 
+                          key={m.id} 
+                          onClick={() => {
+                            const exists = formData.linkedMIVs.includes(m.id);
+                            setFormData({ 
+                              ...formData, 
+                              linkedMIVs: exists ? formData.linkedMIVs.filter(id => id !== m.id) : [...formData.linkedMIVs, m.id], 
+                              returnedItems: [] 
+                            });
+                          }}
+                          className={cn(
+                            "p-3 rounded-2xl border-2 transition-all cursor-pointer group flex flex-col gap-2 relative overflow-hidden",
+                            isSelected 
+                              ? "bg-emerald-600 border-emerald-700 text-white shadow-lg" 
+                              : "bg-white border-slate-100 hover:border-amber-200 text-slate-600"
+                          )}
+                        >
+                          <div className="flex justify-between items-start">
+                             <div className="flex items-center gap-2">
+                                <div className={cn("p-1.5 rounded-lg", isSelected ? "bg-white/10" : "bg-slate-50 text-emerald-600")}>
+                                   <FileText className="w-3.5 h-3.5" />
+                                </div>
+                                <span className="text-[11px] font-black tabular-nums">{m.voucherNumber}</span>
+                             </div>
+                             {isSelected && <div className="p-1 bg-white rounded-full text-emerald-600 shadow-sm"><Check className="w-2.5 h-2.5" /></div>}
+                          </div>
+
+                          <div className="flex flex-wrap gap-2 mt-1">
+                             {matCount > 0 && (
+                               <div className={cn("flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[9px] font-black", isSelected ? "bg-white/10" : "bg-emerald-50 text-emerald-700")}>
+                                  <Box className="w-2.5 h-2.5" /> {matCount} {lang === 'ar' ? 'مواد' : 'Materials'}
+                               </div>
+                             )}
+                             {prodCount > 0 && (
+                               <div className={cn("flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[9px] font-black", isSelected ? "bg-white/10" : "bg-blue-50 text-blue-700")}>
+                                  <ArrowRightLeft className="w-2.5 h-2.5" /> {prodCount} {lang === 'ar' ? 'قطع محولة' : 'Products'}
+                               </div>
+                             )}
+                          </div>
+                          
+                          <div className={cn("mt-1 text-[8px] font-bold tabular-nums opacity-60", isSelected ? "text-white" : "text-slate-400")}>
+                            {m.date}
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {openMIVs.length === 0 && (
+                      <div className="col-span-2 py-10 text-center text-[10px] font-black text-amber-300 uppercase tracking-widest">{lang === 'ar' ? 'لا توجد عهد مفتوحة' : 'No Open Liabilities'}</div>
+                    )}
+                  </div>
+                </ScrollArea>
               </div>
             )}
 
+            {/* PRODUCTION ACCEPTANCE ROW */}
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
               <div className="md:col-span-4 space-y-4">
                 <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl text-center space-y-3">
@@ -688,7 +795,6 @@ export default function ProductionReceiptPage() {
                       <p className="text-[9px] font-black text-emerald-800 uppercase">{lang === 'ar' ? 'أجر القطعة الواحد' : 'WAGE PER PIECE'}</p>
                       <div className="flex items-center gap-2">
                         <Input type="number" step="any" value={formData.wageRate || ''} onChange={(e) => setFormData({...formData, wageRate: Number(e.target.value)})} className="h-8 w-24 text-xs font-black tabular-nums" required min="0.01" />
-                        {/* FIXED: Currency lock applied to Receipt Page */}
                         <select 
                           value={formData.currency} 
                           disabled 
@@ -709,7 +815,8 @@ export default function ProductionReceiptPage() {
               </div>
             </div>
 
-            <div className="p-4 bg-blue-50/30 border border-blue-100 rounded-2xl space-y-4">
+            {/* RETURNS SECTION */}
+            <div className="p-4 bg-blue-50/30 border border-blue-100 rounded-[1.5rem] space-y-4">
               <h3 className="text-[10px] font-black text-blue-700 uppercase tracking-widest flex items-center gap-2"><RefreshCcw className="w-3.5 h-3.5" /> {lang === 'ar' ? 'استرجاع المواد الخام المتبقية (تصفية عهدة)' : 'RETURN REMAINING RAW MATERIALS (LIABILITY)'}</h3>
               <div className="flex flex-col md:flex-row gap-3 items-end">
                 <div className="flex-1 space-y-1.5">
