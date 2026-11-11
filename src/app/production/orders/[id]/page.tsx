@@ -45,7 +45,8 @@ import {
   FileDown,
   Zap,
   Briefcase,
-  Truck
+  Truck,
+  Calculator
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from '@/components/LanguageProvider';
@@ -263,13 +264,6 @@ export default function OrderDetailsDashboard() {
 
     return stageCompletion + transferredCompletion;
   }, [vouchers, finalStage]);
-
-  const totalTransferredToWh = useMemo(() => {
-    if (!vouchers) return 0;
-    return vouchers
-      .filter(v => v.type === 'production_receipt' && v.isTransferred && v.status !== 'deleted')
-      .reduce((sum, v) => sum + (v.qtyAccepted || 0), 0);
-  }, [vouchers]);
 
   const avgCostPerPiece = useMemo(() => {
     return finalCompletedQty > 0 ? Math.round(grandTotalCost / finalCompletedQty) : 0;
@@ -579,7 +573,7 @@ export default function OrderDetailsDashboard() {
                     <SummaryStatCard label={isRtl ? 'تكاليف أخرى' : 'OVERHEAD'} value={totalOtherCosts} currency={systemCurrency} icon={<Receipt className="w-4 h-4" />} color="text-rose-700" bgColor="bg-rose-500/10" />
                     <SummaryStatCard label={isRtl ? 'الإجمالي الكلي' : 'TOTAL COST'} value={grandTotalCost} currency={systemCurrency} icon={<Coins className="w-4 h-4" />} color="text-emerald-800" bgColor="bg-emerald-600/10" />
                     <SummaryStatCard label={isRtl ? 'قطع منجزة' : 'FINISHED'} value={finalCompletedQty} currency={isRtl ? 'قطعة' : 'Pcs'} icon={<CheckCircle2 className="w-4 h-4" />} color="text-blue-700" bgColor="bg-blue-500/10" />
-                    <SummaryStatCard label={isRtl ? 'المرحل للمستودع' : 'TRANSFERRED'} value={totalTransferredToWh} currency={isRtl ? 'قطعة' : 'Pcs'} icon={<Truck className="w-4 h-4" />} color="text-emerald-600" bgColor="bg-emerald-600/5" />
+                    <SummaryStatCard label={isRtl ? 'تكلفة القطعة' : 'COST/PCS'} value={avgCostPerPiece} currency={systemCurrency} icon={<Calculator className="w-4 h-4" />} color="text-rose-600" bgColor="bg-rose-600/5" />
                   </div>
                </div>
 
