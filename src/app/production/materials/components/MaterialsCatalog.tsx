@@ -72,31 +72,31 @@ export function MaterialsCatalog({
   };
 
   return (
-    <div className="flex-1 bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden flex flex-col">
-      <div className="flex-1 overflow-auto no-scrollbar relative">
-        <Table className="text-right">
+    <div className="flex-1 min-h-0 bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden flex flex-col">
+      <div className="flex-1 overflow-auto relative">
+        <Table className="text-right border-separate border-spacing-0">
           <TableHeader className="sticky top-0 z-20 bg-slate-100/95 backdrop-blur-sm shadow-sm">
-            <TableRow>
-              <TableHead className={cn("h-10 font-bold text-[11px] text-slate-500 px-6", isRtl ? "text-right" : "text-left")}>
+            <TableRow className="border-b border-slate-200">
+              <TableHead className={cn("h-10 font-bold text-[11px] text-slate-500 px-6 whitespace-nowrap bg-inherit", isRtl ? "text-right" : "text-left")}>
                 <button onClick={() => toggleSort('code')} className="flex items-center gap-2 hover:text-emerald-700 transition-colors uppercase">
                   {isRtl ? 'المادة' : 'ITEM'}
                   {sortBy === 'code' ? (sortOrder === 'asc' ? <ArrowUp01 className="w-3 h-3" /> : <ArrowDown10 className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-30" />}
                 </button>
               </TableHead>
-              <TableHead className={cn("h-10 font-bold text-[11px] text-slate-500 px-6", isRtl ? "text-right" : "text-left")}>{isRtl ? 'الفئة' : 'CATEGORY'}</TableHead>
-              <TableHead className="h-10 font-bold text-[11px] text-slate-500 px-6 text-center">
+              <TableHead className={cn("h-10 font-bold text-[11px] text-slate-500 px-6 whitespace-nowrap bg-inherit", isRtl ? "text-right" : "text-left")}>{isRtl ? 'الفئة' : 'CATEGORY'}</TableHead>
+              <TableHead className="h-10 font-bold text-[11px] text-slate-500 px-6 text-center whitespace-nowrap bg-inherit">
                 <button onClick={() => toggleSort('currentQty')} className="flex items-center gap-2 mx-auto hover:text-emerald-700 transition-colors uppercase">
                   {isRtl ? 'المخزون' : 'ON HAND'}
                   {sortBy === 'currentQty' ? (sortOrder === 'asc' ? <ArrowUp01 className="w-3 h-3" /> : <ArrowDown10 className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-30" />}
                 </button>
               </TableHead>
-              <TableHead className="h-10 font-bold text-[11px] text-slate-500 px-6 text-center">
+              <TableHead className="h-10 font-bold text-[11px] text-slate-500 px-6 text-center whitespace-nowrap bg-inherit">
                 <button onClick={() => toggleSort('price')} className="flex items-center gap-2 mx-auto hover:text-emerald-700 transition-colors uppercase">
                   {isRtl ? 'السعر' : 'PRICE'}
                   {sortBy === 'price' ? (sortOrder === 'asc' ? <ArrowUp01 className="w-3 h-3" /> : <ArrowDown10 className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-30" />}
                 </button>
               </TableHead>
-              <TableHead className="h-10 font-bold text-[11px] text-slate-500 px-6 text-center">{isRtl ? 'الحالة' : 'STATUS'}</TableHead>
+              <TableHead className="h-10 font-bold text-[11px] text-slate-500 px-6 text-center whitespace-nowrap bg-inherit">{isRtl ? 'الحالة' : 'STATUS'}</TableHead>
               <TableHead className="h-10 w-[60px] sticky right-0 bg-inherit shadow-[-2px_0_5px_rgba(0,0,0,0.05)]"></TableHead>
             </TableRow>
           </TableHeader>
@@ -161,10 +161,10 @@ export function MaterialsCatalog({
                        (isRtl ? 'جيد' : 'Available')}
                     </div>
                   </TableCell>
-                  <TableCell className="px-6 py-3 sticky right-0 bg-white group-hover:bg-slate-50/50 shadow-[-10px_0_10px_-5px_rgba(0,0,0,0.05)]">
+                  <TableCell className="px-6 py-3 sticky right-0 bg-white group-hover:bg-slate-50/50 shadow-[-10px_0_10px_-5px_rgba(0,0,0,0.05)] border-l border-slate-100">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-slate-200"><MoreVertical className="w-4 h-4 text-slate-400" /></Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-slate-200 border border-transparent"><MoreVertical className="w-4 h-4 text-slate-400" /></Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="rounded-lg border-slate-200 shadow-xl min-w-[200px]">
                         <DropdownMenuItem onClick={() => onStockIn(mat.id)} className="gap-3 font-bold text-xs py-2.5 cursor-pointer">

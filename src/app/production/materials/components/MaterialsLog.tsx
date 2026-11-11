@@ -28,17 +28,17 @@ export function MaterialsLog({ loading, transactions, materials, lang }: Materia
   const isRtl = lang === 'ar';
 
   return (
-    <div className="flex-1 bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden flex flex-col">
-      <div className="flex-1 overflow-auto no-scrollbar relative">
-        <Table className="text-right">
+    <div className="flex-1 min-h-0 bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden flex flex-col">
+      <div className="flex-1 overflow-auto relative">
+        <Table className="text-right border-separate border-spacing-0">
           <TableHeader className="sticky top-0 z-20 bg-slate-50 shadow-sm">
-            <TableRow>
-              <TableHead className={cn("h-10 font-bold text-[11px] text-slate-500 px-6", isRtl ? "text-right" : "text-left")}>
+            <TableRow className="border-b border-slate-200">
+              <TableHead className={cn("h-10 font-bold text-[11px] text-slate-500 px-6 whitespace-nowrap bg-inherit", isRtl ? "text-right" : "text-left")}>
                 <div className="flex items-center gap-2 uppercase"><Calendar className="w-3 h-3" /> {isRtl ? 'التاريخ والوقت' : 'DATE & TIME'}</div>
               </TableHead>
-              <TableHead className={cn("h-10 font-bold text-[11px] text-slate-500 px-6", isRtl ? "text-right" : "text-left")}>{isRtl ? 'المادة الخام' : 'MATERIAL'}</TableHead>
-              <TableHead className="h-10 font-bold text-[11px] text-slate-500 px-6 text-center">{isRtl ? 'نوع العملية' : 'TYPE'}</TableHead>
-              <TableHead className="h-10 font-bold text-[11px] text-slate-500 px-6 text-center">{isRtl ? 'الكمية المضافة' : 'IN QTY'}</TableHead>
+              <TableHead className={cn("h-10 font-bold text-[11px] text-slate-500 px-6 whitespace-nowrap bg-inherit", isRtl ? "text-right" : "text-left")}>{isRtl ? 'المادة الخام' : 'MATERIAL'}</TableHead>
+              <TableHead className="h-10 font-bold text-[11px] text-slate-500 px-6 text-center whitespace-nowrap bg-inherit">{isRtl ? 'نوع العملية' : 'TYPE'}</TableHead>
+              <TableHead className="h-10 font-bold text-[11px] text-slate-500 px-6 text-center whitespace-nowrap bg-inherit">{isRtl ? 'الكمية المضافة' : 'IN QTY'}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

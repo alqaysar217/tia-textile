@@ -16,7 +16,7 @@ import {
 } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { Tabs, TabsContent } from "@/components/ui/tabs";
-import { Info, History, Box } from 'lucide-react';
+import { Info } from 'lucide-react';
 import { 
   AlertDialog, 
   AlertDialogAction, 
@@ -232,19 +232,21 @@ export default function MaterialsPage() {
         sortOrder={sortOrder} categories={categories}
       />
 
-      <div className="flex-1 min-h-0 flex flex-col p-4 no-scrollbar">
-        <TabsContent value="catalog" className="flex-1 min-h-0 focus-visible:ring-0 mt-0">
-            <MaterialsCatalog 
-              loading={mLoading} filteredMaterials={filteredMaterials} categories={categories} 
-              lang={lang} dir={dir} onStockIn={(id) => { setStockInForm({ materialId: id, qty: 1 }); setIsStockInDialogOpen(true); }}
-              onEdit={(mat) => { setEditingMatId(mat.id); setFormData({...mat}); setIsAddDialogOpen(true); }}
-              onDelete={(id) => setDeletingMatId(id)} sortBy={sortBy} sortOrder={sortOrder} toggleSort={(k) => setSortBy(k)}
-            />
-        </TabsContent>
+      <div className="flex-1 min-h-0 flex flex-col p-4 overflow-hidden">
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+          <TabsContent value="catalog" className="flex-1 min-h-0 focus-visible:ring-0 mt-0 data-[state=active]:flex flex-col overflow-hidden">
+              <MaterialsCatalog 
+                loading={mLoading} filteredMaterials={filteredMaterials} categories={categories} 
+                lang={lang} dir={dir} onStockIn={(id) => { setStockInForm({ materialId: id, qty: 1 }); setIsStockInDialogOpen(true); }}
+                onEdit={(mat) => { setEditingMatId(mat.id); setFormData({...mat}); setIsAddDialogOpen(true); }}
+                onDelete={(id) => setDeletingMatId(id)} sortBy={sortBy} sortOrder={sortOrder} toggleSort={(k) => setSortBy(k)}
+              />
+          </TabsContent>
 
-        <TabsContent value="logs" className="flex-1 min-h-0 focus-visible:ring-0 mt-0">
-            <MaterialsLog loading={tLoading} transactions={transactions || []} materials={materials || []} lang={lang} />
-        </TabsContent>
+          <TabsContent value="logs" className="flex-1 min-h-0 focus-visible:ring-0 mt-0 data-[state=active]:flex flex-col overflow-hidden">
+              <MaterialsLog loading={tLoading} transactions={transactions || []} materials={materials || []} lang={lang} />
+          </TabsContent>
+        </div>
 
         {/* SYSTEM FOOTER */}
         <div className="mt-4 flex-none bg-slate-900 rounded-lg p-3 text-white flex items-center gap-4 border border-slate-800 shadow-inner">
