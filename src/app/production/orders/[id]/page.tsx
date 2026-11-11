@@ -156,12 +156,14 @@ export default function OrderDetailsDashboard() {
   const deptsQuery = useMemo(() => !db ? null : query(collection(db, 'departments'), where('status', '!=', 'deleted')), [db]);
   const workersQuery = useMemo(() => !db ? null : collection(db, 'workers'), [db]);
   const productsQuery = useMemo(() => !db ? null : collection(db, 'products'), [db]);
+  const allOrdersQuery = useMemo(() => !db ? null : collection(db, 'productionOrders'), [db]);
 
   const { data: order, loading: orderLoading } = useDoc<any>(orderRef);
   const { data: rawVouchers, loading: vouchersLoading } = useCollection<any>(vouchersQuery);
   const { data: departments, loading: deptsLoading } = useCollection<any>(deptsQuery);
   const { data: workers } = useCollection<any>(workersQuery);
   const { data: products } = useCollection<any>(productsQuery);
+  const { data: allOrders } = useCollection<any>(allOrdersQuery);
 
   const [editFormData, setEditFormDate] = useState({
     title: '',
@@ -328,7 +330,7 @@ export default function OrderDetailsDashboard() {
       let valB = b[costSortBy === 'amount' ? 'totalAmount' : costSortBy] ?? '';
       if (costSortBy === 'date') return costSortOrder === 'asc' ? new Date(valA).getTime() - new Date(valB).getTime() : new Date(valB).getTime() - new Date(valA).getTime();
       if (costSortBy === 'amount') return costSortOrder === 'asc' ? Number(valA) - Number(valB) : Number(valB) - Number(valA);
-      return costSortOrder === 'asc' ? String(valA).localeCompare(String(valB), 'ar') : String(valB).localeCompare(String(valA), 'ar');
+      return sortOrder === 'asc' ? String(valA).localeCompare(String(valB), 'ar') : String(valB).localeCompare(String(valA), 'ar');
     });
   }, [vouchers, costSearch, costSortBy, costSortOrder]);
 
