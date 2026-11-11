@@ -671,16 +671,16 @@ export default function ProductionReceiptPage() {
               </div>
             </div>
 
-            {/* LIABILITIES (MIVs) GRID SELECTION */}
+            {/* LIABILITIES (MIVs) GRID SELECTION - REDESIGNED COMPACT CARDS */}
             {formData.workerId && (
               <div className="p-4 bg-amber-50/50 border border-amber-100 rounded-[1.5rem] space-y-4">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div className="space-y-1">
                     <h3 className="text-[10px] font-black text-amber-700 uppercase tracking-widest flex items-center gap-2">
                       <Hash className="w-3.5 h-3.5" /> 
-                      {lang === 'ar' ? 'سندات الصرف المفتوحة (التي سيتم تسويتها)' : 'Open Issue Vouchers (Liability)'}
+                      {lang === 'ar' ? 'سندات العُهد المفتوحة (التي سيتم تسويتها)' : 'Open Liability Vouchers'}
                     </h3>
-                    <p className="text-[9px] text-amber-600/60 font-bold">{lang === 'ar' ? 'اختر السندات التي تم إنجاز العمل المطلوب فيها' : 'Select vouchers that have been completed'}</p>
+                    <p className="text-[9px] text-amber-600/60 font-bold">{lang === 'ar' ? 'اختر السندات التي تم إنجاز العمل المطلوب فيها' : 'Select vouchers for settlement'}</p>
                   </div>
                   
                   <div className="flex items-center gap-3">
@@ -705,11 +705,12 @@ export default function ProductionReceiptPage() {
                 </div>
 
                 <ScrollArea className="h-[180px] w-full pr-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pb-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pb-4">
                     {openMIVs.map(m => {
                       const matCount = m.items?.filter((i: any) => i.itemType === 'material' || !i.itemType).length || 0;
                       const prodCount = m.items?.filter((i: any) => i.itemType === 'product').length || 0;
                       const isSelected = formData.linkedMIVs.includes(m.id);
+                      const workerOfMiv = allWorkers?.find(w => w.id === m.workerId);
                       
                       return (
                         <div 
@@ -723,38 +724,34 @@ export default function ProductionReceiptPage() {
                             });
                           }}
                           className={cn(
-                            "p-3 rounded-2xl border-2 transition-all cursor-pointer group flex flex-col gap-2 relative overflow-hidden",
+                            "p-2 rounded-xl border-2 transition-all cursor-pointer relative overflow-hidden group flex items-center h-[54px]",
                             isSelected 
-                              ? "bg-emerald-600 border-emerald-700 text-white shadow-lg" 
-                              : "bg-white border-slate-100 hover:border-amber-200 text-slate-600"
+                              ? "bg-emerald-600 border-emerald-700 text-white shadow-md" 
+                              : "bg-white border-slate-100 hover:border-amber-200 text-slate-600 shadow-sm"
                           )}
                         >
-                          <div className="flex justify-between items-start">
-                             <div className="flex items-center gap-2">
-                                <div className={cn("p-1.5 rounded-lg", isSelected ? "bg-white/10" : "bg-slate-50 text-emerald-600")}>
-                                   <FileText className="w-3.5 h-3.5" />
-                                </div>
-                                <span className="text-[11px] font-black tabular-nums">{m.voucherNumber}</span>
-                             </div>
-                             {isSelected && <div className="p-1 bg-white rounded-full text-emerald-600 shadow-sm"><Check className="w-2.5 h-2.5" /></div>}
-                          </div>
+                          <div className="flex items-center justify-between w-full gap-3 px-1">
+                            <div className="flex items-center gap-2 min-w-0">
+                               <div className={cn("p-1.5 rounded-lg shrink-0", isSelected ? "bg-white/10" : "bg-slate-50 text-emerald-600")}>
+                                  <FileText className="w-4 h-4" />
+                               </div>
+                               <div className="flex flex-col min-w-0 leading-tight">
+                                  <span className="text-[10px] font-black tabular-nums truncate">{m.voucherNumber}</span>
+                                  <span className={cn("text-[8px] font-bold truncate opacity-80", isSelected ? "text-emerald-50" : "text-slate-400")}>
+                                    {workerOfMiv?.fullName || '---'}
+                                  </span>
+                               </div>
+                            </div>
 
-                          <div className="flex flex-wrap gap-2 mt-1">
-                             {matCount > 0 && (
-                               <div className={cn("flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[9px] font-black", isSelected ? "bg-white/10" : "bg-emerald-50 text-emerald-700")}>
-                                  <Box className="w-2.5 h-2.5" /> {matCount} {lang === 'ar' ? 'مواد' : 'Materials'}
+                            <div className="flex flex-col items-end gap-0.5 shrink-0 text-right">
+                               <div className="flex items-center gap-1">
+                                  {matCount > 0 && <span className={cn("px-1.5 py-0.5 rounded text-[8px] font-black", isSelected ? "bg-white/20 text-white" : "bg-emerald-50 text-emerald-700")}>{matCount} {lang === 'ar' ? 'مواد' : 'Mat'}</span>}
+                                  {prodCount > 0 && <span className={cn("px-1.5 py-0.5 rounded text-[8px] font-black", isSelected ? "bg-white/20 text-white" : "bg-blue-50 text-blue-700")}>{prodCount} {lang === 'ar' ? 'قطع' : 'Pcs'}</span>}
                                </div>
-                             )}
-                             {prodCount > 0 && (
-                               <div className={cn("flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[9px] font-black", isSelected ? "bg-white/10" : "bg-blue-50 text-blue-700")}>
-                                  <ArrowRightLeft className="w-2.5 h-2.5" /> {prodCount} {lang === 'ar' ? 'قطع محولة' : 'Products'}
-                               </div>
-                             )}
+                               <span className={cn("text-[8px] font-bold tabular-nums opacity-60", isSelected ? "text-white" : "text-slate-400")}>{m.date}</span>
+                            </div>
                           </div>
-                          
-                          <div className={cn("mt-1 text-[8px] font-bold tabular-nums opacity-60", isSelected ? "text-white" : "text-slate-400")}>
-                            {m.date}
-                          </div>
+                          {isSelected && <div className="absolute top-1 right-1 rtl:left-1 rtl:right-auto"><Check className="w-2.5 h-2.5 text-white" /></div>}
                         </div>
                       );
                     })}
@@ -941,3 +938,4 @@ export default function ProductionReceiptPage() {
     </div>
   );
 }
+
