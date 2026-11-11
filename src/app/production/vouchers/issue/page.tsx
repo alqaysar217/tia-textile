@@ -94,6 +94,8 @@ export default function MaterialIssuePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [showWorkerDropdown, setShowWorkerDropdown] = useState(false);
+  const [showProductDropdown, setShowProductDropdown] = useState(false);
+  const [productSearch, setProductSearch] = useState('');
   const [search, setSearch] = useState('');
   
   // Advanced Filtering & Sorting State
@@ -103,6 +105,7 @@ export default function MaterialIssuePage() {
   const [deptFilter, setDeptFilter] = useState<string>('all');
 
   const workerDropdownRef = useRef<HTMLDivElement>(null);
+  const productDropdownRef = useRef<HTMLDivElement>(null);
   
   // Selection filtering state
   const [selectedDeptId, setSelectedDeptId] = useState<string>('');
@@ -202,11 +205,6 @@ export default function MaterialIssuePage() {
     return allWorkers?.find(w => w.id === formData.workerId);
   }, [allWorkers, formData.workerId]);
 
-  const selectedSupervisor = useMemo(() => {
-    if (!selectedWorker) return null;
-    return allWorkers?.find(w => w.id === selectedWorker.supervisorId);
-  }, [allWorkers, selectedWorker]);
-
   // حساب القطع المتاحة للصرف من واقع الاستلامات السابقة
   const availableOrderProducts = useMemo(() => {
     if (!formData.orderId || !productionReceipts) return [];
@@ -232,6 +230,8 @@ export default function MaterialIssuePage() {
     return left > 0 ? [{
       id: product.id,
       nameAr: product.nameAr,
+      image: product.image,
+      sku: product.sku,
       availableQty: left,
       unit: lang === 'ar' ? 'قطعة' : 'Pcs'
     }] : [];
@@ -241,6 +241,9 @@ export default function MaterialIssuePage() {
     function handleClickOutside(event: MouseEvent) {
       if (workerDropdownRef.current && !workerDropdownRef.current.contains(event.target as Node)) {
         setShowWorkerDropdown(false);
+      }
+      if (productDropdownRef.current && !productDropdownRef.current.contains(event.target as Node)) {
+        setShowProductDropdown(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -310,6 +313,7 @@ export default function MaterialIssuePage() {
     }
     
     setCurrentItem({ id: '', qty: 1, type: 'material' });
+    setProductSearch('');
   };
 
   const removeItem = (id: string, type: string) => {
@@ -435,7 +439,9 @@ export default function MaterialIssuePage() {
     setEditingVoucherId(null);
     setSelectedDeptId('');
     setWorkerSearch('');
+    setProductSearch('');
     setShowWorkerDropdown(false);
+    setShowProductDropdown(false);
     setFormData({ date: new Date().toISOString().split('T')[0], orderId: '', workerId: '', supervisorId: '', notes: '', items: [] });
   };
 
@@ -639,7 +645,7 @@ export default function MaterialIssuePage() {
 
           <form onSubmit={handleSaveVoucher} className="p-6 space-y-6 bg-white max-h-[85vh] overflow-y-auto no-scrollbar">
             
-            {/* الحقول الأربعة الأساسية بالترتيب الجديد */}
+            {/* الحقول الأربعة الأساسية */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
@@ -761,25 +767,96 @@ export default function MaterialIssuePage() {
               </div>
             </div>
 
-            {/* قسم صرف المنتجات (المعاوز نصف المصنعة) */}
+            {/* قسم صرف المنتجات (المعاوز نصف المصنعة) - واجهة بحث مطورة بالصور */}
             {formData.orderId && (
               <div className="p-4 bg-blue-50/30 rounded-xl border border-blue-100 shadow-sm space-y-4">
                 <h3 className="text-[10px] font-black text-blue-700 uppercase tracking-widest flex items-center gap-2">
                   <ArrowRightLeft className="w-3.5 h-3.5" /> {lang === 'ar' ? 'إضافة منتجات من مراحل سابقة (ربط المراحل)' : 'ISSUE SEMI-FINISHED PRODUCTS'}
                 </h3>
                 <div className="flex flex-col md:flex-row gap-3 items-end">
-                  <div className="flex-1 space-y-1.5">
+                  <div className="flex-1 space-y-1.5 relative" ref={productDropdownRef}>
                     <Label className="text-[9px] font-bold text-slate-500">{lang === 'ar' ? 'المنتج المتاح للصرف' : 'AVAILABLE PRODUCT'}</Label>
-                    <select 
-                      value={currentItem.type === 'product' ? currentItem.id : ''} 
-                      onChange={(e) => setCurrentItem({ ...currentItem, id: e.target.value, type: 'product' })}
-                      className="w-full h-10 px-3 bg-white text-slate-900 border border-slate-200 rounded-md text-xs font-bold outline-none focus:ring-1 focus:ring-blue-500"
+                    
+                    <button
+                      type="button"
+                      onClick={() => setShowProductDropdown(!showProductDropdown)}
+                      className={cn(
+                        "flex h-10 w-full items-center justify-between rounded-md border border-slate-200 bg-white px-3 py-2 text-sm transition-all focus:outline-none focus:ring-1 focus:ring-blue-500",
+                        !currentItem.id && "text-slate-400 font-bold"
+                      )}
                     >
-                      <option value="">{lang === 'ar' ? '-- اختر المنتج المنجز سابقا --' : '-- Select Completed Product --'}</option>
-                      {availableOrderProducts.map(p => (
-                        <option key={p.id} value={p.id}>{p.nameAr} ({lang === 'ar' ? 'المتاح:' : 'Available:'} {p.availableQty} {p.unit})</option>
-                      ))}
-                    </select>
+                      {currentItem.id && currentItem.type === 'product' ? (
+                        <div className="flex items-center gap-3 text-right">
+                          <Avatar className="h-6 w-6 border border-slate-200">
+                            <AvatarImage src={availableOrderProducts.find(p => p.id === currentItem.id)?.image} className="object-cover" />
+                            <AvatarFallback className="text-[8px] font-black bg-slate-100 text-slate-500">
+                              {availableOrderProducts.find(p => p.id === currentItem.id)?.nameAr?.charAt(0)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="text-[11px] font-black text-slate-900 truncate">
+                            {availableOrderProducts.find(p => p.id === currentItem.id)?.nameAr}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-xs">{lang === 'ar' ? '-- اختر المنتج المنجز سابقا --' : '-- Select Completed Product --'}</span>
+                      )}
+                      <ChevronDown className={cn("h-4 w-4 opacity-50 transition-transform", showProductDropdown && "rotate-180")} />
+                    </button>
+
+                    {showProductDropdown && (
+                      <div className={cn(
+                        "absolute top-full left-0 right-0 z-50 mt-1 bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200",
+                        dir === 'rtl' ? "text-right" : "text-left"
+                      )}>
+                        <div className="p-2 bg-slate-50 border-b border-slate-100">
+                          <div className="relative">
+                            <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400`} />
+                            <Input 
+                              autoFocus
+                              value={productSearch}
+                              onChange={(e) => setProductSearch(e.target.value)}
+                              placeholder={lang === 'ar' ? 'بحث باسم المنتج...' : 'Search product...'}
+                              className={`${dir === 'rtl' ? 'pr-9 pl-3' : 'pl-9 pr-3'} h-9 bg-white border-slate-200 text-xs font-bold`}
+                            />
+                          </div>
+                        </div>
+                        <ScrollArea className="h-[200px]">
+                          <div className="p-1">
+                            {availableOrderProducts.filter(p => p.nameAr.toLowerCase().includes(productSearch.toLowerCase())).length === 0 ? (
+                              <div className="text-center py-6">
+                                <p className="text-xs font-bold text-slate-400">{lang === 'ar' ? 'لا توجد منتجات متاحة' : 'No available products'}</p>
+                              </div>
+                            ) : availableOrderProducts.filter(p => p.nameAr.toLowerCase().includes(productSearch.toLowerCase())).map(p => (
+                              <button
+                                key={p.id}
+                                type="button"
+                                onClick={() => {
+                                  setCurrentItem({ ...currentItem, id: p.id, type: 'product' });
+                                  setShowProductDropdown(false);
+                                }}
+                                className={cn(
+                                  "flex items-center gap-3 w-full p-2 rounded-lg transition-all text-right hover:bg-slate-50 mb-0.5",
+                                  currentItem.id === p.id && "bg-blue-50"
+                                )}
+                              >
+                                <Avatar className="h-8 w-8 border border-white shadow-sm shrink-0">
+                                  <AvatarImage src={p.image} className="object-cover" />
+                                  <AvatarFallback className="text-[9px] font-black bg-slate-100 text-slate-500">{p.nameAr?.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1 overflow-hidden text-right">
+                                  <p className={cn("text-[11px] font-black leading-tight", currentItem.id === p.id ? "text-blue-700" : "text-slate-800")}>{p.nameAr}</p>
+                                  <div className="flex items-center justify-between mt-0.5">
+                                    <span className="text-[8px] font-bold text-slate-400 tabular-nums uppercase">{p.sku}</span>
+                                    <span className="text-[9px] font-black text-emerald-600">{lang === 'ar' ? 'المتاح:' : 'Stock:'} {p.availableQty} {p.unit}</span>
+                                  </div>
+                                </div>
+                                {currentItem.id === p.id && <Check className="w-3.5 h-3.5 text-blue-600" />}
+                              </button>
+                            ))}
+                          </div>
+                        </ScrollArea>
+                      </div>
+                    )}
                   </div>
                   <div className="w-32 space-y-1.5">
                     <Label className="text-[9px] font-bold text-slate-500">{lang === 'ar' ? 'الكمية' : 'QTY'}</Label>
