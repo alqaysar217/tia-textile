@@ -16,7 +16,8 @@ import {
   TrendingUp,
   Loader2,
   Info,
-  Check
+  Check,
+  Calendar
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,6 +38,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 export default function WorkerProductivityReport() {
   const { lang, dir } = useTranslation();
@@ -137,42 +143,90 @@ export default function WorkerProductivityReport() {
               <h1 className="text-xl font-black text-slate-900 leading-tight">{isRtl ? 'تحليل المخرجات والاستحقاقات المالية' : 'Labor Output & Wage Audit'}</h1>
             </div>
           </div>
-          <Button onClick={handleExport} variant="outline" className="h-10 px-6 font-black gap-2 border-slate-200">
-            <FileDown className="w-4 h-4 text-emerald-600" /> {isRtl ? 'تصدير التقرير' : 'Export Data'}
-          </Button>
-        </div>
 
-        {/* COMPREHENSIVE FILTERS */}
-        <div className="mt-4 grid grid-cols-1 md:grid-cols-12 gap-3 bg-slate-50 p-2 rounded-xl border border-slate-200">
-           {/* Date Filter */}
-           <div className="md:col-span-3 flex items-center gap-2 px-3 bg-white rounded-lg border border-slate-200 h-10">
-              <CalendarDays className="w-4 h-4 text-slate-400" />
-              <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-7 border-none shadow-none text-[10px] w-full font-bold tabular-nums" />
-              <span className="text-[10px] font-black text-slate-300">→</span>
-              <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-7 border-none shadow-none text-[10px] w-full font-bold tabular-nums" />
-           </div>
-           
-           {/* Worker Filter */}
-           <div className="md:col-span-3">
-              <select value={workerId} onChange={(e) => setWorkerId(e.target.value)} className="w-full h-10 px-3 bg-white border border-slate-200 rounded-lg text-xs font-bold outline-none">
-                 <option value="all">{isRtl ? '-- جميع العمال --' : '-- All Workers --'}</option>
-                 {allWorkers?.filter(w => w.status !== 'deleted').map(w => <option key={w.id} value={w.id}>{w.fullName}</option>)}
-              </select>
-           </div>
+          <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-xl border border-slate-200">
+            {/* COMPACT SEARCH */}
+            <div className="relative w-48 md:w-64">
+              <Search className={cn("absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400", isRtl ? "right-3" : "left-3")} />
+              <Input 
+                value={search} 
+                onChange={(e) => setSearch(e.target.value)} 
+                placeholder={isRtl ? 'بحث...' : 'Search...'} 
+                className={cn("h-9 bg-white border-slate-200 text-[10px] font-bold", isRtl ? "pr-9" : "pl-9")} 
+              />
+            </div>
 
-           {/* Batch Filter */}
-           <div className="md:col-span-3">
-              <select value={orderId} onChange={(e) => setOrderId(e.target.value)} className="w-full h-10 px-3 bg-white border border-slate-200 rounded-lg text-xs font-bold outline-none">
-                 <option value="all">{isRtl ? '-- جميع الدفعات --' : '-- All Batches --'}</option>
-                 {allOrders?.filter(o => o.status !== 'deleted').map(o => <option key={o.id} value={o.id}>{o.orderNumber} - {o.title}</option>)}
-              </select>
-           </div>
+            <div className="flex items-center gap-1 px-1 border-x border-slate-200">
+               {/* DATE FILTER ICON */}
+               <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 transition-all", (dateFrom || dateTo) && "border-emerald-500 bg-emerald-50")}>
+                       <CalendarDays className={cn("w-4 h-4", (dateFrom || dateTo) ? "text-emerald-600" : "text-slate-400")} />
+                       {(dateFrom || dateTo) && <span className="absolute top-1 right-1 w-2 h-2 bg-emerald-500 rounded-full animate-pulse border border-white" />}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent align={isRtl ? "start" : "end"} className="w-72 p-4 rounded-xl shadow-2xl border-slate-200">
+                     <div className="space-y-4 text-right">
+                        <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b pb-2"><CalendarDays className="w-3.5 h-3.5" />{isRtl ? 'تصفية زمنية' : 'DATE RANGE'}</div>
+                        <div className="grid grid-cols-2 gap-3">
+                           <div className="space-y-1.5"><Label className="text-[9px] font-black text-slate-400">من</Label><Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-9 text-[10px] font-bold" /></div>
+                           <div className="space-y-1.5"><Label className="text-[9px] font-black text-slate-400">إلى</Label><Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-9 text-[10px] font-bold" /></div>
+                        </div>
+                        {(dateFrom || dateTo) && <Button variant="link" onClick={() => { setDateFrom(''); setDateTo(''); }} className="text-[9px] h-auto p-0 font-bold text-rose-500 underline uppercase w-full">إعادة تعيين</Button>}
+                     </div>
+                  </PopoverContent>
+               </Popover>
 
-           {/* Search Input */}
-           <div className="md:col-span-3 relative">
-              <Search className={cn("absolute top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400", isRtl ? "right-3" : "left-3")} />
-              <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={isRtl ? 'رقم السند...' : 'Search voucher...'} className={cn("h-10 bg-white border-slate-200 text-xs font-bold", isRtl ? "pr-10" : "pl-10")} />
-           </div>
+               {/* WORKER FILTER ICON */}
+               <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 transition-all", workerId !== 'all' && "border-emerald-500 bg-emerald-50")}>
+                       <Users2 className={cn("w-4 h-4", workerId !== 'all' ? "text-emerald-600" : "text-slate-400")} />
+                       {workerId !== 'all' && <span className="absolute top-1 right-1 w-2 h-2 bg-emerald-500 rounded-full animate-pulse border border-white" />}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align={isRtl ? "start" : "end"} className="w-64 rounded-xl shadow-xl border-slate-200">
+                     <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'تصفية حسب العامل' : 'BY WORKER'}</DropdownMenuLabel>
+                     <ScrollArea className="h-48">
+                        <DropdownMenuItem onClick={() => setWorkerId('all')} className="flex justify-between text-xs font-bold cursor-pointer">{isRtl ? 'الكل' : 'All'}{workerId === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}</DropdownMenuItem>
+                        {allWorkers?.filter(w => w.status !== 'deleted').map(w => (
+                          <DropdownMenuItem key={w.id} onClick={() => setWorkerId(w.id)} className="flex justify-between text-xs font-bold cursor-pointer">
+                            {w.fullName}
+                            {workerId === w.id && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                          </DropdownMenuItem>
+                        ))}
+                     </ScrollArea>
+                  </DropdownMenuContent>
+               </DropdownMenu>
+
+               {/* BATCH FILTER ICON */}
+               <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 transition-all", orderId !== 'all' && "border-emerald-500 bg-emerald-50")}>
+                       <Workflow className={cn("w-4 h-4", orderId !== 'all' ? "text-emerald-600" : "text-slate-400")} />
+                       {orderId !== 'all' && <span className="absolute top-1 right-1 w-2 h-2 bg-emerald-500 rounded-full animate-pulse border border-white" />}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align={isRtl ? "start" : "end"} className="w-64 rounded-xl shadow-xl border-slate-200">
+                     <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'تصفية حسب الدفعة' : 'BY BATCH'}</DropdownMenuLabel>
+                     <ScrollArea className="h-48">
+                        <DropdownMenuItem onClick={() => setOrderId('all')} className="flex justify-between text-xs font-bold cursor-pointer">{isRtl ? 'الكل' : 'All'}{orderId === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}</DropdownMenuItem>
+                        {allOrders?.filter(o => o.status !== 'deleted').map(o => (
+                          <DropdownMenuItem key={o.id} onClick={() => setOrderId(o.id)} className="flex justify-between text-xs font-bold cursor-pointer">
+                            <span className="truncate">{o.orderNumber} - {o.title}</span>
+                            {orderId === o.id && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                          </DropdownMenuItem>
+                        ))}
+                     </ScrollArea>
+                  </DropdownMenuContent>
+               </DropdownMenu>
+            </div>
+
+            {/* EXPORT BUTTON */}
+            <Button onClick={handleExport} variant="ghost" size="icon" className="h-9 w-9 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 shadow-md">
+              <FileDown className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -189,7 +243,7 @@ export default function WorkerProductivityReport() {
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between group hover:border-purple-200 transition-all">
               <div className="space-y-1">
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'إجمالي الأجور المفلترة' : 'TOTAL WAGES'}</p>
-                <h3 className="text-3xl font-black text-purple-700 tabular-nums">{stats.totalWages.toLocaleString('en-US', { minimumFractionDigits: 2 })}</h3>
+                <h3 className="text-3xl font-black text-purple-700 tabular-nums">{stats.totalWages.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
               </div>
               <div className="p-4 bg-purple-50 text-purple-600 rounded-2xl group-hover:bg-purple-600 group-hover:text-white transition-all"><Wallet className="w-6 h-6" /></div>
           </div>
@@ -309,4 +363,3 @@ export default function WorkerProductivityReport() {
     </div>
   );
 }
-
