@@ -266,7 +266,7 @@ export default function OrderDetailsDashboard() {
   }, [vouchers, finalStage]);
 
   const avgCostPerPiece = useMemo(() => {
-    return finalCompletedQty > 0 ? Math.round(grandTotalCost / finalCompletedQty) : 0;
+    return finalCompletedQty > 0 ? (grandTotalCost / finalCompletedQty) : 0;
   }, [grandTotalCost, finalCompletedQty]);
 
   const filteredMaterialsDetailed = useMemo(() => {
@@ -413,6 +413,11 @@ export default function OrderDetailsDashboard() {
   };
 
   function SummaryStatCard({ label, value, currency, icon, color, bgColor }: any) {
+    const isPcs = currency === (isRtl ? 'قطعة' : 'Pcs');
+    const formattedValue = typeof value === 'number' 
+      ? value.toLocaleString('en-US', isPcs ? {} : { minimumFractionDigits: 2, maximumFractionDigits: 2 }) 
+      : value;
+
     return (
       <div className={cn("p-4 rounded-xl border shadow-sm transition-all hover:shadow-md", bgColor, isRtl ? 'text-right border-slate-200/50' : 'text-left border-slate-200/50')} dir={isRtl ? 'rtl' : 'ltr'}>
          <div className={cn("flex items-center gap-2 mb-2")}>
@@ -421,9 +426,9 @@ export default function OrderDetailsDashboard() {
             </div>
             <span className={cn("text-[9px] font-black uppercase tracking-widest opacity-70", color)}>{label}</span>
          </div>
-         <div className="flex items-baseline gap-1.5">
-            <span className={cn("text-lg font-black tabular-nums leading-none", color)}>{value.toLocaleString('en-US')}</span>
-            <span className="text-[9px] font-bold text-slate-500 uppercase">{currency}</span>
+         <div className="flex items-baseline gap-1.5 overflow-hidden">
+            <span className={cn("text-lg font-black tabular-nums leading-none truncate", color)}>{formattedValue}</span>
+            <span className="text-[9px] font-bold text-slate-500 uppercase shrink-0">{currency}</span>
          </div>
       </div>
     );
@@ -624,7 +629,7 @@ export default function OrderDetailsDashboard() {
                     <Layers className="w-4 h-4" /> 
                     {isRtl ? 'سجل تفصيلي للمواد الخام وقيمتها' : 'DETAILED MATERIALS COSTING'}
                   </h3>
-                  <Badge className="bg-amber-600 text-white font-black tabular-nums">{totalMaterialsCost.toLocaleString('en-US')} {systemCurrency}</Badge>
+                  <Badge className="bg-amber-600 text-white font-black tabular-nums">{totalMaterialsCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {systemCurrency}</Badge>
                </div>
 
                <div className="p-2 bg-slate-50 border-b border-slate-200 flex items-center gap-2 shadow-sm">
@@ -635,7 +640,7 @@ export default function OrderDetailsDashboard() {
                   <div className="flex items-center gap-1.5 px-1.5 border-x border-slate-200">
                     <Button variant="ghost" size="sm" onClick={() => {
                         const headers = ['Date', 'Voucher', 'Personnel', 'Material', 'Qty', 'Unit', 'Price', 'Total', 'Currency'];
-                        const rows = filteredMaterialsDetailed.map(m => [m.date, m.voucherNumber, m.workerName, m.nameAr, m.qty, m.unit, m.price, m.total, m.currency]);
+                        const rows = filteredMaterialsDetailed.map(m => [m.date, m.voucherNumber, m.workerName, m.nameAr, m.qty, m.unit, m.price, m.total.toFixed(2), m.currency]);
                         const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
                         const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
                         const url = URL.createObjectURL(blob);
@@ -688,7 +693,7 @@ export default function OrderDetailsDashboard() {
                            <TableCell className={cn("px-6 py-4 font-bold text-slate-700 text-xs", isRtl ? 'text-right' : 'text-left')}>{m.workerName}</TableCell>
                            <TableCell className={cn("px-6 py-4 font-black text-slate-900 text-xs", isRtl ? 'text-right' : 'text-left')}>{m.nameAr}</TableCell>
                            <TableCell className={cn("px-6 py-4 font-bold text-slate-700 tabular-nums", isRtl ? 'text-right' : 'text-left')}>{m.qty} <span className="text-[8px] font-black text-slate-400 uppercase">{m.unit}</span></TableCell>
-                           <TableCell className={cn("px-6 py-4 font-black text-amber-700 tabular-nums", isRtl ? 'text-right' : 'text-left')}>{m.total.toLocaleString('en-US')} <span className="text-[8px] opacity-60 uppercase">{m.currency}</span></TableCell>
+                           <TableCell className={cn("px-6 py-4 font-black text-amber-700 tabular-nums", isRtl ? 'text-right' : 'text-left')}>{m.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-[8px] opacity-60 uppercase">{m.currency}</span></TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -704,7 +709,7 @@ export default function OrderDetailsDashboard() {
                     <Wallet className="w-4 h-4" /> 
                     {isRtl ? 'سجل الأجور المستحقة عن عمليات الإنتاج' : 'PRODUCTION WAGES LEDGER'}
                   </h3>
-                  <Badge className="bg-purple-600 text-white font-black tabular-nums">{totalWagesCost.toLocaleString('en-US')} {systemCurrency}</Badge>
+                  <Badge className="bg-purple-600 text-white font-black tabular-nums">{totalWagesCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {systemCurrency}</Badge>
                </div>
 
                <div className="p-2 bg-slate-50 border-b border-slate-200 flex items-center gap-2 shadow-sm">
@@ -715,7 +720,7 @@ export default function OrderDetailsDashboard() {
                   <div className="flex items-center gap-1.5 px-1.5 border-x border-slate-200">
                     <Button variant="ghost" size="sm" onClick={() => {
                         const headers = ['Date', 'Voucher', 'Worker', 'Qty', 'Rate', 'Total', 'Currency'];
-                        const rows = filteredWagesDetailed.map(v => [v.date, v.voucherNumber, v.fullName, v.qtyAccepted, v.wageRate, v.wageAmount, v.currency || systemCurrency]);
+                        const rows = filteredWagesDetailed.map(v => [v.date, v.voucherNumber, v.fullName, v.qtyAccepted, v.wageRate, v.wageAmount.toFixed(2), v.currency || systemCurrency]);
                         const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
                         const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
                         const url = URL.createObjectURL(blob);
@@ -770,8 +775,8 @@ export default function OrderDetailsDashboard() {
                            <TableCell className={cn("px-6 py-4 text-[10px] font-black text-slate-900 tabular-nums", isRtl ? 'text-right' : 'text-left')}>{v.voucherNumber}</TableCell>
                            <TableCell className={cn("px-6 py-4 font-bold text-slate-900 text-xs", isRtl ? 'text-right' : 'text-left')}>{v.fullName}</TableCell>
                            <TableCell className={cn("px-6 py-4 font-black text-emerald-700 tabular-nums text-center", isRtl ? 'text-right' : 'text-left')}>{v.qtyAccepted} <span className="text-[8px] opacity-60">Pcs</span></TableCell>
-                           <TableCell className={cn("px-6 py-4 font-bold text-slate-500 tabular-nums text-center", isRtl ? 'text-right' : 'text-left')}>{v.wageRate.toLocaleString('en-US')}</TableCell>
-                           <TableCell className={cn("px-6 py-4 font-black text-purple-700 tabular-nums", isRtl ? 'text-right' : 'text-left')}>{v.wageAmount.toLocaleString('en-US')} <span className="text-[8px] opacity-60 uppercase">{v.currency || systemCurrency}</span></TableCell>
+                           <TableCell className={cn("px-6 py-4 font-bold text-slate-500 tabular-nums text-center", isRtl ? 'text-right' : 'text-left')}>{v.wageRate.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                           <TableCell className={cn("px-6 py-4 font-black text-purple-700 tabular-nums", isRtl ? 'text-right' : 'text-left')}>{v.wageAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-[8px] opacity-60 uppercase">{v.currency || systemCurrency}</span></TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -787,7 +792,7 @@ export default function OrderDetailsDashboard() {
                     <Receipt className="w-4 h-4" /> 
                     {isRtl ? 'المصاريف والتكاليف التشغيلية المرتبطة بالدفعة' : 'BATCH OVERHEAD COSTS'}
                   </h3>
-                  <Badge className="bg-rose-600 text-white font-black tabular-nums">{totalOtherCosts.toLocaleString('en-US')} {systemCurrency}</Badge>
+                  <Badge className="bg-rose-600 text-white font-black tabular-nums">{totalOtherCosts.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {systemCurrency}</Badge>
                </div>
 
                <div className="p-2 bg-slate-50 border-b border-slate-200 flex items-center gap-2 shadow-sm">
@@ -798,7 +803,7 @@ export default function OrderDetailsDashboard() {
                   <div className="flex items-center gap-1.5 px-1.5 border-x border-slate-200">
                     <Button variant="ghost" size="sm" onClick={() => {
                         const headers = ['Date', 'Voucher', 'Category', 'Recipient', 'Description', 'Amount', 'Currency'];
-                        const rows = filteredCostsDetailed.map(v => [v.date, v.voucherNumber, costCategories[v.category]?.label || v.category, v.recipient, v.description, v.totalAmount, v.currency || systemCurrency]);
+                        const rows = filteredCostsDetailed.map(v => [v.date, v.voucherNumber, costCategories[v.category]?.label || v.category, v.recipient, v.description, v.totalAmount.toFixed(2), v.currency || systemCurrency]);
                         const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
                         const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
                         const url = URL.createObjectURL(blob);
@@ -855,7 +860,7 @@ export default function OrderDetailsDashboard() {
                            </TableCell>
                            <TableCell className={cn("px-6 py-4 font-bold text-slate-800 text-xs", isRtl ? 'text-right' : 'text-left')}>{v.recipient || '---'}</TableCell>
                            <TableCell className={cn("px-6 py-4 font-medium text-slate-600 text-xs", isRtl ? 'text-right' : 'text-left')}>{v.description}</TableCell>
-                           <TableCell className={cn("px-6 py-4 font-black text-rose-600 tabular-nums", isRtl ? 'text-right' : 'text-left')}>{v.totalAmount.toLocaleString('en-US')} <span className="text-[8px] opacity-60 uppercase">{v.currency || systemCurrency}</span></TableCell>
+                           <TableCell className={cn("px-6 py-4 font-black text-rose-600 tabular-nums", isRtl ? 'text-right' : 'text-left')}>{v.totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-[8px] opacity-60 uppercase">{v.currency || systemCurrency}</span></TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -982,7 +987,7 @@ export default function OrderDetailsDashboard() {
                           <TableRow key={d.id} className="hover:bg-slate-50/50 transition-colors border-b border-slate-100">
                              <TableCell className={cn("px-6 py-4 font-black text-slate-900 text-xs", isRtl ? 'text-right' : 'text-left')}>{d.nameAr}</TableCell>
                              <TableCell className="px-6 py-4 text-center font-bold text-slate-700 tabular-nums">{done.toLocaleString('en-US')}</TableCell>
-                             <TableCell className="px-6 py-4 text-center font-black text-emerald-700 tabular-nums">{cost.toLocaleString('en-US')} {systemCurrency}</TableCell>
+                             <TableCell className="px-6 py-4 text-center font-black text-emerald-700 tabular-nums">{cost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {systemCurrency}</TableCell>
                              <TableCell className="px-6 py-4 text-center">
                                 <div className="flex items-center gap-3 justify-center"><div className="flex-1 h-1.5 w-24 bg-slate-100 rounded-full overflow-hidden relative"><div className={cn("h-full bg-emerald-500 absolute", isRtl ? "right-0" : "left-0")} style={{ width: `${p}%` }} /></div><span className="text-[10px] font-black text-slate-400 tabular-nums">{p}%</span></div>
                              </TableCell>
@@ -1095,7 +1100,9 @@ function LedgerTransactionRow({ voucher, worker, systemCurrency, lang, onView }:
               voucher.type === 'overhead_cost' ? "text-rose-700" :
               "text-blue-700"
            )}>
-             {voucher.type === 'production_receipt' ? (voucher.qtyAccepted || 0).toLocaleString('en-US') : (voucher.totalAmount || 0).toLocaleString('en-US')}
+             {voucher.type === 'production_receipt' 
+               ? (voucher.qtyAccepted || 0).toLocaleString('en-US') 
+               : (voucher.totalAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
            </span>
            <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest">
              {voucher.type === 'production_receipt' ? 'Pcs' : (voucher.currency || systemCurrency)}
