@@ -11,29 +11,22 @@ import {
   MoreVertical, 
   Edit2, 
   Trash2, 
-  History, 
   Type, 
   Tag, 
   Activity, 
   Target, 
-  Layers, 
-  ArrowUpRight, 
   Loader2, 
   Boxes,
   Calendar,
   Save,
-  AlertCircle,
-  ShieldCheck,
-  Users2,
-  Building2,
-  UserCheck,
+  CheckCircle2,
   FileText,
   Eye,
   Settings2,
-  ExternalLink,
   ChevronDown,
   ArrowRight,
-  RefreshCcw
+  RefreshCcw,
+  Check
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -53,6 +46,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
+  DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
@@ -79,9 +73,8 @@ export default function ProductionOrdersPage() {
   const router = useRouter();
   const [search, setSearch] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [isLogisticsDialogOpen, setIsLogisticsDialogOpen] = useState(false);
   const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
-  const [managingOrder, setManagingOrder] = useState<any | null>(null);
+  const [completingOrder, setCompletingOrder] = useState<any | null>(null);
   const [deletingOrder, setDeletingOrder] = useState<any | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -91,12 +84,6 @@ export default function ProductionOrdersPage() {
     productId: '',
     targetQty: 300,
     priority: 'normal',
-    notes: ''
-  });
-
-  // Logistics Form State
-  const [logisticsData, setLogisticsData] = useState({
-    currentStageId: '',
     notes: ''
   });
 
@@ -118,7 +105,8 @@ export default function ProductionOrdersPage() {
 
   const filteredOrders = useMemo(() => {
     if (!orders) return [];
-    const activeOrders = orders.filter(o => o.status !== 'deleted');
+    // Only show 'active' orders by default to avoid clutter
+    const activeOrders = orders.filter(o => o.status === 'active');
     return activeOrders.filter(o => {
       const product = products?.find(p => p.id === o.productId);
       const productName = product?.nameAr || '';
@@ -135,12 +123,6 @@ export default function ProductionOrdersPage() {
     setFormData({ title: '', productId: '', targetQty: 300, priority: 'normal', notes: '' });
   }, []);
 
-  const resetLogistics = useCallback(() => {
-    setIsLogisticsDialogOpen(false);
-    setManagingOrder(null);
-    setLogisticsData({ currentStageId: '', notes: '' });
-  }, []);
-
   const handleEditClick = (order: any, e: React.MouseEvent) => {
     e.stopPropagation();
     setEditingOrderId(order.id);
@@ -152,16 +134,6 @@ export default function ProductionOrdersPage() {
       notes: order.notes || ''
     });
     setIsAddDialogOpen(true);
-  };
-
-  const handleManageTeams = (order: any, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setManagingOrder(order);
-    setLogisticsData({
-      currentStageId: order.currentStageId || '',
-      notes: ''
-    });
-    setIsLogisticsDialogOpen(true);
   };
 
   const handleSaveOrder = async (e: React.FormEvent) => {
@@ -204,22 +176,21 @@ export default function ProductionOrdersPage() {
     }
   };
 
-  const handleUpdateLogistics = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!db || !managingOrder || isSubmitting) return;
-
+  const handleCompleteOrder = async () => {
+    if (!db || !completingOrder || isSubmitting) return;
     setIsSubmitting(true);
     try {
-      await updateDoc(doc(db, 'productionOrders', managingOrder.id), {
-        currentStageId: logisticsData.currentStageId,
+      await updateDoc(doc(db, 'productionOrders', completingOrder.id), {
+        status: 'completed',
+        completedAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       });
-      toast({ title: lang === 'ar' ? "تم تحديث مرحلة التشغيل" : "Logistics Updated" });
-      resetLogistics();
+      toast({ title: lang === 'ar' ? "تم إغلاق أمر الإنتاج بنجاح" : "Order Closed Successfully" });
     } catch (error) {
       console.error(error);
     } finally {
       setIsSubmitting(false);
+      setCompletingOrder(null);
     }
   };
 
@@ -264,10 +235,10 @@ export default function ProductionOrdersPage() {
               <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                 <span>{lang === 'ar' ? 'وحدة العمليات' : 'Operations'}</span>
                 <ChevronRight className={`w-3 h-3 ${dir === 'rtl' ? 'rotate-180' : ''}`} />
-                <span className="text-emerald-600">{lang === 'ar' ? 'أوامر الإنتاج' : 'Work Orders'}</span>
+                <span className="text-emerald-600">{lang === 'ar' ? 'أوامر الإنتاج النشطة' : 'Active Work Orders'}</span>
               </div>
               <h1 className="text-xl font-black text-slate-900 leading-tight">
-                {lang === 'ar' ? 'تتبع مسارات التصنيع' : 'WIP Path Tracking'}
+                {lang === 'ar' ? 'إدارة ومتابعة طلبات الإنتاج' : 'Work Order Management'}
               </h1>
             </div>
           </div>
@@ -300,7 +271,8 @@ export default function ProductionOrdersPage() {
         ) : filteredOrders.length === 0 ? (
           <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-300">
             <Boxes className="w-16 h-16 text-slate-200 mx-auto mb-4" />
-            <h3 className="text-lg font-black text-slate-400">{lang === 'ar' ? 'لا توجد أوامر نشطة' : 'No active orders'}</h3>
+            <h3 className="text-lg font-black text-slate-400">{lang === 'ar' ? 'لا توجد أوامر نشطة حالياً' : 'No active orders'}</h3>
+            <p className="text-[10px] font-bold text-slate-400 mt-2 uppercase tracking-widest">{lang === 'ar' ? 'قم بإنشاء أمر جديد لبدء العمل' : 'Create a new order to start processing'}</p>
           </div>
         ) : filteredOrders.map((order) => {
           const product = products?.find(p => p.id === order.productId);
@@ -351,7 +323,7 @@ export default function ProductionOrdersPage() {
                     <p className="text-xs font-black text-slate-700 tabular-nums mt-1">{order.targetQty}</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-[8px] font-black text-emerald-600 uppercase leading-none">{lang === 'ar' ? 'جاهز نهائي' : 'READY'}</p>
+                    <p className="text-[8px] font-black text-emerald-600 uppercase leading-none">{lang === 'ar' ? 'منجز نهائي' : 'READY'}</p>
                     <p className="text-xs font-black text-emerald-700 tabular-nums mt-1">{finalCompletedQty}</p>
                   </div>
                 </div>
@@ -365,7 +337,7 @@ export default function ProductionOrdersPage() {
                   <span className="text-[10px] font-black text-slate-500 uppercase tracking-tight">
                     {progress >= 100 
                       ? (lang === 'ar' ? 'مكتمل' : 'COMPLETED') 
-                      : (lang === 'ar' ? 'قيد التصنيع' : 'IN PROGRESS')}
+                      : (lang === 'ar' ? 'قيد الإنتاج' : 'IN PROGRESS')}
                   </span>
                 </div>
 
@@ -377,19 +349,22 @@ export default function ProductionOrdersPage() {
                       </TooltipTrigger>
                       <TooltipContent><p className="text-[10px] font-bold">{lang === 'ar' ? 'عرض السجل الفني' : 'View Ledger'}</p></TooltipContent>
                     </Tooltip>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all" onClick={(e) => handleManageTeams(order, e)}><Users2 className="w-4 h-4" /></Button>
-                      </TooltipTrigger>
-                      <TooltipContent><p className="text-[10px] font-bold">{lang === 'ar' ? 'تحريك المرحلة' : 'Move Stage'}</p></TooltipContent>
-                    </Tooltip>
+                    
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-slate-100" onClick={(e) => e.stopPropagation()}><MoreVertical className="w-4 h-4 text-slate-400" /></Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-40 rounded-xl shadow-xl">
-                        <DropdownMenuItem onClick={(e) => handleEditClick(order, e)} className="gap-2 font-bold py-2 cursor-pointer text-xs"><Edit2 className="w-3.5 h-3.5 text-emerald-600" /> {lang === 'ar' ? 'تعديل البيانات' : 'Edit Specs'}</DropdownMenuItem>
+                      <DropdownMenuContent align="end" className="w-56 rounded-xl shadow-xl">
+                        <DropdownMenuItem onClick={(e) => handleEditClick(order, e)} className="gap-2 font-bold py-2 cursor-pointer text-xs"><Edit2 className="w-3.5 h-3.5 text-emerald-600" /> {lang === 'ar' ? 'تعديل بيانات الدفعة' : 'Edit Specs'}</DropdownMenuItem>
+                        
                         <DropdownMenuSeparator />
+                        
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setCompletingOrder(order); }} className="gap-2 font-bold py-2 text-emerald-600 cursor-pointer text-xs">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'إتمام وإغلاق الطلب' : 'Complete & Close Order'}
+                        </DropdownMenuItem>
+                        
+                        <DropdownMenuSeparator />
+                        
                         <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setDeletingOrder(order); }} className="gap-2 font-bold py-2 text-rose-600 cursor-pointer text-xs"><Trash2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'نقل للأرشيف' : 'Archive Order'}</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -449,85 +424,44 @@ export default function ProductionOrdersPage() {
         </DialogContent>
       </Dialog>
 
-      {/* MANAGE LOGISTICS DIALOG */}
-      <Dialog open={isLogisticsDialogOpen} onOpenChange={(open) => !open && resetLogistics()}>
-        <DialogContent className="sm:max-w-[500px] rounded-lg p-0 overflow-hidden border-none shadow-2xl">
-          <div className="bg-slate-900 p-6 text-white">
-            <DialogHeader className="text-right">
-              <DialogTitle className="text-xl font-black flex items-center gap-3">
-                <Building2 className="w-5 h-5 text-emerald-400" />
-                {lang === 'ar' ? 'تحريك مسار الإنتاج' : 'Production Routing'}
-              </DialogTitle>
-              <DialogDescription className="text-slate-400 font-bold text-[10px] uppercase tracking-widest mt-1">
-                {managingOrder?.orderNumber} - {managingOrder?.title}
-              </DialogDescription>
-            </DialogHeader>
-          </div>
-          <form onSubmit={handleUpdateLogistics} className="p-6 space-y-6 bg-white">
-            <div className="space-y-4">
-              <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
-                <div className="space-y-1">
-                  <p className="text-[10px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'المرحلة الحالية' : 'CURRENT STAGE'}</p>
-                  <p className="text-sm font-black text-slate-900">{departments?.find(d => d.id === managingOrder?.currentStageId)?.nameAr || '---'}</p>
-                </div>
-                <ArrowRight className={cn("w-5 h-5 text-emerald-500", dir === 'rtl' ? "rotate-180" : "")} />
-                <div className="space-y-1 text-right">
-                   <p className="text-[10px] font-black text-emerald-600 uppercase">{lang === 'ar' ? 'المرحلة القادمة' : 'TARGET STAGE'}</p>
-                   <p className="text-sm font-black text-emerald-700">
-                     {departments?.find(d => d.id === logisticsData.currentStageId)?.nameAr || '...'}
-                   </p>
-                </div>
+      {/* COMPLETE ORDER CONFIRMATION */}
+      <AlertDialog open={!!completingOrder} onOpenChange={() => setCompletingOrder(null)}>
+        <AlertDialogContent className="rounded-[1.5rem] p-0 overflow-hidden border-none shadow-2xl">
+           <div className="bg-emerald-950 p-8 text-center relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-4 opacity-5"><CheckCircle2 className="w-32 h-32 text-white" /></div>
+              <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-500/20 shadow-inner">
+                <Check className="w-8 h-8 text-emerald-400" />
               </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-slate-400">{lang === 'ar' ? 'انتقال إلى المرحلة' : 'MOVE TO STAGE'}</Label>
-                <div className="relative group">
-                   <Building2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-emerald-500 transition-colors" />
-                   <select 
-                    value={logisticsData.currentStageId} 
-                    onChange={(e) => setLogisticsData({...logisticsData, currentStageId: e.target.value})}
-                    className="w-full h-12 pr-10 pl-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-black outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all appearance-none"
-                    required
-                  >
-                    <option value="">-- Select Stage --</option>
-                    {departments?.filter(d => d.status === 'active').map(d => <option key={d.id} value={d.id}>{d.nameAr}</option>)}
-                  </select>
-                  <ChevronDown className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-slate-400">{lang === 'ar' ? 'تعليمات للمرحلة القادمة' : 'NOTES FOR NEXT TEAM'}</Label>
-                <Textarea 
-                  value={logisticsData.notes} 
-                  onChange={(e) => setLogisticsData({...logisticsData, notes: e.target.value})} 
-                  placeholder={lang === 'ar' ? 'مثال: يرجى التركيز على جودة الخياطة في الحواف...' : 'Example: Please ensure QC on edges...'}
-                  className="min-h-[80px] rounded-xl bg-slate-50 border-slate-200 resize-none text-xs font-medium"
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-3 pt-2">
-              <Button type="submit" disabled={isSubmitting || !logisticsData.currentStageId} className="flex-1 h-12 premium-gradient text-white rounded-xl font-black text-sm border-none shadow-lg shadow-emerald-900/10">
-                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : <RefreshCcw className="w-4 h-4 me-2" />}
-                {lang === 'ar' ? 'تأكيد الانتقال' : 'Confirm Movement'}
-              </Button>
-              <Button type="button" variant="outline" onClick={resetLogistics} className="px-6 h-12 font-black text-slate-400 rounded-xl border-slate-200">إلغاء</Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
+              <AlertDialogTitle className="text-white text-xl font-black">{lang === 'ar' ? 'تأكيد إتمام وإغلاق الطلب' : 'Confirm Order Completion'}</AlertDialogTitle>
+              <AlertDialogDescription className="text-emerald-100/50 font-bold mt-2 text-xs leading-relaxed text-center">
+                 {lang === 'ar' 
+                   ? `أنت على وشك إغلاق أمر الإنتاج (${completingOrder?.orderNumber}). سيتم اعتبار هذا الطلب منجزاً بالكامل وسيختفي من القائمة النشطة. هل أنت متأكد من اكتمال كافة العمليات؟` 
+                   : `You are about to close order (${completingOrder?.orderNumber}). It will be marked as fully completed and hidden from the active list.`}
+              </AlertDialogDescription>
+           </div>
+           <div className="bg-white p-6 flex gap-3">
+              <AlertDialogAction onClick={handleCompleteOrder} disabled={isSubmitting} className="flex-1 h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-lg">
+                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : <CheckCircle2 className="w-4 h-4 me-2" />}
+                {lang === 'ar' ? 'نعم، إتمام الإغلاق' : 'Yes, Complete Order'}
+              </AlertDialogAction>
+              <AlertDialogCancel className="flex-1 h-12 bg-slate-50 font-black rounded-xl text-slate-400">تراجع</AlertDialogCancel>
+           </div>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* ARCHIVE DIALOG */}
       <AlertDialog open={!!deletingOrder} onOpenChange={() => setDeletingOrder(null)}>
-        <AlertDialogContent className="rounded-lg p-0 overflow-hidden">
+        <AlertDialogContent className="rounded-[1.5rem] p-0 overflow-hidden">
            <div className="bg-slate-950 p-6 text-center">
               <div className="w-16 h-16 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-rose-500/20"><Trash2 className="w-8 h-8 text-rose-500" /></div>
               <AlertDialogTitle className="text-white text-xl font-black">{lang === 'ar' ? 'أرشفة أمر الإنتاج' : 'Confirm Archive'}</AlertDialogTitle>
+              <AlertDialogDescription className="text-slate-400 font-bold mt-2 text-xs">
+                {lang === 'ar' ? 'سيتم نقل هذا الطلب للأرشيف (سلة المهملات). لن يتم حذفه نهائياً إلا بطلب منك.' : 'This order will be moved to the smart trash archive.'}
+              </AlertDialogDescription>
            </div>
            <div className="bg-white p-6 flex gap-3">
-              <AlertDialogAction onClick={handleDeleteOrder} className="flex-1 h-11 bg-rose-600 hover:bg-rose-700 text-white font-black">أرشفة</AlertDialogAction>
-              <AlertDialogCancel className="flex-1 h-11 bg-slate-50 font-black">تراجع</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteOrder} className="flex-1 h-11 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-xl">أرشفة</AlertDialogAction>
+              <AlertDialogCancel className="flex-1 h-11 bg-slate-50 font-black rounded-xl">تراجع</AlertDialogCancel>
            </div>
         </AlertDialogContent>
       </AlertDialog>
@@ -535,4 +469,3 @@ export default function ProductionOrdersPage() {
     </div>
   );
 }
-
