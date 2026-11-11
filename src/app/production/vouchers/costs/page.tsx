@@ -111,6 +111,8 @@ export default function OverheadCostsPage() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
 
+  const isRtl = lang === 'ar';
+
   // Fetch System Settings for Currency Lock
   const settingsRef = useMemo(() => !db ? null : doc(db, 'settings', 'global'), [db]);
   const { data: savedSettings } = useDoc<any>(settingsRef);
@@ -123,7 +125,6 @@ export default function OverheadCostsPage() {
     currency: systemCurrency,
     orderId: '',
     recipient: '',
-    supervisorId: '',
     description: '',
     totalAmount: 0,
     notes: '',
@@ -138,19 +139,19 @@ export default function OverheadCostsPage() {
   }, [systemCurrency, editingVoucherId, isAddDialogOpen]);
 
   const costCategories = [
-    { value: 'electricity', labelAr: 'كهرباء', icon: <Zap className="w-3.5 h-3.5" /> },
-    { value: 'internet', labelAr: 'انترنت', icon: <Hash className="w-3.5 h-3.5" /> },
-    { value: 'maintenance', labelAr: 'صيانة', icon: <Briefcase className="w-3.5 h-3.5" /> },
-    { value: 'spare_parts', labelAr: 'قطع غيار', icon: <Tag className="w-3.5 h-3.5" /> },
-    { value: 'rent', labelAr: 'إيجار', icon: <Briefcase className="w-3.5 h-3.5" /> },
-    { value: 'communications', labelAr: 'اتصالات', icon: <Hash className="w-3.5 h-3.5" /> },
-    { value: 'transport', labelAr: 'نقل', icon: <Briefcase className="w-3.5 h-3.5" /> },
-    { value: 'marketing', labelAr: 'تسويق', icon: <Tag className="w-3.5 h-3.5" /> },
-    { value: 'design', labelAr: 'تصميم', icon: <Briefcase className="w-3.5 h-3.5" /> },
-    { value: 'photography', labelAr: 'تصوير', icon: <Tag className="w-3.5 h-3.5" /> },
-    { value: 'training', labelAr: 'تدريب', icon: <ShieldCheck className="w-3.5 h-3.5" /> },
-    { value: 'services', labelAr: 'خدمات', icon: <Briefcase className="w-3.5 h-3.5" /> },
-    { value: 'other', labelAr: 'أخرى', icon: <Receipt className="w-3.5 h-3.5" /> },
+    { value: 'electricity', labelAr: 'كهرباء', labelEn: 'Electricity', icon: <Zap className="w-3.5 h-3.5" /> },
+    { value: 'internet', labelAr: 'انترنت', labelEn: 'Internet', icon: <Hash className="w-3.5 h-3.5" /> },
+    { value: 'maintenance', labelAr: 'صيانة', labelEn: 'Maintenance', icon: <Briefcase className="w-3.5 h-3.5" /> },
+    { value: 'spare_parts', labelAr: 'قطع غيار', labelEn: 'Spare Parts', icon: <Tag className="w-3.5 h-3.5" /> },
+    { value: 'rent', labelAr: 'إيجار', labelEn: 'Rent', icon: <Briefcase className="w-3.5 h-3.5" /> },
+    { value: 'communications', labelAr: 'اتصالات', labelEn: 'Telecom', icon: <Hash className="w-3.5 h-3.5" /> },
+    { value: 'transport', labelAr: 'نقل', labelEn: 'Transport', icon: <Briefcase className="w-3.5 h-3.5" /> },
+    { value: 'marketing', labelAr: 'تسويق', labelEn: 'Marketing', icon: <Tag className="w-3.5 h-3.5" /> },
+    { value: 'design', labelAr: 'تصميم', labelEn: 'Design', icon: <Briefcase className="w-3.5 h-3.5" /> },
+    { value: 'photography', labelAr: 'تصوير', labelEn: 'Photography', icon: <Tag className="w-3.5 h-3.5" /> },
+    { value: 'training', labelAr: 'تدريب', labelEn: 'Training', icon: <ShieldCheck className="w-3.5 h-3.5" /> },
+    { value: 'services', labelAr: 'خدمات', labelEn: 'Services', icon: <Briefcase className="w-3.5 h-3.5" /> },
+    { value: 'other', labelAr: 'أخرى', labelEn: 'Other', icon: <Receipt className="w-3.5 h-3.5" /> },
   ];
 
   // Fetch Data
@@ -218,7 +219,7 @@ export default function OverheadCostsPage() {
   const handleSaveVoucher = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!db || isSubmitting || !formData.recipient || !formData.description || formData.totalAmount <= 0) {
-      toast({ variant: "destructive", title: lang === 'ar' ? "يرجى إكمال البيانات المطلوبة" : "Please complete required fields" });
+      toast({ variant: "destructive", title: isRtl ? "يرجى إكمال البيانات المطلوبة" : "Please complete required fields" });
       return;
     }
 
@@ -234,11 +235,11 @@ export default function OverheadCostsPage() {
 
       if (editingVoucherId) {
         await updateDoc(doc(db, 'vouchers', editingVoucherId), voucherData);
-        toast({ title: lang === 'ar' ? "تم التحديث بنجاح" : "Updated Successfully" });
+        toast({ title: isRtl ? "تم التحديث بنجاح" : "Updated Successfully" });
       } else {
         const voucherNumber = `CST-${Date.now().toString().slice(-6)}`;
         await addDoc(collection(db, 'vouchers'), { ...voucherData, voucherNumber, createdAt: serverTimestamp() });
-        toast({ title: lang === 'ar' ? "تم تسجيل السند بنجاح" : "Voucher Recorded" });
+        toast({ title: isRtl ? "تم تسجيل السند بنجاح" : "Voucher Recorded" });
       }
       resetDialog();
     } finally {
@@ -255,7 +256,6 @@ export default function OverheadCostsPage() {
       currency: systemCurrency, 
       orderId: '', 
       recipient: '', 
-      supervisorId: '', 
       description: '', 
       totalAmount: 0, 
       notes: '', 
@@ -300,17 +300,17 @@ export default function OverheadCostsPage() {
             <div className="p-2.5 bg-slate-900 rounded-lg text-white shadow-lg"><Receipt className="w-5 h-5 text-emerald-400" /></div>
             <div>
               <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                <span>{lang === 'ar' ? 'المالية' : 'Accounting'}</span>
-                <ChevronRight className={`w-3 h-3 ${dir === 'rtl' ? 'rotate-180' : ''}`} />
-                <span className="text-emerald-600">{lang === 'ar' ? 'سند تكاليف تشغيلية' : 'Overhead Costs'}</span>
+                <span>{isRtl ? 'المالية' : 'Accounting'}</span>
+                <ChevronRight className={cn("w-3 h-3", dir === 'rtl' ? "rotate-180" : "")} />
+                <span className="text-emerald-600">{isRtl ? 'سند تكاليف تشغيلية' : 'Overhead Costs'}</span>
               </div>
-              <h1 className="text-xl font-black text-slate-900 leading-tight">{lang === 'ar' ? 'إدارة المصاريف والتشغيل' : 'Expense Master'}</h1>
+              <h1 className="text-xl font-black text-slate-900 leading-tight">{isRtl ? 'إدارة المصاريف والتشغيل' : 'Expense Master'}</h1>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
             <Button onClick={() => setIsAddDialogOpen(true)} className="h-10 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 transition-all border-none">
-              <Plus className="w-4 h-4" /> {lang === 'ar' ? 'سند تكاليف جديد' : 'New Cost Voucher'}
+              <Plus className="w-4 h-4" /> {isRtl ? 'سند تكاليف جديد' : 'New Cost Voucher'}
             </Button>
           </div>
         </div>
@@ -318,12 +318,12 @@ export default function OverheadCostsPage() {
         {/* COMPACT TOOLBAR - SINGLE LINE */}
         <div className="mt-4 flex flex-col md:flex-row items-center gap-3 bg-slate-50 p-2 rounded-xl border border-slate-200">
           <div className="relative flex-1 w-full">
-            <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400`} />
+            <Search className={cn("absolute top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400", isRtl ? "right-3" : "left-3")} />
             <Input 
               value={search} 
               onChange={(e) => setSearch(e.target.value)} 
-              placeholder={lang === 'ar' ? 'بحث بالسند أو البيان أو المورد...' : 'Search records...'} 
-              className={`${dir === 'rtl' ? "pr-10" : "pl-10"} h-10 bg-white border-slate-200 text-xs font-bold`} 
+              placeholder={isRtl ? 'بحث بالسند أو البيان أو المورد...' : 'Search records...'} 
+              className={cn("h-10 bg-white border-slate-200 text-xs font-bold", isRtl ? "pr-10" : "pl-10")} 
             />
           </div>
           
@@ -335,7 +335,7 @@ export default function OverheadCostsPage() {
                 <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-7 border-none shadow-none text-[10px] w-28 font-bold tabular-nums" />
              </div>
 
-             <div className="flex items-center gap-1.5 px-1.5 border-r border-slate-200">
+             <div className={cn("flex items-center gap-1.5 px-1.5 border-slate-200", isRtl ? "border-r" : "border-l")}>
                 <Button onClick={() => {
                     const headers = ['Ref #', 'Date', 'Recipient', 'Description', 'Amount', 'Currency'];
                     const rows = filteredVouchers.map(v => [v.voucherNumber, v.date, v.recipient, v.description, v.totalAmount, v.currency]);
@@ -350,46 +350,46 @@ export default function OverheadCostsPage() {
                     document.body.removeChild(link);
                 }} variant="ghost" className="h-10 px-3 rounded-lg text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent hover:border-slate-200">
                   <FileDown className="w-4 h-4 text-emerald-600" />
-                  {lang === 'ar' ? 'تصدير' : 'Export'}
+                  {isRtl ? 'تصدير' : 'Export'}
                 </Button>
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="h-10 px-3 rounded-lg text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent">
                       <Filter className="w-4 h-4" />
-                      {lang === 'ar' ? 'تصفية' : 'Filter'}
+                      {isRtl ? 'تصفية' : 'Filter'}
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="w-64 rounded-xl border-slate-200 shadow-xl">
-                    <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'ترتيب النتائج' : 'SORTING'}</DropdownMenuLabel>
+                    <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'ترتيب النتائج' : 'SORTING'}</DropdownMenuLabel>
                     <DropdownMenuItem onClick={() => toggleSort('date')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2.5">
-                      <div className="flex items-center gap-2"><Calendar className="w-3.5 h-3.5 text-slate-400" /> {lang === 'ar' ? 'حسب التاريخ' : 'By Date'}</div>
+                      <div className="flex items-center gap-2"><Calendar className="w-3.5 h-3.5 text-slate-400" /> {isRtl ? 'حسب التاريخ' : 'By Date'}</div>
                       {sortBy === 'date' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => toggleSort('totalAmount')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2.5">
-                      <div className="flex items-center gap-2"><Wallet className="w-3.5 h-3.5 text-slate-400" /> {lang === 'ar' ? 'حسب المبلغ' : 'By Amount'}</div>
+                      <div className="flex items-center gap-2"><Wallet className="w-3.5 h-3.5 text-slate-400" /> {isRtl ? 'حسب المبلغ' : 'By Amount'}</div>
                       {sortBy === 'totalAmount' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
                     </DropdownMenuItem>
 
                     <DropdownMenuSeparator />
-                    <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'حسب التصنيف' : 'BY CATEGORY'}</DropdownMenuLabel>
+                    <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'حسب التصنيف' : 'BY CATEGORY'}</DropdownMenuLabel>
                     <ScrollArea className="h-40">
                       <DropdownMenuItem onClick={() => setCategoryFilter('all')} className="flex items-center justify-between text-xs font-bold cursor-pointer">
-                        {lang === 'ar' ? 'الكل' : 'All'}
+                        {isRtl ? 'الكل' : 'All'}
                         {categoryFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
                       </DropdownMenuItem>
                       {costCategories.map(c => (
                         <DropdownMenuItem key={c.value} onClick={() => setCategoryFilter(c.value)} className="flex items-center justify-between text-xs font-bold cursor-pointer">
-                          {c.labelAr}
+                          {isRtl ? c.labelAr : c.labelEn}
                           {categoryFilter === c.value && <Check className="w-3.5 h-3.5 text-emerald-600" />}
                         </DropdownMenuItem>
                       ))}
                     </ScrollArea>
 
                     <DropdownMenuSeparator />
-                    <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'حسب الدفعة' : 'BY BATCH'}</DropdownMenuLabel>
+                    <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'حسب الدفعة' : 'BY BATCH'}</DropdownMenuLabel>
                     <ScrollArea className="h-32">
-                       <DropdownMenuItem onClick={() => setOrderFilter('all')} className="flex items-center justify-between text-xs font-bold cursor-pointer">{lang === 'ar' ? 'الكل' : 'All'}{orderFilter === 'all' && <Check className="w-3 h-3 text-emerald-600" />}</DropdownMenuItem>
+                       <DropdownMenuItem onClick={() => setOrderFilter('all')} className="flex items-center justify-between text-xs font-bold cursor-pointer">{isRtl ? 'الكل' : 'All'}{orderFilter === 'all' && <Check className="w-3 h-3 text-emerald-600" />}</DropdownMenuItem>
                        {allOrders?.map(o => (
                          <DropdownMenuItem key={o.id} onClick={() => setOrderFilter(o.id)} className="flex items-center justify-between text-xs font-bold cursor-pointer">
                             <span className="truncate max-w-[150px]">{o.orderNumber} - {o.title}</span>
@@ -407,34 +407,36 @@ export default function OverheadCostsPage() {
       {/* DATA GRID */}
       <div className="flex-1 min-h-0 overflow-auto p-4 md:p-6 no-scrollbar">
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <Table className="text-right border-separate border-spacing-0">
+          <Table className={cn("text-right border-separate border-spacing-0", !isRtl && "text-left")}>
             <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
               <TableRow>
-                <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? "text-right" : "text-left")}>REF #</TableHead>
-                <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? "text-right" : "text-left")}>DATE</TableHead>
-                <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? "text-right" : "text-left")}>{lang === 'ar' ? 'البيان والمستفيد' : 'DESCRIPTION'}</TableHead>
-                <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">{lang === 'ar' ? 'التصنيف' : 'CATEGORY'}</TableHead>
-                <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">TOTAL</TableHead>
-                <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">ACTIONS</TableHead>
+                <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? "text-right" : "text-left")}>{isRtl ? 'رقم السند' : 'REF #'}</TableHead>
+                <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? "text-right" : "text-left")}>{isRtl ? 'التاريخ' : 'DATE'}</TableHead>
+                <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? "text-right" : "text-left")}>{isRtl ? 'البيان والمستفيد' : 'DESCRIPTION'}</TableHead>
+                <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">{isRtl ? 'التصنيف' : 'CATEGORY'}</TableHead>
+                <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">{isRtl ? 'الإجمالي' : 'TOTAL'}</TableHead>
+                <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">{isRtl ? 'العمليات' : 'ACTIONS'}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {vouchersLoading ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-20 font-bold text-slate-400 animate-pulse">جاري التحميل...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center py-20 font-bold text-slate-400 animate-pulse">{isRtl ? 'جاري التحميل...' : 'Loading...'}</TableCell></TableRow>
               ) : filteredVouchers.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-20 font-bold text-slate-300">لا توجد سجلات</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center py-20 font-bold text-slate-300">{isRtl ? 'لا توجد سجلات' : 'No records found'}</TableCell></TableRow>
               ) : filteredVouchers.map((v) => (
                 <TableRow key={v.id} className="hover:bg-slate-50/50 border-b border-slate-100 transition-colors group">
-                  <TableCell className={cn("px-6 py-3 font-black text-slate-900 text-xs tabular-nums", dir === 'rtl' ? "text-right" : "text-left")}>{v.voucherNumber}</TableCell>
-                  <TableCell className={cn("px-6 py-3 font-bold text-slate-500 text-xs tabular-nums", dir === 'rtl' ? "text-right" : "text-left")}>{v.date}</TableCell>
-                  <TableCell className={cn("px-6 py-3 font-bold text-slate-700 text-xs", dir === 'rtl' ? "text-right" : "text-left")}>
+                  <TableCell className={cn("px-6 py-3 font-black text-slate-900 text-xs tabular-nums", isRtl ? "text-right" : "text-left")}>{v.voucherNumber}</TableCell>
+                  <TableCell className={cn("px-6 py-3 font-bold text-slate-500 text-xs tabular-nums", isRtl ? "text-right" : "text-left")}>{v.date}</TableCell>
+                  <TableCell className={cn("px-6 py-3 font-bold text-slate-700 text-xs", isRtl ? "text-right" : "text-left")}>
                     <div className="flex flex-col">
                       <span className="font-black text-slate-900 line-clamp-1">{v.description}</span>
-                      <span className="text-[10px] text-slate-400 font-bold">إلى: {v.recipient}</span>
+                      <span className="text-[10px] text-slate-400 font-bold">{isRtl ? 'إلى:' : 'To:'} {v.recipient}</span>
                     </div>
                   </TableCell>
                   <TableCell className="px-6 py-3 text-center">
-                    <Badge variant="outline" className="bg-slate-50 text-slate-400 font-black uppercase text-[10px]">{costCategories.find(c => c.value === v.category)?.labelAr || v.category}</Badge>
+                    <Badge variant="outline" className="bg-slate-50 text-slate-400 font-black uppercase text-[10px]">
+                      {costCategories.find(c => c.value === v.category)?.[isRtl ? 'labelAr' : 'labelEn'] || v.category}
+                    </Badge>
                   </TableCell>
                   <TableCell className="px-6 py-3 text-center font-black text-emerald-700 tabular-nums">
                     {(v.totalAmount || 0).toLocaleString('en-US')} <span className="text-[9px] text-slate-400 uppercase ms-1">{v.currency}</span>
@@ -444,10 +446,10 @@ export default function OverheadCostsPage() {
                       <Button variant="ghost" size="icon" onClick={() => setPrintingVoucher(v)} className="h-8 w-8 rounded-lg text-slate-400 hover:text-emerald-600 transition-colors"><Eye className="w-4 h-4" /></Button>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-slate-100 rounded-lg"><MoreVertical className="w-4 h-4 text-slate-400" /></Button></DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-44 rounded-xl shadow-xl">
-                          <DropdownMenuItem onClick={() => handleEditVoucher(v)} className="gap-2 font-bold py-2 cursor-pointer text-xs"><Edit2 className="w-3.5 h-3.5 text-emerald-600" /> {lang === 'ar' ? 'تعديل السند' : 'Edit Voucher'}</DropdownMenuItem>
+                        <DropdownMenuContent align={isRtl ? "end" : "start"} className="w-44 rounded-xl shadow-xl">
+                          <DropdownMenuItem onClick={() => handleEditVoucher(v)} className="gap-2 font-bold py-2 cursor-pointer text-xs"><Edit2 className="w-3.5 h-3.5 text-emerald-600" /> {isRtl ? 'تعديل السند' : 'Edit Voucher'}</DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={async () => { if (!db) return; await updateDoc(doc(db, 'vouchers', v.id), { status: 'deleted', deletedAt: serverTimestamp() }); toast({ title: lang === 'ar' ? "تم النقل للأرشيف" : "Archived" }); }} className="gap-2 font-bold py-2 text-rose-600 cursor-pointer text-xs"><Trash2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'نقل للمهملات' : 'Move to Trash'}</DropdownMenuItem>
+                          <DropdownMenuItem onClick={async () => { if (!db) return; await updateDoc(doc(db, 'vouchers', v.id), { status: 'deleted', deletedAt: serverTimestamp() }); toast({ title: isRtl ? "تم النقل للأرشيف" : "Archived" }); }} className="gap-2 font-bold py-2 text-rose-600 cursor-pointer text-xs"><Trash2 className="w-3.5 h-3.5" /> {isRtl ? 'نقل للمهملات' : 'Move to Trash'}</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
@@ -463,23 +465,25 @@ export default function OverheadCostsPage() {
       <Dialog open={isAddDialogOpen} onOpenChange={(open) => !open && resetDialog()}>
         <DialogContent className="sm:max-w-[700px] rounded-lg p-0 overflow-hidden border-none shadow-2xl">
           <div className="premium-gradient p-5 text-white">
-            <DialogHeader className="text-right rtl:text-right ltr:text-left">
+            <DialogHeader className={cn("text-right", !isRtl && "text-left")}>
               <DialogTitle className="text-lg font-black flex items-center gap-3">
                 <Receipt className="w-5 h-5 text-emerald-300" />
-                {editingVoucherId ? (lang === 'ar' ? 'تعديل سند المصروف' : 'Update Expenditure') : (lang === 'ar' ? 'تسجيل سند مصروفات تشغيلية' : 'New Overhead Expenditure')}
+                {editingVoucherId ? (isRtl ? 'تعديل سند المصروف' : 'Update Expenditure') : (isRtl ? 'تسجيل سند مصروفات تشغيلية' : 'New Overhead Expenditure')}
               </DialogTitle>
-              <p className="text-emerald-100/70 font-bold text-[9px] uppercase mt-1">Single entry expense allocation for better tracking</p>
+              <p className="text-emerald-100/70 font-bold text-[9px] uppercase mt-1">
+                {isRtl ? 'تخصيص مصروفات لدفعة محددة أو مصروفات عامة للجمعية' : 'Single entry expense allocation for better tracking'}
+              </p>
             </DialogHeader>
           </div>
 
           <form onSubmit={handleSaveVoucher} className="bg-white flex flex-col max-h-[85vh]">
-            <ScrollArea className="flex-1 p-6" dir="rtl">
+            <ScrollArea className="flex-1 p-6" dir={dir}>
               <div className="space-y-6">
                 
                 <div className="flex flex-col md:flex-row gap-8 items-start">
-                  {/* COMPACT SQUARE IMAGE UPLOAD */}
+                  {/* ATTACHMENT */}
                   <div className="w-full md:w-32 space-y-2 flex flex-col items-center shrink-0">
-                    <Label className="text-[10px] font-black uppercase text-slate-400 block text-center">{lang === 'ar' ? 'صورة السند' : 'ATTACHMENT'}</Label>
+                    <Label className="text-[10px] font-black uppercase text-slate-400 block text-center">{isRtl ? 'صورة السند' : 'ATTACHMENT'}</Label>
                     <div 
                       onClick={() => !isCompressing && fileInputRef.current?.click()}
                       className="w-32 h-32 rounded-2xl border-4 border-slate-100 shadow-md bg-slate-50 flex items-center justify-center cursor-pointer group hover:bg-slate-100 transition-all overflow-hidden relative"
@@ -489,7 +493,7 @@ export default function OverheadCostsPage() {
                       ) : (
                         <div className="flex flex-col items-center gap-1 text-slate-300 group-hover:text-emerald-500">
                           {isCompressing ? <Loader2 className="w-6 h-6 animate-spin" /> : <UploadCloud className="w-7 h-7" />}
-                          <span className="text-[9px] font-black uppercase tracking-widest">{lang === 'ar' ? 'رفع' : 'Upload'}</span>
+                          <span className="text-[9px] font-black uppercase tracking-widest">{isRtl ? 'رفع' : 'Upload'}</span>
                         </div>
                       )}
                       {formData.invoicePhotoUrl && (
@@ -504,55 +508,46 @@ export default function OverheadCostsPage() {
                   {/* FORM FIELDS */}
                   <div className="flex-1 space-y-4 w-full">
                     <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1.5 text-right">
-                        <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-1.5"><Calendar className="w-3 h-3 text-emerald-600" /> TRANSACTION DATE</Label>
+                      <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
+                        <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-1.5"><Calendar className="w-3 h-3 text-emerald-600" /> {isRtl ? 'تاريخ السند' : 'TRANSACTION DATE'}</Label>
                         <Input type="date" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} className="h-10 bg-slate-50 font-bold text-xs" required />
                       </div>
-                      <div className="space-y-1.5 text-right">
-                        <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-1.5"><Tag className="w-3 h-3 text-emerald-600" /> COST CATEGORY / النوع</Label>
+                      <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
+                        <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-1.5"><Tag className="w-3 h-3 text-emerald-600" /> {isRtl ? 'نوع المصروف' : 'COST CATEGORY'}</Label>
                         <select value={formData.category} onChange={(e) => setFormData({...formData, category: e.target.value})} className="w-full h-10 px-2 bg-slate-50 border border-slate-200 rounded-md text-[11px] font-bold outline-none">
-                           {costCategories.map(c => <option key={c.value} value={c.value}>{c.labelAr}</option>)}
+                           {costCategories.map(c => <option key={c.value} value={c.value}>{isRtl ? c.labelAr : c.labelEn}</option>)}
                         </select>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1.5 text-right">
-                        <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-1.5"><Workflow className="w-3 h-3 text-emerald-600" /> LINKED BATCH (OPTIONAL)</Label>
-                        <select value={formData.orderId} onChange={(e) => setFormData({...formData, orderId: e.target.value})} className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-md text-[11px] font-bold outline-none">
-                          <option value="">-- عام (غير مرتبط بطلب) --</option>
-                          {allOrders?.filter(o => o.status !== 'deleted').map(o => <option key={o.id} value={o.id}>{o.orderNumber} - {o.title}</option>)}
-                        </select>
-                      </div>
-                      <div className="space-y-1.5 text-right">
-                        <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-1.5"><UserCheck className="w-3 h-3 text-emerald-600" /> RESPONSIBLE PERSONNEL</Label>
-                        <select value={formData.supervisorId} onChange={(e) => setFormData({...formData, supervisorId: e.target.value})} className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-md text-[11px] font-bold outline-none" required>
-                          <option value="">-- اختر المسؤول عن الصرف --</option>
-                          {allWorkers?.filter(w => w.status !== 'deleted').map(w => <option key={w.id} value={w.id}>{w.fullName} ({w.isSupervisor ? 'مشرف' : 'موظف'})</option>)}
-                        </select>
-                      </div>
+                    <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
+                      <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-1.5"><Workflow className="w-3 h-3 text-emerald-600" /> {isRtl ? 'الدفعة المرتبطة (اختياري)' : 'LINKED BATCH (OPTIONAL)'}</Label>
+                      <select value={formData.orderId} onChange={(e) => setFormData({...formData, orderId: e.target.value})} className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-md text-[11px] font-bold outline-none">
+                        <option value="">{isRtl ? '-- عام (غير مرتبط بطلب) --' : '-- General (Unlinked) --'}</option>
+                        {allOrders?.filter(o => o.status !== 'deleted').map(o => <option key={o.id} value={o.id}>{o.orderNumber} - {o.title}</option>)}
+                      </select>
                     </div>
                   </div>
                 </div>
 
                 <div className="p-4 bg-emerald-50/50 border border-emerald-100 rounded-xl space-y-4">
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1.5 text-right">
-                      <Label className="text-[10px] font-black uppercase text-emerald-700">PAID TO / المستفيد</Label>
-                      <Input value={formData.recipient} onChange={(e) => setFormData({...formData, recipient: e.target.value})} className="h-10 bg-white border-emerald-200 font-bold text-xs" placeholder="مثال: شركة الكهرباء / اسم المورد" required />
+                    <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
+                      <Label className="text-[10px] font-black uppercase text-emerald-700">{isRtl ? 'المستفيد' : 'PAID TO'}</Label>
+                      <Input value={formData.recipient} onChange={(e) => setFormData({...formData, recipient: e.target.value})} className="h-10 bg-white border-emerald-200 font-bold text-xs" placeholder={isRtl ? "مثال: شركة الكهرباء / اسم المورد" : "Example: Vendor Name"} required />
                     </div>
-                    <div className="space-y-1.5 text-right">
-                      <Label className="text-[10px] font-black uppercase text-emerald-700">EXPENDITURE DESCRIPTION / البيان</Label>
-                      <Input value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="h-10 bg-white border-emerald-200 font-bold text-xs" placeholder="مثال: قيمة فاتورة شهر أكتوبر" required />
+                    <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
+                      <Label className="text-[10px] font-black uppercase text-emerald-700">{isRtl ? 'البيان' : 'EXPENDITURE DESCRIPTION'}</Label>
+                      <Input value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="h-10 bg-white border-emerald-200 font-bold text-xs" placeholder={isRtl ? "مثال: قيمة فاتورة شهر أكتوبر" : "Example: October Invoice"} required />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1.5 text-right">
-                       <Label className="text-[10px] font-black uppercase text-emerald-700">AMOUNT / القيمة</Label>
+                    <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
+                       <Label className="text-[10px] font-black uppercase text-emerald-700">{isRtl ? 'القيمة' : 'AMOUNT'}</Label>
                        <div className="relative">
                           <Input type="number" step="any" value={formData.totalAmount || ''} onChange={(e) => setFormData({...formData, totalAmount: Number(e.target.value)})} className="h-12 font-black text-xl text-center tabular-nums bg-white border-emerald-200 text-emerald-700" required />
-                          <div className="absolute left-3 top-1/2 -translate-y-1/2">
+                          <div className={cn("absolute top-1/2 -translate-y-1/2", isRtl ? "left-3" : "right-3")}>
                             <select 
                               value={formData.currency} 
                               disabled 
@@ -565,8 +560,8 @@ export default function OverheadCostsPage() {
                           </div>
                        </div>
                     </div>
-                    <div className="space-y-1.5 text-right">
-                       <Label className="text-[10px] font-black uppercase text-slate-400">ADDITIONAL NOTES / ملاحظات</Label>
+                    <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
+                       <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'ملاحظات إضافية' : 'ADDITIONAL NOTES'}</Label>
                        <Input value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} className="h-12 bg-white border-slate-200 text-[11px] font-bold" />
                     </div>
                   </div>
@@ -578,9 +573,9 @@ export default function OverheadCostsPage() {
             <div className="flex-none p-5 bg-slate-50 border-t border-slate-100 flex gap-3">
               <Button type="submit" disabled={isSubmitting || isCompressing || formData.totalAmount <= 0} className="flex-1 h-12 premium-gradient text-white rounded-lg font-black text-sm shadow-lg">
                 {isSubmitting ? <Loader2 className="animate-spin me-2" /> : <Save className="w-4 h-4 me-2" />}
-                {lang === 'ar' ? 'ترحيل سند المصروف' : 'Post Expenditure'}
+                {isRtl ? 'ترحيل سند المصروف' : 'Post Expenditure'}
               </Button>
-              <Button type="button" variant="outline" onClick={resetDialog} className="px-6 h-12 font-black text-slate-400 rounded-lg">إلغاء</Button>
+              <Button type="button" variant="outline" onClick={resetDialog} className="px-6 h-12 font-black text-slate-400 rounded-lg">{isRtl ? 'إلغاء' : 'Cancel'}</Button>
             </div>
           </form>
         </DialogContent>
@@ -589,7 +584,7 @@ export default function OverheadCostsPage() {
       {/* PRINT PREVIEW */}
       <Dialog open={!!printingVoucher} onOpenChange={(open) => !open && setPrintingVoucher(null)}>
         <DialogContent className="sm:max-w-[850px] p-0 overflow-hidden border-none bg-white shadow-2xl">
-          <DialogHeader className="sr-only"><DialogTitle>معاينة سند صرف مصاريف</DialogTitle></DialogHeader>
+          <DialogHeader className="sr-only"><DialogTitle>{isRtl ? 'معاينة السند' : 'Print Preview'}</DialogTitle></DialogHeader>
           <ScrollArea className="max-h-[85vh]">
             <div className="p-12 bg-white relative z-0" id="printable-voucher">
               {printingVoucher && (
@@ -603,8 +598,8 @@ export default function OverheadCostsPage() {
             </div>
           </ScrollArea>
           <DialogFooter className="p-6 bg-slate-50 border-t border-slate-100">
-             <Button onClick={handleDownloadImage} disabled={isDownloading} className="premium-gradient font-black gap-2 h-12 px-10 rounded-xl shadow-xl hover:opacity-90 active:scale-95 transition-all"><Download className="w-5 h-5" />{lang === 'ar' ? 'تحميل كصورة PNG' : 'Download PNG'}</Button>
-             <Button variant="ghost" onClick={() => setPrintingVoucher(null)} className="font-black h-12 px-8 rounded-xl border border-slate-200 text-slate-500">إغلاق</Button>
+             <Button onClick={handleDownloadImage} disabled={isDownloading} className="premium-gradient font-black gap-2 h-12 px-10 rounded-xl shadow-xl hover:opacity-90 active:scale-95 transition-all"><Download className="w-5 h-5" />{isRtl ? 'تحميل كصورة PNG' : 'Download PNG'}</Button>
+             <Button variant="ghost" onClick={() => setPrintingVoucher(null)} className="font-black h-12 px-8 rounded-xl border border-slate-200 text-slate-500">{isRtl ? 'إغلاق' : 'Close'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -614,14 +609,14 @@ export default function OverheadCostsPage() {
         <AlertDialogContent className="max-w-[400px] rounded-lg border-none shadow-2xl p-0 overflow-hidden">
           <div className="bg-slate-950 p-8 text-center">
             <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20 shadow-inner"><History className="w-8 h-8 text-red-500" /></div>
-            <AlertDialogTitle className="text-white text-xl font-black">{lang === 'ar' ? 'إلغاء السند المالي' : 'Cancel Transaction'}</AlertDialogTitle>
+            <AlertDialogTitle className="text-white text-xl font-black">{isRtl ? 'إلغاء السند المالي' : 'Cancel Transaction'}</AlertDialogTitle>
             <AlertDialogDescription className="text-slate-400 font-bold mt-2 text-xs leading-relaxed">
-              {lang === 'ar' ? 'تحذير: سيتم إلغاء السند وعكس أثره على الحسابات وتكاليف الإنتاج فوراً.' : 'Warning: This will reverse the fiscal impact on accounting and production costs.'}
+              {isRtl ? 'تحذير: سيتم إلغاء السند وعكس أثره على الحسابات وتكاليف الإنتاج فوراً.' : 'Warning: This will reverse the fiscal impact on accounting and production costs.'}
             </AlertDialogDescription>
           </div>
           <div className="bg-white p-6 flex gap-3">
-             <AlertDialogAction onClick={async () => { if (!db) return; await updateDoc(doc(db, 'vouchers', deletingVoucher.id), { status: 'deleted', deletedAt: serverTimestamp() }); setDeletingVoucher(null); toast({ title: lang === 'ar' ? "تم الإلغاء" : "Reversed" }); }} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-md font-black">Confirm</AlertDialogAction>
-             <AlertDialogCancel className="flex-1 h-11 bg-slate-50 border-slate-200 text-slate-400 rounded-md font-black">Cancel</AlertDialogCancel>
+             <AlertDialogAction onClick={async () => { if (!db) return; await updateDoc(doc(db, 'vouchers', deletingVoucher.id), { status: 'deleted', deletedAt: serverTimestamp() }); setDeletingVoucher(null); toast({ title: isRtl ? "تم الإلغاء" : "Reversed" }); }} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-md font-black">{isRtl ? 'تأكيد' : 'Confirm'}</AlertDialogAction>
+             <AlertDialogCancel className="flex-1 h-11 bg-slate-50 border-slate-200 text-slate-400 rounded-md font-black">{isRtl ? 'تراجع' : 'Cancel'}</AlertDialogCancel>
           </div>
         </AlertDialogContent>
       </AlertDialog>
