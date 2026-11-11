@@ -317,9 +317,9 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
   return (
     <div className="flex flex-col h-full bg-[#f1f5f9] overflow-hidden" dir={dir}>
       
-      {/* UNIFIED NAVIGATION & TAB BAR */}
-      <div className="flex-none bg-slate-900 z-30 shadow-2xl border-b border-white/10">
-        <div className="flex items-center h-14 gap-0 px-2">
+      {/* UNIFIED NAVIGATION & TAB BAR - WITH HORIZONTAL SCROLL */}
+      <div className="flex-none bg-slate-900 z-30 shadow-2xl border-b border-white/10 w-full">
+        <div className="flex items-center h-14 gap-0 px-2 overflow-hidden">
           <Button 
             variant="ghost" 
             size="icon" 
@@ -329,29 +329,79 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
             {dir === 'rtl' ? <ArrowRight className="w-5 h-5" /> : <ArrowLeft className="w-5 h-5" />}
           </Button>
           <div className="h-6 w-px bg-white/10 shrink-0 mx-2" />
-          <div className="flex-1 flex items-center h-full gap-0 overflow-x-auto no-scrollbar scroll-smooth pe-4">
-            <button onClick={() => setActiveTab('info')} className={cn("flex items-center gap-2 px-5 h-full transition-all font-black text-[10px] uppercase tracking-wider shrink-0 whitespace-nowrap", activeTab === 'info' ? "bg-emerald-600 text-white shadow-[inset_0_-3px_0_white]" : "text-white/40 hover:text-white/70")}>
+          
+          {/* SCROLLABLE TAB CONTAINER */}
+          <div className="flex-1 flex items-center h-full gap-0 overflow-x-auto no-scrollbar scroll-smooth pe-4 min-w-0">
+            <button 
+              onClick={() => setActiveTab('info')} 
+              className={cn(
+                "flex items-center gap-2 px-5 h-full transition-all font-black text-[10px] uppercase tracking-wider shrink-0 whitespace-nowrap", 
+                activeTab === 'info' ? "bg-emerald-600 text-white shadow-[inset_0_-3px_0_white]" : "text-white/40 hover:text-white/70"
+              )}
+            >
               <Info className="w-3.5 h-3.5" />{lang === 'ar' ? 'معلومات الدفعة' : 'Batch Info'}
             </button>
+            
             <div className="h-4 w-px bg-white/5 shrink-0" />
+            
             {departments?.map((dept, idx) => (
-              <button key={dept.id} onClick={() => setActiveTab(dept.id)} className={cn("flex items-center gap-2 px-5 h-full transition-all text-[10px] font-black uppercase tracking-wider shrink-0 whitespace-nowrap", activeTab === dept.id ? "bg-emerald-600 text-white shadow-[inset_0_-3px_0_white]" : "text-white/40 hover:text-white/70")}>
-                <span className={cn("w-4 h-4 rounded flex items-center justify-center text-[8px] font-black border", activeTab === dept.id ? "bg-emerald-500 border-white/20" : "bg-white/5 border-white/10")}>{idx + 1}</span>
+              <button 
+                key={dept.id} 
+                onClick={() => setActiveTab(dept.id)} 
+                className={cn(
+                  "flex items-center gap-2 px-5 h-full transition-all text-[10px] font-black uppercase tracking-wider shrink-0 whitespace-nowrap", 
+                  activeTab === dept.id ? "bg-emerald-600 text-white shadow-[inset_0_-3px_0_white]" : "text-white/40 hover:text-white/70"
+                )}
+              >
+                <span className={cn(
+                  "w-4 h-4 rounded flex items-center justify-center text-[8px] font-black border", 
+                  activeTab === dept.id ? "bg-emerald-500 border-white/20" : "bg-white/5 border-white/10"
+                )}>{idx + 1}</span>
                 <span>{dept.nameAr}</span>
               </button>
             ))}
+            
             <div className="h-4 w-px bg-white/5 shrink-0" />
-            <button onClick={() => setActiveTab('materials_summary')} className={cn("flex items-center gap-2 px-5 h-full transition-all font-black text-[10px] uppercase tracking-wider shrink-0 whitespace-nowrap", activeTab === 'materials_summary' ? "bg-amber-600 text-white shadow-[inset_0_-3px_0_white]" : "text-white/40 hover:text-white/70")}>
+            
+            <button 
+              onClick={() => setActiveTab('materials_summary')} 
+              className={cn(
+                "flex items-center gap-2 px-5 h-full transition-all font-black text-[10px] uppercase tracking-wider shrink-0 whitespace-nowrap", 
+                activeTab === 'materials_summary' ? "bg-amber-600 text-white shadow-[inset_0_-3px_0_white]" : "text-white/40 hover:text-white/70"
+              )}
+            >
               <Layers className="w-3.5 h-3.5" />{lang === 'ar' ? 'المواد الخام' : 'Materials'}
             </button>
-            <button onClick={() => setActiveTab('wages_summary')} className={cn("flex items-center gap-2 px-5 h-full transition-all font-black text-[10px] uppercase tracking-wider shrink-0 whitespace-nowrap", activeTab === 'wages_summary' ? "bg-purple-600 text-white shadow-[inset_0_-3px_0_white]" : "text-white/40 hover:text-white/70")}>
+            
+            <button 
+              onClick={() => setActiveTab('wages_summary')} 
+              className={cn(
+                "flex items-center gap-2 px-5 h-full transition-all font-black text-[10px] uppercase tracking-wider shrink-0 whitespace-nowrap", 
+                activeTab === 'wages_summary' ? "bg-purple-600 text-white shadow-[inset_0_-3px_0_white]" : "text-white/40 hover:text-white/70"
+              )}
+            >
               <Wallet className="w-3.5 h-3.5" />{lang === 'ar' ? 'الأجور' : 'Wages'}
             </button>
-            <button onClick={() => setActiveTab('costs_summary')} className={cn("flex items-center gap-2 px-5 h-full transition-all font-black text-[10px] uppercase tracking-wider shrink-0 whitespace-nowrap", activeTab === 'costs_summary' ? "bg-rose-600 text-white shadow-[inset_0_-3px_0_white]" : "text-white/40 hover:text-white/70")}>
+            
+            <button 
+              onClick={() => setActiveTab('costs_summary')} 
+              className={cn(
+                "flex items-center gap-2 px-5 h-full transition-all font-black text-[10px] uppercase tracking-wider shrink-0 whitespace-nowrap", 
+                activeTab === 'costs_summary' ? "bg-rose-600 text-white shadow-[inset_0_-3px_0_white]" : "text-white/40 hover:text-white/70"
+              )}
+            >
               <Receipt className="w-3.5 h-3.5" />{lang === 'ar' ? 'التكاليف' : 'Costs'}
             </button>
+            
             <div className="h-4 w-px bg-white/5 shrink-0" />
-            <button onClick={() => setActiveTab('summary')} className={cn("flex items-center gap-2 px-5 h-full transition-all font-black text-[10px] uppercase tracking-wider shrink-0 whitespace-nowrap", activeTab === 'summary' ? "bg-blue-600 text-white shadow-[inset_0_-3px_0_white]" : "text-white/40 hover:text-white/70")}>
+            
+            <button 
+              onClick={() => setActiveTab('summary')} 
+              className={cn(
+                "flex items-center gap-2 px-5 h-full transition-all font-black text-[10px] uppercase tracking-wider shrink-0 whitespace-nowrap", 
+                activeTab === 'summary' ? "bg-blue-600 text-white shadow-[inset_0_-3px_0_white]" : "text-white/40 hover:text-white/70"
+              )}
+            >
               <BarChart3 className="w-3.5 h-3.5" />{lang === 'ar' ? 'الملخص الإحصائي' : 'Analytics'}
             </button>
           </div>
