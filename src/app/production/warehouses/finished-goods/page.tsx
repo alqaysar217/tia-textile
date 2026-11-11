@@ -21,7 +21,8 @@ import {
   ArrowUpDown,
   Hash,
   Activity,
-  Layers
+  Layers,
+  Tag
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -70,10 +71,17 @@ export default function FinishedGoodsWarehousePage() {
   // Filter & Sort State
   const [sortBy, setSortBy] = useState<'nameAr' | 'currentStock' | 'sku'>('nameAr');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
 
   const isRtl = lang === 'ar';
+
+  const categories = [
+    "شبواني", "ملكي", "حليسي", "بيضاني", "حديدي", "شحري", "سلاطيني", 
+    "اللحجي", "الحضرمي", "الوصابي", "التهامي", "العدني", 
+    "الصنعاني", "السادة", "الشموخ", "أخرى"
+  ];
 
   // Fetch Data
   const productsQuery = useMemo(() => !db ? null : collection(db, 'products'), [db]);
@@ -93,6 +101,10 @@ export default function FinishedGoodsWarehousePage() {
       list = list.filter(p => p.nameAr?.includes(s) || p.sku?.toLowerCase().includes(s));
     }
 
+    if (categoryFilter !== 'all') {
+      list = list.filter(p => p.category === categoryFilter);
+    }
+
     const mapped = list.map(p => {
       const wh = whData?.find(w => w.id === p.id);
       return { ...p, currentStock: wh?.totalQty || 0, lastIn: wh?.updatedAt };
@@ -104,7 +116,7 @@ export default function FinishedGoodsWarehousePage() {
       if (sortBy === 'currentStock') return sortOrder === 'asc' ? Number(valA) - Number(valB) : Number(valB) - Number(valA);
       return sortOrder === 'asc' ? String(valA).localeCompare(String(valB)) : String(valB).localeCompare(String(valA));
     });
-  }, [allProducts, whData, search, sortBy, sortOrder]);
+  }, [allProducts, whData, search, sortBy, sortOrder, categoryFilter]);
 
   const filteredHistory = useMemo(() => {
     if (!transactions) return [];
@@ -187,7 +199,7 @@ export default function FinishedGoodsWarehousePage() {
     title: isRtl ? 'مستودع المنتجات الجاهزة' : 'Finished Goods Warehouse',
     inventoryTab: isRtl ? 'الجرد الحالي' : 'Current Stock',
     historyTab: isRtl ? 'سجل العمليات' : 'Transactions',
-    searchPlaceholder: isRtl ? 'بحث...' : 'Search...',
+    searchPlaceholder: isRtl ? 'بحث بالسند أو المنتج...' : 'Search records...',
     productCol: isRtl ? 'المنتج' : 'PRODUCT',
     categoryCol: isRtl ? 'الفئة' : 'CATEGORY',
     stockCol: isRtl ? 'الرصيد المتاح' : 'STOCK',
@@ -195,7 +207,7 @@ export default function FinishedGoodsWarehousePage() {
     txCol: isRtl ? 'رقم السند' : 'REF #',
     qtyCol: isRtl ? 'الكمية' : 'QTY',
     statusCol: isRtl ? 'الحالة' : 'STATUS',
-    pcsLabel: isRtl ? 'قطعة' : 'Pcs',
+    pcsLabel: isRtl ? 'قطعة جاهزة' : 'Pcs Ready',
     reverseBtn: isRtl ? 'إلغاء الترحيل' : 'Reverse',
     postedStatus: isRtl ? 'مرحل' : 'Posted',
     reversedStatus: isRtl ? 'ملغي' : 'Reversed',
@@ -244,11 +256,11 @@ export default function FinishedGoodsWarehousePage() {
                 value={search} 
                 onChange={(e) => setSearch(e.target.value)} 
                 placeholder={dictionary.searchPlaceholder} 
-                className={cn("h-9 w-full bg-white border-slate-200 text-xs font-bold", isRtl ? "pr-10" : "pl-10")} 
+                className={cn("h-9 w-full bg-white border-slate-200 text-xs font-bold focus:ring-emerald-500/10 focus:border-emerald-500", isRtl ? "pr-10" : "pl-10")} 
               />
            </div>
 
-           <div className="flex items-center gap-1.5 px-1.5">
+           <div className="flex items-center gap-1.5 px-1.5 border-s border-slate-200">
               <Button onClick={handleExportCSV} variant="ghost" className="h-9 px-3 rounded-md text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent hover:border-slate-200">
                 <FileDown className="w-3.5 h-3.5 text-emerald-600" />
                 {isRtl ? 'تصدير' : 'Export'}
@@ -294,6 +306,21 @@ export default function FinishedGoodsWarehousePage() {
                       <div className="flex items-center gap-2"><Hash className="w-3.5 h-3.5 text-slate-400" /> {isRtl ? 'كود الصنف' : 'Product SKU'}</div>
                       {sortBy === 'sku' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
                    </DropdownMenuItem>
+
+                   <DropdownMenuSeparator />
+                   <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'حسب الفئة' : 'BY CATEGORY'}</DropdownMenuLabel>
+                   <ScrollArea className="h-48">
+                      <DropdownMenuItem onClick={() => setCategoryFilter('all')} className="flex items-center justify-between text-xs font-bold cursor-pointer">
+                        {isRtl ? 'الكل' : 'All'}
+                        {categoryFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                      </DropdownMenuItem>
+                      {categories.map(c => (
+                        <DropdownMenuItem key={c} onClick={() => setCategoryFilter(c)} className="flex items-center justify-between text-xs font-bold cursor-pointer">
+                          {c}
+                          {categoryFilter === c && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                        </DropdownMenuItem>
+                      ))}
+                   </ScrollArea>
                 </DropdownMenuContent>
               </DropdownMenu>
            </div>
@@ -328,9 +355,9 @@ export default function FinishedGoodsWarehousePage() {
                        <TableRow key={p.id} className="hover:bg-slate-50/50 border-b border-slate-100 transition-colors">
                           <TableCell className={cn("px-6 py-3", isRtl ? "text-right" : "text-left")}>
                              <div className="flex items-center gap-3">
-                                <Avatar className="h-10 w-10 rounded-lg border shadow-sm shrink-0">
+                                <Avatar className="h-10 w-10 rounded-lg border shadow-sm shrink-0 bg-slate-50">
                                    <AvatarImage src={p.image} className="object-cover" />
-                                   <AvatarFallback>FG</AvatarFallback>
+                                   <AvatarFallback className="bg-emerald-50 text-emerald-600"><ShoppingBag className="w-5 h-5" /></AvatarFallback>
                                 </Avatar>
                                 <div className="flex flex-col">
                                    <span className="font-black text-slate-900 text-xs">{p.nameAr}</span>
@@ -339,7 +366,10 @@ export default function FinishedGoodsWarehousePage() {
                              </div>
                           </TableCell>
                           <TableCell className={cn("px-6 py-3", isRtl ? "text-right" : "text-left")}>
-                             <span className="inline-block px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[9px] font-black uppercase">{p.category}</span>
+                             <div className="flex items-center gap-2">
+                                <Tag className="w-3 h-3 text-slate-300" />
+                                <span className="inline-block px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[9px] font-black uppercase">{p.category}</span>
+                             </div>
                           </TableCell>
                           <TableCell className="px-6 py-3 text-center">
                              <div className="flex flex-col items-center">
@@ -395,7 +425,7 @@ export default function FinishedGoodsWarehousePage() {
                      })
                    )}
                    {((activeTab === 'inventory' ? filteredInventory : filteredHistory).length === 0) && (
-                     <TableRow><TableCell colSpan={5} className="py-20 text-center text-slate-300 font-bold">{isRtl ? 'لا توجد بيانات' : 'No data available'}</TableCell></TableRow>
+                     <TableRow><TableCell colSpan={5} className="py-20 text-center text-slate-300 font-bold">{isRtl ? 'لا توجد بيانات مطابقة للبحث أو التصفية' : 'No matching data available'}</TableCell></TableRow>
                    )}
                 </TableBody>
               </Table>
@@ -413,7 +443,7 @@ export default function FinishedGoodsWarehousePage() {
       <AlertDialog open={!!reversingTx} onOpenChange={(open) => !open && setReversingTx(null)}>
         <AlertDialogContent className="max-w-[400px] rounded-lg p-0 overflow-hidden border-none shadow-2xl">
            <div className="bg-rose-950 p-8 text-center relative">
-              <div className="w-16 h-16 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-rose-500/20 shadow-inner">
+              <div className="w-16 h-16 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20 shadow-inner">
                  <RefreshCcw className="w-8 h-8 text-rose-500" />
               </div>
               <AlertDialogTitle className="text-white text-xl font-black">{isRtl ? 'إلغاء ترحيل المنجز' : 'Reverse Stock Entry'}</AlertDialogTitle>
@@ -422,7 +452,7 @@ export default function FinishedGoodsWarehousePage() {
               </AlertDialogDescription>
            </div>
            <div className="bg-white p-6 flex gap-3">
-              <AlertDialogAction onClick={handleReverseTransfer} disabled={isSubmitting} className="flex-1 h-12 bg-rose-600 hover:bg-rose-700 text-white rounded-md font-black shadow-lg">
+              <AlertDialogAction onClick={handleReverseTransfer} disabled={isSubmitting} className="flex-1 h-12 bg-rose-600 hover:bg-red-700 text-white rounded-md font-black shadow-lg">
                  {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : <XCircle className="w-4 h-4 me-2" />}
                  {isRtl ? 'تأكيد التراجع' : 'Confirm Reverse'}
               </AlertDialogAction>
