@@ -1,33 +1,54 @@
 
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { 
   Calculator, 
   ChevronRight, 
   Search, 
   FileDown, 
-  Workflow, 
   TrendingUp, 
   Layers, 
   Wallet, 
   Receipt, 
   Coins, 
   Target, 
-  CheckCircle2,
-  Activity,
-  ArrowUpRight,
-  Info,
-  Package
+  Activity, 
+  Info, 
+  Filter,
+  CalendarDays,
+  Check,
+  SortAsc,
+  SortDesc,
+  ArrowUpDown,
+  ShoppingBag,
+  ShieldCheck,
+  Hash,
+  Tag
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useTranslation } from '@/components/LanguageProvider';
-import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { useFirestore, useCollection, useDoc } from '@/firebase';
+import { collection, query, where, doc } from 'firebase/firestore';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from '@/components/ui/dropdown-menu';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -35,7 +56,18 @@ export default function OrderCostAnalysisReport() {
   const { lang, dir } = useTranslation();
   const db = useFirestore();
   const isRtl = lang === 'ar';
+
   const [search, setSearch] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [productFilter, setProductFilter] = useState('all');
+  const [sortBy, setSortBy] = useState<'orderNumber' | 'totalCost' | 'avgCost' | 'progress'>('orderNumber');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
+  // Fetch Global Settings for Currency
+  const settingsRef = useMemo(() => !db ? null : doc(db, 'settings', 'global'), [db]);
+  const { data: savedSettings } = useDoc<any>(settingsRef);
+  const systemCurrency = savedSettings?.baseCurrency || 'YER';
 
   // Fetch Data
   const ordersQuery = useMemo(() => !db ? null : collection(db, 'productionOrders'), [db]);
@@ -43,7 +75,7 @@ export default function OrderCostAnalysisReport() {
   const productsQuery = useMemo(() => !db ? null : collection(db, 'products'), [db]);
 
   const { data: allOrders, loading: ordersLoading } = useCollection<any>(ordersQuery);
-  const { data: allVouchers, loading: vouchersLoading } = useCollection<any>(vouchersQuery);
+  const { data: allVouchers } = useCollection<any>(vouchersQuery);
   const { data: allProducts } = useCollection<any>(productsQuery);
 
   const analysisData = useMemo(() => {
@@ -73,6 +105,7 @@ export default function OrderCostAnalysisReport() {
       return {
         ...order,
         productName: product?.nameAr || '---',
+        productId: product?.id,
         matCost,
         wageCost,
         overheadCost,
@@ -84,120 +117,266 @@ export default function OrderCostAnalysisReport() {
   }, [allOrders, allVouchers, allProducts]);
 
   const filtered = useMemo(() => {
+    let list = [...analysisData];
     const s = search.toLowerCase();
-    return analysisData.filter(d => 
+    
+    list = list.filter(d => 
       d.orderNumber?.toLowerCase().includes(s) || 
       d.title?.toLowerCase().includes(s) ||
       d.productName?.toLowerCase().includes(s)
     );
-  }, [analysisData, search]);
+
+    if (productFilter !== 'all') list = list.filter(d => d.productId === productFilter);
+    if (dateFrom) list = list.filter(d => d.startDate >= dateFrom);
+    if (dateTo) list = list.filter(d => d.startDate <= dateTo);
+
+    return list.sort((a, b) => {
+      let valA = a[sortBy] ?? '';
+      let valB = b[sortBy] ?? '';
+      if (typeof valA === 'number' && typeof valB === 'number') {
+        return sortOrder === 'asc' ? valA - valB : valB - valA;
+      }
+      return sortOrder === 'asc' ? String(valA).localeCompare(String(valB)) : String(valB).localeCompare(String(valA));
+    });
+  }, [analysisData, search, productFilter, dateFrom, dateTo, sortBy, sortOrder]);
 
   const totals = useMemo(() => {
     return {
       totalCost: filtered.reduce((acc, curr) => acc + curr.totalCost, 0),
+      totalWages: filtered.reduce((acc, curr) => acc + curr.wageCost, 0),
       avgProgress: Math.round(filtered.reduce((acc, curr) => acc + curr.progress, 0) / (filtered.length || 1))
     };
   }, [filtered]);
 
+  const formatCurrency = (val: number) => {
+    const formatted = val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const parts = formatted.split('.');
+    return (
+      <span className="tabular-nums">
+        {parts[0]}
+        <span className="text-[0.7em] opacity-60">.{parts[1]}</span>
+      </span>
+    );
+  };
+
+  const handleExportCSV = () => {
+    const headers = isRtl 
+      ? ['رقم الأمر', 'المنتج', 'تاريخ البدء', 'تكلفة المواد', 'الأجور', 'المصاريف', 'الإجمالي', 'تكلفة القطعة', 'التقدم']
+      : ['Order #', 'Product', 'Start Date', 'Mat. Cost', 'Wages', 'Overhead', 'Total', 'Unit Cost', 'Progress'];
+    
+    const rows = filtered.map(d => [
+      d.orderNumber, d.productName, d.startDate, 
+      d.matCost.toFixed(2), d.wageCost.toFixed(2), d.overheadCost.toFixed(2), 
+      d.totalCost.toFixed(2), d.avgCost.toFixed(2), `${d.progress}%`
+    ]);
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `CostAnalysis_${new Date().toISOString().split('T')[0]}.csv`);
+    link.click();
+    toast({ title: isRtl ? "تم تصدير البيانات" : "Data Exported" });
+  };
+
+  const toggleSort = (field: typeof sortBy) => {
+    if (sortBy === field) setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    else { setSortBy(field); setSortOrder('asc'); }
+  };
+
   return (
     <div className="flex flex-col h-full bg-[#f8fafc] overflow-hidden" dir={dir}>
-      {/* HEADER */}
-      <div className="flex-none bg-white border-b border-slate-200 px-6 py-4 shadow-sm">
+      
+      {/* HEADER WITH INTEGRATED FILTERS */}
+      <div className="flex-none bg-white border-b border-slate-200 px-6 py-4 shadow-sm z-30">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div className="flex items-center gap-4">
             <div className="p-2.5 bg-slate-900 rounded-lg text-white shadow-lg"><Calculator className="w-5 h-5 text-emerald-400" /></div>
             <div>
               <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                <span>{isRtl ? 'التقارير' : 'Reports'}</span>
+                <span>{isRtl ? 'التقارير' : 'REPORTS'}</span>
                 <ChevronRight className={cn("w-3 h-3", isRtl ? "rotate-180" : "")} />
-                <span className="text-emerald-600">{isRtl ? 'تحليل تكاليف الأوامر' : 'Cost Analysis'}</span>
+                <span className="text-emerald-600">{isRtl ? 'تحليل تكاليف الأوامر' : 'BATCH COSTING'}</span>
               </div>
-              <h1 className="text-xl font-black text-slate-900 leading-tight">{isRtl ? 'ربحية الدفعات وتكاليف الإنتاج' : 'Batch Profitability & Costing'}</h1>
+              <h1 className="text-xl font-black text-slate-900 leading-tight">{isRtl ? 'تحليل ربحية وتكاليف الإنتاج' : 'Profitability & Cost Analysis'}</h1>
             </div>
           </div>
-          <Button variant="outline" className="h-10 px-6 font-black gap-2 border-slate-200">
-            <FileDown className="w-4 h-4 text-emerald-600" /> {isRtl ? 'تصدير التحليل' : 'Export Analysis'}
-          </Button>
-        </div>
 
-        <div className="mt-4 relative">
-           <Search className={cn("absolute top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400", isRtl ? "right-3" : "left-3")} />
-           <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={isRtl ? 'بحث بأمر الإنتاج أو نوع المنتج...' : 'Filter by batch or product...'} className={cn("h-10 bg-slate-50 border-slate-200 text-xs font-bold", isRtl ? "pr-10" : "pl-10")} />
+          <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-xl border border-slate-200">
+            <div className="relative w-48 md:w-64">
+              <Search className={cn("absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400", isRtl ? "right-3" : "left-3")} />
+              <Input 
+                value={search} 
+                onChange={(e) => setSearch(e.target.value)} 
+                placeholder={isRtl ? 'بحث بالأمر أو المنتج...' : 'Search...'} 
+                className={cn("h-9 bg-white border-slate-200 text-[10px] font-bold", isRtl ? "pr-9" : "pl-9")} 
+              />
+            </div>
+
+            <div className="flex items-center gap-1 px-1 border-x border-slate-200">
+               <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 transition-all", (dateFrom || dateTo) && "border-emerald-500 bg-emerald-50")}>
+                       <CalendarDays className={cn("w-4 h-4", (dateFrom || dateTo) ? "text-emerald-600" : "text-slate-400")} />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent align={isRtl ? "start" : "end"} className="w-72 p-4 rounded-xl shadow-2xl border-slate-200">
+                     <div className="space-y-4 text-right">
+                        <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b pb-2"><CalendarDays className="w-3.5 h-3.5" />{isRtl ? 'تصفية زمنية' : 'DATE RANGE'}</div>
+                        <div className="grid grid-cols-2 gap-3">
+                           <div className="space-y-1.5"><Label className="text-[9px] font-black text-slate-400">{isRtl ? 'من' : 'FROM'}</Label><Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-9 text-[10px] font-bold" /></div>
+                           <div className="space-y-1.5"><Label className="text-[9px] font-black text-slate-400">{isRtl ? 'إلى' : 'TO'}</Label><Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-9 text-[10px] font-bold" /></div>
+                        </div>
+                        {(dateFrom || dateTo) && <Button variant="link" onClick={() => { setDateFrom(''); setDateTo(''); }} className="text-[9px] h-auto p-0 font-bold text-rose-500 underline uppercase w-full">{isRtl ? 'إعادة تعيين' : 'RESET'}</Button>}
+                     </div>
+                  </PopoverContent>
+               </Popover>
+
+               <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 transition-all", productFilter !== 'all' && "border-emerald-500 bg-emerald-50")}>
+                       <ShoppingBag className={cn("w-4 h-4", productFilter !== 'all' ? "text-emerald-600" : "text-slate-400")} />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align={isRtl ? "start" : "end"} className="w-64 rounded-xl shadow-xl border-slate-200">
+                     <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'حسب نوع المنتج' : 'BY PRODUCT'}</DropdownMenuLabel>
+                     <ScrollArea className="h-48">
+                        <DropdownMenuItem onClick={() => setProductFilter('all')} className="flex justify-between text-xs font-bold cursor-pointer">{isRtl ? 'جميع المنتجات' : 'All Products'}{productFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}</DropdownMenuItem>
+                        {allProducts?.map(p => (
+                          <DropdownMenuItem key={p.id} onClick={() => setProductFilter(p.id)} className="flex justify-between text-xs font-bold cursor-pointer">
+                            {p.nameAr}
+                            {productFilter === p.id && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                          </DropdownMenuItem>
+                        ))}
+                     </ScrollArea>
+                  </DropdownMenuContent>
+               </DropdownMenu>
+
+               <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 transition-all">
+                       <Filter className="w-4 h-4 text-slate-400" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align={isRtl ? "start" : "end"} className="w-56 rounded-xl shadow-xl border-slate-200">
+                     <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'ترتيب حسب' : 'SORT BY'}</DropdownMenuLabel>
+                     <DropdownMenuItem onClick={() => toggleSort('totalCost')} className="flex justify-between text-xs font-bold cursor-pointer py-2.5">
+                        {isRtl ? 'إجمالي التكلفة' : 'Total Cost'}
+                        {sortBy === 'totalCost' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
+                     </DropdownMenuItem>
+                     <DropdownMenuItem onClick={() => toggleSort('avgCost')} className="flex justify-between text-xs font-bold cursor-pointer py-2.5">
+                        {isRtl ? 'تكلفة القطعة' : 'Unit Cost'}
+                        {sortBy === 'avgCost' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
+                     </DropdownMenuItem>
+                     <DropdownMenuItem onClick={() => toggleSort('progress')} className="flex justify-between text-xs font-bold cursor-pointer py-2.5">
+                        {isRtl ? 'نسبة الإنجاز' : 'Progress'}
+                        {sortBy === 'progress' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
+                     </DropdownMenuItem>
+                  </DropdownMenuContent>
+               </DropdownMenu>
+            </div>
+
+            <Button onClick={handleExportCSV} variant="ghost" size="icon" className="h-9 w-9 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 shadow-md">
+              <FileDown className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* TOTALS SUMMARY */}
-      <div className="flex-none p-6 grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50/30 border-b border-slate-100">
-         <div className="bg-emerald-600 p-6 rounded-[2rem] text-white shadow-xl shadow-emerald-900/20 relative overflow-hidden group">
-            <div className="absolute top-0 right-0 p-8 opacity-10 transform scale-150 group-hover:rotate-12 transition-transform"><TrendingUp className="w-20 h-20" /></div>
-            <div className="relative z-10 space-y-1">
-               <p className="text-[10px] font-black uppercase tracking-widest text-emerald-100">{isRtl ? 'إجمالي تكاليف التشغيل المباشرة' : 'CONSOLIDATED OP. COSTS'}</p>
-               <h3 className="text-3xl font-black tabular-nums">{totals.totalCost.toLocaleString('en-US', { minimumFractionDigits: 2 })} <span className="text-sm font-bold text-emerald-200">YER</span></h3>
+      <div className="flex-1 min-h-0 flex flex-col p-4 md:p-6 space-y-4 overflow-hidden">
+        
+        {/* COMPACT STATS ROW - FULL WIDTH */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 flex-none">
+          <div className="flex items-center gap-3 overflow-x-auto no-scrollbar pb-1 flex-1 w-full">
+            <div className="bg-white px-4 py-3 rounded-lg border border-slate-200 shadow-sm flex items-center gap-3 group hover:border-emerald-200 transition-all flex-1 min-w-[160px]">
+                <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg group-hover:bg-emerald-600 group-hover:text-white transition-all shrink-0">
+                  <TrendingUp className="w-4 h-4" />
+                </div>
+                <div className="flex flex-col overflow-hidden text-right">
+                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-tight truncate">{isRtl ? 'إجمالي تكاليف التشغيل' : 'CONSOLIDATED COSTS'}</p>
+                  <h3 className="text-sm font-black text-slate-900">{formatCurrency(totals.totalCost)} <span className="text-[9px] opacity-40 uppercase ms-1">{systemCurrency}</span></h3>
+                </div>
             </div>
-         </div>
-         <div className="bg-slate-900 p-6 rounded-[2rem] text-white shadow-xl shadow-slate-900/20 relative overflow-hidden group">
-            <div className="absolute top-0 right-0 p-8 opacity-10 transform scale-150 group-hover:rotate-12 transition-transform"><Activity className="w-20 h-20" /></div>
-            <div className="relative z-10 space-y-1">
-               <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{isRtl ? 'متوسط نسبة الإنجاز العام' : 'AVG. PIPELINE PROGRESS'}</p>
-               <h3 className="text-3xl font-black tabular-nums">{totals.avgProgress}%</h3>
-               <Progress value={totals.avgProgress} className="h-1.5 bg-slate-800" />
+            <div className="bg-white px-4 py-3 rounded-lg border border-slate-200 shadow-sm flex items-center gap-3 group hover:border-purple-200 transition-all flex-1 min-w-[160px]">
+                <div className="p-2 bg-purple-50 text-purple-600 rounded-lg group-hover:bg-purple-600 group-hover:text-white transition-all shrink-0">
+                  <Wallet className="w-4 h-4" />
+                </div>
+                <div className="flex flex-col overflow-hidden text-right">
+                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-tight truncate">{isRtl ? 'إجمالي الأجور المستحقة' : 'TOTAL WAGES'}</p>
+                  <h3 className="text-sm font-black text-purple-700">{formatCurrency(totals.totalWages)} <span className="text-[9px] opacity-40 uppercase ms-1">{systemCurrency}</span></h3>
+                </div>
             </div>
-         </div>
-      </div>
+            <div className="bg-white px-4 py-3 rounded-lg border border-slate-200 shadow-sm flex items-center gap-3 group hover:border-blue-200 transition-all flex-1 min-w-[160px]">
+                <div className="p-2 bg-blue-50 text-blue-600 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-all shrink-0">
+                  <Activity className="w-4 h-4" />
+                </div>
+                <div className="flex flex-col overflow-hidden text-right">
+                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-tight truncate">{isRtl ? 'متوسط التقدم العام' : 'AVG. PIPELINE'}</p>
+                  <h3 className="text-sm font-black text-blue-700 tabular-nums">{totals.avgProgress}%</h3>
+                </div>
+            </div>
+          </div>
+        </div>
 
-      {/* ANALYSIS GRID */}
-      <div className="flex-1 min-h-0 overflow-auto p-6 no-scrollbar">
-         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            <Table className="text-right border-separate border-spacing-0">
-               <TableHeader className="bg-slate-100/80 sticky top-0 z-10 shadow-sm">
+        {/* DATA TABLE - ERP STYLE SHARP CORNERS */}
+        <div className="flex-1 min-h-0 bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+          <div className="flex-1 overflow-auto no-scrollbar relative">
+            <Table className={cn("text-right border-separate border-spacing-0 w-full", !isRtl && "text-left")}>
+               <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
                   <TableRow>
-                     <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", isRtl ? "text-right" : "text-left")}>BATCH</TableHead>
-                     <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center">MAT. COST</TableHead>
-                     <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center">WAGES</TableHead>
-                     <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center">OVERHEAD</TableHead>
-                     <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center">TOTAL COST</TableHead>
-                     <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center">UNIT COST</TableHead>
-                     <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center">PROGRESS</TableHead>
+                     <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? "text-right" : "text-left")}>{isRtl ? 'أمر الإنتاج' : 'BATCH / ORDER'}</TableHead>
+                     <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">{isRtl ? 'المواد' : 'MAT. COST'}</TableHead>
+                     <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">{isRtl ? 'الأجور' : 'WAGES'}</TableHead>
+                     <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">{isRtl ? 'المصاريف' : 'OVERHEAD'}</TableHead>
+                     <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200 bg-slate-100/50">{isRtl ? 'الإجمالي' : 'TOTAL COST'}</TableHead>
+                     <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">{isRtl ? 'تكلفة/قطعة' : 'UNIT COST'}</TableHead>
+                     <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? "text-right" : "text-left")}>{isRtl ? 'التقدم' : 'STATUS'}</TableHead>
                   </TableRow>
                </TableHeader>
                <TableBody>
                   {ordersLoading ? (
-                    <TableRow><TableCell colSpan={7} className="text-center py-20 animate-pulse text-slate-400 font-black">جاري تحليل التكاليف...</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={7} className="text-center py-24 animate-pulse text-slate-400 font-black">{isRtl ? 'جاري تحليل التكاليف...' : 'Analyzing Costing Data...'}</TableCell></TableRow>
                   ) : filtered.length === 0 ? (
-                    <TableRow><TableCell colSpan={7} className="text-center py-20 text-slate-300 font-bold">لا توجد أوامر إنتاج مسجلة</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={7} className="text-center py-24 text-slate-300 font-bold">{isRtl ? 'لا توجد بيانات مطابقة' : 'No records match these filters'}</TableCell></TableRow>
                   ) : filtered.map((d) => (
-                    <TableRow key={d.id} className="hover:bg-slate-50 transition-colors border-b border-slate-100">
+                    <TableRow key={d.id} className="hover:bg-slate-50/50 transition-colors border-b border-slate-100 group">
                        <TableCell className={cn("px-6 py-4", isRtl ? "text-right" : "text-left")}>
                           <div className="flex flex-col">
                              <span className="font-black text-slate-900 text-xs">{d.title}</span>
-                             <span className="text-[10px] text-emerald-700 font-bold tabular-nums tracking-widest">{d.orderNumber}</span>
+                             <div className="flex items-center gap-2 mt-0.5">
+                                <Badge variant="outline" className="text-[8px] font-black tabular-nums bg-slate-50">{d.orderNumber}</Badge>
+                                <span className="text-[9px] text-slate-400 font-bold">{d.productName}</span>
+                             </div>
                           </div>
                        </TableCell>
-                       <TableCell className="px-6 py-4 text-center font-bold text-amber-700 tabular-nums text-xs">{d.matCost.toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
-                       <TableCell className="px-6 py-4 text-center font-bold text-purple-700 tabular-nums text-xs">{d.wageCost.toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
-                       <TableCell className="px-6 py-4 text-center font-bold text-rose-700 tabular-nums text-xs">{d.overheadCost.toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
-                       <TableCell className="px-6 py-4 text-center font-black text-slate-900 tabular-nums text-xs bg-slate-50/50">{d.totalCost.toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
-                       <TableCell className="px-6 py-4 text-center font-black text-emerald-700 tabular-nums text-xs">{d.avgCost.toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
-                       <TableCell className="px-6 py-4 text-center">
-                          <div className="flex items-center gap-2 justify-center">
-                             <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden relative"><div className={cn("h-full bg-emerald-500 absolute", isRtl ? "right-0" : "left-0")} style={{ width: `${d.progress}%` }} /></div>
-                             <span className="text-[9px] font-black text-slate-400">{d.progress}%</span>
+                       <TableCell className="px-6 py-4 text-center font-bold text-amber-700 text-[11px]">{formatCurrency(d.matCost)}</TableCell>
+                       <TableCell className="px-6 py-4 text-center font-bold text-purple-700 text-[11px]">{formatCurrency(d.wageCost)}</TableCell>
+                       <TableCell className="px-6 py-4 text-center font-bold text-rose-700 text-[11px]">{formatCurrency(d.overheadCost)}</TableCell>
+                       <TableCell className="px-6 py-4 text-center font-black text-slate-900 text-[11px] bg-slate-50/50 border-x border-slate-100/50">{formatCurrency(d.totalCost)}</TableCell>
+                       <TableCell className="px-6 py-4 text-center font-black text-emerald-700 text-[11px]">{formatCurrency(d.avgCost)}</TableCell>
+                       <TableCell className={cn("px-6 py-4", isRtl ? "text-right" : "text-left")}>
+                          <div className="flex items-center gap-3">
+                             <div className="flex-1 h-1.5 w-16 bg-slate-100 rounded-full overflow-hidden relative shadow-inner">
+                                <div className={cn("h-full bg-emerald-500 absolute", isRtl ? "right-0" : "left-0")} style={{ width: `${d.progress}%` }} />
+                             </div>
+                             <span className="text-[9px] font-black text-slate-400 tabular-nums">{d.progress}%</span>
                           </div>
                        </TableCell>
                     </TableRow>
                   ))}
                </TableBody>
             </Table>
-         </div>
+          </div>
+        </div>
       </div>
 
-      {/* SYSTEM NOTE */}
-      <div className="flex-none p-3 bg-slate-900 text-white/40 flex items-center justify-center gap-4">
-         <Info className="w-4 h-4 text-emerald-500" />
+      {/* SYSTEM AUDIT FOOTER */}
+      <div className="flex-none p-3 bg-slate-900 text-white/40 flex items-center justify-center gap-4 border-t border-white/5">
+         <ShieldCheck className="w-4 h-4 text-emerald-500" />
          <p className="text-[10px] font-bold tracking-tight">
            {isRtl 
-             ? 'بروتوكول التحليل: يتم حساب التكلفة بناءً على المبالغ الموثقة في السندات المرحلة فقط لضمان دقة التقارير المالية.' 
-             : 'Costing Protocol: Calculations are based solely on posted voucher amounts for maximum fiscal accuracy.'}
+             ? 'بروتوكول الرقابة المالية: يتم احتساب التكاليف والربحية بناءً على السندات المرحلة فقط لضمان النزاهة المحاسبية.' 
+             : 'Financial Audit Protocol: Profitability and costing are calculated from posted vouchers only for fiscal integrity.'}
          </p>
       </div>
     </div>
