@@ -44,7 +44,8 @@ import {
   Coins,
   FileDown,
   Zap,
-  Briefcase
+  Briefcase,
+  Truck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from '@/components/LanguageProvider';
@@ -240,13 +241,35 @@ export default function OrderDetailsDashboard() {
 
   const grandTotalCost = totalMaterialsCost + totalWagesCost + totalOtherCosts;
 
-  const finalStage = useMemo(() => departments?.[departments.length - 1], [departments]);
+  // Identify Final Stage reliably
+  const finalStage = useMemo(() => {
+     if (!departments || departments.length === 0) return null;
+     return [...departments].sort((a, b) => (a.code || '').localeCompare(b.code || '')).pop();
+  }, [departments]);
+
+  // Logic: Completion is count of items at final stage OR items already in warehouse
   const finalCompletedQty = useMemo(() => {
-    if (!vouchers || !finalStage) return 0;
-    return vouchers
-      .filter(v => v.type === 'production_receipt' && v.currentStageId === finalStage.id && v.status !== 'deleted')
+    if (!vouchers) return 0;
+    
+    // Sum from final stage receipts
+    const stageCompletion = vouchers
+      .filter(v => v.type === 'production_receipt' && v.currentStageId === finalStage?.id && v.status !== 'deleted')
       .reduce((sum, v) => sum + (v.qtyAccepted || 0), 0);
+    
+    // ALSO sum items that might have been transferred to warehouse regardless of stage
+    const transferredCompletion = vouchers
+      .filter(v => v.type === 'production_receipt' && v.isTransferred && v.status !== 'deleted' && v.currentStageId !== finalStage?.id)
+      .reduce((sum, v) => sum + (v.qtyAccepted || 0), 0);
+
+    return stageCompletion + transferredCompletion;
   }, [vouchers, finalStage]);
+
+  const totalTransferredToWh = useMemo(() => {
+    if (!vouchers) return 0;
+    return vouchers
+      .filter(v => v.type === 'production_receipt' && v.isTransferred && v.status !== 'deleted')
+      .reduce((sum, v) => sum + (v.qtyAccepted || 0), 0);
+  }, [vouchers]);
 
   const avgCostPerPiece = useMemo(() => {
     return finalCompletedQty > 0 ? Math.round(grandTotalCost / finalCompletedQty) : 0;
@@ -556,7 +579,7 @@ export default function OrderDetailsDashboard() {
                     <SummaryStatCard label={isRtl ? 'تكاليف أخرى' : 'OVERHEAD'} value={totalOtherCosts} currency={systemCurrency} icon={<Receipt className="w-4 h-4" />} color="text-rose-700" bgColor="bg-rose-500/10" />
                     <SummaryStatCard label={isRtl ? 'الإجمالي الكلي' : 'TOTAL COST'} value={grandTotalCost} currency={systemCurrency} icon={<Coins className="w-4 h-4" />} color="text-emerald-800" bgColor="bg-emerald-600/10" />
                     <SummaryStatCard label={isRtl ? 'قطع منجزة' : 'FINISHED'} value={finalCompletedQty} currency={isRtl ? 'قطعة' : 'Pcs'} icon={<CheckCircle2 className="w-4 h-4" />} color="text-blue-700" bgColor="bg-blue-500/10" />
-                    <SummaryStatCard label={isRtl ? 'تكلفة القطعة' : 'UNIT COST'} value={avgCostPerPiece} currency={systemCurrency} icon={<Target className="w-4 h-4" />} color="text-slate-900" bgColor="bg-slate-900/5" />
+                    <SummaryStatCard label={isRtl ? 'المرحل للمستودع' : 'TRANSFERRED'} value={totalTransferredToWh} currency={isRtl ? 'قطعة' : 'Pcs'} icon={<Truck className="w-4 h-4" />} color="text-emerald-600" bgColor="bg-emerald-600/5" />
                   </div>
                </div>
 
@@ -1046,7 +1069,14 @@ function LedgerTransactionRow({ voucher, worker, systemCurrency, lang, onView }:
         {voucher.date}
       </TableCell>
       <TableCell className={cn("px-6 py-3 font-black text-slate-900 text-[10px] tabular-nums tracking-wider", isRtl ? 'text-right' : 'text-left')}>
-        {voucher.voucherNumber}
+        <div className="flex flex-col">
+          <span>{voucher.voucherNumber}</span>
+          {voucher.isTransferred && (
+            <span className="text-[8px] font-black text-emerald-600 flex items-center gap-1">
+              <Truck className="w-2.5 h-2.5" /> {isRtl ? 'مُرحل للمستودع' : 'IN WAREHOUSE'}
+            </span>
+          )}
+        </div>
       </TableCell>
       <TableCell className={cn("px-6 py-3", isRtl ? 'text-right' : 'text-left')}>
         <div className={cn("inline-flex items-center gap-2 px-2 py-0.5 rounded text-[9px] font-black uppercase border", config.color)}>
