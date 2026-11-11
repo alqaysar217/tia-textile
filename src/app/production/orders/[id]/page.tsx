@@ -235,10 +235,12 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
     vouchers
       .filter(v => v.type === 'material_issue' && v.status !== 'deleted')
       .forEach(v => {
+        const worker = workers?.find(w => w.id === v.workerId);
         v.items?.forEach((item: any) => {
           list.push({
             date: v.date,
             voucherNumber: v.voucherNumber,
+            workerName: worker?.fullName || '---',
             nameAr: item.nameAr,
             qty: Number(item.qty || 0),
             unit: item.unit,
@@ -251,7 +253,11 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
 
     if (matSearch) {
       const s = matSearch.toLowerCase();
-      list = list.filter(m => m.nameAr?.toLowerCase().includes(s) || m.voucherNumber?.toLowerCase().includes(s));
+      list = list.filter(m => 
+        m.nameAr?.toLowerCase().includes(s) || 
+        m.voucherNumber?.toLowerCase().includes(s) ||
+        m.workerName?.toLowerCase().includes(s)
+      );
     }
 
     return list.sort((a, b) => {
@@ -261,7 +267,7 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
       if (matSortBy === 'total') return matSortOrder === 'asc' ? Number(valA) - Number(valB) : Number(valB) - Number(valA);
       return matSortOrder === 'asc' ? String(valA).localeCompare(String(valB), 'ar') : String(valB).localeCompare(String(valA), 'ar');
     });
-  }, [vouchers, systemCurrency, matSearch, matSortBy, matSortOrder]);
+  }, [vouchers, workers, systemCurrency, matSearch, matSortBy, matSortOrder]);
 
   const filteredWagesDetailed = useMemo(() => {
     let list = vouchers
@@ -574,12 +580,12 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                <div className="p-2 bg-slate-50 border-b border-slate-200 flex items-center gap-2 shadow-sm">
                   <div className="relative flex-1">
                     <Search className={cn("absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300", dir === 'rtl' ? "right-3" : "left-3")} />
-                    <Input value={matSearch} onChange={(e) => setMatSearch(e.target.value)} placeholder={lang === 'ar' ? 'بحث في سجل المواد...' : 'Search materials log...'} className={cn("h-9 bg-white text-xs font-bold border-slate-200", dir === 'rtl' ? "pr-9 pl-3" : "pl-9 pr-3")} />
+                    <Input value={matSearch} onChange={(e) => setMatSearch(e.target.value)} placeholder={lang === 'ar' ? 'بحث في سجل المواد أو الموظف...' : 'Search materials or worker...'} className={cn("h-9 bg-white text-xs font-bold border-slate-200", dir === 'rtl' ? "pr-9 pl-3" : "pl-9 pr-3")} />
                   </div>
                   <div className="flex items-center gap-1.5 px-1.5 border-x border-slate-200">
                     <Button variant="ghost" size="sm" onClick={() => {
-                        const headers = ['Date', 'Voucher', 'Material', 'Qty', 'Unit', 'Price', 'Total', 'Currency'];
-                        const rows = filteredMaterialsDetailed.map(m => [m.date, m.voucherNumber, m.nameAr, m.qty, m.unit, m.price, m.total, m.currency]);
+                        const headers = ['Date', 'Voucher', 'Personnel', 'Material', 'Qty', 'Unit', 'Price', 'Total', 'Currency'];
+                        const rows = filteredMaterialsDetailed.map(m => [m.date, m.voucherNumber, m.workerName, m.nameAr, m.qty, m.unit, m.price, m.total, m.currency]);
                         const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
                         const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
                         const url = URL.createObjectURL(blob);
@@ -618,6 +624,7 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                       <TableRow>
                         <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? 'text-right' : 'text-left')}>DATE</TableHead>
                         <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? 'text-right' : 'text-left')}>REF #</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? 'text-right' : 'text-left')}>PERSONNEL</TableHead>
                         <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? 'text-right' : 'text-left')}>MATERIAL</TableHead>
                         <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? 'text-right' : 'text-left')}>QTY</TableHead>
                         <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? 'text-right' : 'text-left')}>TOTAL</TableHead>
@@ -628,6 +635,7 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                         <TableRow key={idx} className="hover:bg-slate-50 transition-colors border-b border-slate-100">
                            <TableCell className={cn("px-6 py-4 text-[10px] font-bold text-slate-500 tabular-nums", dir === 'rtl' ? 'text-right' : 'text-left')}>{m.date}</TableCell>
                            <TableCell className={cn("px-6 py-4 text-[10px] font-black text-slate-400 tabular-nums", dir === 'rtl' ? 'text-right' : 'text-left')}>{m.voucherNumber}</TableCell>
+                           <TableCell className={cn("px-6 py-4 font-bold text-slate-700 text-xs", dir === 'rtl' ? 'text-right' : 'text-left')}>{m.workerName}</TableCell>
                            <TableCell className={cn("px-6 py-4 font-black text-slate-900 text-xs", dir === 'rtl' ? 'text-right' : 'text-left')}>{m.nameAr}</TableCell>
                            <TableCell className={cn("px-6 py-4 font-bold text-slate-700 tabular-nums", dir === 'rtl' ? 'text-right' : 'text-left')}>{m.qty} <span className="text-[8px] font-black text-slate-400 uppercase">{m.unit}</span></TableCell>
                            <TableCell className={cn("px-6 py-4 font-black text-amber-700 tabular-nums", dir === 'rtl' ? 'text-right' : 'text-left')}>{m.total.toLocaleString('en-US')} <span className="text-[8px] opacity-60 uppercase">{m.currency}</span></TableCell>
@@ -768,9 +776,9 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                   <Table className="text-right border-separate border-spacing-0">
                     <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
                       <TableRow>
-                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? 'text-right' : 'text-left')}>DATE</TableHead>
-                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? 'text-right' : 'text-left')}>DESCRIPTION</TableHead>
-                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? 'text-right' : 'text-left')}>AMOUNT</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? 'text-right' : 'text-left')}>DATE</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? 'text-right' : 'text-left')}>DESCRIPTION</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? 'text-right' : 'text-left')}>AMOUNT</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
