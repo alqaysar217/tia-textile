@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
@@ -37,7 +38,8 @@ import {
   Image as ImageIcon,
   ArrowUp01,
   ArrowDown10,
-  Coins
+  Coins,
+  AlertTriangle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -269,6 +271,16 @@ export default function MaterialsPage() {
   const handleSaveMaterial = (e: React.FormEvent) => {
     e.preventDefault();
     if (!db || isSubmitting || isCompressing) return;
+
+    // Safety Validation: Prevent negative stock during manual edits/adds
+    if (formData.currentQty < 0) {
+      toast({ 
+        variant: "destructive", 
+        title: lang === 'ar' ? "خطأ في الكمية" : "Inventory Error", 
+        description: lang === 'ar' ? "لا يمكن تسجيل مخزون بالسالب يرجى مراجعة الكمية المدخلة" : "Inventory cannot be negative. Please check input value." 
+      });
+      return;
+    }
 
     setIsSubmitting(true);
     const generatedCode = editingMatId ? formData.code : `MAT-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -547,6 +559,8 @@ export default function MaterialsPage() {
                 ) : filtered.map((mat) => {
                   const cat = categories.find(c => c.value === mat.category);
                   const isLow = (mat.currentQty || 0) <= (mat.minQty || 0);
+                  const isNegative = (mat.currentQty || 0) < 0;
+
                   return (
                     <TableRow key={mat.id} className="group hover:bg-slate-50/50 border-b border-slate-100">
                       <TableCell className="px-6 py-3">
@@ -570,7 +584,7 @@ export default function MaterialsPage() {
                       </TableCell>
                       <TableCell className="px-6 py-3 text-center">
                         <div className="flex flex-col items-center">
-                          <span className={cn("text-xs font-black tabular-nums", isLow ? "text-rose-600" : "text-slate-900")}>
+                          <span className={cn("text-xs font-black tabular-nums", isNegative ? "text-rose-600 underline decoration-wavy" : isLow ? "text-rose-600" : "text-slate-900")}>
                             {(mat.currentQty || 0).toLocaleString('en-US')}
                           </span>
                           <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">{mat.unit}</span>
@@ -586,11 +600,15 @@ export default function MaterialsPage() {
                         </div>
                       </TableCell>
                       <TableCell className="px-6 py-3 text-center">
-                        <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[9px] font-black uppercase ${
-                          isLow ? 'bg-rose-50 text-rose-700 border border-rose-100' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                        <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[9px] font-black uppercase border transition-all ${
+                          isNegative ? 'bg-rose-600 text-white border-rose-700 animate-pulse' :
+                          isLow ? 'bg-rose-50 text-rose-700 border border-rose-100' : 
+                          'bg-emerald-50 text-emerald-700 border border-emerald-100'
                         }`}>
-                          <div className={cn("w-1 h-1 rounded-full", isLow ? "bg-rose-600" : "bg-emerald-600")} />
-                          {isLow ? (lang === 'ar' ? 'مخزون منخفض' : 'Low Stock') : (lang === 'ar' ? 'جيد' : 'Available')}
+                          <div className={cn("w-1 h-1 rounded-full", isNegative ? "bg-white" : isLow ? "bg-rose-600" : "bg-emerald-600")} />
+                          {isNegative ? (lang === 'ar' ? 'خطأ مخزني' : 'Inv. Error') :
+                           isLow ? (lang === 'ar' ? 'مخزون منخفض' : 'Low Stock') : 
+                           (lang === 'ar' ? 'جيد' : 'Available')}
                         </div>
                       </TableCell>
                       <TableCell className="px-6 py-3 sticky right-0 bg-white group-hover:bg-slate-50/50 shadow-[-10px_0_10px_-5px_rgba(0,0,0,0.05)]">
@@ -696,7 +714,7 @@ export default function MaterialsPage() {
                 <select 
                   value={formData.currency} 
                   disabled 
-                  className="w-full h-10 px-2 bg-slate-100 border border-slate-200 rounded-md text-[10px] font-bold outline-none cursor-not-allowed text-slate-500"
+                  className="w-24 h-10 px-2 bg-slate-100 border border-slate-200 rounded-md text-[10px] font-bold outline-none cursor-not-allowed text-slate-500"
                 >
                   {currencies.map(c => <option key={c.value} value={c.value}>{lang === 'ar' ? c.labelAr : c.labelEn}</option>)}
                 </select>
@@ -716,14 +734,29 @@ export default function MaterialsPage() {
                   <Box className="w-3 h-3 text-emerald-600" />
                   {lang === 'ar' ? 'الكمية الحالية' : 'OPENING QTY'}
                 </Label>
-                <Input type="number" value={formData.currentQty} onChange={(e) => setFormData({...formData, currentQty: Number(e.target.value)})} className="h-10 font-bold text-xs bg-slate-50 tabular-nums" />
+                <Input 
+                  type="number" 
+                  min="0"
+                  value={formData.currentQty} 
+                  onChange={(e) => setFormData({...formData, currentQty: Number(e.target.value)})} 
+                  className={cn(
+                    "h-10 font-bold text-xs bg-slate-50 tabular-nums",
+                    formData.currentQty < 0 && "border-rose-500 bg-rose-50 focus:ring-rose-500/10"
+                  )} 
+                />
+                {formData.currentQty < 0 && (
+                  <p className="text-[9px] font-bold text-rose-600 flex items-center gap-1.5 mt-1 animate-in fade-in slide-in-from-top-1">
+                    <AlertTriangle className="w-2.5 h-2.5" />
+                    {lang === 'ar' ? 'لا يسمح بالكميات السالبة' : 'Negative values not allowed'}
+                  </p>
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
                   <Gauge className="w-3 h-3 text-emerald-600" />
                   {lang === 'ar' ? 'حد الأمان' : 'MIN LEVEL'}
                 </Label>
-                <Input type="number" value={formData.minQty} onChange={(e) => setFormData({...formData, minQty: Number(e.target.value)})} className="h-10 font-bold text-xs bg-slate-50 tabular-nums" />
+                <Input type="number" min="0" value={formData.minQty} onChange={(e) => setFormData({...formData, minQty: Number(e.target.value)})} className="h-10 font-bold text-xs bg-slate-50 tabular-nums" />
                 <p className="text-[8px] text-slate-400 font-bold italic">
                   {lang === 'ar' ? '* أقل كمية مسموح بها قبل إطلاق تنبيه نقص المخزون.' : '* Minimum qty before low stock alert.'}
                 </p>
@@ -731,7 +764,7 @@ export default function MaterialsPage() {
             </div>
 
             <div className="flex gap-3 pt-2">
-              <Button type="submit" disabled={isSubmitting || isCompressing} className="flex-1 h-11 premium-gradient hover:opacity-90 text-white rounded-md font-black text-sm border-none shadow-md">
+              <Button type="submit" disabled={isSubmitting || isCompressing || formData.currentQty < 0} className="flex-1 h-11 premium-gradient hover:opacity-90 text-white rounded-md font-black text-sm border-none shadow-md">
                 {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : <Save className="w-4 h-4 me-2" />}
                 {lang === 'ar' ? (isSubmitting ? 'جاري الحفظ...' : 'حفظ البيانات') : 'Commit Record'}
               </Button>
