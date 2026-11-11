@@ -194,6 +194,33 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
     return total;
   }, [vouchers]);
 
+  // Calculations for Summary
+  const totalWagesCost = useMemo(() => {
+    return vouchers
+      .filter(v => v.type === 'production_receipt' && v.status !== 'deleted')
+      .reduce((sum, v) => sum + (Number(v.wageAmount) || 0), 0);
+  }, [vouchers]);
+
+  const totalOtherCosts = useMemo(() => {
+    return vouchers
+      .filter(v => v.type === 'overhead_cost' && v.status !== 'deleted')
+      .reduce((sum, v) => sum + (Number(v.totalAmount) || 0), 0);
+  }, [vouchers]);
+
+  const grandTotalCost = totalMaterialsCost + totalWagesCost + totalOtherCosts;
+
+  const finalStage = useMemo(() => departments?.[departments.length - 1], [departments]);
+  const finalCompletedQty = useMemo(() => {
+    if (!vouchers || !finalStage) return 0;
+    return vouchers
+      .filter(v => v.type === 'production_receipt' && v.currentStageId === finalStage.id && v.status !== 'deleted')
+      .reduce((sum, v) => sum + (v.qtyAccepted || 0), 0);
+  }, [vouchers, finalStage]);
+
+  const avgCostPerPiece = useMemo(() => {
+    return finalCompletedQty > 0 ? Math.round(grandTotalCost / finalCompletedQty) : 0;
+  }, [grandTotalCost, finalCompletedQty]);
+
   const filteredMaterialsDetailed = useMemo(() => {
     let list: any[] = [];
     vouchers
@@ -240,14 +267,6 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
   }, [vouchers, systemCurrency, matSearch, matSortBy, matSortOrder]);
 
   const product = useMemo(() => products?.find(p => p.id === order?.productId), [products, order]);
-
-  const finalStage = useMemo(() => departments?.[departments.length - 1], [departments]);
-  const finalCompletedQty = useMemo(() => {
-    if (!vouchers || !finalStage) return 0;
-    return vouchers
-      .filter(v => v.type === 'production_receipt' && v.currentStageId === finalStage.id && v.status !== 'deleted')
-      .reduce((sum, v) => sum + (v.qtyAccepted || 0), 0);
-  }, [vouchers, finalStage]);
 
   const progress = useMemo(() => {
     if (!order || !order.targetQty) return 0;
@@ -344,7 +363,6 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
           </Button>
           <div className="h-6 w-px bg-white/10 shrink-0 mx-2" />
           
-          {/* SCROLLABLE TAB CONTAINER WITH SMART MOUSE WHEEL CONTROL */}
           <div 
             ref={tabsContainerRef}
             className="flex-1 flex items-center h-full gap-0 overflow-x-auto scroll-smooth pe-4 min-w-0 scrollbar-thin scrollbar-thumb-emerald-600/50 scrollbar-track-transparent hover:scrollbar-thumb-emerald-500"
@@ -438,6 +456,62 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                     {lang === 'ar' ? 'تعديل البيانات' : 'EDIT SPECS'}
                   </Button>
                </div>
+
+               {/* FINANCIAL SUMMARY CARDS */}
+               <div className="p-6 border-b border-slate-100 bg-white">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                    <SummaryStatCard 
+                      label={lang === 'ar' ? 'إجمالي المواد' : 'MAT. COST'} 
+                      value={totalMaterialsCost} 
+                      currency={systemCurrency} 
+                      icon={<Layers className="w-3.5 h-3.5" />} 
+                      color="text-amber-600" 
+                      bgColor="bg-amber-50/50"
+                    />
+                    <SummaryStatCard 
+                      label={lang === 'ar' ? 'إجمالي الأجور' : 'WAGES'} 
+                      value={totalWagesCost} 
+                      currency={systemCurrency} 
+                      icon={<Wallet className="w-3.5 h-3.5" />} 
+                      color="text-purple-600" 
+                      bgColor="bg-purple-50/50"
+                    />
+                    <SummaryStatCard 
+                      label={lang === 'ar' ? 'تكاليف أخرى' : 'OVERHEAD'} 
+                      value={totalOtherCosts} 
+                      currency={systemCurrency} 
+                      icon={<Receipt className="w-3.5 h-3.5" />} 
+                      color="text-rose-600" 
+                      bgColor="bg-rose-50/50"
+                    />
+                    <SummaryStatCard 
+                      label={lang === 'ar' ? 'الإجمالي الكلي' : 'TOTAL COST'} 
+                      value={grandTotalCost} 
+                      currency={systemCurrency} 
+                      icon={<Coins className="w-3.5 h-3.5" />} 
+                      color="text-emerald-700" 
+                      bgColor="bg-emerald-50"
+                    />
+                    <SummaryStatCard 
+                      label={lang === 'ar' ? 'قطع منجزة' : 'FINISHED'} 
+                      value={finalCompletedQty} 
+                      currency={lang === 'ar' ? 'قطعة' : 'Pcs'} 
+                      icon={<CheckCircle2 className="w-3.5 h-3.5" />} 
+                      color="text-blue-600" 
+                      bgColor="bg-blue-50/50"
+                      isCount
+                    />
+                    <SummaryStatCard 
+                      label={lang === 'ar' ? 'تكلفة القطعة' : 'UNIT COST'} 
+                      value={avgCostPerPiece} 
+                      currency={systemCurrency} 
+                      icon={<Target className="w-3.5 h-3.5" />} 
+                      color="text-slate-900" 
+                      bgColor="bg-slate-100"
+                    />
+                  </div>
+               </div>
+
                <div className="overflow-hidden">
                   <table className="w-full text-right border-separate border-spacing-0" dir={dir}>
                      <tbody className="divide-y divide-slate-100">
@@ -533,7 +607,7 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                         <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">
                           <button onClick={() => { setMatSortBy('nameAr'); setMatSortOrder(matSortOrder === 'asc' ? 'desc' : 'asc'); }} className="flex items-center gap-1 hover:text-emerald-700 transition-colors">
                             {lang === 'ar' ? 'اسم المادة' : 'MATERIAL'}
-                            {matSortBy === 'nameAr' ? (matSortOrder === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-30" />}
+                            {matSortBy === 'nameAr' ? (sortOrder === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-30" />}
                           </button>
                         </TableHead>
                         <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'الكمية' : 'QTY'}</TableHead>
@@ -569,8 +643,12 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
 
           {activeTab === 'wages_summary' && (
             <div className="flex-1 flex flex-col animate-in fade-in duration-300 overflow-hidden">
-               <div className="p-4 bg-purple-50 border-b border-purple-100">
+               <div className="p-4 bg-purple-50 border-b border-purple-100 flex items-center justify-between">
                   <h3 className="text-xs font-black text-purple-900 uppercase tracking-widest flex items-center gap-2"><Wallet className="w-4 h-4" /> {lang === 'ar' ? 'سجل الأجور المستحقة عن عمليات الإنتاج' : 'PRODUCTION WAGES LEDGER'}</h3>
+                  <div className="flex items-center gap-2">
+                     <span className="text-[10px] font-black text-purple-800 uppercase tracking-widest">{lang === 'ar' ? 'إجمالي الأجور المستحقة:' : 'TOTAL WAGES:'}</span>
+                     <Badge className="bg-purple-600 text-white font-black tabular-nums">{totalWagesCost.toLocaleString('en-US')} {systemCurrency}</Badge>
+                  </div>
                </div>
                <div className="flex-1 overflow-auto no-scrollbar">
                   <Table className="text-right border-separate border-spacing-0">
@@ -612,8 +690,12 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
 
           {activeTab === 'costs_summary' && (
             <div className="flex-1 flex flex-col animate-in fade-in duration-300 overflow-hidden">
-               <div className="p-4 bg-rose-50 border-b border-rose-100">
+               <div className="p-4 bg-rose-50 border-b border-rose-100 flex items-center justify-between">
                   <h3 className="text-xs font-black text-rose-900 uppercase tracking-widest flex items-center gap-2"><Receipt className="w-4 h-4" /> {lang === 'ar' ? 'المصاريف والتكاليف التشغيلية المرتبطة بالدفعة' : 'BATCH OVERHEAD COSTS'}</h3>
+                  <div className="flex items-center gap-2">
+                     <span className="text-[10px] font-black text-rose-800 uppercase tracking-widest">{lang === 'ar' ? 'إجمالي التكاليف الأخرى:' : 'TOTAL OVERHEAD:'}</span>
+                     <Badge className="bg-rose-600 text-white font-black tabular-nums">{totalOtherCosts.toLocaleString('en-US')} {systemCurrency}</Badge>
+                  </div>
                </div>
                <div className="flex-1 overflow-auto no-scrollbar">
                   <Table className="text-right border-separate border-spacing-0">
@@ -808,6 +890,21 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
           </form>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+function SummaryStatCard({ label, value, currency, icon, color, bgColor, isCount = false }: any) {
+  return (
+    <div className={cn("p-3 rounded-xl border border-slate-100 shadow-sm", bgColor)}>
+       <div className="flex items-center gap-2 mb-1 opacity-60">
+          {icon}
+          <span className="text-[8px] font-black uppercase tracking-widest">{label}</span>
+       </div>
+       <div className="flex items-baseline gap-1">
+          <span className={cn("text-sm font-black tabular-nums", color)}>{value.toLocaleString('en-US')}</span>
+          <span className="text-[8px] font-bold text-slate-400 uppercase">{currency}</span>
+       </div>
     </div>
   );
 }
