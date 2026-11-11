@@ -352,15 +352,15 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
     } catch (err) { console.error(err); } finally { setIsDownloading(false); }
   };
 
-  // Helper Components with Logical Text Alignment
+  // Helper Components with Forced Alignment for Arabic
   function SummaryStatCard({ label, value, currency, icon, color, bgColor, isCount = false }: any) {
     return (
-      <div className={cn("p-3 rounded-xl border border-slate-100 shadow-sm text-start", bgColor)}>
-         <div className="flex items-center gap-2 mb-1 opacity-60">
+      <div className={cn("p-3 rounded-xl border border-slate-100 shadow-sm", bgColor, dir === 'rtl' ? 'text-right' : 'text-left')}>
+         <div className={cn("flex items-center gap-2 mb-1 opacity-60", dir === 'rtl' ? 'justify-start' : 'justify-start')}>
             {icon}
             <span className="text-[8px] font-black uppercase tracking-widest">{label}</span>
          </div>
-         <div className="flex items-baseline gap-1">
+         <div className={cn("flex items-baseline gap-1", dir === 'rtl' ? 'flex-row' : 'flex-row')}>
             <span className={cn("text-sm font-black tabular-nums", color)}>{value.toLocaleString('en-US')}</span>
             <span className="text-[8px] font-bold text-slate-400 uppercase">{currency}</span>
          </div>
@@ -370,12 +370,12 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
 
   function InfoItem({ label, value, icon, color = "text-slate-900" }: { label: string, value: string | number, icon: any, color?: string }) {
     return (
-      <div className="flex flex-col gap-2 text-start">
-        <div className="flex items-center gap-2 opacity-50">
+      <div className={cn("flex flex-col gap-2", dir === 'rtl' ? 'text-right' : 'text-left')}>
+        <div className={cn("flex items-center gap-2 opacity-50", dir === 'rtl' ? 'flex-row' : 'flex-row')}>
           {icon}
           <span className="text-[10px] font-black uppercase tracking-widest">{label}</span>
         </div>
-        <div className={cn("text-sm font-black ps-6", color)}>
+        <div className={cn("text-sm font-black", dir === 'rtl' ? 'pr-6' : 'pl-6', color)}>
           {value || '---'}
         </div>
       </div>
@@ -495,7 +495,7 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
           {activeTab === 'info' && (
             <ScrollArea className="flex-1 animate-in fade-in duration-300">
                <div className="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-                  <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest flex items-center gap-2 text-start">
+                  <h3 className={cn("text-xs font-black text-slate-900 uppercase tracking-widest flex items-center gap-2", dir === 'rtl' ? 'text-right' : 'text-left')}>
                     <ClipboardList className="w-4 h-4 text-emerald-600" />
                     {lang === 'ar' ? 'سجل المواصفات الفنية المعتمد' : 'MASTER LEDGER'}
                   </h3>
@@ -542,7 +542,7 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
 
                   {/* Progress Bar Footer */}
                   <div className="pt-8 border-t border-slate-100">
-                     <div className="flex items-center justify-between mb-3">
+                     <div className={cn("flex items-center justify-between mb-3", dir === 'rtl' ? 'flex-row' : 'flex-row')}>
                         <div className="flex items-center gap-2">
                            <div className="p-1.5 bg-emerald-50 text-emerald-600 rounded"><Activity className="w-4 h-4" /></div>
                            <span className="font-black text-[10px] text-slate-400 uppercase tracking-widest">{lang === 'ar' ? 'مستوى التقدم الإجمالي' : 'PROGRESS'}</span>
@@ -559,8 +559,8 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
 
           {activeTab === 'materials_summary' && (
             <div className="flex-1 flex-col flex animate-in fade-in duration-300 overflow-hidden">
-               <div className="p-4 bg-amber-50 border-b border-amber-100 flex items-center justify-between">
-                  <h3 className="text-xs font-black text-amber-900 uppercase tracking-widest flex items-center gap-2 text-start">
+               <div className={cn("p-4 bg-amber-50 border-b border-amber-100 flex items-center justify-between", dir === 'rtl' ? 'flex-row' : 'flex-row')}>
+                  <h3 className={cn("text-xs font-black text-amber-900 uppercase tracking-widest flex items-center gap-2", dir === 'rtl' ? 'text-right' : 'text-left')}>
                     <Layers className="w-4 h-4" /> 
                     {lang === 'ar' ? 'سجل تفصيلي للمواد الخام وقيمتها' : 'DETAILED MATERIALS COSTING'}
                   </h3>
@@ -612,21 +612,21 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                   <Table className="text-right border-separate border-spacing-0">
                     <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
                       <TableRow>
-                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-start">DATE</TableHead>
-                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-start">REF #</TableHead>
-                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-start">MATERIAL</TableHead>
-                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-start">QTY</TableHead>
-                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-start">TOTAL</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? 'text-right' : 'text-left')}>DATE</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? 'text-right' : 'text-left')}>REF #</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? 'text-right' : 'text-left')}>MATERIAL</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? 'text-right' : 'text-left')}>QTY</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? 'text-right' : 'text-left')}>TOTAL</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredMaterialsDetailed.map((m, idx) => (
                         <TableRow key={idx} className="hover:bg-slate-50 transition-colors border-b border-slate-100">
-                           <TableCell className="px-6 py-4 text-[10px] font-bold text-slate-500 tabular-nums text-start">{m.date}</TableCell>
-                           <TableCell className="px-6 py-4 text-[10px] font-black text-slate-400 tabular-nums text-start">{m.voucherNumber}</TableCell>
-                           <TableCell className="px-6 py-4 font-black text-slate-900 text-xs text-start">{m.nameAr}</TableCell>
-                           <TableCell className="px-6 py-4 text-start font-bold text-slate-700 tabular-nums">{m.qty} <span className="text-[8px] font-black text-slate-400 uppercase">{m.unit}</span></TableCell>
-                           <TableCell className="px-6 py-4 text-start font-black text-amber-700 tabular-nums">{m.total.toLocaleString('en-US')} <span className="text-[8px] opacity-60 uppercase">{m.currency}</span></TableCell>
+                           <TableCell className={cn("px-6 py-4 text-[10px] font-bold text-slate-500 tabular-nums", dir === 'rtl' ? 'text-right' : 'text-left')}>{m.date}</TableCell>
+                           <TableCell className={cn("px-6 py-4 text-[10px] font-black text-slate-400 tabular-nums", dir === 'rtl' ? 'text-right' : 'text-left')}>{m.voucherNumber}</TableCell>
+                           <TableCell className={cn("px-6 py-4 font-black text-slate-900 text-xs", dir === 'rtl' ? 'text-right' : 'text-left')}>{m.nameAr}</TableCell>
+                           <TableCell className={cn("px-6 py-4 font-bold text-slate-700 tabular-nums", dir === 'rtl' ? 'text-right' : 'text-left')}>{m.qty} <span className="text-[8px] font-black text-slate-400 uppercase">{m.unit}</span></TableCell>
+                           <TableCell className={cn("px-6 py-4 font-black text-amber-700 tabular-nums", dir === 'rtl' ? 'text-right' : 'text-left')}>{m.total.toLocaleString('en-US')} <span className="text-[8px] opacity-60 uppercase">{m.currency}</span></TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -637,8 +637,8 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
 
           {activeTab === 'wages_summary' && (
             <div className="flex-1 flex flex-col animate-in fade-in duration-300 overflow-hidden">
-               <div className="p-4 bg-purple-50 border-b border-purple-100 flex items-center justify-between">
-                  <h3 className="text-xs font-black text-purple-900 uppercase tracking-widest flex items-center gap-2 text-start">
+               <div className={cn("p-4 bg-purple-50 border-b border-purple-100 flex items-center justify-between", dir === 'rtl' ? 'flex-row' : 'flex-row')}>
+                  <h3 className={cn("text-xs font-black text-purple-900 uppercase tracking-widest flex items-center gap-2", dir === 'rtl' ? 'text-right' : 'text-left')}>
                     <Wallet className="w-4 h-4" /> 
                     {lang === 'ar' ? 'سجل الأجور المستحقة عن عمليات الإنتاج' : 'PRODUCTION WAGES LEDGER'}
                   </h3>
@@ -689,19 +689,19 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                   <Table className="text-right border-separate border-spacing-0">
                     <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
                       <TableRow>
-                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-start">DATE</TableHead>
-                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-start">PERSONNEL</TableHead>
-                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-start">QTY</TableHead>
-                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-start">EARNED</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? 'text-right' : 'text-left')}>DATE</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? 'text-right' : 'text-left')}>PERSONNEL</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? 'text-right' : 'text-left')}>QTY</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? 'text-right' : 'text-left')}>EARNED</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredWagesDetailed.map((v, idx) => (
                         <TableRow key={idx} className="hover:bg-slate-50 transition-colors border-b border-slate-100">
-                           <TableCell className="px-6 py-4 text-[10px] font-bold text-slate-400 tabular-nums text-start">{v.date}</TableCell>
-                           <TableCell className="px-6 py-4 text-start font-bold text-slate-900 text-xs">{v.fullName}</TableCell>
-                           <TableCell className="px-6 py-4 text-start font-bold text-slate-700 tabular-nums">{v.qtyAccepted} Pcs</TableCell>
-                           <TableCell className="px-6 py-4 text-start font-black text-purple-700 tabular-nums">{v.wageAmount.toLocaleString('en-US')} {v.currency || systemCurrency}</TableCell>
+                           <TableCell className={cn("px-6 py-4 text-[10px] font-bold text-slate-400 tabular-nums", dir === 'rtl' ? 'text-right' : 'text-left')}>{v.date}</TableCell>
+                           <TableCell className={cn("px-6 py-4 font-bold text-slate-900 text-xs", dir === 'rtl' ? 'text-right' : 'text-left')}>{v.fullName}</TableCell>
+                           <TableCell className={cn("px-6 py-4 font-bold text-slate-700 tabular-nums", dir === 'rtl' ? 'text-right' : 'text-left')}>{v.qtyAccepted} Pcs</TableCell>
+                           <TableCell className={cn("px-6 py-4 font-black text-purple-700 tabular-nums", dir === 'rtl' ? 'text-right' : 'text-left')}>{v.wageAmount.toLocaleString('en-US')} {v.currency || systemCurrency}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -712,8 +712,8 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
 
           {activeTab === 'costs_summary' && (
             <div className="flex-1 flex flex-col animate-in fade-in duration-300 overflow-hidden">
-               <div className="p-4 bg-rose-50 border-b border-rose-100 flex items-center justify-between">
-                  <h3 className="text-xs font-black text-rose-900 uppercase tracking-widest flex items-center gap-2 text-start">
+               <div className={cn("p-4 bg-rose-50 border-b border-rose-100 flex items-center justify-between", dir === 'rtl' ? 'flex-row' : 'flex-row')}>
+                  <h3 className={cn("text-xs font-black text-rose-900 uppercase tracking-widest flex items-center gap-2", dir === 'rtl' ? 'text-right' : 'text-left')}>
                     <Receipt className="w-4 h-4" /> 
                     {lang === 'ar' ? 'المصاريف والتكاليف التشغيلية المرتبطة بالدفعة' : 'BATCH OVERHEAD COSTS'}
                   </h3>
@@ -764,17 +764,17 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                   <Table className="text-right border-separate border-spacing-0">
                     <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
                       <TableRow>
-                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-start">DATE</TableHead>
-                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-start">DESCRIPTION</TableHead>
-                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-start">AMOUNT</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? 'text-right' : 'text-left')}>DATE</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? 'text-right' : 'text-left')}>DESCRIPTION</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", dir === 'rtl' ? 'text-right' : 'text-left')}>AMOUNT</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredCostsDetailed.map((v, idx) => (
                         <TableRow key={idx} className="hover:bg-slate-50 transition-colors border-b border-slate-100">
-                           <TableCell className="px-6 py-4 text-[10px] font-bold text-slate-500 tabular-nums text-start">{v.date}</TableCell>
-                           <TableCell className="px-6 py-4 font-bold text-slate-700 text-xs text-start">{v.description}</TableCell>
-                           <TableCell className="px-6 py-4 text-start font-black text-rose-600 tabular-nums">{v.totalAmount.toLocaleString('en-US')} {v.currency || systemCurrency}</TableCell>
+                           <TableCell className={cn("px-6 py-4 text-[10px] font-bold text-slate-500 tabular-nums", dir === 'rtl' ? 'text-right' : 'text-left')}>{v.date}</TableCell>
+                           <TableCell className={cn("px-6 py-4 font-bold text-slate-700 text-xs", dir === 'rtl' ? 'text-right' : 'text-left')}>{v.description}</TableCell>
+                           <TableCell className={cn("px-6 py-4 font-black text-rose-600 tabular-nums", dir === 'rtl' ? 'text-right' : 'text-left')}>{v.totalAmount.toLocaleString('en-US')} {v.currency || systemCurrency}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -835,10 +835,10 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                   <Table className="text-right border-separate border-spacing-0">
                     <TableHeader className="bg-slate-100 sticky top-0 z-10 shadow-sm">
                       <TableRow>
-                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200 text-start">DATE</TableHead>
-                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200 text-start">REF #</TableHead>
-                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200 text-start">ACTIVITY</TableHead>
-                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200 text-start">PERSONNEL</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? 'text-right' : 'text-left')}>DATE</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? 'text-right' : 'text-left')}>REF #</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? 'text-right' : 'text-left')}>ACTIVITY</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? 'text-right' : 'text-left')}>PERSONNEL</TableHead>
                         <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">IMPACT</TableHead>
                         <TableHead className="px-6 py-4 w-16 border-b border-slate-200"></TableHead>
                       </TableRow>
@@ -855,10 +855,17 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
 
           {activeTab === 'summary' && (
             <div className="flex-1 flex flex-col animate-in zoom-in-95 duration-300">
-               <div className="p-4 bg-slate-900 text-white flex items-center justify-between"><h3 className="text-xs font-black uppercase tracking-widest flex items-center gap-2 text-start"><BarChart3 className="w-4 h-4 text-emerald-400" /> {lang === 'ar' ? 'التحليل الإحصائي لخطوط الإنتاج' : 'ANALYTICS'}</h3></div>
+               <div className="p-4 bg-slate-900 text-white flex items-center justify-between"><h3 className={cn("text-xs font-black uppercase tracking-widest flex items-center gap-2", dir === 'rtl' ? 'text-right' : 'text-left')}><BarChart3 className="w-4 h-4 text-emerald-400" /> {lang === 'ar' ? 'التحليل الإحصائي لخطوط الإنتاج' : 'ANALYTICS'}</h3></div>
                <div className="flex-1 overflow-auto no-scrollbar">
                   <Table className="text-right border-separate border-spacing-0">
-                    <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm"><TableRow><TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 text-start">WORK CENTER</TableHead><TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 text-center">COMPLETED</TableHead><TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 text-center">WAGE COST</TableHead><TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 text-center">PROGRESS</TableHead></TableRow></TableHeader>
+                    <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
+                      <TableRow>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500", dir === 'rtl' ? 'text-right' : 'text-left')}>WORK CENTER</TableHead>
+                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 text-center">COMPLETED</TableHead>
+                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 text-center">WAGE COST</TableHead>
+                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 text-center">PROGRESS</TableHead>
+                      </TableRow>
+                    </TableHeader>
                     <TableBody>
                       {departments?.map(d => {
                         const stageReceipts = vouchers.filter(v => (v.currentStageId === d.id || workers?.find(w => w.id === v.workerId)?.departmentId === d.id) && v.type === 'production_receipt' && v.status !== 'deleted');
@@ -867,7 +874,7 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                         const p = Math.round((done / (order.targetQty || 1)) * 100);
                         return (
                           <TableRow key={d.id} className="hover:bg-slate-50/50 transition-colors border-b border-slate-100">
-                             <TableCell className="px-6 py-4 font-black text-slate-900 text-xs text-start">{d.nameAr}</TableCell>
+                             <TableCell className={cn("px-6 py-4 font-black text-slate-900 text-xs", dir === 'rtl' ? 'text-right' : 'text-left')}>{d.nameAr}</TableCell>
                              <TableCell className="px-6 py-4 text-center font-bold text-slate-700 tabular-nums">{done.toLocaleString('en-US')}</TableCell>
                              <TableCell className="px-6 py-4 text-center font-black text-emerald-700 tabular-nums">{cost.toLocaleString('en-US')} {systemCurrency}</TableCell>
                              <TableCell className="px-6 py-4 text-center">
@@ -933,6 +940,7 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
 }
 
 function LedgerTransactionRow({ voucher, worker, systemCurrency, lang, onView }: { voucher: any, worker: any, systemCurrency: string, lang: string, onView: (v: any) => void }) {
+  const { dir } = useTranslation();
   const typeMap: any = {
     'material_issue': { labelAr: 'صرف مواد', icon: <FileInput className="w-3.5 h-3.5" />, color: 'text-amber-600 bg-amber-50 border-amber-100' },
     'production_receipt': { labelAr: 'استلام انتاج', icon: <FileOutput className="w-3.5 h-3.5" />, color: 'text-blue-600 bg-blue-50 border-blue-100' },
@@ -945,20 +953,20 @@ function LedgerTransactionRow({ voucher, worker, systemCurrency, lang, onView }:
 
   return (
     <TableRow className="hover:bg-slate-50/50 border-b border-slate-100 transition-colors group">
-      <TableCell className="px-6 py-3 font-bold text-slate-400 text-[10px] tabular-nums text-start">
+      <TableCell className={cn("px-6 py-3 font-bold text-slate-400 text-[10px] tabular-nums", dir === 'rtl' ? 'text-right' : 'text-left')}>
         {voucher.date}
       </TableCell>
-      <TableCell className="px-6 py-3 font-black text-slate-900 text-[10px] tabular-nums tracking-wider text-start">
+      <TableCell className={cn("px-6 py-3 font-black text-slate-900 text-[10px] tabular-nums tracking-wider", dir === 'rtl' ? 'text-right' : 'text-left')}>
         {voucher.voucherNumber}
       </TableCell>
-      <TableCell className="px-6 py-3 text-start">
+      <TableCell className={cn("px-6 py-3", dir === 'rtl' ? 'text-right' : 'text-left')}>
         <div className={cn("inline-flex items-center gap-2 px-2 py-0.5 rounded text-[9px] font-black uppercase border", config.color)}>
           {config.icon}
           {lang === 'ar' ? config.labelAr : voucher.type}
         </div>
       </TableCell>
-      <TableCell className="px-6 py-3 text-start">
-        <div className="flex items-center gap-2 justify-start">
+      <TableCell className={cn("px-6 py-3", dir === 'rtl' ? 'text-right' : 'text-left')}>
+        <div className={cn("flex items-center gap-2", dir === 'rtl' ? 'justify-start' : 'justify-start')}>
           <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center border border-slate-200 overflow-hidden shrink-0">
             {worker?.photoUrl ? <img src={worker.photoUrl} className="w-full h-full object-cover" /> : <User className="w-3.5 h-3.5 text-slate-400" />}
           </div>

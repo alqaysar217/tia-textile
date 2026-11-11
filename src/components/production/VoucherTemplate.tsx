@@ -1,7 +1,9 @@
+
 'use client';
 
 import React from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { cn } from '@/lib/utils';
 
 interface VoucherTemplateProps {
   voucher: any;
@@ -56,8 +58,8 @@ export function VoucherTemplate({
       </div>
 
       {/* PROFESSIONAL BILINGUAL HEADER */}
-      <div className="grid grid-cols-3 items-center border-b-[6px] border-emerald-800 pb-8 mb-8 relative z-10">
-        <div className="text-right space-y-1">
+      <div className={cn("grid grid-cols-3 items-center border-b-[6px] border-emerald-800 pb-8 mb-8 relative z-10", isRtl ? 'rtl' : 'ltr')}>
+        <div className={cn("space-y-1", isRtl ? "text-right" : "text-right")}>
           <h2 className="text-xl font-black text-emerald-900 leading-tight">جمعية الصناعات النسيجية</h2>
           <p className="text-xs font-bold text-slate-500">الروضة - محافظة شبوة - اليمن</p>
           <p className="text-[11px] font-bold text-slate-400 tabular-nums" dir="ltr">0777 263 091 | nseeg202020@gmail.com</p>
@@ -69,7 +71,7 @@ export function VoucherTemplate({
           </div>
         </div>
 
-        <div className="text-left space-y-1" dir="ltr">
+        <div className={cn("space-y-1", isRtl ? "text-left" : "text-left")} dir="ltr">
           <h2 className="text-[14px] font-black text-emerald-900 uppercase leading-tight tracking-tight">Textile Industries Association</h2>
           <p className="text-[11px] font-bold text-slate-500">Al-Rawdah - Shabwa - Yemen</p>
           <p className="text-[10px] font-bold text-slate-400 tabular-nums">0777 263 091 | nseeg202020@gmail.com</p>
@@ -93,11 +95,11 @@ export function VoucherTemplate({
       {/* DATA GRID - 3 COLUMNS */}
       <div className="grid grid-cols-3 gap-x-8 gap-y-6 mb-10 bg-slate-50/50 p-8 rounded-[1.5rem] border border-slate-100 relative z-10">
         <div className="space-y-4">
-          <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
+          <div className={cn("flex flex-col gap-1 border-b border-slate-200 pb-2", isRtl ? "text-right" : "text-left")}>
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{isRtl ? 'المستفيد / المستلم' : 'Recipient'}</span>
             <span className="text-sm font-black text-slate-900">{worker?.fullName || voucher.recipient || '---'}</span>
           </div>
-          <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
+          <div className={cn("flex flex-col gap-1 border-b border-slate-200 pb-2", isRtl ? "text-right" : "text-left")}>
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{isRtl ? 'التصنيف / القسم' : 'Category'}</span>
             <span className="text-sm font-black text-slate-700">
                {voucher.type === 'overhead_cost' 
@@ -109,11 +111,11 @@ export function VoucherTemplate({
         </div>
 
         <div className="space-y-4">
-          <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
+          <div className={cn("flex flex-col gap-1 border-b border-slate-200 pb-2", isRtl ? "text-right" : "text-left")}>
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{isRtl ? 'رقم السند' : 'Voucher No.'}</span>
             <span className="text-sm font-black text-emerald-900 tabular-nums tracking-wider">{voucher.voucherNumber}</span>
           </div>
-          <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
+          <div className={cn("flex flex-col gap-1 border-b border-slate-200 pb-2", isRtl ? "text-right" : "text-left")}>
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{isRtl ? 'الدفعة المرتبطة' : 'Batch Name'}</span>
             <span className="text-sm font-black text-slate-700 truncate max-w-[150px]">
               {allOrders?.find(o => o.id === voucher.orderId)?.orderNumber || order?.orderNumber || (isRtl ? 'مصروف عام' : 'General')}
@@ -122,11 +124,11 @@ export function VoucherTemplate({
         </div>
 
         <div className="space-y-4">
-          <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
+          <div className={cn("flex flex-col gap-1 border-b border-slate-200 pb-2", isRtl ? "text-right" : "text-left")}>
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{isRtl ? 'تاريخ السند' : 'Date'}</span>
             <span className="text-sm font-black text-slate-700 tabular-nums">{voucher.date}</span>
           </div>
-          <div className="flex flex-col gap-1 border-b border-slate-200 pb-2">
+          <div className={cn("flex flex-col gap-1 border-b border-slate-200 pb-2", isRtl ? "text-right" : "text-left")}>
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{isRtl ? 'المشرف المسؤول' : 'Supervisor'}</span>
             <span className="text-sm font-black text-slate-700">
               {allWorkers?.find(w => w.id === voucher.supervisorId)?.fullName || supervisor?.fullName || (isRtl ? 'إدارة الجمعية' : 'Management')}
@@ -140,13 +142,13 @@ export function VoucherTemplate({
         {voucher.type === 'production_receipt' ? (
           <div className="space-y-10">
             <div className="space-y-3">
-              <h4 className="text-[10px] font-black text-emerald-900 border-r-4 border-emerald-600 pr-3 uppercase">
+              <h4 className={cn("text-[10px] font-black text-emerald-900 uppercase", isRtl ? "border-r-4 border-emerald-600 pr-3" : "border-l-4 border-emerald-600 pl-3")}>
                 {isRtl ? 'أولاً: مخرجات الإنتاج المنجزة' : 'I. FINISHED PRODUCTION OUTPUTS'}
               </h4>
-              <Table className="text-right border-2 border-emerald-900/10">
+              <Table className={cn("border-2 border-emerald-900/10", isRtl ? "text-right" : "text-left")}>
                 <TableHeader className="bg-emerald-900/5">
                   <TableRow className="hover:bg-transparent border-b-2 border-emerald-900/20">
-                    <TableHead className="text-right font-black text-xs py-4 text-emerald-900">{isRtl ? 'نوع المعوز' : 'Item Type'}</TableHead>
+                    <TableHead className={cn("font-black text-xs py-4 text-emerald-900", isRtl ? "text-right" : "text-left")}>{isRtl ? 'نوع المعوز' : 'Item Type'}</TableHead>
                     <TableHead className="text-center font-black text-xs py-4 text-emerald-900">{isRtl ? 'الكمية المستلمة' : 'Accepted Qty'}</TableHead>
                     <TableHead className="text-center font-black text-xs py-4 text-emerald-900">{isRtl ? 'أجر القطعة' : 'Wage/Pcs'}</TableHead>
                     <TableHead className="text-center font-black text-xs py-4 text-emerald-900">{isRtl ? 'الإجمالي' : 'Total'}</TableHead>
@@ -173,13 +175,13 @@ export function VoucherTemplate({
 
             {voucher.returnedItems?.length > 0 && (
               <div className="space-y-3">
-                <h4 className="text-[10px] font-black text-blue-900 border-r-4 border-blue-600 pr-3 uppercase">
+                <h4 className={cn("text-[10px] font-black text-blue-900 uppercase", isRtl ? "border-r-4 border-blue-600 pr-3" : "border-l-4 border-blue-600 pl-3")}>
                   {isRtl ? 'ثانياً: المواد الخام المرتجعة للمخزن' : 'II. RETURNED RAW MATERIALS'}
                 </h4>
-                <Table className="text-right border-2 border-blue-900/10">
+                <Table className={cn("border-2 border-blue-900/10", isRtl ? "text-right" : "text-left")}>
                   <TableHeader className="bg-blue-900/5">
                     <TableRow className="hover:bg-transparent border-b-2 border-blue-900/20">
-                      <TableHead className="text-right font-black text-xs py-4 text-blue-900">{isRtl ? 'اسم المادة' : 'Material Name'}</TableHead>
+                      <TableHead className={cn("font-black text-xs py-4 text-blue-900", isRtl ? "text-right" : "text-left")}>{isRtl ? 'اسم المادة' : 'Material Name'}</TableHead>
                       <TableHead className="text-center font-black text-xs py-4 text-blue-900">{isRtl ? 'الكمية المرجعة' : 'Returned Qty'}</TableHead>
                       <TableHead className="text-center font-black text-xs py-4 text-blue-900">{isRtl ? 'الوحدة' : 'Unit'}</TableHead>
                     </TableRow>
@@ -191,7 +193,7 @@ export function VoucherTemplate({
                         <TableCell className="text-center font-black text-sm text-blue-700 tabular-nums">
                           {(item.qty || 0).toLocaleString('en-US')}
                         </TableCell>
-                        <TableCell className="text-center text-xs font-bold text-slate-500 uppercase py-4">{item.unit}</TableCell>
+                        <TableCell className="text-center text-xs font-bold text-slate-50 uppercase py-4">{item.unit}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -201,14 +203,14 @@ export function VoucherTemplate({
           </div>
         ) : voucher.type === 'wage_payment' ? (
           <div className="space-y-3">
-            <h4 className="text-[10px] font-black text-emerald-900 border-r-4 border-emerald-600 pr-3 uppercase">
+            <h4 className={cn("text-[10px] font-black text-emerald-900 uppercase", isRtl ? "border-r-4 border-emerald-600 pr-3" : "border-l-4 border-emerald-600 pl-3")}>
               {isRtl ? 'تفاصيل السندات المشمولة في الصرف' : 'DETAILS OF PAID VOUCHERS'}
             </h4>
-            <Table className="text-right border-2 border-emerald-900/10">
+            <Table className={cn("border-2 border-emerald-900/10", isRtl ? "text-right" : "text-left")}>
               <TableHeader className="bg-emerald-900/5">
                 <TableRow className="hover:bg-transparent border-b-2 border-emerald-900/20">
-                  <TableHead className="text-right font-black text-xs py-4 text-emerald-900">{isRtl ? 'رقم سند الاستلام' : 'Receipt #'}</TableHead>
-                  <TableHead className="text-right font-black text-xs py-4 text-emerald-900">{isRtl ? 'المنتج / البيان' : 'Product'}</TableHead>
+                  <TableHead className={cn("font-black text-xs py-4 text-emerald-900", isRtl ? "text-right" : "text-left")}>{isRtl ? 'رقم سند الاستلام' : 'Receipt #'}</TableHead>
+                  <TableHead className={cn("font-black text-xs py-4 text-emerald-900", isRtl ? "text-right" : "text-left")}>{isRtl ? 'المنتج / البيان' : 'Product'}</TableHead>
                   <TableHead className="text-center font-black text-xs py-4 text-emerald-900">{isRtl ? 'الكمية' : 'Qty'}</TableHead>
                   <TableHead className="text-center font-black text-xs py-4 text-emerald-900">{isRtl ? 'المبلغ المستحق' : 'Amount'}</TableHead>
                 </TableRow>
@@ -220,15 +222,15 @@ export function VoucherTemplate({
                   const product = products?.find(p => p.id === orderOfReceipt?.productId);
                   return (
                     <TableRow key={i} className="bg-white/40 border-b border-slate-100">
-                      <TableCell className="font-bold text-sm tabular-nums">{receipt?.voucherNumber || '---'}</TableCell>
-                      <TableCell className="font-bold text-sm text-slate-700">{product?.nameAr || (isRtl ? 'مستحق إنتاج' : 'Production Due')}</TableCell>
+                      <TableCell className={cn("font-bold text-sm tabular-nums", isRtl ? "text-right" : "text-left")}>{receipt?.voucherNumber || '---'}</TableCell>
+                      <TableCell className={cn("font-bold text-sm text-slate-700", isRtl ? "text-right" : "text-left")}>{product?.nameAr || (isRtl ? 'مستحق إنتاج' : 'Production Due')}</TableCell>
                       <TableCell className="text-center font-black text-sm tabular-nums">{(receipt?.qtyAccepted || 0).toLocaleString('en-US')}</TableCell>
                       <TableCell className="text-center font-black text-sm tabular-nums text-emerald-700">{(receipt?.wageAmount || 0).toLocaleString('en-US')}</TableCell>
                     </TableRow>
                   );
                 })}
                 <TableRow className="bg-emerald-900 text-white">
-                  <TableCell colSpan={3} className="text-left font-black text-sm px-6 py-4 uppercase tracking-widest">
+                  <TableCell colSpan={3} className={cn("font-black text-sm px-6 py-4 uppercase tracking-widest", isRtl ? "text-left" : "text-right")}>
                     {isRtl ? 'إجمالي المبلغ المصروف نقداً' : 'TOTAL DISBURSED AMOUNT'}
                   </TableCell>
                   <TableCell className="text-center font-black text-2xl tabular-nums">
@@ -240,19 +242,19 @@ export function VoucherTemplate({
           </div>
         ) : voucher.type === 'overhead_cost' ? (
           <div className="space-y-3">
-             <h4 className="text-[10px] font-black text-emerald-900 border-r-4 border-emerald-600 pr-3 uppercase">
+             <h4 className={cn("text-[10px] font-black text-emerald-900 uppercase", isRtl ? "border-r-4 border-emerald-600 pr-3" : "border-l-4 border-emerald-600 pl-3")}>
               {isRtl ? 'تفاصيل المصروفات التشغيلية' : 'OPERATIONAL EXPENDITURE DETAILS'}
             </h4>
-            <Table className="text-right border-2 border-emerald-900/10">
+            <Table className={cn("border-2 border-emerald-900/10", isRtl ? "text-right" : "text-left")}>
               <TableHeader className="bg-emerald-900/5">
                 <TableRow className="hover:bg-transparent border-b-2 border-emerald-900/20">
-                  <TableHead className="text-right font-black text-xs py-4 text-emerald-900 uppercase">{isRtl ? 'البيان / الوصف' : 'Description'}</TableHead>
+                  <TableHead className={cn("font-black text-xs py-4 text-emerald-900 uppercase", isRtl ? "text-right" : "text-left")}>{isRtl ? 'البيان / الوصف' : 'Description'}</TableHead>
                   <TableHead className="text-center font-black text-xs py-4 text-emerald-900 uppercase">{isRtl ? 'القيمة' : 'Amount'}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 <TableRow className="bg-white/40 border-b border-slate-100">
-                  <TableCell className="py-6 px-6">
+                  <TableCell className={cn("py-6 px-6", isRtl ? "text-right" : "text-left")}>
                     <div className="flex flex-col gap-1">
                       <span className="font-black text-base text-slate-900">{voucher.description}</span>
                       {voucher.notes && <span className="text-[10px] font-bold text-slate-400 uppercase">{voucher.notes}</span>}
@@ -263,7 +265,7 @@ export function VoucherTemplate({
                   </TableCell>
                 </TableRow>
                 <TableRow className="bg-emerald-900 text-white">
-                  <TableCell className="px-6 py-4 font-black text-sm uppercase tracking-widest">{isRtl ? 'إجمالي السند المعتمد' : 'TOTAL AUTHORIZED AMOUNT'}</TableCell>
+                  <TableCell className={cn("px-6 py-4 font-black text-sm uppercase tracking-widest", isRtl ? "text-left" : "text-right")}>{isRtl ? 'إجمالي السند المعتمد' : 'TOTAL AUTHORIZED AMOUNT'}</TableCell>
                   <TableCell className="text-center font-black text-2xl tabular-nums">{(voucher.totalAmount || 0).toLocaleString('en-US')} <span className="text-xs opacity-70">{voucher.currency}</span></TableCell>
                 </TableRow>
               </TableBody>
@@ -271,13 +273,13 @@ export function VoucherTemplate({
           </div>
         ) : (
           <div className="space-y-3">
-            <h4 className="text-[10px] font-black text-emerald-900 border-r-4 border-emerald-600 pr-3 uppercase">
+            <h4 className={cn("text-[10px] font-black text-emerald-900 uppercase", isRtl ? "border-r-4 border-emerald-600 pr-3" : "border-l-4 border-emerald-600 pl-3")}>
               {voucher.type === 'material_return' ? (isRtl ? 'تفاصيل المواد المرتجعة للمخزن' : 'RETURNED MATERIALS DETAILS') : (isRtl ? 'تفاصيل السند' : 'VOUCHER DETAILS')}
             </h4>
-            <Table className="text-right border-2 border-emerald-900/10">
+            <Table className={cn("border-2 border-emerald-900/10", isRtl ? "text-right" : "text-left")}>
               <TableHeader className="bg-emerald-900/5">
                 <TableRow className="hover:bg-transparent border-b-2 border-emerald-900/20">
-                  <TableHead className="text-right font-black text-xs py-4 text-emerald-900 uppercase">
+                  <TableHead className={cn("font-black text-xs py-4 text-emerald-900 uppercase", isRtl ? "text-right" : "text-left")}>
                     {voucher.type === 'material_return' ? (isRtl ? 'اسم المادة المرتجعة' : 'Returned Item') : (isRtl ? 'البيان / المادة' : 'Description / Item')}
                   </TableHead>
                   <TableHead className="text-center font-black text-xs py-4 text-emerald-900 uppercase">{isRtl ? 'الكمية' : 'Quantity'}</TableHead>
@@ -287,7 +289,7 @@ export function VoucherTemplate({
               <TableBody>
                 {(voucher.items || voucher.returnedItems || []).map((item: any, i: number) => (
                   <TableRow key={i} className="border-b border-slate-100 bg-white/40">
-                    <TableCell className="font-bold text-sm py-4 text-slate-800">{item.nameAr || item.nameEn}</TableCell>
+                    <TableCell className={cn("font-bold text-sm py-4 text-slate-800", isRtl ? "text-right" : "text-left")}>{item.nameAr || item.nameEn}</TableCell>
                     <TableCell className="text-center font-black text-sm tabular-nums py-4 text-emerald-700">{item.qty}</TableCell>
                     <TableCell className="text-center text-xs font-bold text-slate-500 uppercase py-4">{item.unit}</TableCell>
                   </TableRow>
