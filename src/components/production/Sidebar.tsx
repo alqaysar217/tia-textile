@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -84,7 +83,7 @@ export function Sidebar() {
       icon: <Box className="w-5 h-5" />,
       children: [
         { name: t.production.rawMaterials, href: '/production/materials', icon: <Layers className="w-3.5 h-3.5" /> },
-        { name: lang === 'ar' ? 'إدارة المستودعات' : 'Warehouses', href: '/production/warehouses', icon: <PackageCheck className="w-3.5 h-3.5" /> },
+        { name: lang === 'ar' ? 'مستودع المنجز الجاهز' : 'Finished Goods Wh', href: '/production/warehouses/finished-goods', icon: <PackageCheck className="w-3.5 h-3.5" /> },
       ]
     },
     {

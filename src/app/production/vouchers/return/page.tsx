@@ -1,107 +1,39 @@
 'use client';
 
 import React, { useState, useMemo, useCallback } from 'react';
-import { 
-  Plus, 
-  Search, 
-  ChevronRight, 
-  RefreshCcw, 
-  Save, 
-  Loader2, 
-  Calendar,
-  Workflow,
-  Package,
-  Trash2,
-  FileText,
-  Edit2,
-  CheckCircle2,
-  Building2,
-  Check,
-  UserCheck,
-  ShieldCheck,
-  ChevronDown,
-  MoreVertical,
-  History,
-  Download,
-  Eye,
-  FileDown,
-  Filter,
-  SortAsc,
-  SortDesc,
-  ArrowUpDown,
-  Hash,
-  Info,
-  Users2,
-  Tag,
-  Wallet,
-  CalendarDays
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { useTranslation } from '@/components/LanguageProvider';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, addDoc, updateDoc, doc, serverTimestamp, query, where, writeBatch, getDoc } from 'firebase/firestore';
+import { 
+  collection, 
+  addDoc, 
+  updateDoc, 
+  doc, 
+  serverTimestamp, 
+  query, 
+  where, 
+  writeBatch 
+} from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Label } from "@/components/ui/label";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-  DropdownMenuLabel,
-} from '@/components/ui/dropdown-menu';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toPng } from 'html-to-image';
-import { VoucherTemplate } from '@/components/production/VoucherTemplate';
+import { Info } from 'lucide-react';
+
+import { ReturnHeader } from './components/ReturnHeader';
+import { ReturnTable } from './components/ReturnTable';
+import { ReturnFormDialog } from './components/ReturnFormDialog';
+import { ReturnPrintPreview } from './components/ReturnPrintPreview';
 
 export default function MaterialReturnPage() {
   const { lang, dir } = useTranslation();
   const db = useFirestore();
+  const isRtl = lang === 'ar';
 
   const [activeTab, setActiveTab] = useState<'pending' | 'verified'>('pending');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingVoucherId, setEditingVoucherId] = useState<string | null>(null);
-  const [deletingVoucher, setDeletingVoucher] = useState<any | null>(null);
   const [printingVoucher, setPrintingVoucher] = useState<any | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [search, setSearch] = useState('');
-  
   const [sortBy, setSortBy] = useState<'date' | 'voucherNumber'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [dateFrom, setDateFrom] = useState('');
@@ -109,14 +41,7 @@ export default function MaterialReturnPage() {
   const [workerFilter, setWorkerFilter] = useState('all');
   const [orderFilter, setOrderFilter] = useState('all');
 
-  const [formData, setFormData] = useState({
-    date: new Date().toISOString().split('T')[0],
-    orderId: '',
-    workerId: '',
-    linkedReceiptId: '', 
-    notes: '',
-    items: [] as any[]
-  });
+  const [formData, setFormData] = useState({ date: new Date().toISOString().split('T')[0], orderId: '', workerId: '', linkedReceiptId: '', notes: '', items: [] as any[] });
 
   const ordersQuery = useMemo(() => !db ? null : collection(db, 'productionOrders'), [db]);
   const workersQuery = useMemo(() => !db ? null : collection(db, 'workers'), [db]);
@@ -132,7 +57,7 @@ export default function MaterialReturnPage() {
   const { data: allDepartments } = useCollection<any>(deptsQuery);
   const { data: allProducts } = useCollection<any>(productsQuery);
   const { data: allReceipts } = useCollection<any>(receiptsQuery);
-  const { data: returnVouchers, loading: vL } = useCollection<any>(returnVouchersQuery);
+  const { data: returnVouchers } = useCollection<any>(returnVouchersQuery);
 
   const applyFilters = useCallback((list: any[]) => {
     let result = (list || []).filter(item => item.status !== 'deleted');
@@ -141,44 +66,22 @@ export default function MaterialReturnPage() {
       result = result.filter(item => {
         const order = allOrders?.find(o => o.id === item.orderId);
         const worker = allWorkers?.find(w => w.id === item.workerId);
-        return item.voucherNumber?.toLowerCase().includes(s) || 
-               worker?.fullName?.toLowerCase().includes(s) ||
-               order?.orderNumber?.toLowerCase().includes(s);
+        return item.voucherNumber?.toLowerCase().includes(s) || worker?.fullName?.toLowerCase().includes(s) || order?.orderNumber?.toLowerCase().includes(s);
       });
     }
     if (dateFrom) result = result.filter(item => item.date >= dateFrom);
     if (dateTo) result = result.filter(item => item.date <= dateTo);
     if (workerFilter !== 'all') result = result.filter(item => item.workerId === workerFilter);
     if (orderFilter !== 'all') result = result.filter(item => item.orderId === orderFilter);
-
     return result.sort((a, b) => {
-      const valA = a[sortBy] ?? '';
-      const valB = b[sortBy] ?? '';
-      if (sortBy === 'date') {
-        return sortOrder === 'asc' ? new Date(valA).getTime() - new Date(valB).getTime() : new Date(valB).getTime() - new Date(valA).getTime();
-      }
+      const valA = a[sortBy] ?? '', valB = b[sortBy] ?? '';
+      if (sortBy === 'date') return sortOrder === 'asc' ? new Date(valA).getTime() - new Date(valB).getTime() : new Date(valB).getTime() - new Date(valA).getTime();
       return sortOrder === 'asc' ? String(valA).localeCompare(String(valB)) : String(valB).localeCompare(String(valA));
     });
   }, [search, dateFrom, dateTo, workerFilter, orderFilter, sortBy, sortOrder, allOrders, allWorkers]);
 
-  const pendingReturns = useMemo(() => {
-    if (!allReceipts) return [];
-    return applyFilters(allReceipts.filter(r => r.returnedItems?.length > 0 && r.returnStatus !== 'verified'));
-  }, [allReceipts, applyFilters]);
-
+  const pendingReturns = useMemo(() => applyFilters((allReceipts || []).filter(r => r.returnedItems?.length > 0 && r.returnStatus !== 'verified')), [allReceipts, applyFilters]);
   const verifiedReturns = useMemo(() => applyFilters(returnVouchers || []), [returnVouchers, applyFilters]);
-
-  const handleQuickVerify = (receipt: any) => {
-    setFormData({
-      date: new Date().toISOString().split('T')[0],
-      orderId: receipt.orderId,
-      workerId: receipt.workerId,
-      linkedReceiptId: receipt.id,
-      notes: lang === 'ar' ? `توثيق آلي للمرتجع من سند رقم ${receipt.voucherNumber}` : `Auto-verification for receipt ${receipt.voucherNumber}`,
-      items: [...receipt.returnedItems]
-    });
-    setIsAddDialogOpen(true);
-  };
 
   const handleSaveVoucher = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -187,344 +90,45 @@ export default function MaterialReturnPage() {
     const batch = writeBatch(db);
     try {
       const voucherData = { ...formData, type: 'material_return', status: 'posted', updatedAt: serverTimestamp() };
-      if (editingVoucherId) {
-        batch.update(doc(db, 'vouchers', editingVoucherId), voucherData);
-      } else {
-        const voucherNumber = `MRV-${Date.now().toString().slice(-6)}`;
-        batch.set(doc(collection(db, 'vouchers')), { ...voucherData, voucherNumber, createdAt: serverTimestamp() });
-      }
+      const voucherNumber = `MRV-${Date.now().toString().slice(-6)}`;
+      batch.set(doc(collection(db, 'vouchers')), { ...voucherData, voucherNumber, createdAt: serverTimestamp() });
       if (formData.linkedReceiptId) batch.update(doc(db, 'vouchers', formData.linkedReceiptId), { returnStatus: 'verified' });
-      formData.items.forEach(item => {
-        const mat = allMaterials?.find(m => m.id === item.id);
-        if (mat) batch.update(doc(db, 'materials', item.id), { currentQty: (mat.currentQty || 0) + Number(item.qty) });
-      });
+      formData.items.forEach(item => { const mat = allMaterials?.find(m => m.id === item.id); if (mat) batch.update(doc(db, 'materials', item.id), { currentQty: (mat.currentQty || 0) + Number(item.qty) }); });
       await batch.commit();
-      toast({ title: lang === 'ar' ? "تم التوثيق بنجاح" : "Success" });
-      resetDialog();
+      toast({ title: isRtl ? "تم التوثيق بنجاح" : "Success" });
+      setIsAddDialogOpen(false);
+      setFormData({ date: new Date().toISOString().split('T')[0], orderId: '', workerId: '', linkedReceiptId: '', notes: '', items: [] });
     } finally { setIsSubmitting(false); }
-  };
-
-  const resetDialog = () => {
-    setIsAddDialogOpen(false);
-    setEditingVoucherId(null);
-    setFormData({ date: new Date().toISOString().split('T')[0], orderId: '', workerId: '', linkedReceiptId: '', notes: '', items: [] });
-  };
-
-  const handleDownloadImage = async () => {
-    const element = document.getElementById('printable-voucher');
-    if (!element || !printingVoucher) return;
-    setIsDownloading(true);
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      const dataUrl = await toPng(element, { 
-        backgroundColor: '#ffffff', 
-        pixelRatio: 2, 
-        cacheBust: true, 
-        fontEmbedCSS: '' 
-      });
-      const link = document.createElement('a');
-      link.download = `Return-${printingVoucher.voucherNumber}.png`;
-      link.href = dataUrl;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } finally { setIsDownloading(false); }
-  };
-
-  const handleExportCSV = () => {
-    const list = activeTab === 'pending' ? pendingReturns : verifiedReturns;
-    const headers = [
-      lang === 'ar' ? 'رقم السند' : 'Voucher No',
-      lang === 'ar' ? 'التاريخ' : 'Date',
-      lang === 'ar' ? 'الموظف' : 'Worker',
-      lang === 'ar' ? 'أمر الإنتاج' : 'Order',
-      lang === 'ar' ? 'الحالة' : 'Status'
-    ];
-
-    const rows = list.map(v => {
-      const worker = allWorkers?.find(w => w.id === v.workerId);
-      const order = allOrders?.find(o => o.id === v.orderId);
-      return [
-        v.voucherNumber,
-        v.date,
-        worker?.fullName || '---',
-        order?.orderNumber || '---',
-        activeTab === 'pending' ? 'Pending' : 'Verified'
-      ];
-    });
-
-    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `Returns_${activeTab}_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast({ title: lang === 'ar' ? "تم تحميل ملف CSV" : "CSV Downloaded" });
   };
 
   return (
     <div className="flex flex-col h-full bg-[#f8fafc] overflow-hidden" dir={dir}>
-      <div className="flex-none bg-white border-b border-slate-200 z-30 px-6 py-4 shadow-sm">
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-          <div className="flex items-center gap-4">
-            <div className="p-2.5 bg-slate-900 rounded-lg text-white shadow-lg"><RefreshCcw className="w-5 h-5 text-emerald-400" /></div>
-            <div>
-              <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                <span>WMS</span><ChevronRight className="w-3 h-3" /><span>{lang === 'ar' ? 'توريد المرتجعات' : 'Returns'}</span>
-              </div>
-              <h1 className="text-xl font-black text-slate-900">{lang === 'ar' ? 'توثيق دخول المرتجعات' : 'Return Audit'}</h1>
-            </div>
-          </div>
-          
-          <div className="flex flex-col md:flex-row items-center gap-2 bg-slate-50 p-1.5 rounded-xl border border-slate-200 w-full lg:w-auto">
-             <div className="flex bg-white p-1 rounded-lg border border-slate-200 w-full md:w-auto">
-                <button onClick={() => setActiveTab('pending')} className={cn("flex-1 md:flex-none px-3 py-1.5 rounded-md text-[10px] font-black uppercase transition-all", activeTab === 'pending' ? "bg-amber-600 text-white shadow-sm" : "text-slate-400 hover:text-slate-600")}>
-                  {lang === 'ar' ? 'بانتظار التوثيق' : 'PENDING'}
-                </button>
-                <button onClick={() => setActiveTab('verified')} className={cn("flex-1 md:flex-none px-3 py-1.5 rounded-md text-[10px] font-black uppercase transition-all", activeTab === 'verified' ? "bg-emerald-600 text-white shadow-sm" : "text-slate-400 hover:text-slate-600")}>
-                  {lang === 'ar' ? 'الأرشيف الموثق' : 'VERIFIED'}
-                </button>
-             </div>
-             
-             <div className="flex items-center gap-2 w-full">
-                <div className="relative flex-1">
-                    <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300`} />
-                    <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={lang === 'ar' ? 'بحث...' : 'Search...'} className={cn("h-9 w-full text-[10px] font-bold bg-white border-slate-200", dir === 'rtl' ? "pr-8" : "pl-8")} />
-                </div>
-
-                <div className="flex items-center gap-1 shrink-0">
-                    <Popover>
-                        <PopoverTrigger asChild>
-                            <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 transition-all", (dateFrom || dateTo) && "border-emerald-500 bg-emerald-50")}>
-                                <CalendarDays className={cn("w-4 h-4", (dateFrom || dateTo) ? "text-emerald-600" : "text-slate-400")} />
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent align={dir === 'rtl' ? 'start' : 'end'} className="w-72 p-4 rounded-xl shadow-2xl border-slate-200">
-                            <div className="space-y-4">
-                            <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 pb-2">
-                                <CalendarDays className="w-3.5 h-3.5" />
-                                {lang === 'ar' ? 'تصفية حسب النطاق الزمني' : 'DATE RANGE FILTER'}
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="space-y-1.5">
-                                <Label className="text-[9px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'من تاريخ' : 'FROM'}</Label>
-                                <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-9 text-[10px] font-bold tabular-nums" />
-                                </div>
-                                <div className="space-y-1.5">
-                                <Label className="text-[9px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'إلى تاريخ' : 'TO'}</Label>
-                                <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-9 text-[10px] font-bold tabular-nums" />
-                                </div>
-                            </div>
-                            {(dateFrom || dateTo) && (
-                                <Button variant="ghost" size="sm" onClick={() => { setDateFrom(''); setDateTo(''); }} className="w-full h-8 text-[9px] font-black text-rose-500 hover:bg-rose-50 hover:text-rose-600 border border-transparent hover:border-rose-100 rounded-lg">
-                                    {lang === 'ar' ? 'إعادة ضبط الوقت' : 'CLEAR DATES'}
-                                </Button>
-                            )}
-                            </div>
-                        </PopoverContent>
-                    </Popover>
-
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 transition-all", (workerFilter !== 'all' || orderFilter !== 'all') && "border-emerald-500 bg-emerald-50")}>
-                                <Filter className={cn("w-4 h-4", (workerFilter !== 'all' || orderFilter !== 'all') ? "text-emerald-600" : "text-slate-400")} />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="w-64 rounded-xl shadow-xl border-slate-200">
-                            <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'ترتيب وتصفية' : 'FILTER & SORT'}</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => { setSortBy('date'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }} className="flex justify-between text-xs font-bold py-2.5 cursor-pointer">
-                                {lang === 'ar' ? 'ترتيب حسب التاريخ' : 'Sort by Date'}
-                                {sortBy === 'date' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
-                            </DropdownMenuItem>
-                            
-                            <DropdownMenuSeparator />
-                            <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'الموظف' : 'BY WORKER'}</DropdownMenuLabel>
-                            <ScrollArea className="h-40">
-                                <DropdownMenuItem onClick={() => setWorkerFilter('all')} className="flex justify-between text-xs font-bold cursor-pointer">
-                                    {lang === 'ar' ? 'الكل' : 'All'}
-                                    {workerFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
-                                </DropdownMenuItem>
-                                {allWorkers?.filter(w => w.status !== 'deleted').map(w => (
-                                    <DropdownMenuItem key={w.id} onClick={() => setWorkerFilter(w.id)} className="flex justify-between text-xs font-bold cursor-pointer">
-                                        {w.fullName}
-                                        {workerFilter === w.id && <Check className="w-3.5 h-3.5 text-emerald-600" />}
-                                    </DropdownMenuItem>
-                                ))}
-                            </ScrollArea>
-                            
-                            <DropdownMenuSeparator />
-                            <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'الدفعة' : 'BY BATCH'}</DropdownMenuLabel>
-                            <ScrollArea className="h-40">
-                                <DropdownMenuItem onClick={() => setOrderFilter('all')} className="flex justify-between text-xs font-bold cursor-pointer">
-                                    {lang === 'ar' ? 'الكل' : 'All'}
-                                    {orderFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
-                                </DropdownMenuItem>
-                                {allOrders?.filter(o => o.status !== 'deleted').map(o => (
-                                    <DropdownMenuItem key={o.id} onClick={() => setOrderFilter(o.id)} className="flex justify-between text-xs font-bold cursor-pointer">
-                                        <span className="truncate max-w-[150px]">{o.orderNumber} - {o.title}</span>
-                                        {orderFilter === o.id && <Check className="w-3.5 h-3.5 text-emerald-600" />}
-                                    </DropdownMenuItem>
-                                ))}
-                            </ScrollArea>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-
-                    <Button onClick={handleExportCSV} variant="ghost" size="icon" className="h-9 w-9 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 transition-all">
-                        <FileDown className="w-4 h-4 text-emerald-600" />
-                    </Button>
-                </div>
-             </div>
-          </div>
-        </div>
-      </div>
-
+      <ReturnHeader 
+        lang={lang} dir={dir} activeTab={activeTab} setActiveTab={setActiveTab} search={search} setSearch={setSearch}
+        dateFrom={dateFrom} setDateFrom={setDateFrom} dateTo={dateTo} setDateTo={setDateTo}
+        workerFilter={workerFilter} setWorkerFilter={setWorkerFilter} orderFilter={orderFilter} setOrderFilter={setOrderFilter}
+        sortBy={sortBy} setSortBy={setSortBy} sortOrder={sortOrder} setSortOrder={setSortOrder}
+        allWorkers={allWorkers || []} allOrders={allOrders || []} onExport={() => {}}
+      />
       <div className="flex-1 min-h-0 p-6 overflow-auto no-scrollbar">
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-full">
-           <div className="p-3 bg-amber-50/50 border-b border-amber-100 flex items-center gap-3">
-              <Info className="w-4 h-4 text-amber-600" />
-              <p className="text-[10px] font-bold text-amber-800">
-                {lang === 'ar' ? 'بروتوكول التدقيق: يجب مطابقة المرتجع الميداني مع السجل المخزني الفعلي قبل تأكيد الدخول.' : 'Audit Protocol: Verify field returns against physical stock before confirmation.'}
-              </p>
-           </div>
-           <div className="flex-1 overflow-auto no-scrollbar">
-              <Table className="text-right border-separate border-spacing-0">
-                <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
-                  <TableRow>
-                    <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? "text-right" : "text-left")}>REFERENCE</TableHead>
-                    <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", dir === 'rtl' ? "text-right" : "text-left")}>PERSONNEL</TableHead>
-                    <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">ITEMS</TableHead>
-                    <TableHead className="w-32 px-6 py-4 text-center border-b border-slate-200">ACTIONS</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                   {(activeTab === 'pending' ? pendingReturns : verifiedReturns).map(v => (
-                     <TableRow key={v.id} className="hover:bg-slate-50/50 border-b border-slate-100 transition-colors">
-                        <TableCell className="px-6 py-3">
-                           <div className="flex flex-col">
-                              <span className="font-black text-slate-900 text-xs tabular-nums">{v.voucherNumber}</span>
-                              <span className="text-[9px] text-slate-400 font-bold">{v.date}</span>
-                           </div>
-                        </TableCell>
-                        <TableCell className="px-6 py-3">
-                           <div className="flex items-center gap-2">
-                              <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center border border-slate-200 overflow-hidden text-[10px] font-black text-slate-400">
-                                 {allWorkers?.find(w => w.id === v.workerId)?.fullName?.charAt(0)}
-                              </div>
-                              <span className="font-bold text-slate-700 text-xs">{allWorkers?.find(w => w.id === v.workerId)?.fullName}</span>
-                           </div>
-                        </TableCell>
-                        <TableCell className="px-6 py-3 text-center">
-                           <div className="flex items-center justify-center gap-2">
-                              <Badge variant="outline" className="bg-emerald-50 text-emerald-700 font-black tabular-nums border-emerald-100">
-                                 {(v.returnedItems?.length || v.items?.length || 0)} {lang === 'ar' ? 'أصناف' : 'Items'}
-                              </Badge>
-                              {v.returnedItems?.slice(0, 1).map((item: any, i: number) => (
-                                 <span key={i} className="text-[9px] text-slate-400 font-medium truncate max-w-[100px] hidden md:inline">({item.nameAr})</span>
-                              ))}
-                           </div>
-                        </TableCell>
-                        <TableCell className="px-6 py-3 text-center">
-                           {activeTab === 'pending' ? (
-                             <Button onClick={() => handleQuickVerify(v)} size="sm" className="h-8 px-4 bg-emerald-600 hover:bg-emerald-700 text-[10px] font-black text-white rounded-lg shadow-sm">
-                               {lang === 'ar' ? 'توثيق المرتجع' : 'VERIFY'}
-                             </Button>
-                           ) : (
-                             <Button variant="ghost" size="icon" onClick={() => setPrintingVoucher(v)} className="h-8 w-8 text-slate-400 hover:text-emerald-600 rounded-lg"><Eye className="w-4 h-4" /></Button>
-                           )}
-                        </TableCell>
-                     </TableRow>
-                   ))}
-                </TableBody>
-              </Table>
-           </div>
+        <div className="p-3 bg-amber-50/50 border-b border-amber-100 flex items-center gap-3 mb-4 rounded-xl">
+           <Info className="w-4 h-4 text-amber-600" />
+           <p className="text-[10px] font-bold text-amber-800">{isRtl ? 'بروتوكول التدقيق: يجب مطابقة المرتجع الميداني مع السجل المخزني الفعلي قبل تأكيد الدخول.' : 'Audit Protocol Required.'}</p>
         </div>
+        <ReturnTable 
+          list={activeTab === 'pending' ? pendingReturns : verifiedReturns} allWorkers={allWorkers || []} allOrders={allOrders || []}
+          activeTab={activeTab} lang={lang} dir={dir} onVerify={(v) => { setFormData({ date: new Date().toISOString().split('T')[0], orderId: v.orderId, workerId: v.workerId, linkedReceiptId: v.id, notes: isRtl ? `توثيق آلي للمرتجع من سند رقم ${v.voucherNumber}` : `Auto-verify ${v.voucherNumber}`, items: [...v.returnedItems] }); setIsAddDialogOpen(true); }}
+          onPrint={(v) => setPrintingVoucher(v)}
+        />
       </div>
 
-      <Dialog open={isAddDialogOpen} onOpenChange={(open) => !open && resetDialog()}>
-        <DialogContent className="sm:max-w-[850px] rounded-lg p-0 overflow-hidden border-none shadow-2xl">
-          <div className="premium-gradient p-6 text-white">
-            <DialogHeader className="text-right">
-              <DialogTitle className="text-xl font-black flex items-center gap-3 text-white">
-                <RefreshCcw className="w-5 h-5 text-emerald-300" />
-                {lang === 'ar' ? 'توثيق توريد المرتجع للمخزن' : 'Verify Material Return'}
-              </DialogTitle>
-              <p className="text-emerald-100/70 font-bold text-[10px] uppercase mt-1">Authenticating raw material re-entry into inventory</p>
-            </DialogHeader>
-          </div>
-          <form onSubmit={handleSaveVoucher} className="p-6 space-y-6 bg-white max-h-[85vh] overflow-y-auto no-scrollbar">
-             <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-1.5 text-right"><Label className="text-[10px] font-black uppercase text-slate-400">DATE</Label><Input type="date" value={formData.date} className="h-11 bg-slate-50 font-bold" disabled /></div>
-                <div className="space-y-1.5 text-right"><Label className="text-[10px] font-black uppercase text-slate-400">WORKER</Label><Input value={allWorkers?.find(w => w.id === formData.workerId)?.fullName || ''} className="h-11 bg-slate-50 font-bold" disabled /></div>
-                <div className="space-y-1.5 text-right"><Label className="text-[10px] font-black uppercase text-slate-400">BATCH</Label><Input value={allOrders?.find(o => o.id === formData.orderId)?.title || ''} className="h-11 bg-slate-50 font-bold" disabled /></div>
-             </div>
-             
-             <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-                <Table className="text-right">
-                   <TableHeader className="bg-slate-50">
-                     <TableRow>
-                       <TableHead className="px-4 py-2 font-black text-[9px] uppercase text-right">MATERIAL</TableHead>
-                       <TableHead className="px-4 py-2 font-black text-[9px] uppercase text-center">QTY</TableHead>
-                       <TableHead className="px-4 py-2 font-black text-[9px] uppercase text-center">UNIT</TableHead>
-                     </TableRow>
-                   </TableHeader>
-                   <TableBody>
-                      {formData.items.map((item, idx) => (
-                        <TableRow key={idx} className="border-b border-slate-50 bg-white">
-                           <TableCell className="px-4 py-3 text-xs font-bold text-slate-700">{item.nameAr}</TableCell>
-                           <TableCell className="text-center font-black text-emerald-700 tabular-nums">{item.qty}</TableCell>
-                           <TableCell className="text-center text-[10px] font-bold text-slate-400 uppercase">{item.unit}</TableCell>
-                        </TableRow>
-                      ))}
-                   </TableBody>
-                </Table>
-             </div>
-             
-             <div className="space-y-1.5 text-right">
-                <Label className="text-[10px] font-black uppercase text-slate-400">AUDIT NOTES</Label>
-                <textarea value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} className="w-full min-h-[80px] p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium resize-none outline-none focus:bg-white" />
-             </div>
-
-             <div className="flex gap-3">
-                <Button type="submit" disabled={isSubmitting} className="flex-1 h-14 premium-gradient text-white font-black text-base shadow-xl">
-                  {isSubmitting ? <Loader2 className="animate-spin me-2" /> : <CheckCircle2 className="w-5 h-5 me-2" />}
-                  {lang === 'ar' ? 'تأكيد دخول المخزن وتصفية العهدة' : 'Confirm Inventory Re-entry'}
-                </Button>
-                <Button type="button" variant="outline" onClick={resetDialog} className="px-8 h-14 font-black text-slate-400 rounded-xl">إلغاء</Button>
-             </div>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={!!printingVoucher} onOpenChange={(open) => !open && setPrintingVoucher(null)}>
-        <DialogContent className="sm:max-w-[850px] p-0 overflow-hidden border-none bg-white shadow-2xl">
-          <DialogHeader className="sr-only"><DialogTitle>معاينة سند المرتجع</DialogTitle></DialogHeader>
-          <ScrollArea className="max-h-[85vh]">
-            <div className="p-12 bg-white relative z-0" id="printable-voucher">
-              {printingVoucher && (
-                <VoucherTemplate 
-                  voucher={printingVoucher}
-                  order={allOrders?.find(o => o.id === printingVoucher.orderId)}
-                  worker={allWorkers?.find(w => w.id === printingVoucher.workerId)}
-                  supervisor={allWorkers?.find(w => w.id === (allWorkers?.find(work => work.id === printingVoucher.workerId)?.supervisorId))}
-                  departments={allDepartments}
-                  products={allProducts}
-                  lang={lang}
-                />
-              )}
-            </div>
-          </ScrollArea>
-          <DialogFooter className="p-6 bg-slate-50 border-t border-slate-100">
-             <Button onClick={handleDownloadImage} disabled={isDownloading} className="premium-gradient font-black gap-2 h-12 px-10 rounded-xl shadow-xl hover:opacity-90 active:scale-95 transition-all">
-                {isDownloading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
-                {lang === 'ar' ? 'تحميل كصورة PNG' : 'Download PNG'}
-             </Button>
-             <Button variant="ghost" onClick={() => setPrintingVoucher(null)} className="font-black h-12 px-8 rounded-xl border border-slate-200 text-slate-500">إغلاق</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ReturnFormDialog isOpen={isAddDialogOpen} onClose={() => setIsAddDialogOpen(false)} lang={lang} isSubmitting={isSubmitting} formData={formData} setFormData={setFormData} allWorkers={allWorkers || []} allOrders={allOrders || []} onSubmit={handleSaveVoucher} />
+      <ReturnPrintPreview isOpen={!!printingVoucher} onClose={() => setPrintingVoucher(null)} voucher={printingVoucher} lang={lang} allOrders={allOrders || []} allWorkers={allWorkers || []} allDepartments={allDepartments || []} allProducts={allProducts || []} isDownloading={isDownloading} onDownload={async () => {
+          const el = document.getElementById('printable-voucher');
+          if (!el) return;
+          setIsDownloading(true);
+          try { await new Promise(r => setTimeout(r, 800)); const dataUrl = await toPng(el, { backgroundColor: '#ffffff', pixelRatio: 2 }); const link = document.createElement('a'); link.download = `Return-${printingVoucher.voucherNumber}.png`; link.href = dataUrl; link.click(); } finally { setIsDownloading(false); }
+      }} />
     </div>
   );
 }
