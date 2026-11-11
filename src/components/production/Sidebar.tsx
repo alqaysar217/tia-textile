@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -30,7 +31,9 @@ import {
   UserCheck,
   HandCoins,
   PackageSearch,
-  Receipt
+  Receipt,
+  PieChart,
+  Target
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -98,8 +101,10 @@ export function Sidebar() {
       name: lang === 'ar' ? 'التقارير والتحليل' : 'Reports & Analytics',
       icon: <FileBarChart className="w-5 h-5" />,
       children: [
-        { name: lang === 'ar' ? 'تكاليف الأوامر' : 'Order Costing', href: '/production/reports/costs' },
-        { name: lang === 'ar' ? 'إنتاجية العمال' : 'Worker Productivity', href: '/production/reports/productivity' },
+        { name: lang === 'ar' ? 'إنتاجية وأجور العمال' : 'Worker Performance', href: '/production/reports/productivity', icon: <UserCheck className="w-3.5 h-3.5" /> },
+        { name: lang === 'ar' ? 'تحليل تكاليف الأوامر' : 'Order Cost Analysis', href: '/production/reports/costs', icon: <Calculator className="w-3.5 h-3.5" /> },
+        { name: lang === 'ar' ? 'استهلاك المواد الخام' : 'Material Consumption', href: '/production/reports/materials', icon: <PieChart className="w-3.5 h-3.5" /> },
+        { name: lang === 'ar' ? 'الملخص المالي والنمو' : 'Financial Summary', href: '/production/reports/financial', icon: <TrendingUp className="w-3.5 h-3.5" /> },
       ]
     },
     {
@@ -187,3 +192,4 @@ export function Sidebar() {
     </div>
   );
 }
+
