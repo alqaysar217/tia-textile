@@ -107,7 +107,7 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
   // States for Costs Summary Filtering & Sorting
   const [costSearch, setCostSearch] = useState('');
   const [costSortBy, setCostSortBy] = useState<'date' | 'description' | 'amount'>('date');
-  const [costSortOrder, setCostSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [costSortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   // Fetch Global Settings for Currency
   const settingsRef = useMemo(() => !db ? null : doc(db, 'settings', 'global'), [db]);
@@ -230,7 +230,6 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
     return finalCompletedQty > 0 ? Math.round(grandTotalCost / finalCompletedQty) : 0;
   }, [grandTotalCost, finalCompletedQty]);
 
-  // Tab Filtering & Sorting Logic
   const filteredMaterialsDetailed = useMemo(() => {
     let list: any[] = [];
     vouchers
@@ -352,7 +351,6 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
     } catch (err) { console.error(err); } finally { setIsDownloading(false); }
   };
 
-  // Helper Components with Forced Alignment for Arabic
   function SummaryStatCard({ label, value, currency, icon, color, bgColor, isCount = false }: any) {
     return (
       <div className={cn("p-3 rounded-xl border border-slate-100 shadow-sm", bgColor, dir === 'rtl' ? 'text-right' : 'text-left')}>
@@ -370,12 +368,12 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
 
   function InfoItem({ label, value, icon, color = "text-slate-900" }: { label: string, value: string | number, icon: any, color?: string }) {
     return (
-      <div className={cn("flex flex-col gap-2", dir === 'rtl' ? 'text-right' : 'text-left')}>
-        <div className={cn("flex items-center gap-2 opacity-50", dir === 'rtl' ? 'flex-row' : 'flex-row')}>
+      <div className={cn("flex flex-col gap-1.5", dir === 'rtl' ? 'text-right' : 'text-left')}>
+        <div className={cn("flex items-center gap-2 opacity-50")}>
           {icon}
-          <span className="text-[10px] font-black uppercase tracking-widest">{label}</span>
+          <span className="text-[9px] font-black uppercase tracking-widest">{label}</span>
         </div>
-        <div className={cn("text-sm font-black", dir === 'rtl' ? 'pr-6' : 'pl-6', color)}>
+        <div className={cn("text-sm font-black ps-6", color)}>
           {value || '---'}
         </div>
       </div>
@@ -495,12 +493,12 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
           {activeTab === 'info' && (
             <ScrollArea className="flex-1 animate-in fade-in duration-300">
                <div className="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-                  <h3 className={cn("text-xs font-black text-slate-900 uppercase tracking-widest flex items-center gap-2", dir === 'rtl' ? 'text-right' : 'text-left')}>
+                  <h3 className={cn("text-xs font-black text-slate-900 uppercase tracking-widest flex items-center gap-2")}>
                     <ClipboardList className="w-4 h-4 text-emerald-600" />
                     {lang === 'ar' ? 'سجل المواصفات الفنية المعتمد' : 'MASTER LEDGER'}
                   </h3>
                   <Button variant="outline" size="sm" onClick={handleOpenEdit} className="h-8 px-4 rounded-lg font-black text-[10px] gap-2 border-slate-200 text-slate-600 hover:bg-white transition-all shadow-sm">
-                    <Edit2 className="w-3 h-3 text-emerald-600" />
+                    <Edit2 className="w-3.5 h-3.5 text-emerald-600" />
                     {lang === 'ar' ? 'تعديل البيانات' : 'EDIT SPECS'}
                   </Button>
                </div>
@@ -516,41 +514,44 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                   </div>
                </div>
 
-               <div className="p-8 bg-white space-y-10">
+               <div className="p-8 bg-white space-y-10" dir={dir}>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-y-10 gap-x-12">
                     {/* Column 1 */}
                     <div className="space-y-8">
-                      <InfoItem label={lang === 'ar' ? 'رقم السجل الموحد' : 'REFERENCE'} value={order.orderNumber} icon={<Hash className="w-4 h-4" />} />
-                      <InfoItem label={lang === 'ar' ? 'تاريخ البدء' : 'LAUNCH DATE'} value={order.startDate} icon={<Calendar className="w-4 h-4" />} />
-                      <InfoItem label={lang === 'ar' ? 'عنوان الدفعة' : 'BATCH TITLE'} value={order.title} icon={<Type className="w-4 h-4" />} />
+                      <InfoItem label={lang === 'ar' ? 'رقم السجل الموحد' : 'REFERENCE'} value={order.orderNumber} icon={<Hash className="w-4 h-4 text-slate-400" />} />
+                      <InfoItem label={lang === 'ar' ? 'تاريخ البدء' : 'LAUNCH DATE'} value={order.startDate} icon={<Calendar className="w-4 h-4 text-slate-400" />} />
+                      <InfoItem label={lang === 'ar' ? 'عنوان الدفعة' : 'BATCH TITLE'} value={order.title} icon={<Type className="w-4 h-4 text-slate-400" />} />
                     </div>
                     
                     {/* Column 2 */}
                     <div className="space-y-8">
-                      <InfoItem label={lang === 'ar' ? 'المنتج المستهدف' : 'TARGET PRODUCT'} value={product?.nameAr} icon={<ShoppingBag className="w-4 h-4" />} />
-                      <InfoItem label={lang === 'ar' ? 'الكمية المستهدفة' : 'TARGET QTY'} value={`${order.targetQty} قطعة`} icon={<Target className="w-4 h-4" />} />
-                      <InfoItem label={lang === 'ar' ? 'الكمية المنجزة (النهائية)' : 'COMPLETED'} value={`${finalCompletedQty} قطعة`} icon={<CheckCircle2 className="w-4 h-4" />} color="text-emerald-700" />
+                      <InfoItem label={lang === 'ar' ? 'المنتج المستهدف' : 'TARGET PRODUCT'} value={product?.nameAr} icon={<ShoppingBag className="w-4 h-4 text-slate-400" />} />
+                      <InfoItem label={lang === 'ar' ? 'الكمية المستهدفة' : 'TARGET QTY'} value={`${order.targetQty} قطعة`} icon={<Target className="w-4 h-4 text-slate-400" />} />
+                      <InfoItem label={lang === 'ar' ? 'الكمية المنجزة (النهائية)' : 'COMPLETED'} value={`${finalCompletedQty} قطعة`} icon={<CheckCircle2 className="w-4 h-4 text-emerald-500" />} color="text-emerald-700" />
                     </div>
 
                     {/* Column 3 */}
                     <div className="space-y-8">
-                      <InfoItem label={lang === 'ar' ? 'قيد العمل (WIP)' : 'WIP'} value={`${Math.max(0, order.targetQty - finalCompletedQty)} قطعة`} icon={<Package className="w-4 h-4" />} color="text-blue-600" />
-                      <InfoItem label={lang === 'ar' ? 'الأولوية' : 'PRIORITY'} value={order.priority} icon={<ShieldCheck className="w-4 h-4" />} />
-                      <InfoItem label={lang === 'ar' ? 'الحالة' : 'STATUS'} value={order.status} icon={<Tag className="w-4 h-4" />} />
+                      <InfoItem label={lang === 'ar' ? 'قيد العمل (WIP)' : 'WIP'} value={`${Math.max(0, order.targetQty - finalCompletedQty)} قطعة`} icon={<Package className="w-4 h-4 text-blue-400" />} color="text-blue-600" />
+                      <InfoItem label={lang === 'ar' ? 'الأولوية' : 'PRIORITY'} value={order.priority} icon={<ShieldCheck className="w-4 h-4 text-slate-400" />} />
+                      <InfoItem label={lang === 'ar' ? 'الحالة' : 'STATUS'} value={order.status} icon={<Tag className="w-4 h-4 text-slate-400" />} />
                     </div>
                   </div>
 
                   {/* Progress Bar Footer */}
                   <div className="pt-8 border-t border-slate-100">
-                     <div className={cn("flex items-center justify-between mb-3", dir === 'rtl' ? 'flex-row' : 'flex-row')}>
+                     <div className={cn("flex items-center justify-between mb-3")}>
                         <div className="flex items-center gap-2">
                            <div className="p-1.5 bg-emerald-50 text-emerald-600 rounded"><Activity className="w-4 h-4" /></div>
                            <span className="font-black text-[10px] text-slate-400 uppercase tracking-widest">{lang === 'ar' ? 'مستوى التقدم الإجمالي' : 'PROGRESS'}</span>
                         </div>
                         <span className="text-sm font-black text-emerald-700 tabular-nums">{progress}%</span>
                      </div>
-                     <div className="h-3 bg-slate-100 rounded-full overflow-hidden shadow-inner">
-                        <div className="h-full bg-emerald-500 transition-all duration-1000 ease-out" style={{ width: `${progress}%` }} />
+                     <div className="h-3 bg-slate-100 rounded-full overflow-hidden shadow-inner relative">
+                        <div 
+                          className={cn("h-full bg-emerald-500 transition-all duration-1000 ease-out absolute", dir === 'rtl' ? "right-0" : "left-0")} 
+                          style={{ width: `${progress}%` }} 
+                        />
                      </div>
                   </div>
                </div>
@@ -559,8 +560,8 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
 
           {activeTab === 'materials_summary' && (
             <div className="flex-1 flex-col flex animate-in fade-in duration-300 overflow-hidden">
-               <div className={cn("p-4 bg-amber-50 border-b border-amber-100 flex items-center justify-between", dir === 'rtl' ? 'flex-row' : 'flex-row')}>
-                  <h3 className={cn("text-xs font-black text-amber-900 uppercase tracking-widest flex items-center gap-2", dir === 'rtl' ? 'text-right' : 'text-left')}>
+               <div className={cn("p-4 bg-amber-50 border-b border-amber-100 flex items-center justify-between")}>
+                  <h3 className={cn("text-xs font-black text-amber-900 uppercase tracking-widest flex items-center gap-2")}>
                     <Layers className="w-4 h-4" /> 
                     {lang === 'ar' ? 'سجل تفصيلي للمواد الخام وقيمتها' : 'DETAILED MATERIALS COSTING'}
                   </h3>
@@ -637,8 +638,8 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
 
           {activeTab === 'wages_summary' && (
             <div className="flex-1 flex flex-col animate-in fade-in duration-300 overflow-hidden">
-               <div className={cn("p-4 bg-purple-50 border-b border-purple-100 flex items-center justify-between", dir === 'rtl' ? 'flex-row' : 'flex-row')}>
-                  <h3 className={cn("text-xs font-black text-purple-900 uppercase tracking-widest flex items-center gap-2", dir === 'rtl' ? 'text-right' : 'text-left')}>
+               <div className={cn("p-4 bg-purple-50 border-b border-purple-100 flex items-center justify-between")}>
+                  <h3 className={cn("text-xs font-black text-purple-900 uppercase tracking-widest flex items-center gap-2")}>
                     <Wallet className="w-4 h-4" /> 
                     {lang === 'ar' ? 'سجل الأجور المستحقة عن عمليات الإنتاج' : 'PRODUCTION WAGES LEDGER'}
                   </h3>
@@ -712,8 +713,8 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
 
           {activeTab === 'costs_summary' && (
             <div className="flex-1 flex flex-col animate-in fade-in duration-300 overflow-hidden">
-               <div className={cn("p-4 bg-rose-50 border-b border-rose-100 flex items-center justify-between", dir === 'rtl' ? 'flex-row' : 'flex-row')}>
-                  <h3 className={cn("text-xs font-black text-rose-900 uppercase tracking-widest flex items-center gap-2", dir === 'rtl' ? 'text-right' : 'text-left')}>
+               <div className={cn("p-4 bg-rose-50 border-b border-rose-100 flex items-center justify-between")}>
+                  <h3 className={cn("text-xs font-black text-rose-900 uppercase tracking-widest flex items-center gap-2")}>
                     <Receipt className="w-4 h-4" /> 
                     {lang === 'ar' ? 'المصاريف والتكاليف التشغيلية المرتبطة بالدفعة' : 'BATCH OVERHEAD COSTS'}
                   </h3>
@@ -878,7 +879,7 @@ export default function OrderDetailsDashboard({ params: paramsPromise }: { param
                              <TableCell className="px-6 py-4 text-center font-bold text-slate-700 tabular-nums">{done.toLocaleString('en-US')}</TableCell>
                              <TableCell className="px-6 py-4 text-center font-black text-emerald-700 tabular-nums">{cost.toLocaleString('en-US')} {systemCurrency}</TableCell>
                              <TableCell className="px-6 py-4 text-center">
-                                <div className="flex items-center gap-3 justify-center"><div className="flex-1 h-1.5 w-24 bg-slate-100 rounded-full overflow-hidden"><div className="h-full bg-emerald-500" style={{ width: `${p}%` }} /></div><span className="text-[10px] font-black text-slate-400 tabular-nums">{p}%</span></div>
+                                <div className="flex items-center gap-3 justify-center"><div className="flex-1 h-1.5 w-24 bg-slate-100 rounded-full overflow-hidden relative"><div className={cn("h-full bg-emerald-500 absolute", dir === 'rtl' ? "right-0" : "left-0")} style={{ width: `${p}%` }} /></div><span className="text-[10px] font-black text-slate-400 tabular-nums">{p}%</span></div>
                              </TableCell>
                           </TableRow>
                         );
@@ -966,7 +967,7 @@ function LedgerTransactionRow({ voucher, worker, systemCurrency, lang, onView }:
         </div>
       </TableCell>
       <TableCell className={cn("px-6 py-3", dir === 'rtl' ? 'text-right' : 'text-left')}>
-        <div className={cn("flex items-center gap-2", dir === 'rtl' ? 'justify-start' : 'justify-start')}>
+        <div className={cn("flex items-center gap-2")}>
           <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center border border-slate-200 overflow-hidden shrink-0">
             {worker?.photoUrl ? <img src={worker.photoUrl} className="w-full h-full object-cover" /> : <User className="w-3.5 h-3.5 text-slate-400" />}
           </div>
