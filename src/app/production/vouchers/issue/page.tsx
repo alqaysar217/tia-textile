@@ -23,7 +23,8 @@ import {
   Eye,
   Workflow,
   Package,
-  Plus
+  Plus,
+  UserCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -73,7 +74,7 @@ import { Badge } from '@/components/ui/badge';
 import { VoucherTemplate } from '@/components/production/VoucherTemplate';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 
-// New Component Import
+// استيراد المكونات الفرعية
 import { IssueHeader } from './components/IssueHeader';
 
 export default function MaterialIssuePage() {
@@ -445,7 +446,7 @@ export default function MaterialIssuePage() {
   return (
     <div className="flex flex-col h-full bg-[#f8fafc] overflow-hidden" dir={dir}>
       
-      {/* COMPONENT REPLACED BY IssueHeader */}
+      {/* استدعاء المكون الجديد لرأس الصفحة */}
       <IssueHeader 
         lang={lang}
         dir={dir}
