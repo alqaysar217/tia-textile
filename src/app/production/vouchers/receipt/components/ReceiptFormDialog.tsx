@@ -42,7 +42,7 @@ interface ReceiptFormDialogProps {
   isSubmitting: boolean;
   formData: any;
   setFormData: (v: any) => void;
-  allOrders: any[];
+  allOrders: any[]; // Changed from activeOrders to match state
   allWorkers: any[];
   allDepartments: any[];
   allMIVs: any[];
@@ -142,38 +142,97 @@ export function ReceiptFormDialog({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2"><Building2 className="w-3 h-3 text-emerald-600" /> {isRtl ? 'فلترة حسب القسم' : 'FILTER BY DEPT'}</Label><select value={selectedDeptId} onChange={(e) => { setSelectedDeptId(e.target.value); setFormData({...formData, workerId: '', linkedMIVs: []}); }} className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none"><option value="">{isRtl ? 'جميع الأقسام' : 'All Departments'}</option>{allDepartments?.filter(d => d.status === 'active').map(d => <option key={d.id} value={d.id}>{d.nameAr}</option>)}</select></div>
-            <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2"><UserCheck className="w-3 h-3 text-emerald-600" /> {isRtl ? 'الموظف (الذي عليه عهدة)' : 'PERSONNEL'}</Label><select value={formData.workerId} onChange={(e) => setFormData({...formData, workerId: e.target.value, linkedMIVs: []})} disabled={!formData.orderId} className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none disabled:opacity-50" required><option value="">{isRtl ? '-- اختر الموظف --' : '-- Select Person --'}</option>{relevantWorkers.map(w => <option key={w.id} value={w.id}>{w.fullName}</option>)}</select></div>
+            <div className="space-y-1.5">
+              <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
+                <Building2 className="w-3 h-3 text-emerald-600" /> {isRtl ? 'فلترة حسب القسم' : 'FILTER BY DEPT'}
+              </Label>
+              <select value={selectedDeptId} onChange={(e) => { setSelectedDeptId(e.target.value); setFormData({...formData, workerId: '', linkedMIVs: []}); }} className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none">
+                <option value="">{isRtl ? 'جميع الأقسام' : 'All Departments'}</option>
+                {allDepartments?.filter(d => d.status === 'active').map(d => <option key={d.id} value={d.id}>{d.nameAr}</option>)}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
+                <UserCheck className="w-3 h-3 text-emerald-600" /> {isRtl ? 'الموظف (الذي عليه عهدة)' : 'PERSONNEL'}
+              </Label>
+              <select value={formData.workerId} onChange={(e) => setFormData({...formData, workerId: e.target.value, linkedMIVs: []})} disabled={!formData.orderId} className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none disabled:opacity-50" required>
+                <option value="">{isRtl ? '-- اختر الموظف --' : '-- Select Person --'}</option>
+                {relevantWorkers.map(w => <option key={w.id} value={w.id}>{w.fullName}</option>)}
+              </select>
+            </div>
           </div>
 
           {formData.workerId && (
             <div className="p-4 bg-amber-50/50 border border-amber-100 rounded-[1.5rem] space-y-4">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="space-y-1"><h3 className="text-[10px] font-black text-amber-700 uppercase tracking-widest flex items-center gap-2"><Hash className="w-3.5 h-3.5" /> {isRtl ? 'سندات العُهد المفتوحة' : 'Open Liabilities'}</h3></div>
-                <div className="flex items-center gap-3"><div className="relative"><Input value={mivSearch} onChange={(e) => setMivSearch(e.target.value)} placeholder={isRtl ? 'بحث بالسند...' : 'Search...'} className="h-8 w-40 bg-white/80 text-[10px] font-bold" /></div><div className="flex items-center gap-2 bg-white px-3 py-1 rounded-lg border border-amber-200"><Checkbox id="finalSettlement" checked={formData.isFinalSettlement} onCheckedChange={(val) => setFormData({...formData, isFinalSettlement: !!val})} /><label htmlFor="finalSettlement" className="text-[10px] font-black text-slate-600">{isRtl ? 'إغلاق نهائي' : 'Final Closure'}</label></div></div>
+                <div className="space-y-1">
+                  <h3 className="text-[10px] font-black text-amber-700 uppercase tracking-widest flex items-center gap-2">
+                    <Hash className="w-3.5 h-3.5" /> {isRtl ? 'سندات العُهد المفتوحة' : 'Open Liabilities'}
+                  </h3>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <Input value={mivSearch} onChange={(e) => setMivSearch(e.target.value)} placeholder={isRtl ? 'بحث بالسند...' : 'Search...'} className="h-8 w-40 bg-white/80 text-[10px] font-bold" />
+                  </div>
+                  <div className="flex items-center gap-2 bg-white px-3 py-1 rounded-lg border border-amber-200">
+                    <Checkbox id="finalSettlement" checked={formData.isFinalSettlement} onCheckedChange={(val) => setFormData({...formData, isFinalSettlement: !!val})} />
+                    <label htmlFor="finalSettlement" className="text-[10px] font-black text-slate-600">{isRtl ? 'إغلاق نهائي' : 'Final Closure'}</label>
+                  </div>
+                </div>
               </div>
-              <ScrollArea className="h-[150px] w-full"><div className="grid grid-cols-1 md:grid-cols-2 gap-2">{openMIVs.map(m => (<div key={m.id} onClick={() => { const exists = formData.linkedMIVs.includes(m.id); setFormData({ ...formData, linkedMIVs: exists ? formData.linkedMIVs.filter((id: string) => id !== m.id) : [...formData.linkedMIVs, m.id], returnedItems: [] }); }} className={cn("p-2 rounded-xl border-2 transition-all cursor-pointer flex items-center h-[50px]", formData.linkedMIVs.includes(m.id) ? "bg-emerald-600 border-emerald-700 text-white shadow-md" : "bg-white border-slate-100 hover:border-amber-200 text-slate-600")}><div className="flex items-center justify-between w-full px-1"><span className="text-[10px] font-black">{m.voucherNumber}</span><span className="text-[8px] font-bold opacity-60">{m.date}</span></div>{formData.linkedReceipts?.includes(m.id) && <Check className="w-3 h-3 ms-2" />}</div>))}</div></ScrollArea>
+              <ScrollArea className="h-[150px] w-full">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {openMIVs.map(m => (
+                    <div 
+                      key={m.id} 
+                      onClick={() => { 
+                        const exists = formData.linkedMIVs.includes(m.id); 
+                        setFormData({ ...formData, linkedMIVs: exists ? formData.linkedMIVs.filter((id: string) => id !== m.id) : [...formData.linkedMIVs, m.id], returnedItems: [] }); 
+                      }} 
+                      className={cn(
+                        "p-2 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-between", 
+                        formData.linkedMIVs.includes(m.id) ? "bg-emerald-600 border-emerald-700 text-white shadow-md" : "bg-white border-slate-100 hover:border-amber-200 text-slate-600"
+                      )}
+                    >
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-black">{m.voucherNumber}</span>
+                        <span className="text-[8px] font-bold opacity-60">{m.date}</span>
+                      </div>
+                      {formData.linkedMIVs.includes(m.id) && <Check className="w-4 h-4" />}
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
             </div>
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
             <div className="md:col-span-4 p-4 bg-slate-50 border border-slate-200 rounded-2xl text-center space-y-3">
                <Label className="text-[10px] font-black text-slate-400 uppercase">{isRtl ? 'المنتج المستلم' : 'PRODUCED ITEM'}</Label>
-               <div className="w-20 h-20 mx-auto bg-white rounded-xl border overflow-hidden"><img src={targetProduct?.image || 'https://placehold.co/100'} className="w-full h-full object-cover" /></div>
+               <div className="w-20 h-20 mx-auto bg-white rounded-xl border overflow-hidden">
+                  <img src={targetProduct?.image || 'https://placehold.co/100'} className="w-full h-full object-cover" />
+               </div>
                <p className="text-xs font-black text-slate-900">{targetProduct?.nameAr || '---'}</p>
             </div>
             <div className="md:col-span-8 flex flex-col gap-4">
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5"><Label className="text-[10px] font-black text-emerald-700 uppercase">{isRtl ? 'الكمية المستلمة' : 'ACCEPTED QTY'}</Label><Input type="number" step="any" value={formData.qtyAccepted || ''} onChange={(e) => setFormData({...formData, qtyAccepted: Number(e.target.value)})} className="h-14 font-black text-center text-2xl text-emerald-700 bg-emerald-50 border-emerald-200" required min="0.01" /></div>
-                <div className="space-y-1.5"><Label className="text-[10px] font-black text-slate-400 uppercase">{isRtl ? 'ملاحظات الفحص' : 'QC NOTES'}</Label><Input value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} className="h-14 bg-slate-50 text-xs font-bold" /></div>
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-black text-emerald-700 uppercase">{isRtl ? 'الكمية المستلمة' : 'ACCEPTED QTY'}</Label>
+                  <Input type="number" step="any" value={formData.qtyAccepted || ''} onChange={(e) => setFormData({...formData, qtyAccepted: Number(e.target.value)})} className="h-14 font-black text-center text-2xl text-emerald-700 bg-emerald-50 border-emerald-200" required min="0.01" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-black text-slate-400 uppercase">{isRtl ? 'ملاحظات الفحص' : 'QC NOTES'}</Label>
+                  <Input value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} className="h-14 bg-slate-50 text-xs font-bold" />
+                </div>
               </div>
               
+              {/* WAREHOUSE TRANSFER SECTION */}
               <div className="p-4 bg-emerald-900 rounded-xl text-white flex items-center justify-between shadow-xl">
                  <div className="flex items-center gap-3">
                     <div className="p-2 bg-white/10 rounded-lg"><Truck className="w-5 h-5 text-emerald-300" /></div>
-                    <div>
+                    <div className="text-right">
                        <p className="text-[11px] font-black uppercase tracking-widest">{isRtl ? 'الترحيل للمستودع العام' : 'Warehouse Transfer'}</p>
-                       <p className="text-[9px] font-bold text-emerald-200/60">{isRtl ? 'إتاحة الكمية للبيع فوراً في المتجر' : 'Make items available for sale instantly'}</p>
+                       <p className="text-[9px] font-bold text-emerald-200/60">{isRtl ? 'إتاحة الكمية للبيع فوراً في مخزن المبيعات' : 'Make items available for sale instantly'}</p>
                     </div>
                  </div>
                  <Checkbox 
@@ -185,20 +244,74 @@ export function ReceiptFormDialog({
               </div>
 
               <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100 flex items-center justify-between">
-                <div className="flex items-center gap-3"><div className="p-2 bg-white rounded-lg text-emerald-600 shadow-sm"><Wallet className="w-5 h-5" /></div><div className="flex flex-col gap-1"><p className="text-[9px] font-black text-emerald-800 uppercase">{isRtl ? 'أجر القطعة' : 'WAGE/PCS'}</p><Input type="number" step="any" value={formData.wageRate || ''} onChange={(e) => setFormData({...formData, wageRate: Number(e.target.value)})} className="h-8 w-24 text-xs font-black" required /></div></div>
-                <div className="text-right"><p className="text-[9px] font-black text-emerald-800 uppercase">{isRtl ? 'إجمالي المستحق' : 'SETTLEMENT'}</p><p className="text-xl font-black text-emerald-700 tabular-nums">{(formData.qtyAccepted * formData.wageRate).toLocaleString('en-US')} <span className="text-[10px]">{formData.currency}</span></p></div>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-white rounded-lg text-emerald-600 shadow-sm"><Wallet className="w-5 h-5" /></div>
+                  <div className="flex flex-col gap-1 text-right">
+                    <p className="text-[9px] font-black text-emerald-800 uppercase">{isRtl ? 'أجر القطعة' : 'WAGE/PCS'}</p>
+                    <Input type="number" step="any" value={formData.wageRate || ''} onChange={(e) => setFormData({...formData, wageRate: Number(e.target.value)})} className="h-8 w-24 text-xs font-black text-right" required />
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-[9px] font-black text-emerald-800 uppercase">{isRtl ? 'إجمالي المستحق' : 'SETTLEMENT'}</p>
+                  <p className="text-xl font-black text-emerald-700 tabular-nums">
+                    {(formData.qtyAccepted * formData.wageRate).toLocaleString('en-US')} <span className="text-[10px]">{formData.currency}</span>
+                  </p>
+                </div>
               </div>
             </div>
           </div>
 
           <div className="p-4 bg-blue-50/30 border border-blue-100 rounded-[1.5rem] space-y-4">
-            <h3 className="text-[10px] font-black text-blue-700 uppercase flex items-center gap-2"><RefreshCcw className="w-3.5 h-3.5" /> {isRtl ? 'استرجاع المواد المتبقية' : 'RETURN RAW MATERIALS'}</h3>
+            <h3 className="text-[10px] font-black text-blue-700 uppercase flex items-center gap-2">
+              <RefreshCcw className="w-3.5 h-3.5" /> {isRtl ? 'استرجاع المواد المتبقية للمخزن' : 'RETURN RAW MATERIALS'}
+            </h3>
             <div className="flex flex-col md:flex-row gap-3 items-end">
-              <div className="flex-1"><select disabled={formData.linkedMIVs.length === 0} className="w-full h-10 px-3 bg-white border border-blue-200 rounded-md text-xs font-bold" value={currentItem.id} onChange={(e) => setCurrentItem({ ...currentItem, id: e.target.value })}><option value="">{isRtl ? '-- اختر مادة للاسترجاع --' : '-- Select --'}</option>{issuedMaterialsPool.map(m => (<option key={m.id} value={m.id}>{m.nameAr} ({m.qty} {m.unit})</option>))}</select></div>
-              <div className="w-32"><Input type="number" step="any" value={currentItem.qty || ''} onChange={(e) => setCurrentItem({ ...currentItem, qty: Number(e.target.value) })} className="h-10 font-bold" /></div>
-              <Button type="button" onClick={handleReturnItem} className="h-10 bg-blue-600 text-white font-black text-xs px-6 rounded-md">{isRtl ? 'إدراج' : 'Insert'}</Button>
+              <div className="flex-1 text-right">
+                <select 
+                  disabled={formData.linkedMIVs.length === 0} 
+                  className="w-full h-10 px-3 bg-white border border-blue-200 rounded-md text-xs font-bold outline-none" 
+                  value={currentItem.id} 
+                  onChange={(e) => setCurrentItem({ ...currentItem, id: e.target.value })}
+                >
+                  <option value="">{isRtl ? '-- اختر مادة للاسترجاع --' : '-- Select --'}</option>
+                  {issuedMaterialsPool.map(m => (
+                    <option key={m.id} value={m.id}>{m.nameAr} ({m.qty} {m.unit})</option>
+                  ))}
+                </select>
+              </div>
+              <div className="w-32">
+                <Input type="number" step="any" value={currentItem.qty || ''} onChange={(e) => setCurrentItem({ ...currentItem, qty: Number(e.target.value) })} className="h-10 font-bold text-center" placeholder="0.00" />
+              </div>
+              <Button type="button" onClick={handleReturnItem} className="h-10 bg-blue-600 text-white font-black text-xs px-6 rounded-md">
+                {isRtl ? 'إدراج' : 'Insert'}
+              </Button>
             </div>
-            {formData.returnedItems.length > 0 && (<div className="border border-blue-100 rounded-xl overflow-hidden bg-white"><Table className="text-right"><TableHeader className="bg-blue-50/50"><TableRow><TableHead className="text-right text-[9px] font-black text-blue-500 uppercase">{isRtl ? 'المادة' : 'ITEM'}</TableHead><TableHead className="text-center text-[9px] font-black text-blue-500 uppercase">QTY</TableHead><TableHead className="w-10"></TableHead></TableRow></TableHeader><TableBody>{formData.returnedItems.map((item: any, idx: number) => (<TableRow key={idx} className="border-b border-blue-50"><TableCell className="text-xs font-bold">{item.nameAr}</TableCell><TableCell className="text-center font-black tabular-nums">{item.qty} {item.unit}</TableCell><TableCell><button type="button" onClick={() => setFormData({...formData, returnedItems: formData.returnedItems.filter((_: any, i: number) => i !== idx)})} className="text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button></TableCell></TableRow>))}</TableBody></Table></div>)}
+            {formData.returnedItems.length > 0 && (
+              <div className="border border-blue-100 rounded-xl overflow-hidden bg-white">
+                <Table className="text-right">
+                  <TableHeader className="bg-blue-50/50">
+                    <TableRow>
+                      <TableHead className="text-right text-[9px] font-black text-blue-500 uppercase">{isRtl ? 'المادة' : 'ITEM'}</TableHead>
+                      <TableHead className="text-center text-[9px] font-black text-blue-500 uppercase">QTY</TableHead>
+                      <TableHead className="w-10"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {formData.returnedItems.map((item: any, idx: number) => (
+                      <TableRow key={idx} className="border-b border-blue-50">
+                        <TableCell className="text-xs font-bold">{item.nameAr}</TableCell>
+                        <TableCell className="text-center font-black tabular-nums">{item.qty} {item.unit}</TableCell>
+                        <TableCell>
+                          <button type="button" onClick={() => setFormData({...formData, returnedItems: formData.returnedItems.filter((_: any, i: number) => i !== idx)})} className="text-rose-400">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
           </div>
 
           <div className="flex gap-3 pt-4 border-t border-slate-100">

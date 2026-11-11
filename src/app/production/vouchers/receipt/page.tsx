@@ -96,7 +96,6 @@ export default function ProductionReceiptPage() {
     return list.sort((a, b) => {
       let vA = a[sortBy] ?? '', vB = b[sortBy] ?? '';
       if (sortBy === 'date') return sortOrder === 'asc' ? new Date(vA).getTime() - new Date(vB).getTime() : new Date(vB).getTime() - new Date(vA).getTime();
-      if (sortBy === 'qtyAccepted') return sortOrder === 'asc' ? Number(vA) - Number(vB) : Number(vB) - Number(valA);
       return sortOrder === 'asc' ? String(vA).localeCompare(String(vB)) : String(vB).localeCompare(String(vA));
     });
   }, [vouchers, allOrders, allWorkers, search, batchFilter, sortBy, sortOrder]);
@@ -139,12 +138,19 @@ export default function ProductionReceiptPage() {
       batch.update(doc(db, 'productionOrders', formData.orderId), { completedQty: increment(Number(formData.qtyAccepted)) });
       formData.returnedItems.forEach(item => batch.update(doc(db, 'materials', item.id), { currentQty: increment(Number(item.qty)) }));
 
+      // LOGIC: Transfer to Internal ERP Warehouse
       if (formData.transferToWarehouse) {
         const whRef = doc(db, 'finishedGoodsWarehouse', selectedOrder?.productId);
         batch.set(whRef, { 
           totalQty: increment(Number(formData.qtyAccepted)),
           updatedAt: serverTimestamp(),
-          history: arrayUnion({ date: formData.date, qty: Number(formData.qtyAccepted), orderId: formData.orderId, voucherNo: 'PRV' })
+          history: arrayUnion({ 
+            date: formData.date, 
+            qty: Number(formData.qtyAccepted), 
+            orderId: formData.orderId, 
+            orderNumber: selectedOrder?.orderNumber || '',
+            voucherNo: 'PRV' 
+          })
         }, { merge: true });
       }
 
