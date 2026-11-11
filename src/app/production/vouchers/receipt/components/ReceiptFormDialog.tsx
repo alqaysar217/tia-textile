@@ -122,8 +122,23 @@ export function ReceiptFormDialog({
 
         <form onSubmit={onSubmit} className="p-6 space-y-6 bg-white max-h-[85vh] overflow-y-auto no-scrollbar">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2"><Calendar className="w-3 h-3 text-emerald-600" /> {isRtl ? 'تاريخ التسوية' : 'DATE'}</Label><Input type="date" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} className="h-11 font-bold bg-slate-50" required /></div>
-            <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2"><Workflow className="w-3 h-3 text-emerald-600" /> {isRtl ? 'أمر الإنتاج' : 'BATCH'}</Label><select value={formData.orderId} onChange={(e) => setFormData({...formData, orderId: e.target.value, workerId: '', linkedMIVs: []})} className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none" required><option value="">{isRtl ? '-- اختر أمر الإنتاج --' : '-- Select Batch --'}</option>{activeOrders?.map(o => <option key={o.id} value={o.id}>{o.orderNumber} - {o.title}</option>)}</select></div>
+            <div className="space-y-1.5">
+              <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
+                <Calendar className="w-3 h-3 text-emerald-600" /> {isRtl ? 'تاريخ التسوية' : 'DATE'}
+              </Label>
+              <Input type="date" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} className="h-11 font-bold bg-slate-50" required />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
+                <Workflow className="w-3 h-3 text-emerald-600" /> {isRtl ? 'أمر الإنتاج' : 'BATCH'}
+              </Label>
+              <select value={formData.orderId} onChange={(e) => setFormData({...formData, orderId: e.target.value, workerId: '', linkedMIVs: []})} className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none" required>
+                <option value="">{isRtl ? '-- اختر أمر الإنتاج --' : '-- Select Batch --'}</option>
+                {allOrders?.filter(o => o.status === 'active' || (editingId && o.id === formData.orderId)).map(o => (
+                  <option key={o.id} value={o.id}>{o.orderNumber} - {o.title}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -153,7 +168,6 @@ export function ReceiptFormDialog({
                 <div className="space-y-1.5"><Label className="text-[10px] font-black text-slate-400 uppercase">{isRtl ? 'ملاحظات الفحص' : 'QC NOTES'}</Label><Input value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} className="h-14 bg-slate-50 text-xs font-bold" /></div>
               </div>
               
-              {/* TRANSFER TO WAREHOUSE LOGIC */}
               <div className="p-4 bg-emerald-900 rounded-xl text-white flex items-center justify-between shadow-xl">
                  <div className="flex items-center gap-3">
                     <div className="p-2 bg-white/10 rounded-lg"><Truck className="w-5 h-5 text-emerald-300" /></div>
