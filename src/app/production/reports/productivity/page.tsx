@@ -263,7 +263,7 @@ export default function WorkerProductivityReport() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align={isRtl ? "start" : "end"} className="w-56 rounded-xl shadow-xl border-slate-200">
                      <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{dictionary.sortBy}</DropdownMenuLabel>
-                     <DropdownMenuItem onClick={() => { setSortBy('date'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }} className="flex justify-between text-xs font-bold cursor-pointer">
+                     <DropdownMenuItem onClick={() => { setSortBy('date'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }} className="flex justify-between text-xs font-bold cursor-pointer py-2.5">
                         {dictionary.byDate}
                         {sortBy === 'date' && <Badge className="bg-emerald-500">{sortOrder === 'asc' ? '↑' : '↓'}</Badge>}
                      </DropdownMenuItem>
@@ -288,43 +288,48 @@ export default function WorkerProductivityReport() {
       </div>
 
       <div className="flex-1 min-h-0 flex flex-col p-6 space-y-4 overflow-hidden">
-        {/* COMPACT STATS OVERVIEW - HORIZONTAL */}
-        <div className="flex items-center gap-4 flex-none overflow-x-auto no-scrollbar pb-1">
-          <div className="bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3 group hover:border-emerald-200 transition-all shrink-0">
-              <div className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg group-hover:bg-emerald-600 group-hover:text-white transition-all">
-                <TrendingUp className="w-3.5 h-3.5" />
-              </div>
-              <div className="flex flex-col">
-                <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest">{dictionary.totalPieces}</p>
-                <h3 className="text-xs font-black text-slate-900 tabular-nums">{stats.totalQty.toLocaleString('en-US')}</h3>
-              </div>
+        {/* COMPACT STATS OVERVIEW - RESPONSIVE ROW */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 flex-none">
+          <div className="flex items-center gap-3 overflow-x-auto no-scrollbar pb-1 flex-1">
+            <div className="bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3 group hover:border-emerald-200 transition-all shrink-0">
+                <div className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg group-hover:bg-emerald-600 group-hover:text-white transition-all">
+                  <TrendingUp className="w-3.5 h-3.5" />
+                </div>
+                <div className="flex flex-col">
+                  <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest leading-tight">{dictionary.totalPieces}</p>
+                  <h3 className="text-xs font-black text-slate-900 tabular-nums">{stats.totalQty.toLocaleString('en-US')}</h3>
+                </div>
+            </div>
+            <div className="bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3 group hover:border-purple-200 transition-all shrink-0">
+                <div className="p-1.5 bg-purple-50 text-purple-600 rounded-lg group-hover:bg-purple-600 group-hover:text-white transition-all">
+                  <Wallet className="w-3.5 h-3.5" />
+                </div>
+                <div className="flex flex-col">
+                  <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest leading-tight">{dictionary.totalWages}</p>
+                  <h3 className="text-xs font-black text-purple-700 tabular-nums">{stats.totalWages.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
+                </div>
+            </div>
+            <div className="bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3 group hover:border-blue-200 transition-all shrink-0">
+                <div className="p-1.5 bg-blue-50 text-blue-600 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-all">
+                  <Users2 className="w-3.5 h-3.5" />
+                </div>
+                <div className="flex flex-col">
+                  <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest leading-tight">{dictionary.workforce}</p>
+                  <h3 className="text-xs font-black text-blue-700 tabular-nums">{stats.uniqueWorkers}</h3>
+                </div>
+            </div>
           </div>
-          <div className="bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3 group hover:border-purple-200 transition-all shrink-0">
-              <div className="p-1.5 bg-purple-50 text-purple-600 rounded-lg group-hover:bg-purple-600 group-hover:text-white transition-all">
-                <Wallet className="w-3.5 h-3.5" />
-              </div>
-              <div className="flex flex-col">
-                <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest">{dictionary.totalWages}</p>
-                <h3 className="text-xs font-black text-purple-700 tabular-nums">{stats.totalWages.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
-              </div>
-          </div>
-          <div className="bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3 group hover:border-blue-200 transition-all shrink-0">
-              <div className="p-1.5 bg-blue-50 text-blue-600 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-all">
-                <Users2 className="w-3.5 h-3.5" />
-              </div>
-              <div className="flex flex-col">
-                <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest">{dictionary.workforce}</p>
-                <h3 className="text-xs font-black text-blue-700 tabular-nums">{stats.uniqueWorkers}</h3>
-              </div>
-          </div>
-          <div className="flex-1" />
-          <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest tabular-nums px-2">
-            {dictionary.logsCount} <span className="text-emerald-600">{filteredData.length}</span>
+          
+          <div className="flex items-center gap-2 px-3 py-1 bg-slate-100/50 rounded-lg shrink-0">
+            <Activity className="w-3 h-3 text-slate-400" />
+            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest tabular-nums">
+              {dictionary.logsCount} <span className="text-emerald-600">{filteredData.length}</span>
+            </span>
           </div>
         </div>
 
-        {/* DATA TABLE */}
-        <div className="flex-1 min-h-0 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+        {/* DATA TABLE - SHARPER ERP CORNERS */}
+        <div className="flex-1 min-h-0 bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden flex flex-col">
           <div className="flex-1 overflow-auto no-scrollbar relative">
             <Table className={cn("text-right border-separate border-spacing-0 w-full", !isRtl && "text-left")}>
                <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
