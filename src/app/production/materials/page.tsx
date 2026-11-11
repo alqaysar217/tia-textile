@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useTranslation } from '@/components/LanguageProvider';
-import { useFirestore, useCollection, useDoc } from '@/firebase';
+import { useFirestore, useCollection } from '@/firebase';
 import { 
   collection, 
   addDoc, 
@@ -16,7 +16,7 @@ import {
 } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { Tabs, TabsContent } from "@/components/ui/tabs";
-import { Info } from 'lucide-react';
+import { Info, History } from 'lucide-react';
 import { 
   AlertDialog, 
   AlertDialogAction, 
@@ -132,6 +132,72 @@ export default function MaterialsPage() {
     lowStockCount: filteredMaterials.filter(m => (m.currentQty || 0) <= (m.minQty || 0)).length
   }), [filteredMaterials]);
 
+  const handleExportCSV = () => {
+    const list = activeTab === 'catalog' ? filteredMaterials : transactions || [];
+    if (!list.length) {
+      toast({ variant: "destructive", title: isRtl ? "لا توجد بيانات للتصدير" : "No data to export" });
+      return;
+    }
+
+    let headers = [];
+    let rows = [];
+
+    if (activeTab === 'catalog') {
+      headers = [
+        isRtl ? 'الكود' : 'SKU',
+        isRtl ? 'اسم المادة' : 'Name',
+        isRtl ? 'الفئة' : 'Category',
+        isRtl ? 'المخزون' : 'Stock',
+        isRtl ? 'الوحدة' : 'Unit',
+        isRtl ? 'السعر' : 'Price',
+        isRtl ? 'العملة' : 'Currency'
+      ];
+      rows = list.map(m => {
+        const cat = categories.find(c => c.value === m.category);
+        return [
+          m.code,
+          m.nameAr,
+          cat ? (isRtl ? cat.labelAr : cat.labelEn) : m.category,
+          m.currentQty,
+          m.unit,
+          m.price,
+          m.currency || systemCurrency
+        ];
+      });
+    } else {
+      headers = [
+        isRtl ? 'التاريخ' : 'Date',
+        isRtl ? 'المادة' : 'Material',
+        isRtl ? 'النوع' : 'Type',
+        isRtl ? 'الكمية' : 'Qty'
+      ];
+      rows = list.map(t => {
+        const mat = materials?.find((m: any) => m.id === t.materialId);
+        return [
+          t.createdAt?.toDate?.().toLocaleString() || '',
+          mat ? mat.nameAr : '---',
+          t.type,
+          t.qty
+        ];
+      });
+    }
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(val => `"${String(val || '').replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `${activeTab}_export_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast({ title: isRtl ? "تم تحميل ملف CSV" : "CSV Downloaded" });
+  };
+
   const handleSaveMaterial = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!db || isSubmitting || isCompressing || formData.currentQty < 0) return;
@@ -225,7 +291,7 @@ export default function MaterialsPage() {
       {/* HEADER WITH INTEGRATED TABS */}
       <MaterialsHeader 
         lang={lang} dir={dir} search={search} setSearch={setSearch} stats={stats} loading={mLoading}
-        onExport={() => {}} onAdd={() => setIsAddDialogOpen(true)} onStockIn={() => setIsStockInDialogOpen(true)}
+        onExport={handleExportCSV} onAdd={() => setIsAddDialogOpen(true)} onStockIn={() => setIsStockInDialogOpen(true)}
         categoryFilter={categoryFilter} setCategoryFilter={setCategoryFilter}
         statusFilter={statusFilter} setStatusFilter={setStatusFilter}
         sortBy={sortBy} toggleSort={(k) => { if (sortBy === k) setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); else { setSortBy(k); setSortOrder('asc'); } }}
