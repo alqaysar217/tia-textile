@@ -418,6 +418,15 @@ export default function OrderDetailsDashboard() {
       ? value.toLocaleString('en-US', isPcs ? {} : { minimumFractionDigits: 2, maximumFractionDigits: 2 }) 
       : value;
 
+    // Logic to split the value into integer and decimal parts for smaller decimal display
+    let part1 = formattedValue;
+    let part2 = "";
+    if (typeof value === 'number' && !isPcs && String(formattedValue).includes('.')) {
+      const parts = String(formattedValue).split('.');
+      part1 = parts[0];
+      part2 = "." + parts[1];
+    }
+
     return (
       <div className={cn("p-4 rounded-xl border shadow-sm transition-all hover:shadow-md", bgColor, isRtl ? 'text-right border-slate-200/50' : 'text-left border-slate-200/50')} dir={isRtl ? 'rtl' : 'ltr'}>
          <div className={cn("flex items-center gap-2 mb-2")}>
@@ -427,7 +436,10 @@ export default function OrderDetailsDashboard() {
             <span className={cn("text-[9px] font-black uppercase tracking-widest opacity-70", color)}>{label}</span>
          </div>
          <div className="flex items-baseline gap-1.5 overflow-hidden">
-            <span className={cn("text-lg font-black tabular-nums leading-none truncate", color)}>{formattedValue}</span>
+            <span className={cn("text-lg font-black tabular-nums leading-none truncate", color)}>
+              {part1}
+              {part2 && <span className="text-[0.7em] opacity-80">{part2}</span>}
+            </span>
             <span className="text-[9px] font-bold text-slate-500 uppercase shrink-0">{currency}</span>
          </div>
       </div>
@@ -1041,7 +1053,7 @@ export default function OrderDetailsDashboard() {
             <div className="space-y-1.5 text-start"><Label className="text-[10px] font-black text-slate-400 uppercase">عنوان الطلب المميز</Label><Input value={editFormData.title} onChange={(e) => setEditFormDate({...editFormData, title: e.target.value})} className="h-11 font-bold text-xs bg-slate-50 text-start" required /></div>
             <div className="space-y-1.5 text-start"><Label className="text-[10px] font-black text-slate-400 uppercase">نوع المعوز المستهدف</Label><select value={editFormData.productId} onChange={(e) => setEditFormDate({...editFormData, productId: e.target.value})} className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold text-start" required><option value="">-- Select Product --</option>{products?.map(p => <option key={p.id} value={p.id}>{p.nameAr}</option>)}</select></div>
             <div className="grid grid-cols-2 gap-4"><div className="space-y-1.5 text-start"><Label className="text-[10px] font-black text-slate-400 uppercase">الكمية المستهدفة</Label><Input type="number" value={editFormData.targetQty} onChange={(e) => setEditFormDate({...editFormData, targetQty: Number(e.target.value)})} className="h-11 font-bold bg-slate-50 tabular-nums text-start" required /></div><div className="space-y-1.5 text-start"><Label className="text-[10px] font-black text-slate-400 uppercase">الأولوية</Label><select value={editFormData.priority} onChange={(e) => setEditFormDate({...editFormData, priority: e.target.value})} className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold text-start"><option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option></select></div></div>
-            <div className="space-y-1.5 text-start"><Label className="text-[10px] font-black text-slate-400 uppercase">ملاحظات إضافية</Label><Textarea value={editFormData.notes} onChange={(e) => setEditFormDate({...editFormData, notes: e.target.value})} className="min-h-[100px] text-xs font-medium bg-slate-50 text-start" /></div>
+            <div className="space-y-1.5 text-start"><Label className="text-[10px) font-black text-slate-400 uppercase">ملاحظات إضافية</Label><Textarea value={editFormData.notes} onChange={(e) => setEditFormDate({...editFormData, notes: e.target.value})} className="min-h-[100px] text-xs font-medium bg-slate-50 text-start" /></div>
             <div className="flex gap-3 pt-4 border-t border-slate-100"><Button type="submit" disabled={isSubmitting} className="flex-1 h-12 premium-gradient text-white rounded-lg font-black">Commit Changes</Button><Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)} className="px-6 h-12 font-black text-slate-400">Cancel</Button></div>
           </form>
         </DialogContent>
@@ -1117,3 +1129,4 @@ function LedgerTransactionRow({ voucher, worker, systemCurrency, lang, onView }:
     </TableRow>
   );
 }
+
