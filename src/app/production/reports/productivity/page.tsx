@@ -143,7 +143,7 @@ export default function WorkerProductivityReport() {
     byBatch: isRtl ? 'تصفية حسب الدفعة' : 'BY BATCH',
     all: isRtl ? 'الكل' : 'All',
     totalPieces: isRtl ? 'إجمالي القطع المنجزة' : 'TOTAL PIECES',
-    totalWages: isRtl ? 'إجمالي الأجور' : 'TOTAL WAGES',
+    totalWages: isRtl ? 'إجمالي الأجور المفلترة' : 'FILTERED WAGES',
     workforce: isRtl ? 'القوى العاملة المشمولة' : 'FILTERED WORKFORCE',
     colDate: isRtl ? 'التاريخ' : 'DATE',
     colVoucher: isRtl ? 'رقم السند' : 'VOUCHER',
@@ -287,34 +287,34 @@ export default function WorkerProductivityReport() {
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 flex flex-col p-6 space-y-4 overflow-hidden">
-        {/* COMPACT STATS OVERVIEW - RESPONSIVE ROW */}
+      <div className="flex-1 min-h-0 flex flex-col p-4 md:p-6 md:pt-4 space-y-4 overflow-hidden">
+        {/* COMPACT STATS OVERVIEW - FULL WIDTH ROW */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 flex-none">
-          <div className="flex items-center gap-3 overflow-x-auto no-scrollbar pb-1 flex-1">
-            <div className="bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3 group hover:border-emerald-200 transition-all shrink-0">
-                <div className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg group-hover:bg-emerald-600 group-hover:text-white transition-all">
+          <div className="flex items-center gap-3 overflow-x-auto no-scrollbar pb-1 flex-1 w-full">
+            <div className="bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3 group hover:border-emerald-200 transition-all flex-1 min-w-[140px]">
+                <div className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg group-hover:bg-emerald-600 group-hover:text-white transition-all shrink-0">
                   <TrendingUp className="w-3.5 h-3.5" />
                 </div>
-                <div className="flex flex-col">
-                  <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest leading-tight">{dictionary.totalPieces}</p>
+                <div className="flex flex-col overflow-hidden">
+                  <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest leading-tight truncate">{dictionary.totalPieces}</p>
                   <h3 className="text-xs font-black text-slate-900 tabular-nums">{stats.totalQty.toLocaleString('en-US')}</h3>
                 </div>
             </div>
-            <div className="bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3 group hover:border-purple-200 transition-all shrink-0">
-                <div className="p-1.5 bg-purple-50 text-purple-600 rounded-lg group-hover:bg-purple-600 group-hover:text-white transition-all">
+            <div className="bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3 group hover:border-purple-200 transition-all flex-1 min-w-[140px]">
+                <div className="p-1.5 bg-purple-50 text-purple-600 rounded-lg group-hover:bg-purple-600 group-hover:text-white transition-all shrink-0">
                   <Wallet className="w-3.5 h-3.5" />
                 </div>
-                <div className="flex flex-col">
-                  <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest leading-tight">{dictionary.totalWages}</p>
+                <div className="flex flex-col overflow-hidden">
+                  <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest leading-tight truncate">{dictionary.totalWages}</p>
                   <h3 className="text-xs font-black text-purple-700 tabular-nums">{stats.totalWages.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
                 </div>
             </div>
-            <div className="bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3 group hover:border-blue-200 transition-all shrink-0">
-                <div className="p-1.5 bg-blue-50 text-blue-600 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-all">
+            <div className="bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3 group hover:border-blue-200 transition-all flex-1 min-w-[140px]">
+                <div className="p-1.5 bg-blue-50 text-blue-600 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-all shrink-0">
                   <Users2 className="w-3.5 h-3.5" />
                 </div>
-                <div className="flex flex-col">
-                  <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest leading-tight">{dictionary.workforce}</p>
+                <div className="flex flex-col overflow-hidden">
+                  <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest leading-tight truncate">{dictionary.workforce}</p>
                   <h3 className="text-xs font-black text-blue-700 tabular-nums">{stats.uniqueWorkers}</h3>
                 </div>
             </div>
@@ -347,7 +347,7 @@ export default function WorkerProductivityReport() {
                   {loading ? (
                     <TableRow><TableCell colSpan={7} className="text-center py-20 animate-pulse text-slate-400 font-black">{isRtl ? 'جاري التحميل...' : 'Loading...'}</TableCell></TableRow>
                   ) : filteredData.length === 0 ? (
-                    <TableRow><TableCell colSpan={7} className="text-center py-20 text-slate-300 font-bold">{isRtl ? 'لا توجد سجلات' : 'No records found'}</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={7} className="text-center py-20 text-slate-300 font-bold">{isRtl ? 'لا توجد بيانات مطابقة لهذه الفلاتر' : 'No records found for these filters'}</TableCell></TableRow>
                   ) : filteredData.map((r) => {
                      const worker = allWorkers?.find(w => w.id === r.workerId);
                      const order = allOrders?.find(o => o.id === r.orderId);
@@ -375,7 +375,7 @@ export default function WorkerProductivityReport() {
                              <span className="text-[9px] opacity-40 uppercase ms-1">{r.currency || 'YER'}</span>
                           </TableCell>
                           <TableCell className={cn("px-6 py-4", isRtl ? "text-right" : "text-left")}>
-                             <Badge variant="outline" className={cn("text-[9px] font-black uppercase", r.paymentStatus === 'paid' ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-amber-50 text-amber-600 border-amber-100")}>
+                             <Badge variant="outline" className={cn("text-[8px] font-black uppercase", r.paymentStatus === 'paid' ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-amber-50 text-amber-600 border-amber-100")}>
                                 {r.paymentStatus === 'paid' ? dictionary.paid : dictionary.pending}
                              </Badge>
                           </TableCell>
