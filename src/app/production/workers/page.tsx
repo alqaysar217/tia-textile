@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useCallback, useRef } from 'react';
@@ -91,6 +90,8 @@ export default function WorkersPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [search, setSearch] = useState('');
   
+  const isRtl = lang === 'ar'; // التعريف المفقود الذي سبب الخطأ
+
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [deptFilter, setDeptFilter] = useState<string>('all');
   const [roleFilter, setRoleFilter] = useState<'all' | 'supervisors' | 'workers'>('all');
@@ -352,7 +353,7 @@ export default function WorkersPage() {
             <div>
               <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                 <span>{lang === 'ar' ? 'الموارد البشرية' : 'HR'}</span>
-                <ChevronRight className={`w-3 h-3 ${dir === 'rtl' ? 'rotate-180' : ''}`} />
+                <ChevronRight className={cn("w-3 h-3", isRtl ? "rotate-180" : "")} />
                 <span className="text-slate-600 dark:text-slate-400">{lang === 'ar' ? 'سجل الحرفيين' : 'Workforce'}</span>
               </div>
               <h1 className="text-xl font-black text-slate-900 dark:text-slate-100 leading-tight">
@@ -384,14 +385,14 @@ export default function WorkersPage() {
         {/* SEARCH BAR */}
         <div className="mt-4 flex items-center gap-2 bg-slate-50 dark:bg-slate-800/50 p-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
           <div className="relative flex-1">
-            <Search className={cn("absolute top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500", dir === 'rtl' ? "right-3" : "left-3")} />
+            <Search className={cn("absolute top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500", isRtl ? "right-3" : "left-3")} />
             <input 
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={lang === 'ar' ? 'بحث باسم الموظف أو المعرف...' : 'Search by name or ID...'}
               className={cn(
                 "w-full h-9 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-bold focus:ring-emerald-500/10 focus:border-emerald-500 outline-none dark:text-slate-100",
-                dir === 'rtl' ? 'pr-10 pl-4' : 'pl-10 pr-4'
+                isRtl ? 'pr-10 pl-4' : 'pl-10 pr-4'
               )}
             />
           </div>
@@ -409,7 +410,7 @@ export default function WorkersPage() {
                   {lang === 'ar' ? 'تصفية' : 'Filter'}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="w-64 rounded-lg shadow-xl dark:bg-slate-900 dark:border-slate-800">
+              <DropdownMenuContent align={isRtl ? 'start' : 'end'} className="w-64 rounded-lg shadow-xl dark:bg-slate-900 dark:border-slate-800">
                 <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest">{lang === 'ar' ? 'الرتبة الوظيفية' : 'RANK'}</DropdownMenuLabel>
                 <DropdownMenuItem onClick={() => setRoleFilter('all')} className="flex items-center justify-between text-xs font-bold cursor-pointer dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
                   {lang === 'ar' ? 'الكل' : 'All Roles'}
@@ -444,18 +445,18 @@ export default function WorkersPage() {
       <div className="flex-1 min-h-0 flex flex-col p-4">
         <div className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg shadow-sm overflow-hidden flex flex-col transition-colors duration-300">
           <div className="flex-1 overflow-auto relative no-scrollbar">
-            <Table className="text-right border-separate border-spacing-0">
+            <Table className={cn("border-separate border-spacing-0 w-full", isRtl ? "text-right" : "text-left")}>
               <TableHeader className="sticky top-0 z-20 bg-slate-100/95 dark:bg-slate-800/95 backdrop-blur-sm shadow-sm">
                 <TableRow className="border-b border-slate-200 dark:border-slate-700">
-                  <TableHead className={cn("h-10 font-bold text-[11px] uppercase text-slate-500 dark:text-slate-400 px-6 text-right whitespace-nowrap bg-inherit")}>
+                  <TableHead className={cn("h-10 font-bold text-[11px] uppercase text-slate-500 dark:text-slate-400 px-6 whitespace-nowrap bg-inherit", isRtl ? "text-right" : "text-left")}>
                     <button onClick={() => toggleSort('fullName')} className="flex items-center gap-2 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors uppercase">
                       {lang === 'ar' ? 'الموظف' : 'PERSONNEL'}
                       {sortBy === 'fullName' ? (sortOrder === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-30" />}
                     </button>
                   </TableHead>
-                  <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 dark:text-slate-400 px-6 text-right whitespace-nowrap bg-inherit">{lang === 'ar' ? 'الرتبة' : 'RANK'}</TableHead>
-                  <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 dark:text-slate-400 px-6 text-right whitespace-nowrap bg-inherit">{lang === 'ar' ? 'القسم' : 'UNIT'}</TableHead>
-                  <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 dark:text-slate-400 px-6 text-right whitespace-nowrap bg-inherit">{lang === 'ar' ? 'المشرف المسؤول' : 'SUPERVISOR'}</TableHead>
+                  <TableHead className={cn("h-10 font-bold text-[11px] uppercase text-slate-500 dark:text-slate-400 px-6 whitespace-nowrap bg-inherit", isRtl ? "text-right" : "text-left")}>{lang === 'ar' ? 'الرتبة' : 'RANK'}</TableHead>
+                  <TableHead className={cn("h-10 font-bold text-[11px] uppercase text-slate-500 dark:text-slate-400 px-6 whitespace-nowrap bg-inherit", isRtl ? "text-right" : "text-left")}>{lang === 'ar' ? 'القسم' : 'UNIT'}</TableHead>
+                  <TableHead className={cn("h-10 font-bold text-[11px] uppercase text-slate-500 dark:text-slate-400 px-6 whitespace-nowrap bg-inherit", isRtl ? "text-right" : "text-left")}>{lang === 'ar' ? 'المشرف المسؤول' : 'SUPERVISOR'}</TableHead>
                   <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 dark:text-slate-400 px-6 text-center whitespace-nowrap bg-inherit">{lang === 'ar' ? 'الحالة' : 'STATUS'}</TableHead>
                   <TableHead className="h-10 w-[60px] sticky right-0 bg-inherit shadow-[-2px_0_5px_rgba(0,0,0,0.05)] dark:shadow-none"></TableHead>
                 </TableRow>
@@ -522,7 +523,7 @@ export default function WorkersPage() {
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"><MoreVertical className="w-4 h-4 text-slate-400 dark:text-slate-500" /></Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="rounded-lg border-slate-200 dark:border-slate-800 dark:bg-slate-900 shadow-xl min-w-[180px]">
+                          <DropdownMenuContent align={isRtl ? 'start' : 'end'} className="rounded-lg border-slate-200 dark:border-slate-800 dark:bg-slate-900 shadow-xl min-w-[180px]">
                             <DropdownMenuItem onClick={() => handleEditClick(worker)} className="gap-3 font-bold text-xs py-2.5 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800"><Edit2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'تعديل الملف' : 'Update Info'}</DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleStatusToggle(worker)} className="gap-3 font-bold text-xs py-2.5 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
                               {worker.active ? <PowerOff className="w-3.5 h-3.5 text-amber-600" /> : <Power className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />}
@@ -595,13 +596,13 @@ export default function WorkersPage() {
                   <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start">
                     <UserIcon className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'الاسم الكامل' : 'FULL NAME'}
                   </Label>
-                  <Input value={formData.fullName} onChange={(e) => setFormData({...formData, fullName: e.target.value})} className="h-10 font-bold text-xs bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 dark:text-slate-100" required />
+                  <Input value={formData.fullName} onChange={(e) => setFormData({...formData, fullName: e.target.value})} className="h-10 font-bold text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 dark:text-slate-100" dir={dir} required />
                 </div>
                 <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
                   <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start">
                     <Phone className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'رقم الهاتف' : 'PHONE NUMBER'}
                   </Label>
-                  <Input value={formData.phoneNumber} onChange={(e) => setFormData({...formData, phoneNumber: e.target.value})} placeholder="7XXXXXXXX" className="h-10 font-bold text-xs bg-slate-50 dark:bg-slate-800 tabular-nums border-slate-200 dark:border-slate-700 dark:text-slate-100" />
+                  <Input value={formData.phoneNumber} onChange={(e) => setFormData({...formData, phoneNumber: e.target.value})} placeholder="7XXXXXXXX" className="h-10 font-bold text-xs bg-slate-50 dark:bg-slate-800 tabular-nums border border-slate-200 dark:border-slate-700 dark:text-slate-100" dir="ltr" />
                 </div>
               </div>
             </div>
@@ -613,7 +614,7 @@ export default function WorkersPage() {
                   <div className={cn("p-2 rounded-lg transition-colors", formData.isSupervisor ? "bg-emerald-600 text-white shadow-lg shadow-emerald-900/20" : "bg-white dark:bg-slate-900 text-slate-300 dark:text-slate-700 border border-slate-200 dark:border-slate-700")}>
                     <ShieldCheck className="w-5 h-5" />
                   </div>
-                  <div className="text-right">
+                  <div className={isRtl ? "text-right" : "text-left"}>
                     <p className="text-[11px] font-black text-slate-800 dark:text-slate-200">{lang === 'ar' ? 'تعيين هذا الموظف كمشرف' : 'Promote to Supervisor'}</p>
                     <p className="text-[9px] text-slate-400 dark:text-slate-500 font-bold">{lang === 'ar' ? 'المشرف هو المسؤول عن مجموعة من العمال' : 'Supervisors manage groups and inventory'}</p>
                   </div>
@@ -660,7 +661,7 @@ export default function WorkersPage() {
                 <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start">
                   <Calendar className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'تاريخ الانضمام' : 'JOIN DATE'}
                 </Label>
-                <Input type="date" value={formData.joinDate} onChange={(e) => setFormData({...formData, joinDate: e.target.value})} className="h-10 font-bold text-xs bg-slate-50 dark:bg-slate-800 tabular-nums border-slate-200 dark:border-slate-700 dark:text-slate-100" required />
+                <Input type="date" value={formData.joinDate} onChange={(e) => setFormData({...formData, joinDate: e.target.value})} className="h-10 font-bold text-xs bg-slate-50 dark:bg-slate-800 tabular-nums border border-slate-200 dark:border-slate-700 dark:text-slate-100" dir="ltr" required />
               </div>
             </div>
 
@@ -686,7 +687,7 @@ export default function WorkersPage() {
                 {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : <Save className="w-4 h-4 me-2" />}
                 {lang === 'ar' ? (isSubmitting ? 'جاري الحفظ...' : 'حفظ البيانات') : 'Commit Record'}
               </Button>
-              <Button type="button" variant="outline" onClick={resetForm} className="px-6 h-11 font-black text-slate-400 dark:text-slate-500 rounded-md border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
+              <Button type="button" variant="outline" onClick={resetForm} className="px-6 h-11 font-black text-slate-400 dark:text-slate-500 rounded-md border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
                 {lang === 'ar' ? 'إلغاء' : 'Cancel'}
               </Button>
             </div>
@@ -713,7 +714,7 @@ export default function WorkersPage() {
             <AlertDialogAction onClick={handleArchiveWorker} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-md font-black border-none shadow-lg transition-all active:scale-95">
               {lang === 'ar' ? 'تأكيد الأرشفة' : 'Confirm'}
             </AlertDialogAction>
-            <AlertDialogCancel onClick={() => setDeletingWorkerId(null)} className="flex-1 h-11 bg-slate-50 dark:bg-slate-800 border-none text-slate-400 dark:text-slate-500 rounded-md font-black hover:bg-slate-100 dark:hover:bg-slate-700 transition-all">
+            <AlertDialogCancel onClick={() => setDeletingWorkerId(null)} className="flex-1 h-11 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500 rounded-md font-black hover:bg-slate-100 dark:hover:bg-slate-700 transition-all">
               {lang === 'ar' ? 'تراجع' : 'Cancel'}
             </AlertDialogCancel>
           </div>
