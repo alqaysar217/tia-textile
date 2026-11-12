@@ -249,6 +249,7 @@ export default function UsersPermissionsPage() {
       const cleanPassword = formData.password.trim();
 
       if (!editingUserId) {
+        // Create actual Auth User using a secondary Firebase app (to avoid logging out current user)
         const tempAppName = `temp-auth-${Date.now()}`;
         tempApp = initializeApp(firebaseConfig, tempAppName);
         const tempAuth = getAuth(tempApp);
@@ -279,6 +280,7 @@ export default function UsersPermissionsPage() {
         updatedAt: serverTimestamp()
       };
 
+      // Save/Merge to Firestore
       await setDoc(doc(db, 'users', uid), {
         ...userData,
         createdAt: editingUserId ? (users?.find(u => u.id === uid)?.createdAt || serverTimestamp()) : serverTimestamp()
