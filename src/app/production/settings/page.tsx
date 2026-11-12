@@ -68,15 +68,14 @@ export default function GeneralSettingsPage() {
 
     setIsSubmitting(true);
     try {
-      // الحفظ الحقيقي في قاعدة البيانات
       await setDoc(doc(db, 'settings', 'global'), {
         ...formData,
         updatedAt: serverTimestamp()
       }, { merge: true });
       
       toast({ 
-        title: lang === 'ar' ? "تم حفظ الإعدادات" : "Settings Saved",
-        description: lang === 'ar' ? "تم تحديث تكوين العملة والنظام بنجاح." : "Currency and system configuration updated."
+        title: lang === 'ar' ? "تم حفظ إعدادات النظام" : "Production Settings Saved",
+        description: lang === 'ar' ? "تم تحديث بيئة عمل نظام الإنتاج بنجاح." : "Production environment configuration updated."
       });
     } catch (error) {
       console.error(error);
@@ -109,10 +108,10 @@ export default function GeneralSettingsPage() {
               <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                 <span>{lang === 'ar' ? 'النظام' : 'System'}</span>
                 <ChevronRight className={cn("w-3 h-3", dir === 'rtl' ? "rotate-180" : "")} />
-                <span className="text-emerald-600">{lang === 'ar' ? 'الإعدادات العامة' : 'Core Settings'}</span>
+                <span className="text-emerald-600">{lang === 'ar' ? 'إعدادات نظام الإنتاج' : 'Production Core Settings'}</span>
               </div>
               <h1 className="text-xl font-black text-slate-900 leading-tight">
-                {lang === 'ar' ? 'تهيئة النظام الموحد' : 'ERP Configuration'}
+                {lang === 'ar' ? 'تهيئة بيئة العمل الداخلية' : 'ERP Workspace Configuration'}
               </h1>
             </div>
           </div>
@@ -131,6 +130,17 @@ export default function GeneralSettingsPage() {
       <div className="flex-1 overflow-y-auto p-6 no-scrollbar">
         <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 pb-20">
           
+          <div className="p-4 bg-amber-50 border border-amber-100 rounded-xl flex items-center gap-4 mb-4">
+             <div className="p-2 bg-white rounded-lg shadow-sm">
+                <Info className="w-5 h-5 text-amber-600" />
+             </div>
+             <p className="text-[11px] font-bold text-amber-800 leading-relaxed">
+                {lang === 'ar' 
+                  ? 'تنبيه: الإعدادات في هذه الصفحة تخص "نظام إدارة الإنتاج" فقط ولن تؤثر على المظهر أو اللغة في الموقع الإلكتروني العام المخصص للزوار.' 
+                  : 'Note: Settings here apply to the "Production Management System" only and will not affect the public website appearance.'}
+             </p>
+          </div>
+
           {/* SECTION 1: REGIONAL & LOCALIZATION */}
           <div className="space-y-3">
             <div className="flex items-center gap-2 px-1 mb-2">
@@ -159,8 +169,8 @@ export default function GeneralSettingsPage() {
 
               <SettingRow 
                 icon={<Languages className="w-4 h-4 text-slate-400" />}
-                title={lang === 'ar' ? 'اللغة الافتراضية' : 'Default Language'}
-                description={lang === 'ar' ? 'اللغة التي سيعمل بها النظام عند تسجيل الدخول' : 'Preferred language for system interface'}
+                title={lang === 'ar' ? 'لغة واجهة الإنتاج' : 'Dashboard Language'}
+                description={lang === 'ar' ? 'اللغة الافتراضية عند فتح لوحة التحكم' : 'Default language when accessing production'}
               >
                 <Select value={formData.defaultLanguage} onValueChange={(v) => setFormData({...formData, defaultLanguage: v})}>
                   <SelectTrigger className="w-[180px] h-9 text-xs font-bold bg-slate-50 border-slate-200">
@@ -186,8 +196,8 @@ export default function GeneralSettingsPage() {
             <Card className="border-slate-200 shadow-sm rounded-xl bg-white divide-y divide-slate-100 overflow-hidden">
               <SettingRow 
                 icon={<div className="w-4 h-4 rounded-full border-2 border-slate-300" />}
-                title={lang === 'ar' ? 'وضع العرض (Theme)' : 'Display Mode'}
-                description={lang === 'ar' ? 'التحكم في سمة النظام بين الوضع الفاتح والداكن' : 'Switch between Light and Dark interface'}
+                title={lang === 'ar' ? 'وضع العرض للنظام' : 'System Theme Mode'}
+                description={lang === 'ar' ? 'الوضع الفاتح أو الداكن لواجهات الإنتاج فقط' : 'Light or Dark mode for ERP only'}
               >
                 <Select value={formData.themeMode} onValueChange={(v) => setFormData({...formData, themeMode: v})}>
                   <SelectTrigger className="w-[180px] h-9 text-xs font-bold bg-slate-50 border-slate-200">
@@ -196,7 +206,6 @@ export default function GeneralSettingsPage() {
                   <SelectContent>
                     <SelectItem value="light" className="text-xs font-bold">{lang === 'ar' ? 'الوضع الفاتح' : 'Light Mode'}</SelectItem>
                     <SelectItem value="dark" className="text-xs font-bold">{lang === 'ar' ? 'الوضع الداكن' : 'Dark Mode'}</SelectItem>
-                    <SelectItem value="system" className="text-xs font-bold">{lang === 'ar' ? 'حسب النظام' : 'System Sync'}</SelectItem>
                   </SelectContent>
                 </Select>
               </SettingRow>
@@ -238,17 +247,6 @@ export default function GeneralSettingsPage() {
             </Card>
           </div>
 
-          <div className="p-4 bg-emerald-50/50 border border-emerald-100 rounded-xl flex items-center gap-4">
-             <div className="p-2 bg-white rounded-lg shadow-sm">
-                <Info className="w-5 h-5 text-emerald-600" />
-             </div>
-             <p className="text-[10px] font-bold text-emerald-800 leading-relaxed">
-                {lang === 'ar' 
-                  ? 'يتم تطبيق هذه الإعدادات على مستوى الجمعية بالكامل. تغيير العملة سيؤثر على التقارير المالية القادمة وحسابات التكلفة للدفعات الجديدة.' 
-                  : 'These settings are association-wide. Currency changes will impact future financial reports and batch costing calculations.'}
-             </p>
-          </div>
-
         </div>
       </div>
 
@@ -256,7 +254,7 @@ export default function GeneralSettingsPage() {
       <div className="flex-none p-3 bg-white border-t border-slate-200 flex items-center justify-center gap-3">
         <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
         <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.4em]">
-          Production Control System • v2.1.0 • Global Configuration
+          Production Control System • Isolated Environment Configuration
         </p>
       </div>
 
