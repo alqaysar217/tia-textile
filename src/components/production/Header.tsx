@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -25,6 +24,7 @@ import { useSidebar } from '@/components/ui/sidebar';
 import { useTranslation } from '@/components/LanguageProvider';
 import { useAuth } from '@/firebase';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { cn } from '@/lib/utils';
 
 export function Header() {
   const [mounted, setMounted] = useState(false);
