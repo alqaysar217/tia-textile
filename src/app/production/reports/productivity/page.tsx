@@ -18,7 +18,8 @@ import {
   Check, 
   SortAsc, 
   SortDesc,
-  ArrowUpDown
+  ArrowUpDown,
+  ShieldCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -44,11 +45,16 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { useProduction } from '../../ProductionContext';
 
 export default function WorkerProductivityReport() {
   const { lang, dir } = useTranslation();
   const db = useFirestore();
   const isRtl = lang === 'ar';
+
+  // استيراد الصلاحيات من المحرك المركزي
+  const { permissions, isAdmin } = useProduction();
+  const canReadReports = isAdmin || permissions.reports?.read;
 
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -68,7 +74,7 @@ export default function WorkerProductivityReport() {
   const { data: allOrders } = useCollection<any>(ordersQuery);
 
   const filteredData = useMemo(() => {
-    if (!allReceipts) return [];
+    if (!allReceipts || !canReadReports) return [];
     let list = allReceipts.filter(r => r.status !== 'deleted');
 
     if (workerId !== 'all') list = list.filter(r => r.workerId === workerId);
@@ -100,7 +106,7 @@ export default function WorkerProductivityReport() {
       }
       return 0;
     });
-  }, [allReceipts, allWorkers, workerId, orderId, dateFrom, dateTo, search, sortBy, sortOrder]);
+  }, [allReceipts, allWorkers, workerId, orderId, dateFrom, dateTo, search, sortBy, sortOrder, canReadReports]);
 
   const stats = useMemo(() => {
     const totalQty = filteredData.reduce((acc, curr) => acc + (curr.qtyAccepted || 0), 0);
@@ -110,6 +116,10 @@ export default function WorkerProductivityReport() {
   }, [filteredData]);
 
   const handleExport = () => {
+    if (!canReadReports) {
+      toast({ variant: "destructive", title: isRtl ? "غير مسموح بالتصدير" : "Export Denied" });
+      return;
+    }
     const headers = isRtl 
       ? ['التاريخ', 'رقم السند', 'الموظف', 'الدفعة', 'الكمية', 'الأجر', 'العملة', 'الحالة']
       : ['Date', 'Voucher', 'Worker', 'Batch', 'Qty', 'Wage', 'Currency', 'Status'];
@@ -390,7 +400,7 @@ export default function WorkerProductivityReport() {
 
       {/* FOOTER NOTE */}
       <div className="flex-none p-3 bg-slate-900 dark:bg-slate-900/90 text-white/40 dark:text-slate-500 flex items-center justify-center gap-4 border-t border-white/5 transition-colors duration-300 shadow-inner">
-         <Info className="w-4 h-4 text-emerald-500" />
+         <ShieldCheck className="w-4 h-4 text-emerald-500" />
          <p className="text-[10px] font-bold tracking-tight">{dictionary.footerNote}</p>
       </div>
     </div>

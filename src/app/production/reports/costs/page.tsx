@@ -50,11 +50,16 @@ import {
 } from "@/components/ui/popover";
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { useProduction } from '../../ProductionContext';
 
 export default function OrderCostAnalysisReport() {
   const { lang, dir } = useTranslation();
   const db = useFirestore();
   const isRtl = lang === 'ar';
+
+  // استيراد الصلاحيات من المحرك المركزي
+  const { permissions, isAdmin } = useProduction();
+  const canReadReports = isAdmin || permissions.reports?.read;
 
   const [search, setSearch] = useState('');
   const [dateFrom, setDateFrom] = useState('');
@@ -78,7 +83,7 @@ export default function OrderCostAnalysisReport() {
   const { data: allProducts } = useCollection<any>(productsQuery);
 
   const analysisData = useMemo(() => {
-    if (!allOrders || !allVouchers) return [];
+    if (!allOrders || !allVouchers || !canReadReports) return [];
     
     return allOrders.filter(o => o.status !== 'deleted').map(order => {
       const product = allProducts?.find(p => p.id === order.productId);
@@ -113,7 +118,7 @@ export default function OrderCostAnalysisReport() {
         progress
       };
     });
-  }, [allOrders, allVouchers, allProducts]);
+  }, [allOrders, allVouchers, allProducts, canReadReports]);
 
   const filtered = useMemo(() => {
     let list = [...analysisData];
@@ -159,6 +164,10 @@ export default function OrderCostAnalysisReport() {
   };
 
   const handleExportCSV = () => {
+    if (!canReadReports) {
+      toast({ variant: "destructive", title: isRtl ? "غير مسموح بالتصدير" : "Export Denied" });
+      return;
+    }
     const headers = isRtl 
       ? ['رقم الأمر', 'المنتج', 'تاريخ البدء', 'تكلفة المواد', 'الأجور', 'المصاريف', 'الإجمالي', 'تكلفة القطعة', 'التقدم']
       : ['Order #', 'Product', 'Start Date', 'Mat. Cost', 'Wages', 'Overhead', 'Total', 'Unit Cost', 'Progress'];
@@ -253,7 +262,7 @@ export default function OrderCostAnalysisReport() {
 
                <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
+                    <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all")}>
                        <Filter className="w-4 h-4 text-slate-400 dark:text-slate-500" />
                     </Button>
                   </DropdownMenuTrigger>
@@ -261,15 +270,15 @@ export default function OrderCostAnalysisReport() {
                      <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest">{isRtl ? 'ترتيب حسب' : 'SORT BY'}</DropdownMenuLabel>
                      <DropdownMenuItem onClick={() => toggleSort('totalCost')} className="flex justify-between text-xs font-bold cursor-pointer py-2.5 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
                         {isRtl ? 'إجمالي التكلفة' : 'Total Cost'}
-                        {sortBy === 'totalCost' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
+                        {sortBy === 'totalCost' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />)}
                      </DropdownMenuItem>
                      <DropdownMenuItem onClick={() => toggleSort('avgCost')} className="flex justify-between text-xs font-bold cursor-pointer py-2.5 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
                         {isRtl ? 'تكلفة القطعة' : 'Unit Cost'}
-                        {sortBy === 'avgCost' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
+                        {sortBy === 'avgCost' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />)}
                      </DropdownMenuItem>
                      <DropdownMenuItem onClick={() => toggleSort('progress')} className="flex justify-between text-xs font-bold cursor-pointer py-2.5 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
                         {isRtl ? 'نسبة الإنجاز' : 'Progress'}
-                        {sortBy === 'progress' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
+                        {sortBy === 'progress' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />)}
                      </DropdownMenuItem>
                   </DropdownMenuContent>
                </DropdownMenu>

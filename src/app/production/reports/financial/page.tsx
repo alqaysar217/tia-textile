@@ -29,7 +29,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useTranslation } from '@/components/LanguageProvider';
-import { useFirestore, useCollection } from '@/firebase';
+import { useFirestore, useCollection, useDoc } from '@/firebase';
 import { collection, query, doc } from 'firebase/firestore';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -49,11 +49,16 @@ import {
 } from "@/components/ui/popover";
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { useProduction } from '../../ProductionContext';
 
 export default function FinancialGrowthReport() {
   const { lang, dir } = useTranslation();
   const db = useFirestore();
   const isRtl = lang === 'ar';
+
+  // استيراد الصلاحيات من المحرك المركزي
+  const { permissions, isAdmin } = useProduction();
+  const canReadReports = isAdmin || permissions.reports?.read;
 
   const [search, setSearch] = useState('');
   const [dateFrom, setDateFrom] = useState('');
@@ -62,8 +67,8 @@ export default function FinancialGrowthReport() {
 
   // Fetch Global Settings for Currency
   const settingsRef = useMemo(() => !db ? null : doc(db, 'settings', 'global'), [db]);
-  const { data: savedSettings } = useCollection<any>(settingsRef ? query(collection(db, 'settings')) : null); // Simple fetch
-  const systemCurrency = 'YER'; // Default
+  const { data: savedSettings } = useDoc<any>(settingsRef);
+  const systemCurrency = savedSettings?.baseCurrency || 'YER';
 
   // Fetch Data
   const ordersQuery = useMemo(() => !db ? null : collection(db, 'productionOrders'), [db]);
@@ -75,7 +80,7 @@ export default function FinancialGrowthReport() {
   const { data: allProducts } = useCollection<any>(productsQuery);
 
   const financialData = useMemo(() => {
-    if (!allOrders || !allVouchers || !allProducts) return [];
+    if (!allOrders || !allVouchers || !allProducts || !canReadReports) return [];
     
     return allOrders.filter(o => o.status !== 'deleted').map(order => {
       const product = allProducts.find(p => p.id === order.productId);
@@ -96,7 +101,6 @@ export default function FinancialGrowthReport() {
       const totalCost = matCost + wageCost + overheadCost;
       const completed = order.completedQty || 0;
       
-      // Revenue is based on completed items * product unit price
       const estimatedRevenue = completed * (product?.price || 0);
       const netProfit = estimatedRevenue - totalCost;
       const margin = estimatedRevenue > 0 ? (netProfit / estimatedRevenue) * 100 : 0;
@@ -112,7 +116,7 @@ export default function FinancialGrowthReport() {
         margin
       };
     });
-  }, [allOrders, allVouchers, allProducts]);
+  }, [allOrders, allVouchers, allProducts, canReadReports]);
 
   const filtered = useMemo(() => {
     let list = [...financialData];
@@ -144,6 +148,10 @@ export default function FinancialGrowthReport() {
   };
 
   const handleExportCSV = () => {
+    if (!canReadReports) {
+      toast({ variant: "destructive", title: isRtl ? "غير مسموح بالتصدير" : "Export Denied" });
+      return;
+    }
     const headers = isRtl 
       ? ['رقم الأمر', 'المنتج', 'تاريخ البدء', 'إجمالي التكاليف', 'القيمة السوقية للمنتج', 'صافي الربح التقديري', 'الهامش %']
       : ['Order #', 'Product', 'Start Date', 'Total Costs', 'Production Value', 'Net Profit', 'Margin %'];
@@ -187,8 +195,8 @@ export default function FinancialGrowthReport() {
               <Input 
                 value={search} 
                 onChange={(e) => setSearch(e.target.value)} 
-                placeholder={isRtl ? 'بحث بالأمر أو المنتج...' : 'Quick search...'} 
-                className={cn("h-9 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-[10px] font-bold dark:text-slate-100", isRtl ? "pr-9" : "pl-9")} 
+                placeholder={isRtl ? 'بحث سريع...' : 'Quick search...'} 
+                className={cn("h-9 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-[10px] font-bold dark:text-slate-100", isRtl ? "pr-9" : "pl-9")} 
               />
             </div>
 
@@ -284,7 +292,7 @@ export default function FinancialGrowthReport() {
                     <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase border-b border-slate-200 dark:border-slate-700", isRtl ? "text-right" : "text-left")}>{isRtl ? 'أمر الإنتاج / الدفعة' : 'BATCH / ORDER'}</TableHead>
                     <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase text-center border-b border-slate-200 dark:border-slate-700">{isRtl ? 'التكاليف الكلية' : 'TOTAL COSTS'}</TableHead>
                     <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase text-center border-b border-slate-200 dark:border-slate-700">{isRtl ? 'القيمة التقديرية' : 'EST. VALUE'}</TableHead>
-                    <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase text-center border-b border-slate-200 dark:border-slate-700 bg-slate-100/30 dark:bg-slate-800/30">{isRtl ? 'صافي الربح' : 'NET PROFIT'}</TableHead>
+                    <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase text-center border-b border-slate-200 dark:border-slate-700 bg-slate-100/20 dark:bg-slate-800/20">{isRtl ? 'صافي الربح' : 'NET PROFIT'}</TableHead>
                     <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase text-center border-b border-slate-200 dark:border-slate-700">{isRtl ? 'الهامش' : 'MARGIN'}</TableHead>
                  </TableRow>
               </TableHeader>
@@ -306,7 +314,7 @@ export default function FinancialGrowthReport() {
                       </TableCell>
                       <TableCell className="px-6 py-4 text-center font-bold text-rose-700 dark:text-rose-500 text-[11px]">{formatCurrency(d.totalCost)}</TableCell>
                       <TableCell className="px-6 py-4 text-center font-bold text-blue-700 dark:text-blue-400 text-[11px]">{formatCurrency(d.estimatedRevenue)}</TableCell>
-                      <TableCell className="px-6 py-4 text-center font-black text-slate-900 dark:text-slate-100 text-[11px] bg-slate-100/20 dark:bg-slate-800/20 border-x border-slate-100/50 dark:border-slate-800/50">
+                      <TableCell className="px-6 py-4 text-center font-black text-slate-900 dark:text-slate-100 text-[11px] bg-slate-100/10 dark:bg-slate-800/10 border-x border-slate-100/50 dark:border-slate-800/50">
                          <div className="flex flex-col items-center">
                             <span className={cn(d.netProfit >= 0 ? "text-emerald-700 dark:text-emerald-400" : "text-rose-700 dark:text-rose-500")}>{formatCurrency(d.netProfit)}</span>
                             <span className="text-[8px] text-slate-400 opacity-60 uppercase">YER</span>

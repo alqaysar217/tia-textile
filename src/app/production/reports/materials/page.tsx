@@ -47,11 +47,16 @@ import {
 } from "@/components/ui/popover";
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { useProduction } from '../../ProductionContext';
 
 export default function MaterialConsumptionReport() {
   const { lang, dir } = useTranslation();
   const db = useFirestore();
   const isRtl = lang === 'ar';
+
+  // استيراد الصلاحيات من المحرك المركزي
+  const { permissions, isAdmin } = useProduction();
+  const canReadReports = isAdmin || permissions.reports?.read;
 
   const [search, setSearch] = useState('');
   const [dateFrom, setDateFrom] = useState('');
@@ -74,7 +79,7 @@ export default function MaterialConsumptionReport() {
 
   // Process data for consumption report
   const consumptionData = useMemo(() => {
-    if (!issueVouchers) return [];
+    if (!issueVouchers || !canReadReports) return [];
     
     let list: any[] = [];
     issueVouchers.filter(v => v.status !== 'deleted').forEach(v => {
@@ -99,7 +104,7 @@ export default function MaterialConsumptionReport() {
     });
 
     return list;
-  }, [issueVouchers, allOrders, allWorkers]);
+  }, [issueVouchers, allOrders, allWorkers, canReadReports]);
 
   const filtered = useMemo(() => {
     let list = [...consumptionData];
@@ -135,6 +140,10 @@ export default function MaterialConsumptionReport() {
   }, [filtered]);
 
   const handleExportCSV = () => {
+    if (!canReadReports) {
+      toast({ variant: "destructive", title: isRtl ? "غير مسموح بالتصدير" : "Export Denied" });
+      return;
+    }
     const headers = isRtl 
       ? ['التاريخ', 'رقم السند', 'الموظف', 'أمر الإنتاج', 'المادة الخام', 'الكمية', 'الوحدة']
       : ['Date', 'Ref #', 'Personnel', 'Batch', 'Material', 'Qty', 'Unit'];
@@ -262,7 +271,7 @@ export default function MaterialConsumptionReport() {
 
                <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
+                    <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all")}>
                        <Filter className="w-4 h-4 text-slate-400 dark:text-slate-500" />
                     </Button>
                   </DropdownMenuTrigger>
@@ -332,7 +341,7 @@ export default function MaterialConsumptionReport() {
                   {loading ? (
                     <TableRow><TableCell colSpan={6} className="text-center py-24 animate-pulse text-slate-400 dark:text-slate-600 font-black">{isRtl ? 'جاري سحب بيانات الاستهلاك...' : 'Loading Consumption Data...'}</TableCell></TableRow>
                   ) : filtered.length === 0 ? (
-                    <TableRow><TableCell colSpan={6} className="text-center py-24 text-slate-300 dark:text-slate-800 font-bold">{isRtl ? 'لا توجد بيانات مطابقة لهذه الفلاتر' : 'No matching consumption logs'}</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={6} className="text-center py-24 text-slate-300 dark:text-slate-700 font-bold">{isRtl ? 'لا توجد بيانات مطابقة لهذه الفلاتر' : 'No matching consumption logs'}</TableCell></TableRow>
                   ) : filtered.map((d) => (
                     <TableRow key={d.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors border-b border-slate-100 dark:border-slate-800 group">
                        <TableCell className={cn("px-6 py-4 font-bold text-slate-400 dark:text-slate-500 text-[11px] tabular-nums", isRtl ? "text-right" : "text-left")}>{d.date}</TableCell>
