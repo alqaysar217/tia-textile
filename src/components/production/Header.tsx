@@ -222,57 +222,62 @@ export function Header() {
               <DialogTitle>{isRtl ? 'الملف الشخصي للمستخدم' : 'User Profile'}</DialogTitle>
            </DialogHeader>
            <div className="premium-gradient p-8 text-white relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-4 opacity-5"><UserCircle className="w-40 h-40 text-white" /></div>
+              <div className="absolute top-0 right-0 p-4 opacity-10"><Shield className="w-32 h-32 text-white" /></div>
               <div className="relative z-10 flex flex-col items-center">
-                 <Avatar className="h-24 w-24 border-4 border-white/20 shadow-2xl mb-4">
+                 <Avatar className="h-28 w-28 border-4 border-white/30 shadow-2xl mb-4 bg-white/10">
                     <AvatarImage src={displayPhoto} className="object-cover" />
-                    <AvatarFallback className="bg-white text-emerald-900 font-black text-xl">{displayName.charAt(0)}</AvatarFallback>
+                    <AvatarFallback className="bg-white text-emerald-900 font-black text-2xl">{displayName.charAt(0)}</AvatarFallback>
                  </Avatar>
-                 <h3 className="text-xl font-black">{displayName}</h3>
-                 <Badge variant="secondary" className="bg-white/10 text-emerald-200 border-none px-3 mt-2 text-[10px] font-black uppercase tracking-widest">
-                    {displayRole}
-                 </Badge>
+                 <h3 className="text-2xl font-black tracking-tight">{displayName}</h3>
+                 <div className="flex items-center gap-2 mt-2 px-4 py-1 rounded-full bg-black/20 backdrop-blur-md border border-white/10">
+                    <BadgeCheck className="w-3.5 h-3.5 text-emerald-400" />
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-100">
+                      {displayRole === 'admin' ? (isRtl ? 'مدير نظام' : 'ADMIN') : 
+                       displayRole === 'manager' ? (isRtl ? 'مدير إنتاج' : 'MANAGER') : 
+                       (isRtl ? 'موظف تشغيل' : 'STAFF')}
+                    </span>
+                 </div>
               </div>
            </div>
            
            <div className="p-8 space-y-6 bg-white dark:bg-slate-900">
-              <div className="space-y-4">
-                 <div className="flex items-center gap-4 text-right">
-                    <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-400 dark:text-slate-500 shrink-0"><Mail className="w-5 h-5" /></div>
-                    <div className="flex-1 overflow-hidden">
-                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'البريد الإلكتروني' : 'EMAIL ADDRESS'}</p>
-                       <p className="text-sm font-bold text-slate-900 dark:text-slate-100 truncate tabular-nums">{authUser?.email}</p>
+              <div className="grid gap-5">
+                 <div className="flex items-center gap-5 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                    <div className="w-12 h-12 rounded-xl bg-white dark:bg-slate-900 flex items-center justify-center text-emerald-600 shadow-sm shrink-0"><Mail className="w-5 h-5" /></div>
+                    <div className="flex-1 min-w-0 text-right rtl:text-right ltr:text-left">
+                       <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'البريد الإلكتروني' : 'EMAIL ADDRESS'}</p>
+                       <p className="text-sm font-bold text-slate-900 dark:text-slate-100 truncate tabular-nums">{authUser?.email || '---'}</p>
                     </div>
                  </div>
 
-                 <div className="flex items-center gap-4 text-right">
-                    <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-400 dark:text-slate-500 shrink-0"><Shield className="w-5 h-5" /></div>
-                    <div className="flex-1">
-                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'صلاحيات النظام' : 'SYSTEM ACCESS'}</p>
+                 <div className="flex items-center gap-5 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                    <div className="w-12 h-12 rounded-xl bg-white dark:bg-slate-900 flex items-center justify-center text-emerald-600 shadow-sm shrink-0"><Shield className="w-5 h-5" /></div>
+                    <div className="flex-1 text-right rtl:text-right ltr:text-left">
+                       <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'نوع الحساب' : 'ACCOUNT TYPE'}</p>
                        <p className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                          {displayRole === 'admin' ? (isRtl ? 'دخول كامل (مدير)' : 'Full Administrative Access') : (isRtl ? 'دخول تشغيلي' : 'Operational Access')}
+                          {displayRole === 'admin' ? (isRtl ? 'مدير كامل الصلاحيات' : 'Full Admin Access') : (isRtl ? 'صلاحيات محدودة' : 'Standard Access')}
                        </p>
                     </div>
                  </div>
 
-                 <div className="flex items-center gap-4 text-right">
-                    <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-400 dark:text-slate-500 shrink-0"><BadgeCheck className="w-5 h-5" /></div>
-                    <div className="flex-1">
-                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'حالة الحساب' : 'ACCOUNT STATUS'}</p>
-                       <div className="flex items-center gap-2 mt-1">
-                          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                          <span className="text-sm font-bold text-emerald-600">{isRtl ? 'نشط ومحمي' : 'Active & Secured'}</span>
+                 <div className="flex items-center gap-5 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                    <div className="w-12 h-12 rounded-xl bg-white dark:bg-slate-900 flex items-center justify-center text-emerald-600 shadow-sm shrink-0"><BadgeCheck className="w-5 h-5" /></div>
+                    <div className="flex-1 text-right rtl:text-right ltr:text-left">
+                       <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'حالة النظام' : 'SECURITY STATUS'}</p>
+                       <div className="flex items-center gap-2 mt-0.5">
+                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                          <span className="text-xs font-black text-emerald-600">{isRtl ? 'جلسة مشفرة ومحمية' : 'Encrypted Session'}</span>
                        </div>
                     </div>
                  </div>
               </div>
 
-              <div className="pt-6 border-t border-slate-100 dark:border-slate-800">
+              <div className="pt-4">
                  <Button 
                    onClick={() => setIsProfileOpen(false)} 
-                   className="w-full h-12 rounded-xl font-black text-sm premium-gradient text-white border-none shadow-lg active:scale-95 transition-all"
+                   className="w-full h-14 rounded-xl font-black text-sm premium-gradient text-white border-none shadow-xl shadow-emerald-900/10 active:scale-[0.98] transition-all"
                  >
-                    {isRtl ? 'إغلاق المعاينة' : 'Close Profile'}
+                    {isRtl ? 'إغلاق نافذة المعلومات' : 'Close Profile View'}
                  </Button>
               </div>
            </div>
