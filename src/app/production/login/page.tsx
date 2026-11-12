@@ -54,8 +54,13 @@ export default function LoginPage() {
     setError('');
     
     try {
+      // بروتوكول تنظيف البيانات لمنع أخطاء المسافات الزائدة
       const cleanEmail = email.trim().toLowerCase();
       const cleanPassword = password.trim();
+
+      if (!cleanEmail || !cleanPassword) {
+        throw { code: 'auth/invalid-credential' };
+      }
 
       await signInWithEmailAndPassword(auth, cleanEmail, cleanPassword);
       

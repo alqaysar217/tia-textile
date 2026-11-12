@@ -5,36 +5,27 @@ import {
   UserCheck, 
   ChevronRight, 
   Search, 
-  Plus, 
   UserPlus, 
   ShieldCheck, 
   ShieldAlert, 
   Lock, 
-  Unlock, 
   Edit2, 
   Trash2, 
   MoreVertical, 
   Mail, 
   Shield, 
-  LayoutGrid, 
-  Eye, 
   Check, 
-  X, 
   Save, 
   Loader2, 
   Info,
   Key,
-  Smartphone,
   Briefcase,
-  AlertCircle,
-  Settings2,
   UploadCloud,
   RefreshCcw,
   User as UserIcon,
   Users,
   Image as ImageIcon,
-  CheckCircle2,
-  Settings as SettingsIcon,
+  LayoutDashboard,
   Workflow,
   ShoppingBag,
   Layers,
@@ -43,7 +34,7 @@ import {
   HandCoins,
   Receipt,
   FileBarChart,
-  LayoutDashboard
+  Settings as SettingsIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -84,7 +75,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, setDoc, updateDoc, doc, serverTimestamp, query, where } from 'firebase/firestore';
+import { collection, setDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { initializeApp, deleteApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { firebaseConfig } from '@/firebase/config';
@@ -94,7 +85,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 
-// تعريف الوحدات البرمجية للصلاحيات
 const SYSTEM_MODULES = [
   { id: 'dashboard', labelAr: 'لوحة التحكم والإحصائيات', labelEn: 'Dashboard', icon: <LayoutDashboard className="w-3.5 h-3.5" /> },
   { id: 'orders', labelAr: 'أوامر الإنتاج (WIP)', labelEn: 'Production Orders', icon: <Workflow className="w-3.5 h-3.5" /> },
@@ -477,7 +467,7 @@ export default function UsersPermissionsPage() {
                       <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
                          <h3 className="text-sm font-black text-slate-900 dark:text-slate-100 flex items-center gap-2"><Shield className="w-4 h-4 text-emerald-600" /> {isRtl ? 'شبكة صلاحيات الواجهات والعمليات' : 'Access Matrix'}</h3>
                          <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900/20 px-3 py-1.5 rounded-lg border border-emerald-100 dark:border-emerald-800">
-                            <Checkbox id="selectAll" onCheckedChange={(val) => handleToggleAll(!!val)} className="data-[state=checked]:bg-emerald-600" />
+                            <Checkbox id="selectAll" onCheckedChange={(val) => handleToggleAll(!!val)} className="data-[state=checked]:bg-slate-900" />
                             <label htmlFor="selectAll" className="text-[9px] font-black text-emerald-700 dark:text-emerald-400 cursor-pointer uppercase">{isRtl ? 'تحديد الكل' : 'ALL ACCESS'}</label>
                          </div>
                       </div>
