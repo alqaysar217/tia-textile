@@ -200,7 +200,12 @@ export default function MaterialIssuePage() {
     setIsDownloading(true);
     try {
       await new Promise(r => setTimeout(r, 800));
-      const dataUrl = await toPng(el, { backgroundColor: '#ffffff', pixelRatio: 2, cacheBust: true });
+      const dataUrl = await toPng(el, { 
+        backgroundColor: '#ffffff', 
+        pixelRatio: 2, 
+        cacheBust: true,
+        fontEmbedCSS: '' 
+      });
       const link = document.createElement('a');
       link.download = `MIV-${printingVoucher.voucherNumber}.png`;
       link.href = dataUrl; link.click();

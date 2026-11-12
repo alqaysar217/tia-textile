@@ -102,7 +102,7 @@ export default function MaterialReturnPage() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#f8fafc] overflow-hidden" dir={dir}>
+    <div className="flex flex-col h-full bg-[#f8fafc] dark:bg-slate-950 overflow-hidden transition-colors duration-300" dir={dir}>
       <ReturnHeader 
         lang={lang} dir={dir} activeTab={activeTab} setActiveTab={setActiveTab} search={search} setSearch={setSearch}
         dateFrom={dateFrom} setDateFrom={setDateFrom} dateTo={dateTo} setDateTo={setDateTo}
@@ -127,7 +127,19 @@ export default function MaterialReturnPage() {
           const el = document.getElementById('printable-voucher');
           if (!el) return;
           setIsDownloading(true);
-          try { await new Promise(r => setTimeout(r, 800)); const dataUrl = await toPng(el, { backgroundColor: '#ffffff', pixelRatio: 2 }); const link = document.createElement('a'); link.download = `Return-${printingVoucher.voucherNumber}.png`; link.href = dataUrl; link.click(); } finally { setIsDownloading(false); }
+          try { 
+            await new Promise(r => setTimeout(r, 800)); 
+            const dataUrl = await toPng(el, { 
+              backgroundColor: '#ffffff', 
+              pixelRatio: 2,
+              cacheBust: true,
+              fontEmbedCSS: '' 
+            }); 
+            const link = document.createElement('a'); 
+            link.download = `Return-${printingVoucher.voucherNumber}.png`; 
+            link.href = dataUrl; 
+            link.click(); 
+          } finally { setIsDownloading(false); }
       }} />
     </div>
   );

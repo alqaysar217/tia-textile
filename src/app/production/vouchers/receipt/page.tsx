@@ -252,7 +252,19 @@ export default function ProductionReceiptPage() {
           const el = document.getElementById('printable-voucher');
           if (!el) return;
           setIsDownloading(true);
-          try { await new Promise(r => setTimeout(r, 800)); const dataUrl = await toPng(el, { backgroundColor: '#ffffff', pixelRatio: 2 }); const link = document.createElement('a'); link.download = `Settlement-${printingVoucher.voucherNumber}.png`; link.href = dataUrl; link.click(); } finally { setIsDownloading(false); }
+          try { 
+            await new Promise(r => setTimeout(r, 800)); 
+            const dataUrl = await toPng(el, { 
+              backgroundColor: '#ffffff', 
+              pixelRatio: 2,
+              cacheBust: true,
+              fontEmbedCSS: '' 
+            }); 
+            const link = document.createElement('a'); 
+            link.download = `Settlement-${printingVoucher.voucherNumber}.png`; 
+            link.href = dataUrl; 
+            link.click(); 
+          } finally { setIsDownloading(false); }
         }}
       />
 
