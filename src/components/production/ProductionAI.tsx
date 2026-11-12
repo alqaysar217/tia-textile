@@ -1,12 +1,9 @@
-'use server';
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
 import { 
-  Sparkles, 
   Send, 
   X, 
-  Bot, 
   User, 
   Loader2, 
   MessageCircle,
@@ -93,14 +90,14 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
       >
         {/* PREMIUM AI HEADER */}
         <div className="premium-gradient p-6 text-white shrink-0 relative overflow-hidden">
-           {/* BRAND WATERMARK */}
+           {/* BRAND WATERMARK - LOGO INSTEAD OF SPARKLES */}
            <div className="absolute top-0 right-0 p-4 opacity-5">
-              <img src="/images/logo.png" alt="watermark" className="w-32 h-32 object-contain grayscale brightness-0 invert" />
+              <img src="/images/logo.png" alt="watermark" className="w-40 h-40 object-contain grayscale brightness-0 invert" />
            </div>
 
            <SheetHeader className={cn("text-right rtl:text-right ltr:text-left relative z-10")}>
              <div className="flex items-center gap-3">
-               {/* SHARPER LOGO CONTAINER */}
+               {/* SHARPER LOGO CONTAINER FOR THE BOT ICON */}
                <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center border border-white/20 shadow-xl p-1 shrink-0">
                  <img src="/images/logo.png" alt="Logo" className="w-full h-full object-contain" />
                </div>
@@ -137,7 +134,7 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
                       "w-5 h-5 rounded-md flex items-center justify-center text-[10px]",
                       msg.role === 'user' ? "bg-slate-200 dark:bg-slate-800 text-slate-500" : "bg-emerald-600 text-white"
                     )}>
-                      {msg.role === 'user' ? <User className="w-3 h-3" /> : <Bot className="w-3 h-3" />}
+                      {msg.role === 'user' ? <User className="w-3 h-3" /> : <div className="w-3 h-3"><img src="/images/logo.png" className="w-full h-full object-contain brightness-0 invert" /></div>}
                     </div>
                   </div>
                   
@@ -191,7 +188,7 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
                 onChange={(e) => setInput(e.target.value)}
                 placeholder={isRtl ? "اكتب سؤالك هنا..." : "Ask anything..."}
                 className={cn(
-                  "h-14 rounded-2xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-sm font-bold focus:ring-emerald-500/10 focus:border-emerald-500 dark:text-slate-100 transition-all",
+                  "h-14 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-bold focus:ring-emerald-500/10 focus:border-emerald-500 dark:text-slate-100 transition-all",
                   isRtl ? "pr-5 pl-14" : "pl-5 pr-14"
                 )}
                 disabled={isLoading}
