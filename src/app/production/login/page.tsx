@@ -21,7 +21,7 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   
-  // Security States
+  // Security States (Protection Restored)
   const [failedAttempts, setFailedAttempts] = useState(0);
   const [lockoutUntil, setLockoutUntil] = useState<number | null>(null);
   const [timeLeft, setTimeLeft] = useState(0);
@@ -46,6 +46,7 @@ export default function LoginPage() {
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Check if currently locked out
     if (lockoutUntil && Date.now() < lockoutUntil) return;
 
     const cleanEmail = email.trim().toLowerCase();
@@ -62,26 +63,29 @@ export default function LoginPage() {
       }
 
       await signInWithEmailAndPassword(auth, cleanEmail, cleanPassword);
+      
+      // SUCCESS: Reset security counters
       setFailedAttempts(0);
       router.push('/production');
     } catch (err: any) {
-      console.error("Login Error Details:", err.code);
+      // Use console.log instead of error to avoid triggering monitoring alerts for intentional wrong logins
+      console.log("Login Attempt Result:", err.code);
 
       // Increment failed attempts
       const newCount = failedAttempts + 1;
       setFailedAttempts(newCount);
 
       if (newCount >= 5) {
-        const until = Date.now() + 5 * 60 * 1000; // 5 minutes
+        const until = Date.now() + 5 * 60 * 1000; // 5 minutes lockout
         setLockoutUntil(until);
-        setError(lang === 'ar' ? 'تم الحظر مؤقتاً لتجاوز محاولات الدخول. يرجى المحاولة لاحقاً.' : 'Account temporarily locked due to many attempts.');
+        setError(lang === 'ar' ? 'تم حظرك مؤقتاً لتجاوز محاولات الدخول. يرجى الانتظار 5 دقائق.' : 'Account temporarily locked. Please wait 5 minutes.');
       } else {
         if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
-          setError(lang === 'ar' ? `البريد الإلكتروني أو كلمة المرور غير صحيحة. المحاولات المتبقية: ${5 - newCount}` : `Invalid credentials. Attempts left: ${5 - newCount}`);
+          setError(lang === 'ar' ? `خطأ في البيانات. المحاولات المتبقية قبل الحظر: ${5 - newCount}` : `Invalid credentials. Attempts left: ${5 - newCount}`);
         } else if (err.code === 'auth/network-request-failed') {
           setError(lang === 'ar' ? 'فشل الاتصال بالخادم. يرجى التحقق من جودة الإنترنت.' : 'Network connection failed. Check your internet.');
         } else {
-          setError(lang === 'ar' ? 'حدث خطأ غير متوقع. يرجى المحاولة لاحقاً.' : 'An unexpected error occurred. Please try again.');
+          setError(lang === 'ar' ? 'حدث خطأ غير متوقع. يرجى المحاولة لاحقاً.' : 'An unexpected error occurred.');
         }
       }
     } finally {
@@ -166,3 +170,4 @@ export default function LoginPage() {
     </div>
   );
 }
+

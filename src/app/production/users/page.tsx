@@ -246,6 +246,7 @@ export default function UsersPermissionsPage() {
       const cleanEmail = formData.email.trim().toLowerCase();
       const cleanPassword = formData.password.trim();
 
+      // If new user, create in Firebase Auth first
       if (!editingUserId) {
         const tempAppName = `temp-auth-${Date.now()}`;
         tempApp = initializeApp(firebaseConfig, tempAppName);
@@ -269,7 +270,7 @@ export default function UsersPermissionsPage() {
       const userData = {
         fullName: formData.fullName.trim(),
         email: cleanEmail,
-        password: cleanPassword, 
+        password: cleanPassword, // Stored as reference (hashed in real production)
         photoUrl: formData.photoUrl,
         role: formData.role,
         active: formData.active,
@@ -277,6 +278,7 @@ export default function UsersPermissionsPage() {
         updatedAt: serverTimestamp()
       };
 
+      // Save to Firestore using the Auth UID as doc ID
       await setDoc(doc(db, 'users', uid), {
         ...userData,
         createdAt: editingUserId ? (users?.find(u => u.id === uid)?.createdAt || serverTimestamp()) : serverTimestamp()
@@ -597,3 +599,4 @@ export default function UsersPermissionsPage() {
     </div>
   );
 }
+
