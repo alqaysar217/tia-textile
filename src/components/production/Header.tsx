@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   User, 
   LogOut, 
@@ -9,7 +9,9 @@ import {
   Globe,
   PanelLeft,
   Sparkles,
-  UserCircle
+  UserCircle,
+  Moon,
+  Sun
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -22,7 +24,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useSidebar } from '@/components/ui/sidebar';
 import { useTranslation } from '@/components/LanguageProvider';
-import { useAuth } from '@/firebase';
+import { useAuth, useFirestore, useDoc } from '@/firebase';
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 
@@ -32,6 +35,11 @@ export function Header() {
   const { toggleSidebar } = useSidebar();
   const { lang, setLang, t } = useTranslation();
   const auth = useAuth();
+  const db = useFirestore();
+
+  // Fetch current theme from settings to sync the icon state
+  const settingsRef = useMemo(() => !db ? null : doc(db, 'settings', 'global'), [db]);
+  const { data: settings } = useDoc<any>(settingsRef);
 
   useEffect(() => {
     setMounted(true);
@@ -51,7 +59,31 @@ export function Header() {
     }
   };
 
+  const handleThemeToggle = async () => {
+    if (!db) return;
+    const isDark = document.documentElement.classList.contains('dark');
+    const newTheme = isDark ? 'light' : 'dark';
+    
+    // Immediate UI feedback
+    if (newTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+
+    // Persist to database
+    try {
+      await updateDoc(doc(db, 'settings', 'global'), {
+        themeMode: newTheme,
+        updatedAt: serverTimestamp()
+      });
+    } catch (err) {
+      console.error('Failed to save theme preference:', err);
+    }
+  };
+
   const isRtl = lang === 'ar';
+  const isDarkMode = mounted && (settings?.themeMode === 'dark' || (typeof document !== 'undefined' && document.documentElement.classList.contains('dark')));
 
   return (
     <header className="h-20 bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between px-6 md:px-10 z-20 shadow-sm transition-colors duration-300">
@@ -87,6 +119,17 @@ export function Header() {
             title={lang === 'ar' ? 'مساعد الذكاء الاصطناعي' : 'AI Assistant'}
           >
             <Sparkles className="w-5 h-5" />
+          </Button>
+
+          {/* THEME TOGGLE */}
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={handleThemeToggle}
+            className="text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-white dark:hover:bg-slate-800 rounded-lg h-9 w-9 transition-all"
+            title={lang === 'ar' ? 'تبديل المظهر' : 'Toggle Theme'}
+          >
+            {isDarkMode ? <Sun className="w-5 h-5 text-amber-500" /> : <Moon className="w-5 h-5" />}
           </Button>
 
           {/* LANGUAGE TOGGLE */}
