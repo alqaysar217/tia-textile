@@ -73,11 +73,13 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 export default function DepartmentsPage() {
   const { lang, dir } = useTranslation();
   const db = useFirestore();
   const [search, setSearch] = useState('');
+  const isRtl = lang === 'ar';
   
   // Filtering & Sorting State
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
@@ -310,41 +312,41 @@ export default function DepartmentsPage() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#f1f5f9] overflow-hidden">
+    <div className="flex flex-col h-full bg-[#f1f5f9] dark:bg-slate-950 overflow-hidden transition-colors duration-300">
       
       {/* COMPACT ERP HUB - FIXED HEIGHT */}
-      <div className="flex-none bg-white border-b border-slate-200 z-30 px-6 py-4">
+      <div className="flex-none bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 z-30 px-6 py-4 shadow-sm">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div className="flex items-center gap-4">
             <div className="p-2.5 premium-gradient rounded-lg text-white shadow-lg shadow-emerald-900/20">
               <Database className="w-5 h-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+              <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                 <span>{lang === 'ar' ? 'الإنتاج' : 'Production'}</span>
                 <ChevronRight className={`w-3 h-3 ${dir === 'rtl' ? 'rotate-180' : ''}`} />
-                <span className="text-slate-600">{lang === 'ar' ? 'إدارة الأقسام' : 'Departments'}</span>
+                <span className="text-slate-600 dark:text-slate-400">{lang === 'ar' ? 'إدارة الأقسام' : 'Departments'}</span>
               </div>
-              <h1 className="text-xl font-black text-slate-900 leading-tight">
+              <h1 className="text-xl font-black text-slate-900 dark:text-slate-100 leading-tight">
                 {lang === 'ar' ? 'أقسام ومراحل العمل' : 'Work Centers & Departments'}
               </h1>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="flex gap-2 bg-slate-50 p-1 rounded-lg border border-slate-100">
+            <div className="flex gap-2 bg-slate-50 dark:bg-slate-800/50 p-1 rounded-lg border border-slate-100 dark:border-slate-800">
               <div className="px-3 py-1 text-center">
-                <p className="text-[9px] font-bold text-slate-400 uppercase">{lang === 'ar' ? 'نشط' : 'Active'}</p>
-                <p className="text-sm font-black text-emerald-600 tabular-nums">{loading ? '..' : stats.active}</p>
+                <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">{lang === 'ar' ? 'نشط' : 'Active'}</p>
+                <p className="text-sm font-black text-emerald-600 dark:text-emerald-400 tabular-nums">{loading ? '..' : stats.active}</p>
               </div>
-              <div className="w-px h-6 bg-slate-200 self-center" />
+              <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 self-center" />
               <div className="px-3 py-1 text-center">
-                <p className="text-[9px] font-bold text-slate-400 uppercase">{lang === 'ar' ? 'العمال' : 'Labor'}</p>
-                <p className="text-sm font-black text-slate-700 tabular-nums">{loading ? '..' : stats.totalWorkers}</p>
+                <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">{lang === 'ar' ? 'العمال' : 'Labor'}</p>
+                <p className="text-sm font-black text-slate-700 dark:text-slate-300 tabular-nums">{loading ? '..' : stats.totalWorkers}</p>
               </div>
             </div>
             
-            <Button onClick={() => setIsAddDialogOpen(true)} className="h-10 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md shadow-emerald-900/10 font-black gap-2 transition-all border-none">
+            <Button onClick={() => setIsAddDialogOpen(true)} className="h-10 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 transition-all border-none">
               <Plus className="w-4 h-4" />
               {lang === 'ar' ? 'إضافة قسم' : 'New Dept'}
             </Button>
@@ -352,14 +354,14 @@ export default function DepartmentsPage() {
         </div>
 
         {/* SEARCH & FILTER BAR */}
-        <div className="mt-4 flex items-center gap-2 bg-slate-50 p-1.5 rounded-lg border border-slate-200">
+        <div className="mt-4 flex items-center gap-2 bg-slate-50 dark:bg-slate-800/50 p-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
           <div className="relative flex-1">
-            <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400`} />
+            <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500`} />
             <Input 
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={lang === 'ar' ? 'بحث بالكود أو الاسم...' : 'Quick search...'}
-              className={`${dir === 'rtl' ? 'pr-10' : 'pl-10'} h-9 bg-white border-slate-200 rounded-md text-xs font-bold focus:ring-emerald-500/10 focus:border-emerald-500`}
+              className={`${dir === 'rtl' ? 'pr-10' : 'pl-10'} h-9 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-md text-xs font-bold focus:ring-emerald-500/10 focus:border-emerald-500 dark:text-slate-100`}
             />
           </div>
           
@@ -367,15 +369,15 @@ export default function DepartmentsPage() {
             <Button 
               onClick={handleExportCSV}
               variant="ghost" 
-              className="h-9 px-4 rounded-md text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent hover:border-slate-200"
+              className="h-9 px-4 rounded-md text-xs font-bold gap-2 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
             >
-              <FileDown className="w-3.5 h-3.5 text-emerald-600" />
+              <FileDown className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
               {lang === 'ar' ? 'تصدير CSV' : 'Export CSV'}
             </Button>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-9 px-4 rounded-md text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent hover:border-slate-200">
+                <Button variant="ghost" className="h-9 px-4 rounded-md text-xs font-bold gap-2 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                   <Filter className="w-3.5 h-3.5" />
                   {lang === 'ar' ? 'تصفية' : 'Filter'}
                   {(statusFilter !== 'all' || sortBy !== 'code' || sortOrder !== 'asc') && (
@@ -383,50 +385,50 @@ export default function DepartmentsPage() {
                   )}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="w-56 rounded-lg border-slate-200 shadow-xl">
-                <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'ترتيب حسب' : 'SORT BY'}</DropdownMenuLabel>
-                <DropdownMenuItem onClick={() => toggleSort('code')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
+              <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="w-56 rounded-lg border-slate-200 dark:border-slate-800 dark:bg-slate-900 shadow-xl">
+                <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest">{lang === 'ar' ? 'ترتيب حسب' : 'SORT BY'}</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => toggleSort('code')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
                   <div className="flex items-center gap-2">
-                    <Hash className="w-3.5 h-3.5 text-slate-400" />
+                    <Hash className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                     {lang === 'ar' ? 'الكود' : 'Code'}
                   </div>
-                  {sortBy === 'code' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
+                  {sortBy === 'code' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />)}
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => toggleSort('nameAr')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
+                <DropdownMenuItem onClick={() => toggleSort('nameAr')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
                   <div className="flex items-center gap-2">
-                    <Languages className="w-3.5 h-3.5 text-slate-400" />
+                    <Languages className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                     {lang === 'ar' ? 'الاسم' : 'Name'}
                   </div>
-                  {sortBy === 'nameAr' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
+                  {sortBy === 'nameAr' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />)}
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => toggleSort('actualWorkerCount')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
+                <DropdownMenuItem onClick={() => toggleSort('actualWorkerCount')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
                   <div className="flex items-center gap-2">
-                    <Activity className="w-3.5 h-3.5 text-slate-400" />
+                    <Activity className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                     {lang === 'ar' ? 'عدد العمال' : 'Labor Count'}
                   </div>
-                  {sortBy === 'actualWorkerCount' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
+                  {sortBy === 'actualWorkerCount' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />)}
                 </DropdownMenuItem>
                 
-                <DropdownMenuSeparator />
-                <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'عرض الحالة' : 'STATUS FILTER'}</DropdownMenuLabel>
-                <DropdownMenuItem onClick={() => setStatusFilter('all')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
+                <DropdownMenuSeparator className="dark:bg-slate-800" />
+                <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest">{lang === 'ar' ? 'عرض الحالة' : 'STATUS FILTER'}</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => setStatusFilter('all')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
                   {lang === 'ar' ? 'الكل' : 'All Departments'}
-                  {statusFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                  {statusFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />}
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setStatusFilter('active')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
+                <DropdownMenuItem onClick={() => setStatusFilter('active')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
                   {lang === 'ar' ? 'نشط فقط' : 'Active Only'}
-                  {statusFilter === 'active' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                  {statusFilter === 'active' && <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />}
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setStatusFilter('inactive')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2">
+                <DropdownMenuItem onClick={() => setStatusFilter('inactive')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
                   {lang === 'ar' ? 'متوقف فقط' : 'Inactive Only'}
-                  {statusFilter === 'inactive' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                  {statusFilter === 'inactive' && <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
 
-          <div className="w-px h-6 bg-slate-200" />
-          <div className="flex items-center gap-2 px-3 text-[10px] font-bold text-slate-500">
+          <div className="w-px h-6 bg-slate-200 dark:bg-slate-700" />
+          <div className="flex items-center gap-2 px-3 text-[10px] font-bold text-slate-500 dark:text-slate-400">
             <CheckCircle2 className="w-3 h-3 text-emerald-500" />
             {lang === 'ar' ? 'قاعدة البيانات متصلة' : 'System Ready'}
           </div>
@@ -435,81 +437,81 @@ export default function DepartmentsPage() {
 
       {/* MAIN DATA GRID - FIXED HEADER */}
       <div className="flex-1 min-h-0 flex flex-col p-4">
-        <div className="flex-1 bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden flex flex-col">
+        <div className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg shadow-sm overflow-hidden flex flex-col transition-colors duration-300">
           <div className="flex-1 overflow-auto relative no-scrollbar">
-            <Table className="text-right border-separate border-spacing-0">
-              <TableHeader className="sticky top-0 z-20 bg-slate-100/95 backdrop-blur-sm shadow-sm">
-                <TableRow className="border-b border-slate-200">
-                  <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 px-6 text-right whitespace-nowrap bg-inherit">
-                    <button onClick={() => toggleSort('code')} className="flex items-center gap-2 hover:text-emerald-700 transition-colors uppercase">
+            <Table className="text-right border-separate border-spacing-0 w-full">
+              <TableHeader className="sticky top-0 z-20 bg-slate-100/95 dark:bg-slate-800/95 backdrop-blur-sm shadow-sm">
+                <TableRow className="border-b border-slate-200 dark:border-slate-700">
+                  <TableHead className={cn("h-10 font-bold text-[11px] uppercase text-slate-500 dark:text-slate-400 px-6 whitespace-nowrap bg-inherit", isRtl ? "text-right" : "text-left")}>
+                    <button onClick={() => toggleSort('code')} className="flex items-center gap-2 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors uppercase">
                       {lang === 'ar' ? 'الكود' : 'CODE'}
-                      {sortBy === 'code' ? (sortOrder === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-30" />}
+                      {sortBy === 'code' ? (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5" /> : <SortDesc className="w-3.5 h-3.5" />) : <ArrowUpDown className="w-3.5 h-3.5 opacity-30" />}
                     </button>
                   </TableHead>
-                  <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 px-6 text-right whitespace-nowrap bg-inherit">
-                    <button onClick={() => toggleSort('nameAr')} className="flex items-center gap-2 hover:text-emerald-700 transition-colors uppercase">
+                  <TableHead className={cn("h-10 font-bold text-[11px] uppercase text-slate-500 dark:text-slate-400 px-6 whitespace-nowrap bg-inherit", isRtl ? "text-right" : "text-left")}>
+                    <button onClick={() => toggleSort('nameAr')} className="flex items-center gap-2 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors uppercase">
                       {lang === 'ar' ? 'الاسم' : 'NAME'}
-                      {sortBy === 'nameAr' ? (sortOrder === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-30" />}
+                      {sortBy === 'nameAr' ? (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5" /> : <SortDesc className="w-3.5 h-3.5" />) : <ArrowUpDown className="w-3.5 h-3.5 opacity-30" />}
                     </button>
                   </TableHead>
-                  <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 px-6 text-right whitespace-nowrap bg-inherit">{lang === 'ar' ? 'العمليات' : 'OPERATIONS'}</TableHead>
-                  <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 px-6 text-center whitespace-nowrap bg-inherit">
-                    <button onClick={() => toggleSort('actualWorkerCount')} className="flex items-center gap-2 mx-auto hover:text-emerald-700 transition-colors uppercase">
+                  <TableHead className={cn("h-10 font-bold text-[11px] uppercase text-slate-500 dark:text-slate-400 px-6 whitespace-nowrap bg-inherit", isRtl ? "text-right" : "text-left")}>{lang === 'ar' ? 'العمليات' : 'OPERATIONS'}</TableHead>
+                  <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 dark:text-slate-400 px-6 text-center whitespace-nowrap bg-inherit">
+                    <button onClick={() => toggleSort('actualWorkerCount')} className="flex items-center gap-2 mx-auto hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors uppercase">
                       {lang === 'ar' ? 'العمال' : 'STAFF'}
-                      {sortBy === 'actualWorkerCount' ? (sortOrder === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-30" />}
+                      {sortBy === 'actualWorkerCount' ? (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5" /> : <SortDesc className="w-3.5 h-3.5" />) : <ArrowUpDown className="w-3.5 h-3.5 opacity-30" />}
                     </button>
                   </TableHead>
-                  <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 px-6 text-center whitespace-nowrap bg-inherit">{lang === 'ar' ? 'الحالة' : 'STATUS'}</TableHead>
-                  <TableHead className="h-10 w-[60px] sticky right-0 bg-inherit shadow-[-2px_0_5px_rgba(0,0,0,0.05)]"></TableHead>
+                  <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 dark:text-slate-400 px-6 text-center whitespace-nowrap bg-inherit">{lang === 'ar' ? 'الحالة' : 'STATUS'}</TableHead>
+                  <TableHead className="h-10 w-[60px] sticky right-0 bg-inherit shadow-[-2px_0_5px_rgba(0,0,0,0.05)] dark:shadow-none"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-20 font-bold text-slate-400 animate-pulse">جاري سحب البيانات...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={6} className="text-center py-20 font-bold text-slate-400 dark:text-slate-600 animate-pulse">جاري سحب البيانات...</TableCell></TableRow>
                 ) : filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-20 font-bold text-slate-300">لا توجد سجلات مطابقة</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={6} className="text-center py-20 font-bold text-slate-300 dark:text-slate-800">لا توجد سجلات مطابقة</TableCell></TableRow>
                 ) : filtered.map((dept) => (
-                  <TableRow key={dept.id} className="group hover:bg-slate-50/50 border-b border-slate-100">
-                    <TableCell className="px-6 py-3 font-bold text-emerald-700 text-[11px] tabular-nums tracking-wider">{dept.code}</TableCell>
-                    <TableCell className="px-6 py-3">
+                  <TableRow key={dept.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 transition-colors">
+                    <TableCell className={cn("px-6 py-3 font-bold text-emerald-700 dark:text-emerald-400 text-[11px] tabular-nums tracking-wider", isRtl ? "text-right" : "text-left")}>{dept.code}</TableCell>
+                    <TableCell className={cn("px-6 py-3", isRtl ? "text-right" : "text-left")}>
                       <div className="flex flex-col">
-                        <span className="font-black text-slate-900 text-xs">{lang === 'ar' ? dept.nameAr : dept.nameEn}</span>
-                        <span className="text-[10px] text-slate-400 font-bold uppercase">{lang === 'ar' ? dept.nameEn : dept.nameAr}</span>
+                        <span className="font-black text-slate-900 dark:text-slate-100 text-xs">{lang === 'ar' ? dept.nameAr : dept.nameEn}</span>
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase">{lang === 'ar' ? dept.nameEn : dept.nameAr}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="px-6 py-3 text-slate-500 max-w-[300px] truncate text-[11px] font-medium">
+                    <TableCell className={cn("px-6 py-3 text-slate-500 dark:text-slate-400 max-w-[300px] truncate text-[11px] font-medium", isRtl ? "text-right" : "text-left")}>
                       {lang === 'ar' ? (dept.descAr || '---') : 'No details'}
                     </TableCell>
                     <TableCell className="px-6 py-3 text-center">
-                      <span className="inline-block px-2 py-0.5 bg-slate-100 border border-slate-200 rounded text-[11px] font-black text-slate-700 tabular-nums">
+                      <span className="inline-block px-2 py-0.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-[11px] font-black text-slate-700 dark:text-slate-300 tabular-nums">
                         {dept.actualWorkerCount || 0}
                       </span>
                     </TableCell>
                     <TableCell className="px-6 py-3 text-center">
-                      <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-black uppercase ${
-                        dept.status === 'active' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-slate-100 text-slate-500 border border-slate-200'
+                      <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-black uppercase border transition-all ${
+                        dept.status === 'active' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/30' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-500 border-slate-200 dark:border-slate-700'
                       }`}>
                         <div className={`w-1.5 h-1.5 rounded-full ${dept.status === 'active' ? 'bg-emerald-600' : 'bg-slate-400'}`} />
                         {dept.status === 'active' ? (lang === 'ar' ? 'نشط' : 'Active') : (lang === 'ar' ? 'متوقف' : 'Inactive')}
                       </div>
                     </TableCell>
-                    <TableCell className="px-6 py-3 sticky right-0 bg-white group-hover:bg-slate-50/50 shadow-[-10px_0_10px_-5px_rgba(0,0,0,0.05)] border-l border-slate-100">
+                    <TableCell className="px-6 py-3 sticky right-0 bg-white dark:bg-slate-900 group-hover:bg-slate-50/50 dark:group-hover:bg-slate-800/50 shadow-[-10px_0_10px_-5px_rgba(0,0,0,0.05)] dark:shadow-none border-l border-slate-100 dark:border-slate-800">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-slate-200 border border-transparent">
-                            <MoreVertical className="w-4 h-4 text-slate-400" />
+                          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 border border-transparent transition-colors">
+                            <MoreVertical className="w-4 h-4 text-slate-400 dark:text-slate-500" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="rounded-lg border-slate-200 shadow-xl min-w-[180px]">
-                          <DropdownMenuItem onClick={() => handleEditClick(dept)} className="gap-3 font-bold text-xs cursor-pointer py-2.5">
-                            <Edit2 className="w-3.5 h-3.5 text-emerald-600" /> {lang === 'ar' ? 'تعديل' : 'Edit'}
+                        <DropdownMenuContent align={isRtl ? 'start' : 'end'} className="rounded-lg border-slate-200 dark:border-slate-800 dark:bg-slate-900 shadow-xl min-w-[180px]">
+                          <DropdownMenuItem onClick={() => handleEditClick(dept)} className="gap-3 font-bold text-xs cursor-pointer py-2.5 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
+                            <Edit2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'تعديل' : 'Edit'}
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleStatusToggle(dept)} className="gap-3 font-bold text-xs cursor-pointer py-2.5">
-                            {dept.status === 'active' ? <PowerOff className="w-3.5 h-3.5 text-amber-600" /> : <Power className="w-3.5 h-3.5 text-emerald-600" />}
+                          <DropdownMenuItem onClick={() => handleStatusToggle(dept)} className="gap-3 font-bold text-xs cursor-pointer py-2.5 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
+                            {dept.status === 'active' ? <PowerOff className="w-3.5 h-3.5 text-amber-600" /> : <Power className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />}
                             {dept.status === 'active' ? (lang === 'ar' ? 'تعطيل' : 'Deactivate') : (lang === 'ar' ? 'تفعيل' : 'Activate')}
                           </DropdownMenuItem>
-                          <div className="h-px bg-slate-100 my-1" />
-                          <DropdownMenuItem onClick={() => setDeletingDeptId(dept.id)} className="gap-3 font-bold text-xs cursor-pointer text-red-600 focus:text-red-700 py-2.5">
+                          <div className="h-px bg-slate-100 dark:bg-slate-800 my-1" />
+                          <DropdownMenuItem onClick={() => setDeletingDeptId(dept.id)} className="gap-3 font-bold text-xs cursor-pointer text-red-600 dark:text-rose-400 focus:text-red-700 dark:focus:bg-rose-900/20 py-2.5">
                             <Trash2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'نقل للأرشيف' : 'Archive'}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -523,13 +525,13 @@ export default function DepartmentsPage() {
         </div>
 
         {/* SYSTEM NOTE - FOOTER */}
-        <div className="mt-4 flex-none bg-slate-900 rounded-lg p-3 text-white flex items-center gap-4 border border-slate-800 shadow-inner">
-          <div className="w-8 h-8 bg-emerald-500/20 rounded flex items-center justify-center text-emerald-400"><Info className="w-4 h-4" /></div>
-          <div className="flex-1">
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 leading-none mb-1">
+        <div className="mt-4 flex-none bg-slate-900 dark:bg-slate-900/80 rounded-lg p-3 text-white flex items-center gap-4 border border-slate-800 shadow-inner transition-colors duration-300">
+          <div className="w-8 h-8 bg-emerald-500/20 rounded flex items-center justify-center text-emerald-400 shrink-0"><Info className="w-4 h-4" /></div>
+          <div className="flex-1 text-right">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 leading-none mb-1">
               {lang === 'ar' ? 'بروتوكول إدارة البيانات' : 'Data Management Protocol'}
             </p>
-            <p className="text-[10px] text-slate-300 font-bold opacity-80">
+            <p className="text-[10px] text-slate-300 dark:text-slate-400 font-bold opacity-80 leading-relaxed">
               {lang === 'ar' ? 'يتم حفظ كافة الحركات في سجل التدقيق المالي. العناصر المحذوفة تخضع لفترة سماح مدتها 30 يوماً.' : 'All transactions are logged for auditing. Deleted items have a 30-day grace period.'}
             </p>
           </div>
@@ -538,9 +540,9 @@ export default function DepartmentsPage() {
 
       {/* DIALOGS */}
       <Dialog open={isAddDialogOpen} onOpenChange={(open) => !open && resetForm()}>
-        <DialogContent className="sm:max-w-[500px] rounded-lg border-slate-200 shadow-2xl p-0 overflow-hidden">
+        <DialogContent className="sm:max-w-[500px] rounded-lg border-none shadow-2xl p-0 overflow-hidden dark:bg-slate-900 transition-colors duration-300">
           <div className="premium-gradient p-6 text-white relative">
-            <DialogHeader className="text-right rtl:text-right ltr:text-left">
+            <DialogHeader className={cn("text-right rtl:text-right ltr:text-left")}>
               <DialogTitle className="text-xl font-black flex items-center gap-3 text-white">
                 <Layers className="w-5 h-5 text-emerald-300" />
                 {editingDeptId ? (lang === 'ar' ? 'تعديل القسم' : 'Edit Center') : (lang === 'ar' ? 'قسم إنتاج جديد' : 'New Work Center')}
@@ -551,11 +553,11 @@ export default function DepartmentsPage() {
             </DialogHeader>
           </div>
 
-          <form onSubmit={handleSaveDepartment} className="p-6 space-y-5 bg-white">
+          <form onSubmit={handleSaveDepartment} className="p-6 space-y-5 bg-white dark:bg-slate-900">
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
-                  <Hash className="w-3 h-3 text-emerald-600" />
+              <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
+                <Label className={cn("text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2", isRtl ? "justify-start" : "justify-start")}>
+                  <Hash className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                   {lang === 'ar' ? 'كود القسم' : 'DEPT CODE'}
                 </Label>
                 <Input 
@@ -566,60 +568,60 @@ export default function DepartmentsPage() {
                   }} 
                   placeholder="DEPT-100" 
                   className={cn(
-                    "h-10 font-bold text-xs bg-slate-50 border-slate-200",
+                    "h-10 font-bold text-xs bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 dark:text-slate-100",
                     codeError && "border-red-500 focus:ring-red-500/10"
                   )} 
                   required 
                 />
                 {codeError && (
-                  <p className="text-[9px] font-bold text-red-600 flex items-center gap-1.5 mt-1 animate-in fade-in slide-in-from-top-1">
+                  <p className={cn("text-[9px] font-bold text-red-600 dark:text-rose-400 flex items-center gap-1.5 mt-1 animate-in fade-in slide-in-from-top-1", isRtl ? "justify-start" : "justify-start")}>
                     <AlertCircle className="w-2.5 h-2.5" />
                     {codeError}
                   </p>
                 )}
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
-                  <Activity className="w-3 h-3 text-emerald-600" />
+              <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
+                <Label className={cn("text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2", isRtl ? "justify-start" : "justify-start")}>
+                  <Activity className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                   {lang === 'ar' ? 'الحالة' : 'STATUS'}
                 </Label>
-                <select value={formData.status} onChange={(e) => setFormData({...formData, status: e.target.value})} className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold focus:outline-none">
+                <select value={formData.status} onChange={(e) => setFormData({...formData, status: e.target.value})} className="w-full h-10 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-bold outline-none dark:text-slate-100 transition-colors" dir={dir}>
                   <option value="active">{lang === 'ar' ? 'نشط' : 'Active'}</option>
                   <option value="inactive">{lang === 'ar' ? 'متوقف' : 'Inactive'}</option>
                 </select>
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
-                <Languages className="w-3 h-3 text-emerald-600" />
+            <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
+              <Label className={cn("text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2", isRtl ? "justify-start" : "justify-start")}>
+                <Languages className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                 {lang === 'ar' ? 'الاسم بالعربي' : 'ARABIC NAME'}
               </Label>
-              <Input value={formData.nameAr} onChange={(e) => setFormData({...formData, nameAr: e.target.value})} className="h-10 font-bold text-xs bg-slate-50 border-slate-200" required />
+              <Input value={formData.nameAr} onChange={(e) => setFormData({...formData, nameAr: e.target.value})} className="h-10 font-bold text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 dark:text-slate-100" dir={dir} required />
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
-                <Type className="w-3 h-3 text-emerald-600" />
+            <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
+              <Label className={cn("text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2", isRtl ? "justify-start" : "justify-start")}>
+                <Type className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                 {lang === 'ar' ? 'الاسم بالإنجليزي' : 'ENGLISH NAME'}
               </Label>
-              <Input value={formData.nameEn} onChange={(e) => setFormData({...formData, nameEn: e.target.value})} className="h-10 font-bold text-xs bg-slate-50 border-slate-200" required />
+              <Input value={formData.nameEn} onChange={(e) => setFormData({...formData, nameEn: e.target.value})} className="h-10 font-bold text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 dark:text-slate-100" dir={dir} required />
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
-                <FileText className="w-3 h-3 text-emerald-600" />
+            <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
+              <Label className={cn("text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2", isRtl ? "justify-start" : "justify-start")}>
+                <FileText className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                 {lang === 'ar' ? 'وصف العمليات' : 'DESCRIPTION'}
               </Label>
-              <Textarea value={formData.descAr} onChange={(e) => setFormData({...formData, descAr: e.target.value})} className="min-h-[80px] text-xs font-medium bg-slate-50 border-slate-200 resize-none" />
+              <Textarea value={formData.descAr} onChange={(e) => setFormData({...formData, descAr: e.target.value})} className="min-h-[80px] text-xs font-medium bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 dark:text-slate-300 resize-none outline-none focus:bg-white dark:focus:bg-slate-800 transition-all" dir={dir} />
             </div>
 
-            <div className="flex gap-3 pt-2">
-              <Button type="submit" disabled={isSubmitting} className="flex-1 h-11 premium-gradient hover:opacity-90 text-white rounded-md font-black text-sm border-none shadow-md shadow-emerald-900/10">
+            <div className="flex gap-3 pt-2 border-t dark:border-slate-800">
+              <Button type="submit" disabled={isSubmitting} className="flex-1 h-11 premium-gradient hover:opacity-90 text-white rounded-md font-black text-sm border-none shadow-md shadow-emerald-900/10 transition-all active:scale-95">
                 <Save className="w-4 h-4 me-2" />
                 {lang === 'ar' ? (isSubmitting ? 'جاري الحفظ...' : 'حفظ البيانات') : 'Commit Changes'}
               </Button>
-              <Button type="button" variant="outline" onClick={resetForm} className="px-6 h-11 font-black text-slate-400 rounded-md">
+              <Button type="button" variant="outline" onClick={resetForm} className="px-6 h-11 font-black text-slate-400 dark:text-slate-500 rounded-md border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800">
                 {lang === 'ar' ? 'إلغاء' : 'Cancel'}
               </Button>
             </div>
@@ -628,23 +630,24 @@ export default function DepartmentsPage() {
       </Dialog>
 
       <AlertDialog open={!!deletingDeptId} onOpenChange={(open) => !open && setDeletingDeptId(null)}>
-        <AlertDialogContent className="max-w-[400px] rounded-lg border-none shadow-2xl p-0 overflow-hidden">
-          <div className="bg-slate-950 p-8 text-center">
+        <AlertDialogContent className="max-w-[400px] rounded-lg border-none shadow-2xl p-0 overflow-hidden dark:bg-slate-900 transition-colors duration-300">
+          <div className="bg-slate-950 p-8 text-center relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-4 opacity-5"><Layers className="w-32 h-32 text-white" /></div>
             <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20 shadow-inner">
               <History className="w-8 h-8 text-red-500" />
             </div>
             <AlertDialogTitle className="text-white text-xl font-black">{lang === 'ar' ? 'أرشفة القسم' : 'Confirm Archive'}</AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-400 font-bold mt-2 text-xs leading-relaxed">
+            <AlertDialogDescription className="text-slate-400 font-bold mt-2 text-xs leading-relaxed text-center">
               {lang === 'ar' 
                 ? 'سيتم نقل هذا القسم للأرشيف. يمكنك استعادته خلال 30 يوماً قبل الحذف النهائي.' 
                 : 'Item will be moved to archive. Recoverable for 30 days before purge.'}
             </AlertDialogDescription>
           </div>
-          <div className="bg-white p-6 flex gap-3">
-            <AlertDialogAction onClick={handleArchiveDepartment} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-md font-black">
+          <div className="bg-white dark:bg-slate-900 p-6 flex gap-3">
+            <AlertDialogAction onClick={handleArchiveDepartment} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-md font-black border-none shadow-lg transition-all active:scale-95">
               {lang === 'ar' ? 'تأكيد الأرشفة' : 'Confirm'}
             </AlertDialogAction>
-            <AlertDialogCancel onClick={() => setDeletingDeptId(null)} className="flex-1 h-11 bg-slate-50 border-slate-200 text-slate-400 rounded-md font-black">
+            <AlertDialogCancel onClick={() => setDeletingDeptId(null)} className="flex-1 h-11 bg-slate-50 dark:bg-slate-800 border-none text-slate-400 dark:text-slate-500 rounded-md font-black hover:bg-slate-100 dark:hover:bg-slate-700 transition-all">
               {lang === 'ar' ? 'تراجع' : 'Cancel'}
             </AlertDialogCancel>
           </div>
