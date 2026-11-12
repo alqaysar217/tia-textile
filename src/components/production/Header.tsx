@@ -55,14 +55,14 @@ export function Header() {
   const router = useRouter();
   const { user: authUser } = useUser();
 
-  // Fetch Actual User Document from Firestore
+  // جلب بيانات المستخدم الفعلية من Firestore
   const userDocRef = useMemo(() => 
     (!db || !authUser) ? null : doc(db, 'users', authUser.uid), 
     [db, authUser]
   );
   const { data: userProfile, loading: profileLoading } = useDoc<any>(userDocRef);
 
-  // Fetch current theme from settings
+  // جلب إعدادات الثيم
   const settingsRef = useMemo(() => !db ? null : doc(db, 'settings', 'global'), [db]);
   const { data: settings } = useDoc<any>(settingsRef);
 
@@ -109,7 +109,7 @@ export function Header() {
   const isRtl = lang === 'ar';
   const isDarkMode = mounted && (settings?.themeMode === 'dark' || (typeof document !== 'undefined' && document.documentElement.classList.contains('dark')));
 
-  // Fallback data if profile not yet loaded or doesn't exist
+  // بيانات عرض الهوية
   const displayName = userProfile?.fullName || authUser?.displayName || (isRtl ? 'مستخدم النظام' : 'System User');
   const displayRole = userProfile?.role || 'staff';
   const displayPhoto = userProfile?.photoUrl || authUser?.photoURL || 'https://picsum.photos/seed/user/200/200';
@@ -218,6 +218,9 @@ export function Header() {
       {/* PROFILE DIALOG */}
       <Dialog open={isProfileOpen} onOpenChange={setIsProfileOpen}>
         <DialogContent className="sm:max-w-[450px] p-0 overflow-hidden border-none rounded-[1.5rem] shadow-2xl dark:bg-slate-900">
+           <DialogHeader className="sr-only">
+              <DialogTitle>{isRtl ? 'الملف الشخصي للمستخدم' : 'User Profile'}</DialogTitle>
+           </DialogHeader>
            <div className="premium-gradient p-8 text-white relative overflow-hidden">
               <div className="absolute top-0 right-0 p-4 opacity-5"><UserCircle className="w-40 h-40 text-white" /></div>
               <div className="relative z-10 flex flex-col items-center">
