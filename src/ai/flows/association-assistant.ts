@@ -1,16 +1,15 @@
 'use server';
 /**
- * @fileOverview المساعد الذكي التنفيذي لنظام إنتاج الجمعية النسيجية.
- * يقوم المساعد بتحليل كامل قاعدة بيانات Firestore وتقديم تقارير دقيقة للمدير.
+ * @fileOverview المساعد الذكي التنفيذي المطور لنظام إنتاج الجمعية النسيجية.
+ * تم تحسينه لسحب تفاصيل الأصناف داخل السندات وتحليل الإنتاجية المالية والوظيفية.
  */
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getFirestore, collection, getDocs, query, where, orderBy } from 'firebase/firestore';
+import { getFirestore, collection, getDocs, query, limit, orderBy } from 'firebase/firestore';
 import { firebaseConfig } from '@/firebase/config';
 
-// تهيئة الفايربيز للسيرفر
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
@@ -26,66 +25,81 @@ const AssistantOutputSchema = z.object({
 export type AssistantOutput = z.infer<typeof AssistantOutputSchema>;
 
 /**
- * دالة جلب البيانات الحية وتحويلها إلى سياق نصي شامل للموديل
+ * دالة جلب البيانات الحية المتقدمة (تشمل تفاصيل الأصناف داخل السندات)
  */
 async function getFullSystemData() {
   try {
-    const [ordersSnap, materialsSnap, workersSnap, vouchersSnap, productsSnap] = await Promise.all([
+    const [ordersSnap, materialsSnap, workersSnap, vouchersSnap, productsSnap, warehouseSnap] = await Promise.all([
       getDocs(collection(db, 'productionOrders')),
       getDocs(collection(db, 'materials')),
       getDocs(collection(db, 'workers')),
-      getDocs(collection(db, 'vouchers')),
-      getDocs(collection(db, 'products'))
+      getDocs(query(collection(db, 'vouchers'), orderBy('date', 'desc'), limit(150))),
+      getDocs(collection(db, 'products')),
+      getDocs(collection(db, 'finishedGoodsWarehouse'))
     ]);
 
     // 1. معالجة أوامر الإنتاج
     const orders = ordersSnap.docs.map(d => {
       const data = d.data();
-      return `- أمر [${data.orderNumber}]: ${data.title} | المنتج: ${data.productId} | المستهدف: ${data.targetQty} | المنجز النهائي: ${data.completedQty} | الحالة: ${data.status}`;
+      const p = (allProducts.find(prod => prod.id === data.productId))?.nameAr || 'غير معروف';
+      return `- [${data.orderNumber}]: ${data.title} | المنتج: ${p} | المستهدف: ${data.targetQty} | المنجز: ${data.completedQty} | الحالة: ${data.status}`;
     }).filter(o => !o.includes('deleted')).join('\n');
 
-    // 2. معالجة المخزون
+    // 2. معالجة المخزون (مواد خام)
     const materials = materialsSnap.docs.map(d => {
       const data = d.data();
-      const isLow = (data.currentQty || 0) <= (data.minQty || 0);
-      return `- ${data.nameAr} (${data.code}): الرصيد الحالي [${data.currentQty} ${data.unit}] | حد الأمان: ${data.minQty} ${isLow ? '⚠️ مخزون منخفض' : ''}`;
+      return `- ${data.nameAr} (${data.code}): الرصيد [${data.currentQty} ${data.unit}] | حد الأمان: ${data.minQty}`;
     }).filter(m => !m.includes('deleted')).join('\n');
 
     // 3. معالجة القوى العاملة
-    const workers = workersSnap.docs.map(d => {
-      const data = d.data();
-      return `- ${data.fullName} (${data.workerId}): ${data.isSupervisor ? 'مشرف' : 'حرفي'} | نشط: ${data.active ? 'نعم' : 'لا'}`;
-    }).filter(w => !w.includes('deleted')).join('\n');
+    const allWorkers = workersSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
+    const workersList = allWorkers.map(w => `- ${w.fullName} (${w.workerId}): ${w.isSupervisor ? 'مشرف' : 'حرفي'} | نشط: ${w.active ? 'نعم' : 'لا'}`).join('\n');
 
-    // 4. معالجة المالية (السندات)
-    const allVouchers = vouchersSnap.docs.map(d => d.data()).filter(v => v.status !== 'deleted');
+    // 4. معالجة السندات بالتفصيل (البحث عن مادة معينة)
+    const allVouchers = vouchersSnap.docs.map(d => ({ id: d.id, ...d.data() as any })).filter(v => v.status !== 'deleted');
+    const vouchersDetail = allVouchers.slice(0, 40).map(v => {
+      const items = v.items?.map((i: any) => `${i.nameAr}(${i.qty}${i.unit})`).join(', ') || '';
+      const recipient = allWorkers.find(w => w.id === v.workerId)?.fullName || v.recipient || '---';
+      return `- سند [${v.voucherNumber}] نوع [${v.type}] تاريخ [${v.date}] مستلم [${recipient}] أصناف: [${items}]`;
+    }).join('\n');
+
+    // 5. جرد مستودع المنجز الجاهز
+    const allProducts = productsSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
+    const warehouseInv = warehouseSnap.docs.map(d => {
+      const p = allProducts.find(prod => prod.id === d.id);
+      return `- ${p?.nameAr || 'صنف غير معرف'}: ${d.data().totalQty || 0} قطعة جاهزة`;
+    }).join('\n');
+
+    // 6. ملخص مالي
     const totalWages = allVouchers.filter(v => v.type === 'production_receipt').reduce((sum, v) => sum + (v.wageAmount || 0), 0);
     const totalExpenses = allVouchers.filter(v => v.type === 'overhead_cost').reduce((sum, v) => sum + (v.totalAmount || 0), 0);
-    const materialIssues = allVouchers.filter(v => v.type === 'material_issue').length;
-    const materialReturns = allVouchers.filter(v => v.type === 'material_return').length;
 
     return `
-=== قاعدة البيانات الحية (حدثت الآن) ===
+=== قاعدة البيانات الحية (تحديث لحظي) ===
 
-[أوامر الإنتاج النشطة والمكتملة]:
+[أوامر الإنتاج (WIP)]:
 ${orders || 'لا توجد أوامر حالياً.'}
 
-[سجل المواد الخام والمخزون]:
-${materials || 'لا توجد مواد مسجلة.'}
+[مخزن المواد الخام]:
+${materials || 'لا توجد مواد.'}
 
-[قائمة الموظفين والعمال]:
-${workers || 'لا يوجد عمال مسجلون.'}
+[مستودع المنتجات الجاهزة للبيع]:
+${warehouseInv || 'المستودع فارغ.'}
 
-[الملخص المالي والعمليات]:
-- إجمالي الأجور المستحقة (من واقع سندات الاستلام): ${totalWages} ريال.
+[سجل الموظفين والعمال]:
+${workersList || 'لا يوجد عمال.'}
+
+[آخر 40 سند (تفصيلي)]:
+${vouchersDetail}
+
+[الملخص المالي]:
+- إجمالي الأجور المستحقة (من السندات): ${totalWages} ريال.
 - إجمالي المصاريف التشغيلية (كهرباء، إيجار، إلخ): ${totalExpenses} ريال.
-- عمليات صرف المواد: ${materialIssues} عملية.
-- عمليات توريد المرتجعات: ${materialReturns} عملية.
 ====================================
 `;
   } catch (error) {
     console.error("Error fetching full data:", error);
-    return "خطأ: تعذر جلب البيانات الحية من قاعدة البيانات.";
+    return "خطأ: تعذر جلب البيانات الحية.";
   }
 }
 
@@ -94,23 +108,25 @@ export async function askAssociationAssistant(input: AssistantInput): Promise<As
     const { message, history } = input;
     const apiKey = process.env.OPENROUTER_API_KEY;
 
-    if (!apiKey) {
-      return { answer: "⚠️ عذراً، مفتاح OpenRouter غير مهيأ في السيرفر." };
-    }
+    if (!apiKey) return { answer: "⚠️ مفتاح OpenRouter غير مهيأ." };
 
-    // جلب البيانات الحية ووضعها في السياق
     const liveContext = await getFullSystemData();
 
     const systemContent = `أنت "المساعد التنفيذي الأول" لجمعية الصناعات النسيجية بالروضة. 
-وظيفتك: تحليل البيانات الحية المقدمة لك والإجابة على استفسارات المدير بدقة متناهية.
+وظيفتك: تحليل البيانات الحية المقدمة لك وتقديم تقارير دقيقة ومبهرة للمدير.
 
-قواعد صارمة للتعامل:
-1. أنت تملك وصولاً كاملاً للبيانات المذكورة في "قاعدة البيانات الحية" أدناه. لا تقل أبداً "لا يمكنني الوصول" أو "أحتاج لمعلومات".
-2. استخدم الأرقام الحقيقية المذكورة في السياق فقط. إذا سألك عن مخزون "الخيوط"، ابحث عنها في قائمة المواد وأعطه الرقم بدقة.
-3. التنسيق: استخدم جداول Markdown لعرض الإحصائيات والقوائم الطويلة. استخدم الترقيم والنقاط بوضوح.
-4. الذكاء السياقي: تذكر ما قاله المدير سابقاً. إذا سأل عن "العمال" ثم قال "كم أجورهم؟"، فإنه يقصد إجمالي الأجور المذكور في الملخص المالي.
-5. الهوية: أنت خبير إداري ومالي، ردودك مهنية، واثقة، ومختصرة ومفيدة.
-6. إذا لم تجد معلومة محددة (مثل اسم عامل غير موجود في القائمة)، قل: "لم أجد هذا الاسم في السجلات الحالية المتاحة لي".
+مهامك الفائقة:
+1. جلب تفاصيل أي سند: إذا سألك المدير عن مادة معينة (مثل "خيوط قطن")، ابحث في قائمة "السندات التفصيلية" وأخبره بأرقام السندات التي وردت فيها وتواريخها والمستلم.
+2. تحليل الإنتاجية: يمكنك تحديد أفضل عامل من خلال مراجعة سندات "production_receipt" والكميات المسجلة.
+3. حالة المخزون: أعطه الأرقام بدقة من "مخزن المواد الخام" أو "مستودع المنتجات الجاهزة".
+4. تلخيص الأوامر: حلل أي أمر إنتاج، كم المتبقي له (المستهدف - المنجز) وما هي حالته.
+5. المالية: احسب التكاليف الإجمالية بناءً على المصاريف والأجور المذكورة.
+
+قواعد صارمة:
+- لا تقل "لا يمكنني الوصول". البيانات في "السياق" هي بيانات حية من Firestore.
+- استخدم جداول Markdown لعرض أي قوائم (عمال، مخزون، تكاليف).
+- كن دقيقاً جداً في الأرقام؛ لا تزيد ولا تنقص.
+- إذا لم تجد معلومة، قل: "لم أعثر على هذا السجل في البيانات الحالية، يرجى التأكد من كتابة الاسم بشكل صحيح".
 
 ${liveContext}
 
@@ -119,16 +135,12 @@ ${liveContext}
 - التخصص: حياكة المعاوز اليدوية (ملكي، حليسي، بيضاني، سلاطيني، شبواني).
 - نظام الإنتاج: تكاليف المراحل (Process Costing) والأجر بالقطعة.`;
 
-    const apiMessages: any[] = [
-      { role: 'system', content: systemContent }
-    ];
+    const apiMessages: any[] = [{ role: 'system', content: systemContent }];
 
-    // إضافة التاريخ لضمان الذاكرة الموقوتة
     if (history && Array.isArray(history)) {
       history.slice(-10).forEach(m => {
         const role = (m.role === 'user') ? 'user' : 'assistant';
-        let textContent = m.content || m.text || "";
-        if (textContent) apiMessages.push({ role, content: textContent });
+        apiMessages.push({ role, content: m.content || m.text || "" });
       });
     }
 
@@ -139,19 +151,17 @@ ${liveContext}
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
-        'X-Title': 'TIA Executive Assistant'
+        'X-Title': 'TIA Executive Intelligence'
       },
       body: JSON.stringify({
         model: 'google/gemma-2-27b-it',
         messages: apiMessages,
-        temperature: 0.1, // تقليل الحرارة لأقصى درجة لضمان الدقة ومنع الهلوسة
-        max_tokens: 2500
+        temperature: 0.1,
+        max_tokens: 3000
       })
     });
 
-    if (!response.ok) {
-      return { answer: "🌐 عذراً، هناك مشكلة في الاتصال بمحرك الذكاء الاصطناعي." };
-    }
+    if (!response.ok) return { answer: "🌐 مشكلة في الاتصال بمحرك الذكاء الاصطناعي." };
 
     const data = await response.json();
     const answer = data.choices?.[0]?.message?.content || 'أعتذر، لم أتمكن من استخلاص الإجابة.';

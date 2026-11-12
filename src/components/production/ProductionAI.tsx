@@ -11,7 +11,11 @@ import {
   Wallet,
   MessageSquare,
   History,
-  Users2
+  Users2,
+  Truck,
+  Trophy,
+  Search,
+  PieChart
 } from 'lucide-react';
 import { 
   Sheet, 
@@ -45,8 +49,8 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
   const isRtl = lang === 'ar';
 
   const welcomeMessage = isRtl 
-    ? "مرحباً بك يا مدير! أنا مساعدك التنفيذي الأول. لدي الآن رؤية كاملة على قاعدة البيانات (المخزون، الأوامر، التكاليف، والعمال). كيف يمكنني خدمتك في إدارة الجمعية اليوم؟"
-    : "Welcome Manager! I am your Executive Assistant. I now have full visibility into the database. How can I assist you today?";
+    ? "أهلاً بك يا مدير! أنا مستشارك التنفيذي. لقد قمتُ للتو بمسح كامل قاعدة البيانات؛ المخزون، أوامر الإنتاج، السندات، والعمال تحت تصرفك الآن. كيف يمكنني تحليل البيانات لك اليوم؟"
+    : "Welcome Manager! I am your executive consultant. I have scanned the entire database; inventory, orders, vouchers, and workforce are at your service. How can I analyze the data for you today?";
 
   useEffect(() => {
     if (isOpen && messages.length === 0) {
@@ -88,17 +92,19 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
   };
 
   const quickActions = [
-    { label: isRtl ? 'المخزون والنواقص' : 'Stock Analysis', icon: <Box className="w-3 h-3" />, text: isRtl ? 'اعطني تقريراً مفصلاً عن حالة المخزون والمواد التي نحتاج لشرائها فوراً؟' : 'Detailed stock report and what needs purchase?' },
-    { label: isRtl ? 'حالة الأوامر' : 'Order Status', icon: <BarChart3 className="w-3 h-3" />, text: isRtl ? 'لخص لي حالة كافة أوامر الإنتاج النشطة ونسبة المنجز النهائي منها.' : 'Summarize all active production orders and final yield.' },
-    { label: isRtl ? 'التقرير المالي' : 'Financials', icon: <Wallet className="w-3 h-3" />, text: isRtl ? 'ما هو إجمالي الأجور المستحقة وإجمالي المصاريف التشغيلية المسجلة في السندات؟' : 'Total due wages and overhead expenses?' },
-    { label: isRtl ? 'سجل العمال' : 'Workforce', icon: <Users2 className="w-3 h-3" />, text: isRtl ? 'اعطني قائمة بالمشرفين والعمال النشطين حالياً.' : 'List of supervisors and active workers.' },
+    { label: isRtl ? 'المخزون والنواقص' : 'Stock Check', icon: <Box className="w-3 h-3" />, text: isRtl ? 'اعطني جدولاً بكافة المواد الخام المتوفرة وما هي المواد التي رصيدها منخفض حالياً؟' : 'Show me a table of all raw materials and identify low stock items.' },
+    { label: isRtl ? 'حالة أوامر الإنتاج' : 'Order Pipeline', icon: <BarChart3 className="w-3 h-3" />, text: isRtl ? 'لخص لي وضع أوامر الإنتاج النشطة، وكم الكمية المتبقية لكل أمر للوصول للمستهدف؟' : 'Summarize active production orders and the remaining quantity for each.' },
+    { label: isRtl ? 'أفضل عامل هذا الشهر' : 'Top Artisan', icon: <Trophy className="w-3 h-3" />, text: isRtl ? 'بناءً على سندات استلام الإنتاج، من هو العامل الأكثر إنتاجاً لهذا الشهر وكم عدد القطع المقبولة له؟' : 'Based on production receipts, who is the top producing artisan this month?' },
+    { label: isRtl ? 'جرد المنتجات الجاهزة' : 'Finished Goods', icon: <Truck className="w-3 h-3" />, text: isRtl ? 'ما هي المنتجات الجاهزة والمتوفرة في المستودع للبيع حالياً وكم كمياتها؟' : 'What finished goods are available in the warehouse and their quantities?' },
+    { label: isRtl ? 'تحليل التكاليف' : 'Cost Analysis', icon: <PieChart className="w-3 h-3" />, text: isRtl ? 'اعطني تقريراً مالياً عن إجمالي الأجور المصروفة وإجمالي التكاليف التشغيلية المسجلة.' : 'Show me a financial report of total wages paid and overhead costs recorded.' },
+    { label: isRtl ? 'البحث في السندات' : 'Voucher Finder', icon: <Search className="w-3 h-3" />, text: isRtl ? 'ابحث في السندات الأخيرة عن أي سند يحتوي على مادة "خيوط" أو "أصباغ" وأعطني تفاصيله.' : 'Search recent vouchers for items like "Yarn" or "Dye" and show details.' },
   ];
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <SheetContent 
         side={isRtl ? "left" : "right"} 
-        className="w-full sm:max-w-[580px] p-0 border-none flex flex-col bg-white dark:bg-slate-950 shadow-2xl transition-colors duration-300"
+        className="w-full sm:max-w-[620px] p-0 border-none flex flex-col bg-white dark:bg-slate-950 shadow-2xl transition-colors duration-300"
       >
         <div className="premium-gradient p-6 text-white shrink-0 relative overflow-hidden">
            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 opacity-[0.05] pointer-events-none">
@@ -107,14 +113,14 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
 
            <SheetHeader className={cn("text-right relative z-10")}>
              <div className="flex items-center gap-4">
-               <div className="w-14 h-14 bg-white rounded-xl flex items-center justify-center border border-white/20 shadow-xl p-1 shrink-0">
+               <div className="w-14 h-14 bg-white rounded-lg flex items-center justify-center border border-white/20 shadow-xl p-1 shrink-0">
                  <img src="/images/logo.png" alt="Logo" className="w-full h-full object-contain" />
                </div>
                <div className="flex flex-col text-right">
                  <SheetTitle className="text-xl font-black text-white">{isRtl ? 'مساعد الإنتاج الذكي' : 'Production AI'}</SheetTitle>
                  <div className="text-[10px] font-black text-emerald-200/60 uppercase tracking-widest mt-1 flex items-center gap-2">
                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                   {isRtl ? 'متصل بقاعدة البيانات الحية' : 'Live DB Sync Enabled'}
+                   {isRtl ? 'رؤية كاملة على قاعدة البيانات' : 'Full DB Visibility Enabled'}
                  </div>
                </div>
              </div>
@@ -153,7 +159,7 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
         </ScrollArea>
 
         <div className="p-6 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 shrink-0 transition-colors duration-300">
-           <div className="flex gap-2 overflow-x-auto no-scrollbar mb-4 pb-1">
+           <div className="flex gap-2 overflow-x-auto no-scrollbar mb-4 pb-2">
               {quickActions.map((action, i) => (
                 <Button 
                   key={i} 
@@ -173,7 +179,7 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
               <Input 
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder={isRtl ? "اطلب تقريراً عن المخزون أو الأوامر أو التكاليف..." : "Request a report on stock, orders or costs..."}
+                placeholder={isRtl ? "اطلب جرد، ابحث عن مادة، أو اسأل عن إنتاجية عامل..." : "Request audit, search item, or ask about worker productivity..."}
                 className={cn(
                   "h-14 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-bold focus:ring-emerald-500/10 focus:border-emerald-500 dark:text-slate-100 transition-all",
                   isRtl ? "pr-5 pl-14 text-right" : "pl-5 pr-14 text-left"
@@ -194,7 +200,7 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
            
            <div className="mt-4 flex items-center justify-center gap-2 opacity-30 text-[8px] font-black uppercase tracking-[0.3em] dark:text-slate-500">
               <History className="w-3 h-3" />
-              Conversation context is preserved for better accuracy
+              Executive Intelligence Engine • Context Sync Active
            </div>
         </div>
       </SheetContent>
