@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useCallback } from 'react';
@@ -68,7 +69,7 @@ export default function UsersPermissionsPage() {
   const db = useFirestore();
   const isRtl = lang === 'ar';
 
-  // استيراد الصلاحيات من المحرك المركزي
+  // استيراد الصلاحيات من المحرك المركزي للمرحلة السادسة
   const { permissions, isAdmin } = useProduction();
   const canCreate = isAdmin || permissions.settings?.create;
   const canEdit = isAdmin || permissions.settings?.edit;
@@ -125,7 +126,10 @@ export default function UsersPermissionsPage() {
   }, [users, search, roleFilter, statusFilter]);
 
   const handleEditClick = (user: any) => {
-    if (!canEdit) return;
+    if (!canEdit) {
+      toast({ variant: "destructive", title: isRtl ? "غير مسموح بتعديل الصلاحيات" : "Access Denied" });
+      return;
+    }
     setEditingUserId(user.id);
     setFormData({
       fullName: user.fullName || '',
@@ -143,7 +147,7 @@ export default function UsersPermissionsPage() {
     e.preventDefault();
     if (!db || isSubmitting || isCompressing) return;
 
-    // حماية إضافية برمجية
+    // حماية تنفيذية برمجية
     if (editingUserId && !canEdit) {
       toast({ variant: "destructive", title: isRtl ? "غير مسموح بالتعديل" : "Permission Denied" });
       return;
@@ -205,14 +209,19 @@ export default function UsersPermissionsPage() {
   };
 
   const handleExportCSV = () => {
+    if (!isAdmin && !permissions.reports?.read) {
+       toast({ variant: "destructive", title: isRtl ? "غير مسموح بالتصدير" : "Export Denied" });
+       return;
+    }
     const headers = ['Full Name', 'Email', 'Role', 'Status'];
     const rows = filteredUsers.map(u => [u.fullName, u.email, u.role, u.active ? 'Active' : 'Inactive']);
     const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
     const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.href = url; link.setAttribute('download', `Users_${Date.now()}.csv`);
+    link.href = url; link.setAttribute('download', `UsersList_${Date.now()}.csv`);
     document.body.appendChild(link); link.click();
+    document.body.removeChild(link);
   };
 
   return (

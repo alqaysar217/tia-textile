@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -37,7 +38,7 @@ export default function GeneralSettingsPage() {
   const { lang, dir, setLang } = useTranslation();
   const db = useFirestore();
   
-  // استيراد الصلاحيات
+  // استيراد الصلاحيات من المحرك المركزي للمرحلة السادسة
   const { permissions, isAdmin } = useProduction();
   const canEdit = isAdmin || permissions.settings?.edit;
   
@@ -71,7 +72,7 @@ export default function GeneralSettingsPage() {
   const handleSaveSettings = async () => {
     if (!db || isSubmitting) return;
 
-    // حماية برمجية
+    // حماية تنفيذية برمجية
     if (!canEdit) {
       toast({ variant: "destructive", title: lang === 'ar' ? "غير مسموح بتعديل الإعدادات" : "Permission Denied" });
       return;

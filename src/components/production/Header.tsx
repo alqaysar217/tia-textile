@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -51,6 +52,7 @@ import { cn } from '@/lib/utils';
 import { ProductionAI } from './ProductionAI';
 import { useRouter } from 'next/navigation';
 import { toast } from '@/hooks/use-toast';
+import { useProduction } from '@/app/production/ProductionContext';
 
 export function Header() {
   const [mounted, setMounted] = useState(false);
@@ -70,12 +72,15 @@ export function Header() {
   const router = useRouter();
   const { user: authUser } = useUser();
 
+  // استيراد الصلاحيات من المحرك المركزي
+  const { permissions, isAdmin } = useProduction();
+
   // جلب بيانات المستخدم الحية
   const userDocRef = useMemo(() => 
     (!db || !authUser) ? null : doc(db, 'users', authUser.uid), 
     [db, authUser]
   );
-  const { data: userProfile, loading: profileLoading } = useDoc<any>(userDocRef);
+  const { data: userProfile } = useDoc<any>(userDocRef);
 
   // إعدادات الثيم
   const settingsRef = useMemo(() => !db ? null : doc(db, 'settings', 'global'), [db]);
@@ -167,7 +172,6 @@ export function Header() {
     if (!db || !authUser || isSaving) return;
     setIsSaving(true);
     try {
-      // إذا كان المستخدم أول مرة يسجل بياناته وهو المدير، نضمن له صلاحيات الأدمن
       const isInitialAdmin = !userProfile && authUser.email === 'alqaysarpc219@gmail.com';
       
       const updatedData = {
@@ -181,7 +185,6 @@ export function Header() {
         ...updatedData,
         createdAt: userProfile?.createdAt || serverTimestamp(),
         active: true,
-        // إذا كان أدمن جديد، نمنحه كل الصلاحيات افتراضياً
         ...(isInitialAdmin && {
           permissions: {
             dashboard: { read: true, create: true, edit: true, delete: true },
@@ -205,7 +208,6 @@ export function Header() {
       setIsEditing(false);
     } catch (err) {
       console.error(err);
-      toast({ variant: "destructive", title: "Error updating profile" });
     } finally {
       setIsSaving(false);
     }
@@ -217,6 +219,9 @@ export function Header() {
   const displayName = userProfile?.fullName || authUser?.displayName || (isRtl ? 'مستخدم النظام' : 'System User');
   const displayRole = userProfile?.role || (authUser?.email === 'alqaysarpc219@gmail.com' ? 'admin' : 'staff');
   const displayPhoto = userProfile?.photoUrl || authUser?.photoURL || '';
+
+  // السماح للمدير أو من يملك صلاحية التقارير فقط بالوصول للمساعد الذكي
+  const canAccessAI = isAdmin || permissions.reports?.read;
 
   return (
     <header className="h-20 bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between px-6 md:px-10 z-20 shadow-sm transition-colors duration-300">
@@ -240,14 +245,16 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/50 p-1 rounded-xl border border-slate-100 dark:border-slate-800">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => setIsAIOpen(true)}
-            className="text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-white dark:hover:bg-slate-800 rounded-lg h-9 w-9 transition-all"
-          >
-            <Sparkles className="w-5 h-5" />
-          </Button>
+          {canAccessAI && (
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => setIsAIOpen(true)}
+              className="text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-white dark:hover:bg-slate-800 rounded-lg h-9 w-9 transition-all"
+            >
+              <Sparkles className="w-5 h-5" />
+            </Button>
+          )}
 
           <Button 
             variant="ghost" 
@@ -324,7 +331,6 @@ export function Header() {
            </DialogHeader>
            
            {isEditing ? (
-             /* EDIT MODE */
              <div className="flex flex-col">
                <div className="premium-gradient p-6 text-white text-right">
                   <h3 className="text-xl font-black">{isRtl ? 'تحديث البيانات الشخصية' : 'Edit Profile'}</h3>
@@ -351,12 +357,6 @@ export function Header() {
                       <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2 justify-start"><UserCheck className="w-3 h-3 text-emerald-600" /> {isRtl ? 'الاسم الكامل' : 'FULL NAME'}</Label>
                       <Input value={profileForm.fullName} onChange={(e) => setProfileForm({...profileForm, fullName: e.target.value})} className="h-11 font-bold text-xs bg-slate-50 dark:bg-slate-800 dark:text-white" required />
                     </div>
-                    {displayRole !== 'admin' && (
-                      <div className="space-y-1.5 text-right opacity-50 pointer-events-none">
-                        <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2 justify-start"><ShieldCheck className="w-3 h-3" /> {isRtl ? 'الدور الوظيفي' : 'ROLE'}</Label>
-                        <Input value={displayRole} className="h-11 bg-slate-100 dark:bg-slate-800" disabled />
-                      </div>
-                    )}
                   </div>
 
                   <div className="flex gap-3 pt-4">
@@ -369,7 +369,6 @@ export function Header() {
                </div>
              </div>
            ) : (
-             /* VIEW MODE */
              <>
                <div className="premium-gradient p-8 text-white relative overflow-hidden">
                   <div className="absolute top-0 right-0 p-4 opacity-10"><Shield className="w-32 h-32 text-white" /></div>

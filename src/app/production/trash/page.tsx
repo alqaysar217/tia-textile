@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -55,7 +56,7 @@ export default function TrashPage() {
   const db = useFirestore();
   const [search, setSearch] = useState('');
   
-  // استيراد الصلاحيات
+  // استيراد الصلاحيات من المحرك المركزي للمرحلة السادسة
   const { permissions, isAdmin } = useProduction();
   const canRestore = isAdmin || permissions.trash?.edit;
   const canPurge = isAdmin || permissions.trash?.delete;
@@ -103,7 +104,7 @@ export default function TrashPage() {
   const handleAction = async () => {
     if (!db || !selectedItem || !actionType || isSubmitting) return;
 
-    // حماية برمجية
+    // حماية تنفيذية برمجية
     if (actionType === 'restore' && !canRestore) {
       toast({ variant: "destructive", title: lang === 'ar' ? "غير مسموح بالاستعادة" : "Permission Denied" });
       return;
@@ -144,6 +145,7 @@ export default function TrashPage() {
       toast({ title: lang === 'ar' ? "تم الإجراء بنجاح" : "Success" });
     } catch (err) {
       console.error(err);
+      toast({ variant: "destructive", title: "Action failed" });
     } finally {
       setIsSubmitting(false);
       setSelectedItem(null);
