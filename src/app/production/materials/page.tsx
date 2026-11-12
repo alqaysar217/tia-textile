@@ -289,7 +289,7 @@ export default function MaterialsPage() {
   };
 
   return (
-    <Tabs value={activeTab} onValueChange={setActiveTab} dir={dir} className="flex flex-col h-full bg-[#f1f5f9] overflow-hidden">
+    <Tabs value={activeTab} onValueChange={setActiveTab} dir={dir} className="flex flex-col h-full bg-[#f1f5f9] dark:bg-slate-950 overflow-hidden transition-colors duration-300">
       {/* HEADER WITH INTEGRATED TABS */}
       <MaterialsHeader 
         lang={lang} dir={dir} search={search} setSearch={setSearch} stats={stats} loading={mLoading}
@@ -317,13 +317,13 @@ export default function MaterialsPage() {
         </div>
 
         {/* SYSTEM FOOTER */}
-        <div className="mt-4 flex-none bg-slate-900 rounded-lg p-3 text-white flex items-center gap-4 border border-slate-800 shadow-inner">
+        <div className="mt-4 flex-none bg-slate-900 dark:bg-slate-900/80 rounded-lg p-3 text-white flex items-center gap-4 border border-slate-800 shadow-inner transition-colors duration-300">
           <div className="w-8 h-8 bg-emerald-500/20 rounded flex items-center justify-center text-emerald-400"><Info className="w-4 h-4" /></div>
           <div className="flex-1 text-right">
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 leading-none mb-1">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 leading-none mb-1">
               {isRtl ? 'بروتوكول حماية المخزون' : 'Stock Protection Protocol'}
             </p>
-            <p className="text-[10px] text-slate-300 font-bold opacity-80">
+            <p className="text-[10px] text-slate-300 dark:text-slate-400 font-bold opacity-80">
               {isRtl ? 'كل حركة توريد أو صرف موثقة تاريخياً لضمان الشفافية التامة في أرصدة المستودعات.' : 'Every supply or issue is historically documented to ensure full transparency.'}
             </p>
           </div>
@@ -344,9 +344,9 @@ export default function MaterialsPage() {
       />
 
       <AlertDialog open={!!deletingMatId} onOpenChange={(open) => !open && setDeletingMatId(null)}>
-        <AlertDialogContent className="max-w-[400px] rounded-lg border-none shadow-2xl p-0 overflow-hidden text-right" dir={dir}>
+        <AlertDialogContent className="max-w-[400px] rounded-lg border-none shadow-2xl p-0 overflow-hidden text-right dark:bg-slate-900" dir={dir}>
           <div className="bg-slate-950 p-8 text-center">
-            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20">
+            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20 shadow-inner">
               <History className="w-8 h-8 text-red-500" />
             </div>
             <AlertDialogTitle className="text-white text-xl font-black">{isRtl ? 'أرشفة الصنف' : 'Confirm Archive'}</AlertDialogTitle>
@@ -354,11 +354,11 @@ export default function MaterialsPage() {
               {isRtl ? 'سيتم نقل هذه المادة للأرشيف. يمكنك استعادتها لاحقاً من سلة المهملات.' : 'Item will be moved to archive.'}
             </AlertDialogDescription>
           </div>
-          <div className="bg-white p-6 flex gap-3">
-            <AlertDialogAction onClick={handleArchiveMaterial} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-md font-black">
+          <div className="bg-white dark:bg-slate-900 p-6 flex gap-3">
+            <AlertDialogAction onClick={handleArchiveMaterial} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-md font-black border-none shadow-lg">
               {isRtl ? 'تأكيد' : 'Confirm'}
             </AlertDialogAction>
-            <AlertDialogCancel className="flex-1 h-11 bg-slate-50 border-slate-200 text-slate-400 rounded-md font-black">
+            <AlertDialogCancel className="flex-1 h-11 bg-slate-50 dark:bg-slate-800 border-none text-slate-400 dark:text-slate-500 rounded-md font-black hover:bg-slate-100 dark:hover:bg-slate-700">
               {isRtl ? 'تراجع' : 'Cancel'}
             </AlertDialogCancel>
           </div>
