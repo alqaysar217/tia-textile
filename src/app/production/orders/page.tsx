@@ -66,6 +66,7 @@ import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
+import { useProduction } from '../ProductionContext';
 
 export default function ProductionOrdersPage() {
   const { lang, dir } = useTranslation();
@@ -77,6 +78,12 @@ export default function ProductionOrdersPage() {
   const [completingOrder, setCompletingOrder] = useState<any | null>(null);
   const [deletingOrder, setDeletingOrder] = useState<any | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // استيراد الصلاحيات
+  const { permissions, isAdmin } = useProduction();
+  const canCreate = isAdmin || permissions.orders?.create;
+  const canEdit = isAdmin || permissions.orders?.edit;
+  const canDelete = isAdmin || permissions.orders?.delete;
 
   // Form State
   const [formData, setFormData] = useState({
@@ -125,6 +132,7 @@ export default function ProductionOrdersPage() {
 
   const handleEditClick = (order: any, e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!canEdit) return;
     setEditingOrderId(order.id);
     setFormData({
       title: order.title || '',
@@ -139,6 +147,16 @@ export default function ProductionOrdersPage() {
   const handleSaveOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!db || isSubmitting) return;
+
+    // حماية برمجية إضافية
+    if (editingOrderId && !canEdit) {
+      toast({ variant: "destructive", title: lang === 'ar' ? "غير مسموح بالتعديل" : "Access Denied" });
+      return;
+    }
+    if (!editingOrderId && !canCreate) {
+      toast({ variant: "destructive", title: lang === 'ar' ? "غير مسموح بالإنشاء" : "Access Denied" });
+      return;
+    }
 
     setIsSubmitting(true);
     const orderData = {
@@ -178,6 +196,8 @@ export default function ProductionOrdersPage() {
 
   const handleCompleteOrder = async () => {
     if (!db || !completingOrder || isSubmitting) return;
+    if (!canEdit) return;
+
     setIsSubmitting(true);
     try {
       await updateDoc(doc(db, 'productionOrders', completingOrder.id), {
@@ -195,7 +215,7 @@ export default function ProductionOrdersPage() {
   };
 
   const handleDeleteOrder = async () => {
-    if (!db || !deletingOrder) return;
+    if (!db || !deletingOrder || !canDelete) return;
     
     const hasVouchers = allReceipts?.some(r => r.orderId === deletingOrder.id && r.status !== 'deleted');
     if (hasVouchers) {
@@ -247,19 +267,21 @@ export default function ProductionOrdersPage() {
             <div className="relative">
               <Search className={cn("absolute top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500", dir === 'rtl' ? "right-3" : "left-3")} />
               <Input 
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={lang === 'ar' ? 'بحث سريع...' : 'Quick search...'}
+                value={search} 
+                onChange={(e) => setSearch(e.target.value)} 
+                placeholder={lang === 'ar' ? 'بحث سريع...' : 'Quick search...'} 
                 className={cn(
                   dir === 'rtl' ? 'pr-10' : 'pl-10',
                   "h-10 w-64 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-xs font-bold dark:text-slate-100"
                 )}
               />
             </div>
-            <Button onClick={() => setIsAddDialogOpen(true)} className="h-10 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 transition-all border-none">
-              <Plus className="w-4 h-4" />
-              {lang === 'ar' ? 'أمر جديد' : 'New Order'}
-            </Button>
+            {canCreate && (
+              <Button onClick={() => setIsAddDialogOpen(true)} className="h-10 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 transition-all border-none">
+                <Plus className="w-4 h-4" />
+                {lang === 'ar' ? 'أمر جديد' : 'New Order'}
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -358,17 +380,24 @@ export default function ProductionOrdersPage() {
                         <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800" onClick={(e) => e.stopPropagation()}><MoreVertical className="w-4 h-4 text-slate-400 dark:text-slate-500" /></Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-56 rounded-xl shadow-xl dark:bg-slate-900 dark:border-slate-800">
-                        <DropdownMenuItem onClick={(e) => handleEditClick(order, e)} className="gap-2 font-bold py-2 cursor-pointer text-xs dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800"><Edit2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'تعديل بيانات الدفعة' : 'Edit Specs'}</DropdownMenuItem>
+                        {canEdit && (
+                          <>
+                            <DropdownMenuItem onClick={(e) => handleEditClick(order, e)} className="gap-2 font-bold py-2 cursor-pointer text-xs dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
+                              <Edit2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'تعديل بيانات الدفعة' : 'Edit Specs'}
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator className="dark:bg-slate-800" />
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setCompletingOrder(order); }} className="gap-2 font-bold py-2 text-emerald-600 dark:text-emerald-400 cursor-pointer text-xs focus:bg-emerald-50 dark:focus:bg-emerald-900/20">
+                              <CheckCircle2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'إتمام وإغلاق الطلب' : 'Complete & Close Order'}
+                            </DropdownMenuItem>
+                          </>
+                        )}
                         
-                        <DropdownMenuSeparator className="dark:bg-slate-800" />
-                        
-                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setCompletingOrder(order); }} className="gap-2 font-bold py-2 text-emerald-600 dark:text-emerald-400 cursor-pointer text-xs focus:bg-emerald-50 dark:focus:bg-emerald-900/20">
-                          <CheckCircle2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'إتمام وإغلاق الطلب' : 'Complete & Close Order'}
-                        </DropdownMenuItem>
-                        
-                        <DropdownMenuSeparator className="dark:bg-slate-800" />
-                        
-                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setDeletingOrder(order); }} className="gap-2 font-bold py-2 text-rose-600 dark:text-rose-400 cursor-pointer text-xs focus:bg-rose-50 dark:focus:bg-rose-900/20"><Trash2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'نقل للأرشيف' : 'Archive Order'}</DropdownMenuItem>
+                        {canDelete && (
+                          <>
+                            <DropdownMenuSeparator className="dark:bg-slate-800" />
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setDeletingOrder(order); }} className="gap-2 font-bold py-2 text-rose-600 dark:text-rose-400 cursor-pointer text-xs focus:bg-rose-50 dark:focus:bg-rose-900/20"><Trash2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'نقل للأرشيف' : 'Archive Order'}</DropdownMenuItem>
+                          </>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TooltipProvider>
@@ -417,7 +446,7 @@ export default function ProductionOrdersPage() {
             </div>
             <div className="space-y-1.5">
               <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500">{lang === 'ar' ? 'ملاحظات إضافية' : 'NOTES'}</Label>
-              <Textarea value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} className="min-h-[80px] bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 resize-none text-xs font-medium dark:text-slate-300" />
+              <Textarea value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} className="min-h-[80px] bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 resize-none text-xs font-medium dark:text-slate-300" />
             </div>
             <div className="flex gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
               <Button type="submit" disabled={isSubmitting} className="flex-1 h-12 premium-gradient text-white font-black">{isSubmitting ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : <Save className="w-4 h-4 me-2" />}{lang === 'ar' ? 'حفظ البيانات' : 'Commit'}</Button>

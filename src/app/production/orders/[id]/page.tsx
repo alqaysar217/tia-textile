@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo, useState, useCallback, useRef, useEffect } from 'react';
@@ -77,6 +78,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from '@/hooks/use-toast';
 import { toPng } from 'html-to-image';
 import { VoucherTemplate } from '@/components/production/VoucherTemplate';
+import { useProduction } from '../../ProductionContext';
 
 export default function OrderDetailsDashboard() {
   const params = useParams();
@@ -91,6 +93,10 @@ export default function OrderDetailsDashboard() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [viewingVoucher, setViewingVoucher] = useState<any | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+
+  // استيراد الصلاحيات
+  const { permissions, isAdmin } = useProduction();
+  const canEdit = isAdmin || permissions.orders?.edit;
 
   // States for Stage Log Filtering
   const [stageSearch, setStageSearch] = useState('');
@@ -175,7 +181,7 @@ export default function OrderDetailsDashboard() {
   });
 
   const handleOpenEdit = () => {
-    if (!order) return;
+    if (!order || !canEdit) return;
     setEditFormDate({
       title: order.title || '',
       productId: order.productId || '',
@@ -188,7 +194,7 @@ export default function OrderDetailsDashboard() {
 
   const handleUpdateOrder = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!db || !order || isSubmitting) return;
+    if (!db || !order || isSubmitting || !canEdit) return;
 
     setIsSubmitting(true);
     try {
@@ -340,7 +346,7 @@ export default function OrderDetailsDashboard() {
       let valB = b[costSortBy === 'amount' ? 'totalAmount' : costSortBy] ?? '';
       if (costSortBy === 'date') return costSortOrder === 'asc' ? new Date(valA).getTime() - new Date(valB).getTime() : new Date(valB).getTime() - new Date(valA).getTime();
       if (costSortBy === 'amount') return costSortOrder === 'asc' ? Number(valA) - Number(valB) : Number(valB) - Number(valA);
-      return sortOrder === 'asc' ? String(valA).localeCompare(String(valB), 'ar') : String(valB).localeCompare(String(valA), 'ar');
+      return costSortOrder === 'asc' ? String(valA).localeCompare(String(valB), 'ar') : String(valB).localeCompare(String(valA), 'ar');
     });
   }, [vouchers, costSearch, costSortBy, costSortOrder]);
 
@@ -562,10 +568,12 @@ export default function OrderDetailsDashboard() {
                     <ClipboardList className="w-4 h-4 text-emerald-600" />
                     {isRtl ? 'سجل المواصفات الفنية المعتمد' : 'MASTER LEDGER'}
                   </h3>
-                  <Button variant="outline" size="sm" onClick={handleOpenEdit} className="h-8 px-4 rounded-lg font-black text-[10px] gap-2 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 transition-all shadow-sm">
-                    <Edit2 className="w-3.5 h-3.5 text-emerald-600" />
-                    {isRtl ? 'تعديل البيانات' : 'EDIT SPECS'}
-                  </Button>
+                  {canEdit && (
+                    <Button variant="outline" size="sm" onClick={handleOpenEdit} className="h-8 px-4 rounded-lg font-black text-[10px] gap-2 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 transition-all shadow-sm">
+                      <Edit2 className="w-3.5 h-3.5 text-emerald-600" />
+                      {isRtl ? 'تعديل البيانات' : 'EDIT SPECS'}
+                    </Button>
+                  )}
                </div>
 
                <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900" dir={dir}>
@@ -906,11 +914,11 @@ export default function OrderDetailsDashboard() {
                         </DropdownMenuItem>
                         <DropdownMenuSeparator className="dark:bg-slate-800" />
                         <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest">VOUCHER TYPE</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => setStageTypeFilter('all')} className="text-xs font-bold flex justify-between cursor-pointer py-2 dark:text-slate-300">{isRtl ? 'الكل' : 'All'}{stageTypeFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setStageTypeFilter('material_issue')} className="text-xs font-bold flex justify-between cursor-pointer py-2 dark:text-slate-300">{isRtl ? 'صرف المواد' : 'Material Issue'}{stageTypeFilter === 'material_issue' && <Check className="w-3.5 h-3.5 text-emerald-600" />}</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setStageTypeFilter('production_receipt')} className="text-xs font-bold flex justify-between cursor-pointer py-2 dark:text-slate-300">{isRtl ? 'استلام الانتاج' : 'Receipt'}{stageTypeFilter === 'production_receipt' && <Check className="w-3.5 h-3.5 text-emerald-600" />}</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setStageTypeFilter('material_return')} className="text-xs font-bold flex justify-between cursor-pointer py-2 dark:text-slate-300">{isRtl ? 'توثيق المرتجع' : 'Return'}{stageTypeFilter === 'material_return' && <Check className="w-3.5 h-3.5 text-emerald-600" />}</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setStageTypeFilter('wage_payment')} className="text-xs font-bold flex justify-between cursor-pointer py-2 dark:text-slate-300">{isRtl ? 'صرف الاجور' : 'Wage Payment'}{stageTypeFilter === 'wage_payment' && <Check className="w-3.5 h-3.5 text-emerald-600" />}</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setStageTypeFilter('all')} className="text-xs font-bold flex justify-between cursor-pointer py-2.5 dark:text-slate-300">{isRtl ? 'الكل' : 'All'}{stageTypeFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setStageTypeFilter('material_issue')} className="text-xs font-bold flex justify-between cursor-pointer py-2.5 dark:text-slate-300">{isRtl ? 'صرف المواد' : 'Material Issue'}{stageTypeFilter === 'material_issue' && <Check className="w-3.5 h-3.5 text-emerald-600" />}</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setStageTypeFilter('production_receipt')} className="text-xs font-bold flex justify-between cursor-pointer py-2.5 dark:text-slate-300">{isRtl ? 'استلام الانتاج' : 'Receipt'}{stageTypeFilter === 'production_receipt' && <Check className="w-3.5 h-3.5 text-emerald-600" />}</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setStageTypeFilter('material_return')} className="text-xs font-bold flex justify-between cursor-pointer py-2.5 dark:text-slate-300">{isRtl ? 'توثيق المرتجع' : 'Return'}{stageTypeFilter === 'material_return' && <Check className="w-3.5 h-3.5 text-emerald-600" />}</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setStageTypeFilter('wage_payment')} className="text-xs font-bold flex justify-between cursor-pointer py-2.5 dark:text-slate-300">{isRtl ? 'صرف الاجور' : 'Wage Payment'}{stageTypeFilter === 'wage_payment' && <Check className="w-3.5 h-3.5 text-emerald-600" />}</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
