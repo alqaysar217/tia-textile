@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useCallback } from 'react';
@@ -185,47 +184,47 @@ export default function OrderCostAnalysisReport() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#f8fafc] overflow-hidden" dir={dir}>
+    <div className="flex flex-col h-full bg-[#f8fafc] dark:bg-slate-950 overflow-hidden transition-colors duration-300" dir={dir}>
       
       {/* HEADER WITH INTEGRATED FILTERS */}
-      <div className="flex-none bg-white border-b border-slate-200 px-6 py-4 shadow-sm z-30">
+      <div className="flex-none bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-4 shadow-sm z-30">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div className="flex items-center gap-4">
-            <div className="p-2.5 bg-slate-900 rounded-lg text-white shadow-lg"><Calculator className="w-5 h-5 text-emerald-400" /></div>
+            <div className="p-2.5 bg-slate-900 dark:bg-emerald-900/20 rounded-lg text-white shadow-lg"><Calculator className="w-5 h-5 text-emerald-400" /></div>
             <div>
-              <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+              <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                 <span>{isRtl ? 'التقارير' : 'REPORTS'}</span>
                 <ChevronRight className={cn("w-3 h-3", isRtl ? "rotate-180" : "")} />
-                <span className="text-emerald-600">{isRtl ? 'تحليل تكاليف الأوامر' : 'BATCH COSTING'}</span>
+                <span className="text-emerald-600 dark:text-emerald-400">{isRtl ? 'تحليل تكاليف الأوامر' : 'BATCH COSTING'}</span>
               </div>
-              <h1 className="text-xl font-black text-slate-900 leading-tight">{isRtl ? 'تحليل ربحية وتكاليف الإنتاج' : 'Profitability & Cost Analysis'}</h1>
+              <h1 className="text-xl font-black text-slate-900 dark:text-slate-100 leading-tight">{isRtl ? 'تحليل ربحية وتكاليف الإنتاج' : 'Profitability & Cost Analysis'}</h1>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-xl border border-slate-200">
-            <div className="relative w-48 md:w-64">
-              <Search className={cn("absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400", isRtl ? "right-3" : "left-3")} />
+          <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800/50 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 w-full lg:w-auto">
+            <div className="relative flex-1 lg:w-64">
+              <Search className={cn("absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 dark:text-slate-500", isRtl ? "right-3" : "left-3")} />
               <Input 
                 value={search} 
                 onChange={(e) => setSearch(e.target.value)} 
                 placeholder={isRtl ? 'بحث بالأمر أو المنتج...' : 'Search...'} 
-                className={cn("h-9 bg-white border-slate-200 text-[10px] font-bold", isRtl ? "pr-9" : "pl-9")} 
+                className={cn("h-9 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-[10px] font-bold dark:text-slate-100", isRtl ? "pr-9" : "pl-9")} 
               />
             </div>
 
-            <div className="flex items-center gap-1 px-1 border-x border-slate-200">
+            <div className="flex items-center gap-1 px-1 border-x border-slate-200 dark:border-slate-700">
                <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 transition-all", (dateFrom || dateTo) && "border-emerald-500 bg-emerald-50")}>
-                       <CalendarDays className={cn("w-4 h-4", (dateFrom || dateTo) ? "text-emerald-600" : "text-slate-400")} />
+                    <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all", (dateFrom || dateTo) && "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20")}>
+                       <CalendarDays className={cn("w-4 h-4", (dateFrom || dateTo) ? "text-emerald-600" : "text-slate-400 dark:text-slate-600")} />
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent align={isRtl ? "start" : "end"} className="w-72 p-4 rounded-xl shadow-2xl border-slate-200">
+                  <PopoverContent align={isRtl ? "start" : "end"} className="w-72 p-4 rounded-xl shadow-2xl border-slate-200 dark:border-slate-800 dark:bg-slate-900">
                      <div className="space-y-4 text-right">
-                        <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b pb-2"><CalendarDays className="w-3.5 h-3.5" />{isRtl ? 'تصفية زمنية' : 'DATE RANGE'}</div>
+                        <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest border-b dark:border-slate-800 pb-2"><CalendarDays className="w-3.5 h-3.5" />{isRtl ? 'تصفية زمنية' : 'DATE RANGE'}</div>
                         <div className="grid grid-cols-2 gap-3">
-                           <div className="space-y-1.5"><Label className="text-[9px] font-black text-slate-400">{isRtl ? 'من' : 'FROM'}</Label><Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-9 text-[10px] font-bold" /></div>
-                           <div className="space-y-1.5"><Label className="text-[9px] font-black text-slate-400">{isRtl ? 'إلى' : 'TO'}</Label><Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-9 text-[10px] font-bold" /></div>
+                           <div className="space-y-1.5"><Label className="text-[9px] font-black text-slate-400 dark:text-slate-500">{isRtl ? 'من' : 'FROM'}</Label><Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-9 text-[10px] font-bold dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100" /></div>
+                           <div className="space-y-1.5"><Label className="text-[9px] font-black text-slate-400 dark:text-slate-500">{isRtl ? 'إلى' : 'TO'}</Label><Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-9 text-[10px] font-bold dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100" /></div>
                         </div>
                         {(dateFrom || dateTo) && <Button variant="link" onClick={() => { setDateFrom(''); setDateTo(''); }} className="text-[9px] h-auto p-0 font-bold text-rose-500 underline uppercase w-full">{isRtl ? 'إعادة تعيين' : 'RESET'}</Button>}
                      </div>
@@ -234,16 +233,16 @@ export default function OrderCostAnalysisReport() {
 
                <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 transition-all", productFilter !== 'all' && "border-emerald-500 bg-emerald-50")}>
-                       <ShoppingBag className={cn("w-4 h-4", productFilter !== 'all' ? "text-emerald-600" : "text-slate-400")} />
+                    <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all", productFilter !== 'all' && "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20")}>
+                       <ShoppingBag className={cn("w-4 h-4", productFilter !== 'all' ? "text-emerald-600" : "text-slate-400 dark:text-slate-500")} />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align={isRtl ? "start" : "end"} className="w-64 rounded-xl shadow-xl border-slate-200">
-                     <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'حسب نوع المنتج' : 'BY PRODUCT'}</DropdownMenuLabel>
+                  <DropdownMenuContent align={isRtl ? "start" : "end"} className="w-64 rounded-xl shadow-xl border-slate-200 dark:border-slate-800 dark:bg-slate-900">
+                     <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest">{isRtl ? 'حسب نوع المنتج' : 'BY PRODUCT'}</DropdownMenuLabel>
                      <ScrollArea className="h-48">
-                        <DropdownMenuItem onClick={() => setProductFilter('all')} className="flex justify-between text-xs font-bold cursor-pointer">{isRtl ? 'جميع المنتجات' : 'All Products'}{productFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setProductFilter('all')} className="flex justify-between text-xs font-bold cursor-pointer dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">{isRtl ? 'جميع المنتجات' : 'All Products'}{productFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}</DropdownMenuItem>
                         {allProducts?.map(p => (
-                          <DropdownMenuItem key={p.id} onClick={() => setProductFilter(p.id)} className="flex justify-between text-xs font-bold cursor-pointer">
+                          <DropdownMenuItem key={p.id} onClick={() => setProductFilter(p.id)} className="flex justify-between text-xs font-bold cursor-pointer dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
                             {p.nameAr}
                             {productFilter === p.id && <Check className="w-3.5 h-3.5 text-emerald-600" />}
                           </DropdownMenuItem>
@@ -254,21 +253,21 @@ export default function OrderCostAnalysisReport() {
 
                <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 transition-all">
-                       <Filter className="w-4 h-4 text-slate-400" />
+                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
+                       <Filter className="w-4 h-4 text-slate-400 dark:text-slate-500" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align={isRtl ? "start" : "end"} className="w-56 rounded-xl shadow-xl border-slate-200">
-                     <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'ترتيب حسب' : 'SORT BY'}</DropdownMenuLabel>
-                     <DropdownMenuItem onClick={() => toggleSort('totalCost')} className="flex justify-between text-xs font-bold cursor-pointer py-2.5">
+                  <DropdownMenuContent align={isRtl ? "start" : "end"} className="w-56 rounded-xl shadow-xl border-slate-200 dark:border-slate-800 dark:bg-slate-900">
+                     <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest">{isRtl ? 'ترتيب حسب' : 'SORT BY'}</DropdownMenuLabel>
+                     <DropdownMenuItem onClick={() => toggleSort('totalCost')} className="flex justify-between text-xs font-bold cursor-pointer py-2.5 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
                         {isRtl ? 'إجمالي التكلفة' : 'Total Cost'}
                         {sortBy === 'totalCost' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
                      </DropdownMenuItem>
-                     <DropdownMenuItem onClick={() => toggleSort('avgCost')} className="flex justify-between text-xs font-bold cursor-pointer py-2.5">
+                     <DropdownMenuItem onClick={() => toggleSort('avgCost')} className="flex justify-between text-xs font-bold cursor-pointer py-2.5 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
                         {isRtl ? 'تكلفة القطعة' : 'Unit Cost'}
                         {sortBy === 'avgCost' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
                      </DropdownMenuItem>
-                     <DropdownMenuItem onClick={() => toggleSort('progress')} className="flex justify-between text-xs font-bold cursor-pointer py-2.5">
+                     <DropdownMenuItem onClick={() => toggleSort('progress')} className="flex justify-between text-xs font-bold cursor-pointer py-2.5 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
                         {isRtl ? 'نسبة الإنجاز' : 'Progress'}
                         {sortBy === 'progress' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
                      </DropdownMenuItem>
@@ -276,7 +275,7 @@ export default function OrderCostAnalysisReport() {
                </DropdownMenu>
             </div>
 
-            <Button onClick={handleExportCSV} variant="ghost" size="icon" className="h-9 w-9 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 shadow-md">
+            <Button onClick={handleExportCSV} variant="ghost" size="icon" className="h-9 w-9 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 shadow-md border-none">
               <FileDown className="w-4 h-4" />
             </Button>
           </div>
@@ -288,78 +287,78 @@ export default function OrderCostAnalysisReport() {
         {/* COMPACT STATS ROW - FULL WIDTH */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 flex-none">
           <div className="flex items-center gap-3 overflow-x-auto no-scrollbar pb-1 flex-1 w-full">
-            <div className="bg-white px-4 py-3 rounded-lg border border-slate-200 shadow-sm flex items-center gap-3 group hover:border-emerald-200 transition-all flex-1 min-w-[160px]">
-                <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg group-hover:bg-emerald-600 group-hover:text-white transition-all shrink-0">
+            <div className="bg-white dark:bg-slate-900 px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-3 group hover:border-emerald-200 dark:hover:border-emerald-900 transition-all flex-1 min-w-[160px]">
+                <div className="p-2 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-lg group-hover:bg-emerald-600 group-hover:text-white transition-all shrink-0">
                   <TrendingUp className="w-4 h-4" />
                 </div>
                 <div className="flex flex-col overflow-hidden text-right">
-                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-tight truncate">{isRtl ? 'إجمالي تكاليف التشغيل' : 'CONSOLIDATED COSTS'}</p>
-                  <h3 className="text-sm font-black text-slate-900">{formatCurrency(totals.totalCost)} <span className="text-[9px] opacity-40 uppercase ms-1">{systemCurrency}</span></h3>
+                  <p className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-tight truncate">{isRtl ? 'إجمالي تكاليف التشغيل' : 'CONSOLIDATED COSTS'}</p>
+                  <h3 className="text-sm font-black text-slate-900 dark:text-slate-100">{formatCurrency(totals.totalCost)} <span className="text-[9px] opacity-40 uppercase ms-1">{systemCurrency}</span></h3>
                 </div>
             </div>
-            <div className="bg-white px-4 py-3 rounded-lg border border-slate-200 shadow-sm flex items-center gap-3 group hover:border-purple-200 transition-all flex-1 min-w-[160px]">
-                <div className="p-2 bg-purple-50 text-purple-600 rounded-lg group-hover:bg-purple-600 group-hover:text-white transition-all shrink-0">
+            <div className="bg-white dark:bg-slate-900 px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-3 group hover:border-purple-200 dark:hover:border-purple-900 transition-all flex-1 min-w-[160px]">
+                <div className="p-2 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 rounded-lg group-hover:bg-purple-600 group-hover:text-white transition-all shrink-0">
                   <Wallet className="w-4 h-4" />
                 </div>
                 <div className="flex flex-col overflow-hidden text-right">
-                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-tight truncate">{isRtl ? 'إجمالي الأجور المستحقة' : 'TOTAL WAGES'}</p>
-                  <h3 className="text-sm font-black text-purple-700">{formatCurrency(totals.totalWages)} <span className="text-[9px] opacity-40 uppercase ms-1">{systemCurrency}</span></h3>
+                  <p className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-tight truncate">{isRtl ? 'إجمالي الأجور المستحقة' : 'TOTAL WAGES'}</p>
+                  <h3 className="text-sm font-black text-purple-700 dark:text-purple-400">{formatCurrency(totals.totalWages)} <span className="text-[9px] opacity-40 uppercase ms-1">{systemCurrency}</span></h3>
                 </div>
             </div>
-            <div className="bg-white px-4 py-3 rounded-lg border border-slate-200 shadow-sm flex items-center gap-3 group hover:border-blue-200 transition-all flex-1 min-w-[160px]">
-                <div className="p-2 bg-blue-50 text-blue-600 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-all shrink-0">
+            <div className="bg-white dark:bg-slate-900 px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-3 group hover:border-blue-200 dark:hover:border-blue-900 transition-all flex-1 min-w-[160px]">
+                <div className="p-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-all shrink-0">
                   <Activity className="w-4 h-4" />
                 </div>
                 <div className="flex flex-col overflow-hidden text-right">
-                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-tight truncate">{isRtl ? 'متوسط التقدم العام' : 'AVG. PIPELINE'}</p>
-                  <h3 className="text-sm font-black text-blue-700 tabular-nums">{totals.avgProgress}%</h3>
+                  <p className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-tight truncate">{isRtl ? 'متوسط التقدم العام' : 'AVG. PIPELINE'}</p>
+                  <h3 className="text-sm font-black text-blue-700 dark:text-blue-400 tabular-nums">{totals.avgProgress}%</h3>
                 </div>
             </div>
           </div>
         </div>
 
         {/* DATA TABLE - ERP STYLE SHARP CORNERS */}
-        <div className="flex-1 min-h-0 bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+        <div className="flex-1 min-h-0 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col transition-colors duration-300">
           <div className="flex-1 overflow-auto no-scrollbar relative">
             <Table className={cn("text-right border-separate border-spacing-0 w-full", !isRtl && "text-left")}>
-               <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
-                  <TableRow>
-                     <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? "text-right" : "text-left")}>{isRtl ? 'أمر الإنتاج' : 'BATCH / ORDER'}</TableHead>
-                     <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">{isRtl ? 'المواد' : 'MAT. COST'}</TableHead>
-                     <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">{isRtl ? 'الأجور' : 'WAGES'}</TableHead>
-                     <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">{isRtl ? 'المصاريف' : 'OVERHEAD'}</TableHead>
-                     <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200 bg-slate-100/50">{isRtl ? 'الإجمالي' : 'TOTAL COST'}</TableHead>
-                     <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">{isRtl ? 'تكلفة/قطعة' : 'UNIT COST'}</TableHead>
-                     <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? "text-right" : "text-left")}>{isRtl ? 'التقدم' : 'STATUS'}</TableHead>
+               <TableHeader className="bg-slate-50 dark:bg-slate-800 sticky top-0 z-10 shadow-sm">
+                  <TableRow className="border-b dark:border-slate-700">
+                     <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase border-b border-slate-200 dark:border-slate-700", isRtl ? "text-right" : "text-left")}>{isRtl ? 'أمر الإنتاج' : 'BATCH / ORDER'}</TableHead>
+                     <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase text-center border-b border-slate-200 dark:border-slate-700">{isRtl ? 'المواد' : 'MAT. COST'}</TableHead>
+                     <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase text-center border-b border-slate-200 dark:border-slate-700">{isRtl ? 'الأجور' : 'WAGES'}</TableHead>
+                     <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase text-center border-b border-slate-200 dark:border-slate-700">{isRtl ? 'المصاريف' : 'OVERHEAD'}</TableHead>
+                     <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase text-center border-b border-slate-200 dark:border-slate-700 bg-slate-100/50 dark:bg-slate-800/50">{isRtl ? 'الإجمالي' : 'TOTAL COST'}</TableHead>
+                     <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase text-center border-b border-slate-200 dark:border-slate-700">{isRtl ? 'تكلفة/قطعة' : 'UNIT COST'}</TableHead>
+                     <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase border-b border-slate-200 dark:border-slate-700", isRtl ? "text-right" : "text-left")}>{isRtl ? 'التقدم' : 'STATUS'}</TableHead>
                   </TableRow>
                </TableHeader>
                <TableBody>
                   {ordersLoading ? (
-                    <TableRow><TableCell colSpan={7} className="text-center py-24 animate-pulse text-slate-400 font-black">{isRtl ? 'جاري تحليل التكاليف...' : 'Analyzing Costing Data...'}</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={7} className="text-center py-24 animate-pulse text-slate-400 dark:text-slate-600 font-black">{isRtl ? 'جاري تحليل التكاليف...' : 'Analyzing Costing Data...'}</TableCell></TableRow>
                   ) : filtered.length === 0 ? (
-                    <TableRow><TableCell colSpan={7} className="text-center py-24 text-slate-300 font-bold">{isRtl ? 'لا توجد بيانات مطابقة' : 'No records match these filters'}</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={7} className="text-center py-24 text-slate-300 dark:text-slate-800 font-bold">{isRtl ? 'لا توجد بيانات مطابقة' : 'No records match these filters'}</TableCell></TableRow>
                   ) : filtered.map((d) => (
-                    <TableRow key={d.id} className="hover:bg-slate-50/50 transition-colors border-b border-slate-100 group">
+                    <TableRow key={d.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors border-b border-slate-100 dark:border-slate-800 group">
                        <TableCell className={cn("px-6 py-4", isRtl ? "text-right" : "text-left")}>
                           <div className="flex flex-col">
-                             <span className="font-black text-slate-900 text-xs">{d.title}</span>
+                             <span className="font-black text-slate-900 dark:text-slate-100 text-xs">{d.title}</span>
                              <div className="flex items-center gap-2 mt-0.5">
-                                <Badge variant="outline" className="text-[8px] font-black tabular-nums bg-slate-50">{d.orderNumber}</Badge>
-                                <span className="text-[9px] text-slate-400 font-bold">{d.productName}</span>
+                                <Badge variant="outline" className="text-[8px] font-black tabular-nums bg-slate-50 dark:bg-slate-800 border-none">{d.orderNumber}</Badge>
+                                <span className="text-[9px] text-slate-400 dark:text-slate-500 font-bold">{d.productName}</span>
                              </div>
                           </div>
                        </TableCell>
-                       <TableCell className="px-6 py-4 text-center font-bold text-amber-700 text-[11px]">{formatCurrency(d.matCost)}</TableCell>
-                       <TableCell className="px-6 py-4 text-center font-bold text-purple-700 text-[11px]">{formatCurrency(d.wageCost)}</TableCell>
-                       <TableCell className="px-6 py-4 text-center font-bold text-rose-700 text-[11px]">{formatCurrency(d.overheadCost)}</TableCell>
-                       <TableCell className="px-6 py-4 text-center font-black text-slate-900 text-[11px] bg-slate-50/50 border-x border-slate-100/50">{formatCurrency(d.totalCost)}</TableCell>
-                       <TableCell className="px-6 py-4 text-center font-black text-emerald-700 text-[11px]">{formatCurrency(d.avgCost)}</TableCell>
+                       <TableCell className="px-6 py-4 text-center font-bold text-amber-700 dark:text-amber-500 text-[11px]">{formatCurrency(d.matCost)}</TableCell>
+                       <TableCell className="px-6 py-4 text-center font-bold text-purple-700 dark:text-purple-500 text-[11px]">{formatCurrency(d.wageCost)}</TableCell>
+                       <TableCell className="px-6 py-4 text-center font-bold text-rose-700 dark:text-rose-500 text-[11px]">{formatCurrency(d.overheadCost)}</TableCell>
+                       <TableCell className="px-6 py-4 text-center font-black text-slate-900 dark:text-slate-100 text-[11px] bg-slate-50/50 dark:bg-slate-800/50 border-x border-slate-100/50 dark:border-slate-800/50">{formatCurrency(d.totalCost)}</TableCell>
+                       <TableCell className="px-6 py-4 text-center font-black text-emerald-700 dark:text-emerald-400 text-[11px]">{formatCurrency(d.avgCost)}</TableCell>
                        <TableCell className={cn("px-6 py-4", isRtl ? "text-right" : "text-left")}>
                           <div className="flex items-center gap-3">
-                             <div className="flex-1 h-1.5 w-16 bg-slate-100 rounded-full overflow-hidden relative shadow-inner">
+                             <div className="flex-1 h-1.5 w-16 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden relative shadow-inner">
                                 <div className={cn("h-full bg-emerald-500 absolute", isRtl ? "right-0" : "left-0")} style={{ width: `${d.progress}%` }} />
                              </div>
-                             <span className="text-[9px] font-black text-slate-400 tabular-nums">{d.progress}%</span>
+                             <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 tabular-nums">{d.progress}%</span>
                           </div>
                        </TableCell>
                     </TableRow>
@@ -371,7 +370,7 @@ export default function OrderCostAnalysisReport() {
       </div>
 
       {/* SYSTEM AUDIT FOOTER */}
-      <div className="flex-none p-3 bg-slate-900 text-white/40 flex items-center justify-center gap-4 border-t border-white/5">
+      <div className="flex-none p-3 bg-slate-900 dark:bg-slate-900/80 text-white/40 dark:text-slate-500 flex items-center justify-center gap-4 border-t border-white/5 shadow-2xl transition-colors duration-300">
          <ShieldCheck className="w-4 h-4 text-emerald-500" />
          <p className="text-[10px] font-bold tracking-tight">
            {isRtl 
