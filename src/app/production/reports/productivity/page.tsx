@@ -169,46 +169,46 @@ export default function WorkerProductivityReport() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#f8fafc] overflow-hidden" dir={dir}>
+    <div className="flex flex-col h-full bg-[#f8fafc] dark:bg-slate-950 overflow-hidden transition-colors duration-300" dir={dir}>
       {/* HEADER */}
-      <div className="flex-none bg-white border-b border-slate-200 px-6 py-4 shadow-sm">
+      <div className="flex-none bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-4 shadow-sm z-30">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div className="flex items-center gap-4">
-            <div className="p-2.5 bg-slate-900 rounded-lg text-white shadow-lg"><UserCheck className="w-5 h-5 text-emerald-400" /></div>
+            <div className="p-2.5 bg-slate-900 dark:bg-emerald-900/20 rounded-lg text-white shadow-lg"><UserCheck className="w-5 h-5 text-emerald-400" /></div>
             <div>
-              <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+              <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                 <span>{isRtl ? 'التقارير' : 'Reports'}</span>
                 <ChevronRight className={cn("w-3 h-3", isRtl ? "rotate-180" : "")} />
-                <span className="text-emerald-600">{dictionary.title}</span>
+                <span className="text-emerald-600 dark:text-emerald-400">{dictionary.title}</span>
               </div>
-              <h1 className="text-xl font-black text-slate-900 leading-tight">{dictionary.subtitle}</h1>
+              <h1 className="text-xl font-black text-slate-900 dark:text-slate-100 leading-tight">{dictionary.subtitle}</h1>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-xl border border-slate-200">
-            <div className="relative w-48 md:w-64">
-              <Search className={cn("absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400", isRtl ? "right-3" : "left-3")} />
+          <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800/50 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 w-full lg:w-auto">
+            <div className="relative flex-1 lg:w-64">
+              <Search className={cn("absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 dark:text-slate-500", isRtl ? "right-3" : "left-3")} />
               <Input 
                 value={search} 
                 onChange={(e) => setSearch(e.target.value)} 
                 placeholder={dictionary.search} 
-                className={cn("h-9 bg-white border-slate-200 text-[10px] font-bold", isRtl ? "pr-9" : "pl-9")} 
+                className={cn("h-9 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-[10px] font-bold dark:text-slate-100", isRtl ? "pr-9" : "pl-9")} 
               />
             </div>
 
-            <div className="flex items-center gap-1 px-1 border-x border-slate-200">
+            <div className="flex items-center gap-1 px-1 border-x border-slate-200 dark:border-slate-700">
                <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 transition-all", (dateFrom || dateTo) && "border-emerald-500 bg-emerald-50")}>
-                       <CalendarDays className={cn("w-4 h-4", (dateFrom || dateTo) ? "text-emerald-600" : "text-slate-400")} />
+                    <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all", (dateFrom || dateTo) && "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20")}>
+                       <CalendarDays className={cn("w-4 h-4", (dateFrom || dateTo) ? "text-emerald-600" : "text-slate-400 dark:text-slate-600")} />
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent align={isRtl ? "start" : "end"} className="w-72 p-4 rounded-xl shadow-2xl border-slate-200">
+                  <PopoverContent align={isRtl ? "start" : "end"} className="w-72 p-4 rounded-xl shadow-2xl border-slate-200 dark:border-slate-800 dark:bg-slate-900">
                      <div className="space-y-4 text-right">
-                        <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b pb-2"><CalendarDays className="w-3.5 h-3.5" />{dictionary.dateFilter}</div>
+                        <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest border-b dark:border-slate-800 pb-2"><CalendarDays className="w-3.5 h-3.5" />{dictionary.dateFilter}</div>
                         <div className="grid grid-cols-2 gap-3">
-                           <div className="space-y-1.5"><Label className="text-[9px] font-black text-slate-400">{dictionary.from}</Label><Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-9 text-[10px] font-bold" /></div>
-                           <div className="space-y-1.5"><Label className="text-[9px] font-black text-slate-400">{dictionary.to}</Label><Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-9 text-[10px] font-bold" /></div>
+                           <div className="space-y-1.5"><Label className="text-[9px] font-black text-slate-400 dark:text-slate-500">{dictionary.from}</Label><Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-9 text-[10px] font-bold dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100" /></div>
+                           <div className="space-y-1.5"><Label className="text-[9px] font-black text-slate-400 dark:text-slate-500">{dictionary.to}</Label><Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-9 text-[10px] font-bold dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100" /></div>
                         </div>
                         {(dateFrom || dateTo) && <Button variant="link" onClick={() => { setDateFrom(''); setDateTo(''); }} className="text-[9px] h-auto p-0 font-bold text-rose-500 underline uppercase w-full">{dictionary.reset}</Button>}
                      </div>
@@ -217,16 +217,16 @@ export default function WorkerProductivityReport() {
 
                <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 transition-all", workerId !== 'all' && "border-emerald-500 bg-emerald-50")}>
-                       <Users2 className={cn("w-4 h-4", workerId !== 'all' ? "text-emerald-600" : "text-slate-400")} />
+                    <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all", workerId !== 'all' && "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20")}>
+                       <Users2 className={cn("w-4 h-4", workerId !== 'all' ? "text-emerald-600" : "text-slate-400 dark:text-slate-600")} />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align={isRtl ? "start" : "end"} className="w-64 rounded-xl shadow-xl border-slate-200">
-                     <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{dictionary.byWorker}</DropdownMenuLabel>
+                  <DropdownMenuContent align={isRtl ? "start" : "end"} className="w-64 rounded-xl shadow-xl border-slate-200 dark:border-slate-800 dark:bg-slate-900">
+                     <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest">{dictionary.byWorker}</DropdownMenuLabel>
                      <ScrollArea className="h-48">
-                        <DropdownMenuItem onClick={() => setWorkerId('all')} className="flex justify-between text-xs font-bold cursor-pointer">{dictionary.all}{workerId === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setWorkerId('all')} className="flex justify-between text-xs font-bold cursor-pointer dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">{dictionary.all}{workerId === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}</DropdownMenuItem>
                         {allWorkers?.filter(w => w.status !== 'deleted').map(w => (
-                          <DropdownMenuItem key={w.id} onClick={() => setWorkerId(w.id)} className="flex justify-between text-xs font-bold cursor-pointer">
+                          <DropdownMenuItem key={w.id} onClick={() => setWorkerId(w.id)} className="flex justify-between text-xs font-bold cursor-pointer dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
                             {w.fullName}
                             {workerId === w.id && <Check className="w-3.5 h-3.5 text-emerald-600" />}
                           </DropdownMenuItem>
@@ -237,16 +237,16 @@ export default function WorkerProductivityReport() {
 
                <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 transition-all", orderId !== 'all' && "border-emerald-500 bg-emerald-50")}>
-                       <Workflow className={cn("w-4 h-4", orderId !== 'all' ? "text-emerald-600" : "text-slate-400")} />
+                    <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all", orderId !== 'all' && "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20")}>
+                       <Workflow className={cn("w-4 h-4", orderId !== 'all' ? "text-emerald-600" : "text-slate-400 dark:text-slate-600")} />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align={isRtl ? "start" : "end"} className="w-64 rounded-xl shadow-xl border-slate-200">
-                     <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{dictionary.byBatch}</DropdownMenuLabel>
+                  <DropdownMenuContent align={isRtl ? "start" : "end"} className="w-64 rounded-xl shadow-xl border-slate-200 dark:border-slate-800 dark:bg-slate-900">
+                     <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest">{dictionary.byBatch}</DropdownMenuLabel>
                      <ScrollArea className="h-48">
-                        <DropdownMenuItem onClick={() => setOrderId('all')} className="flex justify-between text-xs font-bold cursor-pointer">{dictionary.all}{orderId === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setOrderId('all')} className="flex justify-between text-xs font-bold cursor-pointer dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">{dictionary.all}{orderId === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}</DropdownMenuItem>
                         {allOrders?.filter(o => o.status !== 'deleted').map(o => (
-                          <DropdownMenuItem key={o.id} onClick={() => setOrderId(o.id)} className="flex justify-between text-xs font-bold cursor-pointer">
+                          <DropdownMenuItem key={o.id} onClick={() => setOrderId(o.id)} className="flex justify-between text-xs font-bold cursor-pointer dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
                             <span className="truncate">{o.orderNumber} - {o.title}</span>
                             {orderId === o.id && <Check className="w-3.5 h-3.5 text-emerald-600" />}
                           </DropdownMenuItem>
@@ -257,30 +257,30 @@ export default function WorkerProductivityReport() {
 
                <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 transition-all")}>
-                       <Filter className="w-4 h-4 text-slate-400" />
+                    <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all")}>
+                       <Filter className="w-4 h-4 text-slate-400 dark:text-slate-500" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align={isRtl ? "start" : "end"} className="w-56 rounded-xl shadow-xl border-slate-200">
-                     <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{dictionary.sortBy}</DropdownMenuLabel>
-                     <DropdownMenuItem onClick={() => { setSortBy('date'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }} className="flex justify-between text-xs font-bold cursor-pointer py-2.5">
+                  <DropdownMenuContent align={isRtl ? "start" : "end"} className="w-56 rounded-xl shadow-xl border-slate-200 dark:border-slate-800 dark:bg-slate-900">
+                     <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest">{dictionary.sortBy}</DropdownMenuLabel>
+                     <DropdownMenuItem onClick={() => { setSortBy('date'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }} className="flex justify-between text-xs font-bold cursor-pointer py-2.5 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
                         {dictionary.byDate}
-                        {sortBy === 'date' && <Badge className="bg-emerald-500">{sortOrder === 'asc' ? '↑' : '↓'}</Badge>}
+                        {sortBy === 'date' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />)}
                      </DropdownMenuItem>
-                     <DropdownMenuSeparator />
-                     <DropdownMenuItem onClick={() => { setSortBy('qty'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }} className="flex justify-between text-xs font-bold cursor-pointer">
+                     <DropdownMenuSeparator className="dark:bg-slate-800" />
+                     <DropdownMenuItem onClick={() => { setSortBy('qty'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }} className="flex justify-between text-xs font-bold cursor-pointer py-2.5 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
                         {dictionary.byQty}
-                        {sortBy === 'qty' && <Badge className="bg-emerald-500">{sortOrder === 'asc' ? '↑' : '↓'}</Badge>}
+                        {sortBy === 'qty' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />)}
                      </DropdownMenuItem>
-                     <DropdownMenuItem onClick={() => { setSortBy('wage'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }} className="flex justify-between text-xs font-bold cursor-pointer">
+                     <DropdownMenuItem onClick={() => { setSortBy('wage'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }} className="flex justify-between text-xs font-bold cursor-pointer py-2.5 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
                         {dictionary.byWage}
-                        {sortBy === 'wage' && <Badge className="bg-emerald-500">{sortOrder === 'asc' ? '↑' : '↓'}</Badge>}
+                        {sortBy === 'wage' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />)}
                      </DropdownMenuItem>
                   </DropdownMenuContent>
                </DropdownMenu>
             </div>
 
-            <Button onClick={handleExport} variant="ghost" size="icon" className="h-9 w-9 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 shadow-md">
+            <Button onClick={handleExport} variant="ghost" size="icon" className="h-9 w-9 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 shadow-md border-none">
               <FileDown className="w-4 h-4" />
             </Button>
           </div>
@@ -288,94 +288,94 @@ export default function WorkerProductivityReport() {
       </div>
 
       <div className="flex-1 min-h-0 flex flex-col p-4 md:p-6 md:pt-4 space-y-4 overflow-hidden">
-        {/* COMPACT STATS OVERVIEW - FULL WIDTH ROW, NO MARGINS */}
+        {/* COMPACT STATS OVERVIEW */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 flex-none">
           <div className="flex items-center gap-3 overflow-x-auto no-scrollbar pb-1 flex-1 w-full">
-            <div className="bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3 group hover:border-emerald-200 transition-all flex-1 min-w-[140px]">
-                <div className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg group-hover:bg-emerald-600 group-hover:text-white transition-all shrink-0">
+            <div className="bg-white dark:bg-slate-900 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-3 group hover:border-emerald-200 dark:hover:border-emerald-900 transition-all flex-1 min-w-[140px]">
+                <div className="p-1.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-lg group-hover:bg-emerald-600 group-hover:text-white transition-all shrink-0">
                   <TrendingUp className="w-3.5 h-3.5" />
                 </div>
-                <div className="flex flex-col overflow-hidden">
-                  <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest leading-tight truncate">{dictionary.totalPieces}</p>
-                  <h3 className="text-xs font-black text-slate-900 tabular-nums">{stats.totalQty.toLocaleString('en-US')}</h3>
+                <div className="flex flex-col overflow-hidden text-right">
+                  <p className="text-[7px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-tight truncate">{dictionary.totalPieces}</p>
+                  <h3 className="text-xs font-black text-slate-900 dark:text-slate-100 tabular-nums">{stats.totalQty.toLocaleString('en-US')}</h3>
                 </div>
             </div>
-            <div className="bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3 group hover:border-purple-200 transition-all flex-1 min-w-[140px]">
-                <div className="p-1.5 bg-purple-50 text-purple-600 rounded-lg group-hover:bg-purple-600 group-hover:text-white transition-all shrink-0">
+            <div className="bg-white dark:bg-slate-900 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-3 group hover:border-purple-200 dark:hover:border-purple-900 transition-all flex-1 min-w-[140px]">
+                <div className="p-1.5 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 rounded-lg group-hover:bg-purple-600 group-hover:text-white transition-all shrink-0">
                   <Wallet className="w-3.5 h-3.5" />
                 </div>
-                <div className="flex flex-col overflow-hidden">
-                  <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest leading-tight truncate">{dictionary.totalWages}</p>
-                  <h3 className="text-xs font-black text-purple-700 tabular-nums">{stats.totalWages.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
+                <div className="flex flex-col overflow-hidden text-right">
+                  <p className="text-[7px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-tight truncate">{dictionary.totalWages}</p>
+                  <h3 className="text-xs font-black text-purple-700 dark:text-purple-400 tabular-nums">{stats.totalWages.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
                 </div>
             </div>
-            <div className="bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3 group hover:border-blue-200 transition-all flex-1 min-w-[140px]">
-                <div className="p-1.5 bg-blue-50 text-blue-600 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-all shrink-0">
+            <div className="bg-white dark:bg-slate-900 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-3 group hover:border-blue-200 dark:hover:border-blue-900 transition-all flex-1 min-w-[140px]">
+                <div className="p-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-all shrink-0">
                   <Users2 className="w-3.5 h-3.5" />
                 </div>
-                <div className="flex flex-col overflow-hidden">
-                  <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest leading-tight truncate">{dictionary.workforce}</p>
-                  <h3 className="text-xs font-black text-blue-700 tabular-nums">{stats.uniqueWorkers}</h3>
+                <div className="flex flex-col overflow-hidden text-right">
+                  <p className="text-[7px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-tight truncate">{dictionary.workforce}</p>
+                  <h3 className="text-xs font-black text-blue-700 dark:text-blue-400 tabular-nums">{stats.uniqueWorkers}</h3>
                 </div>
             </div>
           </div>
           
-          <div className="flex items-center gap-2 px-3 py-1 bg-slate-100/50 rounded-lg shrink-0">
-            <Activity className="w-3 h-3 text-slate-400" />
-            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest tabular-nums">
-              {dictionary.logsCount} <span className="text-emerald-600">{filteredData.length}</span>
+          <div className="flex items-center gap-2 px-3 py-1 bg-slate-100/50 dark:bg-slate-800/50 rounded-lg shrink-0 border border-slate-200/50 dark:border-slate-700/50">
+            <Activity className="w-3 h-3 text-slate-400 dark:text-slate-600" />
+            <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest tabular-nums">
+              {dictionary.logsCount} <span className="text-emerald-600 dark:text-emerald-400">{filteredData.length}</span>
             </span>
           </div>
         </div>
 
-        {/* DATA TABLE - SHARPER ERP CORNERS */}
-        <div className="flex-1 min-h-0 bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+        {/* DATA TABLE */}
+        <div className="flex-1 min-h-0 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col transition-colors duration-300">
           <div className="flex-1 overflow-auto no-scrollbar relative">
-            <Table className={cn("text-right border-separate border-spacing-0 w-full", !isRtl && "text-left")}>
-               <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
-                  <TableRow>
-                     <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? "text-right" : "text-left")}>{dictionary.colDate}</TableHead>
-                     <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? "text-right" : "text-left")}>{dictionary.colVoucher}</TableHead>
-                     <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? "text-right" : "text-left")}>{dictionary.colWorker}</TableHead>
-                     <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? "text-right" : "text-left")}>{dictionary.colBatch}</TableHead>
-                     <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">{dictionary.colPieces}</TableHead>
-                     <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">{dictionary.colWage}</TableHead>
-                     <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? "text-right" : "text-left")}>{dictionary.colStatus}</TableHead>
+            <Table className={cn("border-separate border-spacing-0 w-full", isRtl ? "text-right" : "text-left")}>
+               <TableHeader className="bg-slate-50 dark:bg-slate-800 sticky top-0 z-10 shadow-sm">
+                  <TableRow className="border-b dark:border-slate-700">
+                     <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase border-b border-slate-200 dark:border-slate-700", isRtl ? "text-right" : "text-left")}>{dictionary.colDate}</TableHead>
+                     <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase border-b border-slate-200 dark:border-slate-700", isRtl ? "text-right" : "text-left")}>{dictionary.colVoucher}</TableHead>
+                     <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase border-b border-slate-200 dark:border-slate-700", isRtl ? "text-right" : "text-left")}>{dictionary.colWorker}</TableHead>
+                     <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase border-b border-slate-200 dark:border-slate-700", isRtl ? "text-right" : "text-left")}>{dictionary.colBatch}</TableHead>
+                     <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase text-center border-b border-slate-200 dark:border-slate-700">{dictionary.colPieces}</TableHead>
+                     <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase text-center border-b border-slate-200 dark:border-slate-700">{dictionary.colWage}</TableHead>
+                     <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase border-b border-slate-200 dark:border-slate-700", isRtl ? "text-right" : "text-left")}>{dictionary.colStatus}</TableHead>
                   </TableRow>
                </TableHeader>
                <TableBody>
                   {loading ? (
-                    <TableRow><TableCell colSpan={7} className="text-center py-20 animate-pulse text-slate-400 font-black">{isRtl ? 'جاري التحميل...' : 'Loading...'}</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={7} className="text-center py-20 animate-pulse text-slate-400 dark:text-slate-600 font-black">{isRtl ? 'جاري التحميل...' : 'Loading...'}</TableCell></TableRow>
                   ) : filteredData.length === 0 ? (
-                    <TableRow><TableCell colSpan={7} className="text-center py-20 text-slate-300 font-bold">{isRtl ? 'لا توجد بيانات مطابقة لهذه الفلاتر' : 'No records found for these filters'}</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={7} className="text-center py-20 text-slate-300 dark:text-slate-800 font-bold">{isRtl ? 'لا توجد بيانات مطابقة لهذه الفلاتر' : 'No records found for these filters'}</TableCell></TableRow>
                   ) : filteredData.map((r) => {
                      const worker = allWorkers?.find(w => w.id === r.workerId);
                      const order = allOrders?.find(o => o.id === r.orderId);
                      return (
-                       <TableRow key={r.id} className="hover:bg-slate-50/50 transition-colors border-b border-slate-100 group">
-                          <TableCell className={cn("px-6 py-4 font-bold text-slate-500 text-[11px] tabular-nums", isRtl ? "text-right" : "text-left")}>{r.date}</TableCell>
-                          <TableCell className={cn("px-6 py-4 font-black text-slate-400 text-[11px] tabular-nums", isRtl ? "text-right" : "text-left")}>{r.voucherNumber}</TableCell>
+                       <TableRow key={r.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors border-b border-slate-100 dark:border-slate-800 group">
+                          <TableCell className={cn("px-6 py-4 font-bold text-slate-500 dark:text-slate-500 text-[11px] tabular-nums", isRtl ? "text-right" : "text-left")}>{r.date}</TableCell>
+                          <TableCell className={cn("px-6 py-4 font-black text-slate-900 dark:text-slate-100 text-[11px] tabular-nums", isRtl ? "text-right" : "text-left")}>{r.voucherNumber}</TableCell>
                           <TableCell className={cn("px-6 py-4", isRtl ? "text-right" : "text-left")}>
                              <div className="flex flex-col">
-                                <span className="font-black text-slate-900 text-xs">{worker?.fullName}</span>
-                                <span className="text-[9px] text-slate-400 font-bold">{worker?.workerId}</span>
+                                <span className="font-black text-slate-900 dark:text-slate-100 text-xs">{worker?.fullName}</span>
+                                <span className="text-[9px] text-slate-400 dark:text-slate-600 font-bold">{worker?.workerId}</span>
                              </div>
                           </TableCell>
                           <TableCell className={cn("px-6 py-4", isRtl ? "text-right" : "text-left")}>
                              <div className="flex flex-col">
-                                <span className="font-bold text-emerald-700 text-xs tabular-nums">{order?.orderNumber}</span>
-                                <span className="text-[9px] text-slate-400 font-bold truncate max-w-[120px]">{order?.title}</span>
+                                <span className="font-bold text-emerald-700 dark:text-emerald-400 text-xs tabular-nums">{order?.orderNumber}</span>
+                                <span className="text-[9px] text-slate-400 dark:text-slate-600 font-bold truncate max-w-[120px]">{order?.title}</span>
                              </div>
                           </TableCell>
-                          <TableCell className="px-6 py-4 text-center font-black text-slate-700 tabular-nums text-xs">
+                          <TableCell className="px-6 py-4 text-center font-black text-slate-700 dark:text-slate-300 tabular-nums text-xs">
                              {r.qtyAccepted} <span className="text-[9px] opacity-40 uppercase ms-1">{dictionary.pcs}</span>
                           </TableCell>
-                          <TableCell className="px-6 py-4 text-center font-black text-purple-700 tabular-nums text-xs bg-purple-50/20">
+                          <TableCell className="px-6 py-4 text-center font-black text-purple-700 dark:text-purple-400 tabular-nums text-xs bg-purple-50/20 dark:bg-purple-900/10">
                              {r.wageAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                              <span className="text-[9px] opacity-40 uppercase ms-1">{r.currency || 'YER'}</span>
                           </TableCell>
                           <TableCell className={cn("px-6 py-4", isRtl ? "text-right" : "text-left")}>
-                             <Badge variant="outline" className={cn("text-[8px] font-black uppercase", r.paymentStatus === 'paid' ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-amber-50 text-amber-600 border-amber-100")}>
+                             <Badge variant="outline" className={cn("text-[8px] font-black uppercase border-none", r.paymentStatus === 'paid' ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400" : "bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400")}>
                                 {r.paymentStatus === 'paid' ? dictionary.paid : dictionary.pending}
                              </Badge>
                           </TableCell>
@@ -389,7 +389,7 @@ export default function WorkerProductivityReport() {
       </div>
 
       {/* FOOTER NOTE */}
-      <div className="flex-none p-3 bg-slate-900 text-white/40 flex items-center justify-center gap-4 border-t border-white/5">
+      <div className="flex-none p-3 bg-slate-900 dark:bg-slate-900/90 text-white/40 dark:text-slate-500 flex items-center justify-center gap-4 border-t border-white/5 transition-colors duration-300 shadow-inner">
          <Info className="w-4 h-4 text-emerald-500" />
          <p className="text-[10px] font-bold tracking-tight">{dictionary.footerNote}</p>
       </div>
