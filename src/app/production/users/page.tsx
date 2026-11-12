@@ -1,3 +1,4 @@
+'use server';
 'use client';
 
 import React, { useState, useMemo, useCallback, useRef } from 'react';
@@ -29,6 +30,7 @@ import {
   AlertCircle,
   Settings2,
   UploadCloud,
+  RefreshCcw,
   User as UserIcon,
   Image as ImageIcon
 } from 'lucide-react';
@@ -171,7 +173,8 @@ export default function UsersPermissionsPage() {
         if (width > height) { if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; } }
         else { if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; } }
         canvas.width = width; canvas.height = height;
-        canvas.getContext('2d')?.drawImage(img, 0, 0, width, height);
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
         setFormData(prev => ({ ...prev, photoUrl: canvas.toDataURL('image/jpeg', 0.7) }));
         setIsCompressing(false);
       };
@@ -183,7 +186,7 @@ export default function UsersPermissionsPage() {
     setFormData({
       fullName: user.fullName || '',
       email: user.email || '',
-      password: user.password || '', // تنبيه: في الواقع لا يتم تخزين الباسورد هكذا، لكنه لغرض العرض
+      password: user.password || '', 
       photoUrl: user.photoUrl || '',
       role: user.role || 'staff',
       active: user.active ?? true,
@@ -201,16 +204,6 @@ export default function UsersPermissionsPage() {
           ...prev.permissions[moduleId],
           [type]: !prev.permissions[moduleId][type]
         }
-      }
-    }));
-  };
-
-  const handleToggleAllModule = (moduleId: string, val: boolean) => {
-    setFormData(prev => ({
-      ...prev,
-      permissions: {
-        ...prev.permissions,
-        [moduleId]: { read: val, create: val, edit: val, delete: val }
       }
     }));
   };
