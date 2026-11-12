@@ -6,11 +6,6 @@ import {
   X, 
   User, 
   Loader2, 
-  MessageCircle,
-  HelpCircle,
-  Zap,
-  ShieldCheck,
-  RefreshCcw
 } from 'lucide-react';
 import { 
   Sheet, 
@@ -65,22 +60,30 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
 
     const userQuery = input.trim();
     setInput('');
+    
+    // إنشاء نسخة جديدة من الرسائل لتجنب مشاكل المزامنة
     const newMessages: Message[] = [...messages, { role: 'user', content: userQuery }];
     setMessages(newMessages);
     setIsLoading(true);
 
     try {
-      // إرسال الرسالة الحالية مع تاريخ المحادثة للسياق
-      const response = await askAssociationAssistant({ 
+      // إرسال الطلب للسيرفر مع معالجة حذرة للتاريخ
+      const result = await askAssociationAssistant({ 
         message: userQuery,
-        history: newMessages.slice(-6) // إرسال آخر 6 رسائل فقط للحفاظ على الأداء
+        history: newMessages.map(m => ({
+          role: m.role,
+          content: m.content
+        }))
       });
-      setMessages(prev => [...prev, { role: 'assistant', content: response.answer }]);
+      
+      setMessages(prev => [...prev, { role: 'assistant', content: result.answer }]);
     } catch (error) {
-      console.error('AI Assistant Error:', error);
+      console.error('AI Interaction Error:', error);
       setMessages(prev => [...prev, { 
         role: 'assistant', 
-        content: isRtl ? "عذراً، حدث خطأ أثناء الاتصال بالخادم الذكي. يرجى المحاولة مرة أخرى." : "Sorry, an error occurred. Please try again." 
+        content: isRtl 
+          ? "عذراً، واجهت مشكلة في معالجة طلبك حالياً. يرجى المحاولة مرة أخرى." 
+          : "Sorry, an unexpected error occurred. Please try again." 
       }]);
     } finally {
       setIsLoading(false);
@@ -95,7 +98,6 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
       >
         {/* PREMIUM AI HEADER */}
         <div className="premium-gradient p-6 text-white shrink-0 relative overflow-hidden">
-           {/* BRAND WATERMARK */}
            <div className="absolute top-0 right-0 p-4 opacity-5">
               <img src="/images/logo.png" alt="watermark" className="w-40 h-40 object-contain grayscale brightness-0 invert" />
            </div>
@@ -124,12 +126,12 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
            <div className="space-y-6 flex flex-col">
               {messages.map((msg, idx) => (
                 <div key={idx} className={cn(
-                  "flex flex-col max-w-[85%] animate-in fade-in slide-in-from-bottom-2 duration-500",
+                  "flex flex-col max-w-[90%] animate-in fade-in slide-in-from-bottom-2 duration-500",
                   msg.role === 'assistant' ? "self-start items-start" : "self-end items-end"
                 )}>
                   <div className={cn(
                     "flex items-center gap-2 mb-1.5",
-                    msg.role === 'assistant' ? "flex-row-reverse" : "flex-row"
+                    msg.role === 'assistant' ? "flex-row" : "flex-row-reverse"
                   )}>
                     <div className={cn(
                       "w-5 h-5 rounded-md flex items-center justify-center text-[10px]",
@@ -143,7 +145,7 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
                   </div>
                   
                   <div className={cn(
-                    "p-4 rounded-2xl text-xs md:text-sm leading-relaxed font-bold shadow-sm border",
+                    "p-4 rounded-2xl text-xs md:text-sm leading-relaxed font-bold shadow-sm border whitespace-pre-wrap",
                     msg.role === 'assistant' 
                       ? "bg-emerald-50 dark:bg-emerald-900/10 text-emerald-900 dark:text-emerald-300 border-emerald-100 dark:border-emerald-900/30 rounded-tr-none text-right" 
                       : "bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-800 rounded-tl-none text-left"
@@ -170,14 +172,15 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
         {/* QUICK SUGGESTIONS */}
         <div className="px-6 py-3 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 shrink-0 overflow-x-auto flex gap-2 no-scrollbar">
            {[
-             { ar: "متى تأسست الجمعية؟", en: "When was it founded?" },
-             { ar: "ما هي مراحل الإنتاج؟", en: "Production stages?" },
-             { ar: "أنواع المعاوز", en: "Maawiz types" }
+             { ar: "ما هي فئات المعاوز؟", en: "Maawiz categories?" },
+             { ar: "تاريخ الجمعية", en: "History" },
+             { ar: "مراحل الإنتاج", en: "Stages" }
            ].map((s, i) => (
              <button 
                key={i} 
+               disabled={isLoading}
                onClick={() => { setInput(isRtl ? s.ar : s.en); }}
-               className="whitespace-nowrap px-3 py-1.5 rounded-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[10px] font-black text-slate-500 hover:text-emerald-600 hover:border-emerald-200 transition-all uppercase tracking-tighter"
+               className="whitespace-nowrap px-3 py-1.5 rounded-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[10px] font-black text-slate-500 hover:text-emerald-600 hover:border-emerald-200 transition-all uppercase tracking-tighter disabled:opacity-50"
              >
                {isRtl ? s.ar : s.en}
              </button>
@@ -208,12 +211,12 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
                 {isLoading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
-                  <Send className={cn("w-4 h-4", isRtl && "rotate-180")} />
+                  <Send className={cn("w-4 h-4", isRtl ? "rotate-180" : "")} style={isRtl ? { transform: 'rotate(180deg) rotate(-45deg)' } : {}} />
                 )}
               </Button>
            </form>
            <p className="text-[8px] font-bold text-slate-400 dark:text-slate-600 text-center mt-3 uppercase tracking-widest">
-             TIA AI Engine v1.1 • Driven by Gemma 2
+             TIA AI Engine v1.2 • Refined Stability
            </p>
         </div>
       </SheetContent>
