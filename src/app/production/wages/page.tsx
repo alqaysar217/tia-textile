@@ -114,7 +114,7 @@ export default function PayrollManagementPage() {
   const [workerFilter, setWorkerFilter] = useState('all');
   const [currencyFilter, setCurrencyFilter] = useState('all');
 
-  // Fetch System Settings for Currency Lock
+  // Fetch Global Settings for Currency Lock
   const settingsRef = useMemo(() => !db ? null : doc(db, 'settings', 'global'), [db]);
   const { data: savedSettings } = useDoc<any>(settingsRef);
   const systemCurrency = savedSettings?.baseCurrency || 'YER';
@@ -427,19 +427,20 @@ export default function PayrollManagementPage() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#f8fafc] overflow-hidden" dir={dir}>
+    <div className="flex flex-col h-full bg-[#f8fafc] dark:bg-slate-950 overflow-hidden transition-colors duration-300" dir={dir}>
       
-      <div className="flex-none bg-white border-b border-slate-200 z-30 px-6 py-4 shadow-sm">
+      {/* ERP HEADER */}
+      <div className="flex-none bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 z-30 px-6 py-4 shadow-sm">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div className="flex items-center gap-4">
-            <div className="p-2.5 bg-slate-900 rounded-lg text-white shadow-lg"><HandCoins className="w-5 h-5 text-emerald-400" /></div>
+            <div className="p-2.5 bg-slate-900 dark:bg-emerald-900/20 rounded-lg text-white shadow-lg"><HandCoins className="w-5 h-5 text-emerald-400" /></div>
             <div>
-              <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+              <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                 <span>{isRtl ? 'المالية' : 'Accounting'}</span>
-                <ChevronRight className={`w-3 h-3 ${dir === 'rtl' ? 'rotate-180' : ''}`} />
-                <span className="text-emerald-600">{isRtl ? 'صرف الأجور' : 'Wage Payments'}</span>
+                <ChevronRight className={cn("w-3 h-3", dir === 'rtl' ? "rotate-180" : "")} />
+                <span className="text-emerald-600 dark:text-emerald-400">{isRtl ? 'صرف الأجور' : 'Wage Payments'}</span>
               </div>
-              <h1 className="text-xl font-black text-slate-900 leading-tight">{isRtl ? 'إدارة ذمم ومدفوعات العمال' : 'Personnel Payroll Management'}</h1>
+              <h1 className="text-xl font-black text-slate-900 dark:text-slate-100 leading-tight">{isRtl ? 'إدارة ذمم ومدفوعات العمال' : 'Personnel Payroll Management'}</h1>
             </div>
           </div>
           <Button onClick={() => setIsPayDialogOpen(true)} className="h-10 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 transition-all border-none">
@@ -447,34 +448,34 @@ export default function PayrollManagementPage() {
           </Button>
         </div>
 
-        <div className="mt-4 flex flex-col md:flex-row items-center gap-3 bg-slate-50 p-2 rounded-xl border border-slate-200">
+        <div className="mt-4 flex flex-col md:flex-row items-center gap-3 bg-slate-50 dark:bg-slate-800/50 p-2 rounded-xl border border-slate-200 dark:border-slate-700">
           <div className="relative flex-1 w-full">
-            <Search className={cn("absolute top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400", isRtl ? "right-3" : "left-3")} />
-            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={isRtl ? 'بحث سريع...' : 'Quick search...'} className={cn("h-10 bg-white border border-slate-200 text-xs font-bold", isRtl ? "pr-10" : "pl-10")} />
+            <Search className={cn("absolute top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500", isRtl ? "right-3" : "left-3")} />
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={isRtl ? 'بحث سريع...' : 'Quick search...'} className={cn("h-10 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xs font-bold dark:text-slate-100", isRtl ? "pr-10" : "pl-10")} />
           </div>
           <div className="flex items-center gap-2 w-full md:w-auto">
-             <div className="flex items-center gap-2 px-3 bg-white rounded-lg border border-slate-200 h-10">
-                <CalendarDays className="w-3.5 h-3.5 text-slate-400" />
-                <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-7 border-none shadow-none text-[10px] w-28 font-bold tabular-nums" />
+             <div className="flex items-center gap-2 px-3 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 h-10">
+                <CalendarDays className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
+                <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-7 border-none shadow-none text-[10px] w-28 font-bold tabular-nums dark:bg-slate-900 dark:text-slate-100" />
                 <span className="text-[10px] font-black text-slate-300">→</span>
-                <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-7 border-none shadow-none text-[10px] w-28 font-bold tabular-nums" />
+                <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-7 border-none shadow-none text-[10px] w-28 font-bold tabular-nums dark:bg-slate-900 dark:text-slate-100" />
              </div>
-             <div className="flex items-center gap-1.5 px-1.5 border-r border-slate-200">
+             <div className={cn("flex items-center gap-1.5 px-1.5 border-slate-200 dark:border-slate-700", isRtl ? "border-r" : "border-l")}>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="h-10 px-3 rounded-lg text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent"><Filter className="w-4 h-4" /> {isRtl ? 'تصفية' : 'Filter'}</Button>
+                    <Button variant="ghost" className="h-10 px-3 rounded-lg text-xs font-bold gap-2 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 border border-transparent"><Filter className="w-4 h-4" /> {isRtl ? 'تصفية' : 'Filter'}</Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="w-64 rounded-xl border-slate-200 shadow-xl">
-                    <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">PERSONNEL</DropdownMenuLabel>
+                  <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="w-64 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-900 shadow-xl">
+                    <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest">PERSONNEL</DropdownMenuLabel>
                     <ScrollArea className="h-40">
-                       <DropdownMenuItem onClick={() => setWorkerFilter('all')} className="text-xs font-bold cursor-pointer">{isRtl ? 'الكل' : 'All'}</DropdownMenuItem>
+                       <DropdownMenuItem onClick={() => setWorkerFilter('all')} className="text-xs font-bold cursor-pointer dark:text-slate-200">{isRtl ? 'الكل' : 'All'}</DropdownMenuItem>
                        {allWorkers?.filter(w => w.status !== 'deleted').map(w => (
-                         <DropdownMenuItem key={w.id} onClick={() => setWorkerFilter(w.id)} className="text-xs font-bold cursor-pointer">{w.fullName}</DropdownMenuItem>
+                         <DropdownMenuItem key={w.id} onClick={() => setWorkerFilter(w.id)} className="text-xs font-bold cursor-pointer dark:text-slate-200">{w.fullName}</DropdownMenuItem>
                        ))}
                     </ScrollArea>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <Button onClick={handleExportCSV} variant="ghost" className="h-10 px-3 rounded-lg text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent"><FileDown className="w-4 h-4 text-emerald-600" /> {isRtl ? 'تصدير' : 'Export'}</Button>
+                <Button onClick={handleExportCSV} variant="ghost" className="h-10 px-3 rounded-lg text-xs font-bold gap-2 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 border border-transparent"><FileDown className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> {isRtl ? 'تصدير' : 'Export'}</Button>
              </div>
           </div>
         </div>
@@ -482,7 +483,7 @@ export default function PayrollManagementPage() {
 
       <div className="flex-1 min-h-0 flex flex-col p-4 md:p-6 no-scrollbar">
         <Tabs value={activeTab} onValueChange={setActiveTab} dir={dir} className="w-full h-full flex flex-col">
-          <div className="flex items-center justify-between mb-4 bg-white p-2 rounded-xl border border-slate-200 shadow-sm">
+          <div className="flex items-center justify-between mb-4 bg-white dark:bg-slate-900 p-2 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition-colors duration-300">
             <TabsList className="grid grid-cols-2 w-[360px] h-9">
               <TabsTrigger value="balances" className="font-black text-xs"><Users2 className="w-3.5 h-3.5 me-2" />{isRtl ? 'الأرصدة المستحقة للعمال' : 'Outstanding Balances'}</TabsTrigger>
               <TabsTrigger value="vouchers" className="font-black text-xs"><Receipt className="w-3.5 h-3.5 me-2" />{isRtl ? 'أرشيف سندات الصرف' : 'Payment Archive'}</TabsTrigger>
@@ -491,47 +492,47 @@ export default function PayrollManagementPage() {
 
           <TabsContent value="balances" className="flex-1 min-h-0 focus-visible:ring-0">
              <div className="h-full flex flex-col space-y-4">
-                <div className="flex-1 bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+                <div className="flex-1 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col transition-colors duration-300">
                   <div className="flex-1 overflow-y-auto no-scrollbar">
                     <Table className={cn("text-right border-separate border-spacing-0", !isRtl && "text-left")}>
-                      <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
-                        <TableRow>
-                          <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", isRtl ? "text-right" : "text-left")}>PERSONNEL</TableHead>
-                          <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", isRtl ? "text-right" : "text-left")}>UNIT</TableHead>
-                          <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center">DUE BALANCE</TableHead>
+                      <TableHeader className="bg-slate-50 dark:bg-slate-800 sticky top-0 z-10 shadow-sm">
+                        <TableRow className="border-b dark:border-slate-700">
+                          <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase", isRtl ? "text-right" : "text-left")}>PERSONNEL</TableHead>
+                          <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase", isRtl ? "text-right" : "text-left")}>UNIT</TableHead>
+                          <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase text-center">DUE BALANCE</TableHead>
                           <TableHead className="w-40 px-6 py-4 text-center"></TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {flattenedBalances.map((w, idx) => (
-                          <TableRow key={`${w.id}-${w.displayCurrency}-${idx}`} className="hover:bg-slate-50/50 border-b border-slate-100 transition-colors">
+                          <TableRow key={`${w.id}-${w.displayCurrency}-${idx}`} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 transition-colors">
                             <TableCell className="px-6 py-3">
                               <div className="flex items-center gap-3">
-                                <Avatar className="h-10 w-10 border-2 border-white shadow-sm shrink-0 rounded-lg">
+                                <Avatar className="h-10 w-10 border-2 border-white dark:border-slate-800 shadow-sm shrink-0 rounded-lg">
                                   <AvatarImage src={w.photoUrl} className="object-cover" />
-                                  <AvatarFallback className="bg-slate-100 text-slate-400 text-[10px] font-black uppercase">{w.fullName?.charAt(0)}</AvatarFallback>
+                                  <AvatarFallback className="bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 text-[10px] font-black uppercase">{w.fullName?.charAt(0)}</AvatarFallback>
                                 </Avatar>
                                 <div className="flex flex-col text-right">
-                                  <span className="font-black text-slate-900 text-xs">{w.fullName}</span>
-                                  <span className="text-[10px] text-emerald-700 font-bold tabular-nums tracking-widest uppercase">{w.workerId}</span>
+                                  <span className="font-black text-slate-900 dark:text-slate-100 text-xs">{w.fullName}</span>
+                                  <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold tabular-nums tracking-widest uppercase">{w.workerId}</span>
                                 </div>
                               </div>
                             </TableCell>
-                            <TableCell className="px-6 py-3 font-bold text-slate-600 text-xs">{allDepartments?.find(d => d.id === w.departmentId)?.nameAr || '---'}</TableCell>
+                            <TableCell className="px-6 py-3 font-bold text-slate-600 dark:text-slate-400 text-xs">{allDepartments?.find(d => d.id === w.departmentId)?.nameAr || '---'}</TableCell>
                             <TableCell className="px-6 py-3 text-center">
-                              <Badge variant="outline" className="bg-rose-50 text-rose-700 tabular-nums font-black border-rose-100 py-1.5 px-3">
+                              <Badge variant="outline" className="bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-400 tabular-nums font-black border-rose-100 dark:border-rose-900/30 py-1.5 px-3">
                                 {(w.displayAmount).toLocaleString('en-US')} <span className="ms-1 text-[9px] opacity-60 uppercase">{w.displayCurrency}</span>
                               </Badge>
                             </TableCell>
                             <TableCell className="px-6 py-3 text-center">
-                              <Button onClick={() => { setFormData(prev => ({...prev, workerId: w.id, currency: w.displayCurrency})); setIsPayDialogOpen(true); }} variant="outline" className="h-10 px-6 rounded-lg text-[10px] font-black uppercase text-emerald-600 border-emerald-100 hover:bg-emerald-600 hover:text-white transition-all gap-2 shadow-sm">
+                              <Button onClick={() => { setFormData(prev => ({...prev, workerId: w.id, currency: w.displayCurrency})); setIsPayDialogOpen(true); }} variant="outline" className="h-10 px-6 rounded-lg text-[10px] font-black uppercase text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/30 hover:bg-emerald-600 hover:text-white dark:hover:bg-emerald-600 transition-all gap-2 shadow-sm">
                                 <Wallet className="w-3.5 h-3.5" />{isRtl ? 'صرف الآن' : 'Disburse'}
                               </Button>
                             </TableCell>
                           </TableRow>
                         ))}
                         {flattenedBalances.length === 0 && (
-                          <TableRow><TableCell colSpan={4} className="text-center py-20 text-slate-300 font-black">{isRtl ? 'لا توجد مبالغ مستحقة حالياً' : 'No outstanding balances found'}</TableCell></TableRow>
+                          <TableRow><TableCell colSpan={4} className="text-center py-20 text-slate-300 dark:text-slate-800 font-black">{isRtl ? 'لا توجد مبالغ مستحقة حالياً' : 'No outstanding balances found'}</TableCell></TableRow>
                         )}
                       </TableBody>
                     </Table>
@@ -541,42 +542,42 @@ export default function PayrollManagementPage() {
           </TabsContent>
           
           <TabsContent value="vouchers" className="flex-1 min-h-0 focus-visible:ring-0">
-             <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden h-full flex flex-col">
+             <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden h-full flex flex-col transition-colors duration-300">
                 <div className="flex-1 overflow-y-auto no-scrollbar">
                    <Table className={cn("text-right border-separate border-spacing-0", !isRtl && "text-left")}>
-                      <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
-                         <TableRow>
-                           <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", isRtl ? "text-right" : "text-left")}>
-                              <button onClick={() => toggleSort('voucherNumber')} className="flex items-center gap-2 hover:text-emerald-700 transition-colors uppercase">REF #{sortBy === 'voucherNumber' ? (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5" /> : <SortDesc className="w-3.5 h-3.5" />) : <ArrowUpDown className="w-3 h-3 opacity-30" />}</button>
+                      <TableHeader className="bg-slate-50 dark:bg-slate-800 sticky top-0 z-10 shadow-sm">
+                         <TableRow className="border-b dark:border-slate-700">
+                           <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase", isRtl ? "text-right" : "text-left")}>
+                              <button onClick={() => toggleSort('voucherNumber')} className="flex items-center gap-2 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors uppercase">REF #{sortBy === 'voucherNumber' ? (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5" /> : <SortDesc className="w-3.5 h-3.5" />) : <ArrowUpDown className="w-3 h-3 opacity-30" />}</button>
                            </TableHead>
-                           <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", isRtl ? "text-right" : "text-left")}>
-                              <button onClick={() => toggleSort('date')} className="flex items-center gap-2 hover:text-emerald-700 transition-colors uppercase">DATE {sortBy === 'date' ? (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5" /> : <SortDesc className="w-3.5 h-3.5" />) : <ArrowUpDown className="w-3 h-3 opacity-30" />}</button>
+                           <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase", isRtl ? "text-right" : "text-left")}>
+                              <button onClick={() => toggleSort('date')} className="flex items-center gap-2 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors uppercase">DATE {sortBy === 'date' ? (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5" /> : <SortDesc className="w-3.5 h-3.5" />) : <ArrowUpDown className="w-3 h-3 opacity-30" />}</button>
                            </TableHead>
-                           <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase", isRtl ? "text-right" : "text-left")}>WORKER</TableHead>
-                           <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center">PAID AMOUNT</TableHead>
+                           <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase", isRtl ? "text-right" : "text-left")}>WORKER</TableHead>
+                           <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase text-center">PAID AMOUNT</TableHead>
                            <TableHead className="w-24 px-6 py-4 text-center">ACTIONS</TableHead>
                          </TableRow>
                       </TableHeader>
                       <TableBody>
                          {filteredPayments.map(p => (
-                           <TableRow key={p.id} className="hover:bg-slate-50/50 border-b border-slate-100 transition-colors group">
-                              <TableCell className={cn("px-6 py-3 font-black text-slate-900 text-xs tabular-nums", isRtl ? "text-right" : "text-left")}>{p.voucherNumber}</TableCell>
-                              <TableCell className={cn("px-6 py-3 font-bold text-slate-500 text-xs tabular-nums", isRtl ? "text-right" : "text-left")}>{p.date}</TableCell>
-                              <TableCell className={cn("px-6 py-3 font-bold text-slate-700 text-xs", isRtl ? "text-right" : "text-left")}>{allWorkers?.find(w => w.id === p.workerId)?.fullName || '---'}</TableCell>
+                           <TableRow key={p.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 transition-colors group">
+                              <TableCell className={cn("px-6 py-3 font-black text-slate-900 dark:text-slate-100 text-xs tabular-nums", isRtl ? "text-right" : "text-left")}>{p.voucherNumber}</TableCell>
+                              <TableCell className={cn("px-6 py-3 font-bold text-slate-500 dark:text-slate-500 text-xs tabular-nums", isRtl ? "text-right" : "text-left")}>{p.date}</TableCell>
+                              <TableCell className={cn("px-6 py-3 font-bold text-slate-700 dark:text-slate-300 text-xs", isRtl ? "text-right" : "text-left")}>{allWorkers?.find(w => w.id === p.workerId)?.fullName || '---'}</TableCell>
                               <TableCell className="px-6 py-3 text-center">
-                                 <Badge variant="outline" className="bg-emerald-50 text-emerald-700 tabular-nums font-black border-emerald-100 py-1 px-3">
+                                 <Badge variant="outline" className="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 tabular-nums font-black border-emerald-100 dark:border-emerald-900/30 py-1 px-3">
                                    {(p.totalAmount || 0).toLocaleString('en-US')} <span className="ms-1 uppercase opacity-60">{p.currency}</span>
                                  </Badge>
                               </TableCell>
                               <TableCell className="px-6 py-3 text-center">
                                  <div className="flex items-center justify-center gap-1">
-                                    <Button variant="ghost" size="icon" onClick={() => setPrintingVoucher(p)} className="h-8 w-8 text-slate-400 hover:text-emerald-600 transition-all rounded-lg"><Eye className="w-4 h-4" /></Button>
+                                    <Button variant="ghost" size="icon" onClick={() => setPrintingVoucher(p)} className="h-8 w-8 text-slate-400 dark:text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all rounded-lg"><Eye className="w-4 h-4" /></Button>
                                     <DropdownMenu>
-                                      <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-slate-100 rounded-lg"><MoreVertical className="w-4 h-4 text-slate-400" /></Button></DropdownMenuTrigger>
-                                      <DropdownMenuContent align={isRtl ? "end" : "start"} className="w-44 rounded-xl shadow-xl">
-                                        <DropdownMenuItem onClick={() => handleEditVoucher(p)} className="gap-2 font-bold py-2 cursor-pointer text-xs"><Edit2 className="w-3.5 h-3.5 text-emerald-600" /> {isRtl ? 'تعديل السند' : 'Edit Voucher'}</DropdownMenuItem>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem onClick={() => setDeletingVoucher(p)} className="gap-2 font-bold py-2 text-rose-600 cursor-pointer text-xs"><Trash2 className="w-3.5 h-3.5" /> {isRtl ? 'إلغاء السند' : 'Reverse Voucher'}</DropdownMenuItem>
+                                      <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"><MoreVertical className="w-4 h-4 text-slate-400 dark:text-slate-500" /></Button></DropdownMenuTrigger>
+                                      <DropdownMenuContent align={isRtl ? "end" : "start"} className="w-44 rounded-xl shadow-xl dark:bg-slate-900 dark:border-slate-800">
+                                        <DropdownMenuItem onClick={() => handleEditVoucher(p)} className="gap-2 font-bold py-2 cursor-pointer text-xs dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800"><Edit2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> {isRtl ? 'تعديل السند' : 'Edit Voucher'}</DropdownMenuItem>
+                                        <DropdownMenuSeparator className="dark:bg-slate-800" />
+                                        <DropdownMenuItem onClick={() => setDeletingVoucher(p)} className="gap-2 font-bold py-2 text-rose-600 dark:text-rose-400 cursor-pointer text-xs focus:bg-rose-50 dark:focus:bg-rose-900/20"><Trash2 className="w-3.5 h-3.5" /> {isRtl ? 'إلغاء السند' : 'Reverse Voucher'}</DropdownMenuItem>
                                       </DropdownMenuContent>
                                     </DropdownMenu>
                                  </div>
@@ -584,7 +585,7 @@ export default function PayrollManagementPage() {
                            </TableRow>
                          ))}
                          {filteredPayments.length === 0 && (
-                           <TableRow><TableCell colSpan={5} className="text-center py-20 text-slate-300 font-black">{isRtl ? 'الأرشيف فارغ' : 'Payment archive is empty'}</TableCell></TableRow>
+                           <TableRow><TableCell colSpan={5} className="text-center py-20 text-slate-300 dark:text-slate-800 font-black">{isRtl ? 'الأرشيف فارغ' : 'Payment archive is empty'}</TableCell></TableRow>
                          )}
                       </TableBody>
                    </Table>
@@ -594,36 +595,37 @@ export default function PayrollManagementPage() {
         </Tabs>
       </div>
 
+      {/* PAYMENT DIALOG */}
       <Dialog open={isPayDialogOpen} onOpenChange={(open) => !open && resetDialog()}>
-        <DialogContent className="sm:max-w-[800px] rounded-lg p-0 overflow-hidden border-none shadow-2xl">
+        <DialogContent className="sm:max-w-[800px] rounded-lg p-0 overflow-hidden border-none shadow-2xl dark:bg-slate-900">
           <div className="premium-gradient p-6 text-white">
             <DialogHeader className={cn("text-right rtl:text-right ltr:text-left")}>
               <DialogTitle className="text-xl font-black flex items-center gap-3 text-white"><Wallet className="w-5 h-5 text-emerald-300" />{editingVoucherId ? (isRtl ? 'تعديل سند الصرف' : 'Edit Payment') : (isRtl ? 'صرف مستحقات العمال' : 'Personnel Wage Payment')}</DialogTitle>
               <DialogDescription className="text-emerald-100/70 font-bold text-[10px] mt-1">Settlement of production receipts and cash release</DialogDescription>
             </DialogHeader>
           </div>
-          <form onSubmit={handleSavePayment} className="p-6 space-y-5 bg-white max-h-[80vh] overflow-y-auto no-scrollbar">
+          <form onSubmit={handleSavePayment} className="p-6 space-y-5 bg-white dark:bg-slate-900 max-h-[80vh] overflow-y-auto no-scrollbar">
             <div className="grid grid-cols-2 gap-4">
               <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
-                <Label className="text-[10px] font-black uppercase text-slate-400 block">{isRtl ? 'الموظف المستحق' : 'WORKER'}</Label>
-                <select value={formData.workerId} onChange={(e) => setFormData(prev => ({...prev, workerId: e.target.value}))} className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none focus:ring-1 focus:ring-emerald-500" required>
+                <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 block">{isRtl ? 'الموظف المستحق' : 'WORKER'}</Label>
+                <select value={formData.workerId} onChange={(e) => setFormData(prev => ({...prev, workerId: e.target.value}))} className="w-full h-11 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-bold outline-none dark:text-slate-100 focus:ring-1 focus:ring-emerald-500" required>
                    <option value="">-- {isRtl ? 'اختر الموظف' : 'Select Worker'} --</option>
                    {allWorkers?.filter(w => w.status !== 'deleted' && w.active).map(w => <option key={w.id} value={w.id}>{w.fullName}</option>)}
                 </select>
               </div>
               <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
-                <Label className="text-[10px] font-black uppercase text-slate-400 block">DATE</Label>
-                <Input type="date" value={formData.date} onChange={(e) => setFormData(prev => ({...prev, date: e.target.value}))} className="h-11 font-bold bg-slate-50 tabular-nums" required />
+                <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 block">DATE</Label>
+                <Input type="date" value={formData.date} onChange={(e) => setFormData(prev => ({...prev, date: e.target.value}))} className="h-11 font-bold bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 dark:text-slate-100 tabular-nums" required />
               </div>
             </div>
             
-            <div className="p-4 bg-emerald-50/30 border border-emerald-100 rounded-xl space-y-4">
+            <div className="p-4 bg-emerald-50/30 dark:bg-emerald-900/10 rounded-xl border border-emerald-100 dark:border-emerald-900/30 space-y-4">
               <div className="flex items-center justify-between">
-                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2 justify-start"><Coins className="w-3.5 h-3.5 text-emerald-600" /> CURRENCY</Label>
+                <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start"><Coins className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> CURRENCY</Label>
                 <select 
                   value={formData.currency} 
                   disabled
-                  className="h-9 px-3 bg-white border border-emerald-200 rounded-lg text-[10px] font-black shadow-sm outline-none disabled:opacity-70 disabled:cursor-not-allowed"
+                  className="h-9 px-3 bg-white dark:bg-slate-800 border border-emerald-200 dark:border-slate-700 rounded-lg text-[10px] font-black shadow-sm outline-none dark:text-slate-100 disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                   <option value="YER">YER - ريال يمني</option>
                   <option value="SAR">SAR - ريال سعودي</option>
@@ -632,55 +634,57 @@ export default function PayrollManagementPage() {
               </div>
               
               {formData.workerId && unpaidReceipts.length > 0 ? (
-                <div className="border border-slate-100 rounded-xl overflow-hidden shadow-sm bg-white">
+                <div className="border border-slate-100 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm bg-white dark:bg-slate-900">
                    <Table className={cn("text-right", !isRtl && "text-left")}>
-                      <TableHeader className="bg-slate-50"><TableRow><TableHead className="w-10 px-4"></TableHead><TableHead className={cn("px-4 py-2 text-[9px] font-black uppercase", isRtl ? "text-right" : "text-left")}>REF #</TableHead><TableHead className="px-4 py-2 text-[9px] font-black uppercase text-center">DUE</TableHead></TableRow></TableHeader>
+                      <TableHeader className="bg-slate-50 dark:bg-slate-800"><TableRow className="border-b dark:border-slate-700"><TableHead className="w-10 px-4"></TableHead><TableHead className={cn("px-4 py-2 text-[9px] font-black uppercase text-slate-500 dark:text-slate-400", isRtl ? "text-right" : "text-left")}>REF #</TableHead><TableHead className="px-4 py-2 text-[9px] font-black uppercase text-slate-500 dark:text-slate-400 text-center">DUE</TableHead></TableRow></TableHeader>
                       <TableBody>
                         {unpaidReceipts.map(r => (
-                          <TableRow key={r.id} onClick={(e) => toggleReceiptSelection(r.id, e as any)} className={cn("bg-white border-b border-slate-50 cursor-pointer transition-colors", formData.linkedReceipts.includes(r.id) && "bg-emerald-50/60")}>
+                          <TableRow key={r.id} onClick={(e) => toggleReceiptSelection(r.id, e as any)} className={cn("bg-white dark:bg-slate-900 border-b border-slate-50 dark:border-slate-800 cursor-pointer transition-colors", formData.linkedReceipts.includes(r.id) && "bg-emerald-50/60 dark:bg-emerald-900/20")}>
                             <TableCell className="px-4"><Checkbox checked={formData.linkedReceipts.includes(r.id)} onCheckedChange={(val) => toggleReceiptSelection(r.id, { stopPropagation: () => {} } as any)} /></TableCell>
-                            <TableCell className={cn("px-4 py-2 text-xs font-black tabular-nums", isRtl ? "text-right" : "text-left")}>{r.voucherNumber}</TableCell>
-                            <TableCell className="px-4 py-2 text-center"><span className="text-sm font-black text-emerald-700 tabular-nums">{(Number(r.wageAmount) || 0).toLocaleString('en-US')}</span><span className="text-[9px] font-black text-slate-400 ms-1 uppercase">{r.currency}</span></TableCell>
+                            <TableCell className={cn("px-4 py-2 text-xs font-black tabular-nums dark:text-slate-100", isRtl ? "text-right" : "text-left")}>{r.voucherNumber}</TableCell>
+                            <TableCell className="px-4 py-2 text-center"><span className="text-sm font-black text-emerald-700 dark:text-emerald-400 tabular-nums">{(Number(r.wageAmount) || 0).toLocaleString('en-US')}</span><span className="text-[9px] font-black text-slate-400 dark:text-slate-500 ms-1 uppercase">{r.currency}</span></TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
                    </Table>
                 </div>
               ) : formData.workerId && (
-                <div className="py-8 text-center bg-white rounded-xl border border-dashed border-slate-200">
-                   <AlertCircle className="w-8 h-8 text-slate-200 mx-auto mb-2" />
-                   <p className="text-[10px] font-black text-slate-400 uppercase">{isRtl ? 'لا توجد مستحقات معلقة بهذا الموظف' : 'No pending dues for this worker'}</p>
+                <div className="py-8 text-center bg-white dark:bg-slate-900 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
+                   <AlertCircle className="w-8 h-8 text-slate-200 dark:text-slate-800 mx-auto mb-2" />
+                   <p className="text-[10px] font-black text-slate-400 dark:text-slate-600 uppercase">{isRtl ? 'لا توجد مستحقات معلقة بهذا الموظف' : 'No pending dues for this worker'}</p>
                 </div>
               )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
               <div className={cn("md:col-span-2 space-y-1.5", isRtl ? "text-right" : "text-left")}>
-                <Label className="text-[10px] font-black uppercase text-slate-400 block">TOTAL DISBURSEMENT</Label>
+                <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 block">TOTAL DISBURSEMENT</Label>
                 <div className="relative">
-                  <Input type="number" step="any" value={formData.amount || ''} onChange={(e) => setFormData(prev => ({...prev, amount: Number(e.target.value)}))} className="h-14 font-black text-2xl text-center tabular-nums bg-emerald-50 border-emerald-200 text-emerald-700" required />
-                  <div className={cn("absolute top-1/2 -translate-y-1/2", isRtl ? "left-4" : "right-4")}><div className="h-9 px-3 bg-white border border-emerald-100 rounded-lg flex items-center justify-center text-xs font-black">{formData.currency}</div></div>
+                  <Input type="number" step="any" value={formData.amount || ''} onChange={(e) => setFormData(prev => ({...prev, amount: Number(e.target.value)}))} className="h-14 font-black text-2xl text-center tabular-nums bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-900/30 text-emerald-700 dark:text-emerald-400" required />
+                  <div className={cn("absolute top-1/2 -translate-y-1/2", isRtl ? "left-4" : "right-4")}><div className="h-9 px-3 bg-white dark:bg-slate-800 border border-emerald-100 dark:border-slate-700 rounded-lg flex items-center justify-center text-xs font-black dark:text-slate-100">{formData.currency}</div></div>
                 </div>
               </div>
-              <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}><Label className="text-[10px] font-black uppercase text-slate-400 block">BATCH COUNT</Label><div className="h-14 flex items-center justify-center bg-slate-900 text-white rounded-lg font-black text-xl tabular-nums">{formData.linkedReceipts.length}</div></div>
+              <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}><Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 block">BATCH COUNT</Label><div className="h-14 flex items-center justify-center bg-slate-900 dark:bg-slate-800 text-white rounded-lg font-black text-xl tabular-nums border border-slate-700 shadow-inner">{formData.linkedReceipts.length}</div></div>
             </div>
             
-            <div className="flex gap-3 pt-4 border-t border-slate-100">
-              <Button type="submit" disabled={isSubmitting || formData.amount <= 0 || formData.linkedReceipts.length === 0} className="flex-1 h-14 premium-gradient text-white rounded-lg font-black text-base shadow-xl">
+            <div className="flex gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+              <Button type="submit" disabled={isSubmitting || formData.amount <= 0 || formData.linkedReceipts.length === 0} className="flex-1 h-14 premium-gradient text-white rounded-lg font-black text-base shadow-xl border-none">
                 {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin me-2" /> : <Save className="w-5 h-5 me-2" />}
                 {isRtl ? (editingVoucherId ? 'حفظ التعديلات' : 'تأكيد الترحيل المالي') : 'Confirm & Post Payment'}
               </Button>
-              <Button type="button" variant="outline" onClick={resetDialog} className="px-8 h-14 font-black text-slate-400 rounded-lg">Cancel</Button>
+              <Button type="button" variant="outline" onClick={resetDialog} className="px-8 h-14 font-black text-slate-400 dark:text-slate-500 rounded-lg border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800">Cancel</Button>
             </div>
           </form>
         </DialogContent>
       </Dialog>
 
+      {/* PRINT DIALOG */}
       <Dialog open={!!printingVoucher} onOpenChange={(open) => !open && setPrintingVoucher(null)}>
         <DialogContent className="sm:max-w-[850px] p-0 overflow-hidden border-none bg-white shadow-2xl">
           <DialogHeader className="sr-only"><DialogTitle>سند صرف مالي</DialogTitle></DialogHeader>
           <ScrollArea className="max-h-[85vh]">
-            <div className="p-12 bg-white" id="printable-payment">
+            {/* FORCED LIGHT MODE FOR VOUCHER */}
+            <div className="p-12 bg-white text-slate-900 relative z-0 light" id="printable-payment">
                {printingVoucher && (
                 <VoucherTemplate 
                   voucher={printingVoucher}
@@ -695,31 +699,44 @@ export default function PayrollManagementPage() {
                )}
             </div>
           </ScrollArea>
-          <DialogFooter className="p-6 bg-slate-50 border-t border-slate-100">
-             <Button onClick={handleDownloadImage} disabled={isDownloading} className="premium-gradient font-black h-12 px-10 rounded-xl shadow-xl hover:opacity-90 active:scale-95 transition-all gap-2">
+          <DialogFooter className="p-6 bg-slate-50 border-t border-slate-100 flex flex-row gap-3 justify-end">
+             <Button onClick={handleDownloadImage} disabled={isDownloading} className="premium-gradient font-black h-12 px-10 rounded-xl shadow-xl hover:opacity-90 active:scale-95 transition-all gap-2 border-none">
                 {isDownloading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
                 {isRtl ? 'تحميل كصورة PNG' : 'Download PNG'}
              </Button>
-             <Button variant="ghost" onClick={() => setPrintingVoucher(null)} className="h-12 px-8 rounded-xl border border-slate-200 text-slate-500">{isRtl ? 'إغلاق' : 'Close'}</Button>
+             <Button variant="ghost" onClick={() => setPrintingVoucher(null)} className="h-12 px-8 rounded-xl border border-slate-200 text-slate-500 font-black hover:bg-slate-100">{isRtl ? 'إغلاق' : 'Close'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
+      {/* REVERSE DIALOG */}
       <AlertDialog open={!!deletingVoucher} onOpenChange={(open) => !open && setDeletingVoucher(null)}>
-        <AlertDialogContent className="max-w-[400px] rounded-lg border-none shadow-2xl p-0 overflow-hidden">
-          <div className="bg-slate-950 p-8 text-center">
+        <AlertDialogContent className="max-w-[400px] rounded-lg border-none shadow-2xl p-0 overflow-hidden dark:bg-slate-900">
+          <div className="bg-slate-950 p-8 text-center relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-4 opacity-5"><RefreshCcw className="w-32 h-32 text-white" /></div>
             <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20 shadow-inner"><RefreshCcw className="w-8 h-8 text-red-500" /></div>
             <AlertDialogTitle className="text-white text-xl font-black">{isRtl ? 'إلغاء سند الصرف' : 'Reverse Payment'}</AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-400 font-bold mt-2 text-xs leading-relaxed">
+            <AlertDialogDescription className="text-slate-400 font-bold mt-2 text-xs leading-relaxed text-center">
               {isRtl ? 'سيتم إلغاء السند المالي وإعادة فتح استحقاق الأجور المرتبطة به في كشف العامل.' : 'This voucher will be canceled and liabilities restored.'}
             </AlertDialogDescription>
           </div>
-          <div className="bg-white p-6 flex gap-3">
-            <AlertDialogAction onClick={handleDeletePayment} disabled={isSubmitting} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-md font-black">{isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : (isRtl ? 'تأكيد' : 'Confirm')}</AlertDialogAction>
-            <AlertDialogCancel onClick={() => setDeletingVoucher(null)} className="flex-1 h-11 bg-slate-50 border-slate-200 text-slate-400 rounded-md font-black">{isRtl ? 'تراجع' : 'Cancel'}</AlertDialogCancel>
+          <div className="bg-white dark:bg-slate-900 p-6 flex gap-3">
+            <AlertDialogAction onClick={handleDeletePayment} disabled={isSubmitting} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-md font-black border-none shadow-lg transition-all active:scale-95">
+              {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : (isRtl ? 'تأكيد' : 'Confirm')}
+            </AlertDialogAction>
+            <AlertDialogCancel onClick={() => setDeletingVoucher(null)} className="flex-1 h-11 bg-slate-50 dark:bg-slate-800 border-none text-slate-400 dark:text-slate-500 rounded-md font-black hover:bg-slate-100 transition-all">{isRtl ? 'تراجع' : 'Cancel'}</AlertDialogCancel>
           </div>
         </AlertDialogContent>
       </AlertDialog>
+
+      <div className="flex-none p-3 bg-slate-900 dark:bg-slate-900/80 text-white/40 flex items-center justify-center gap-4 border-t border-white/5 shadow-2xl transition-colors duration-300">
+         <ShieldCheck className="w-4 h-4 text-emerald-500" />
+         <p className="text-[10px] font-bold tracking-tight">
+           {isRtl 
+             ? 'نظام الرقابة المالية: تصفية المستحقات تتم بناءً على سندات استلام الإنتاج المرحلة والموثقة تاريخياً.' 
+             : 'Financial Audit System Active: Wage settlements based on historically posted production receipts.'}
+         </p>
+      </div>
     </div>
   );
 }
