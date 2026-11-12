@@ -33,7 +33,13 @@ import {
   Receipt,
   FileBarChart,
   Settings as SettingsIcon,
-  AlertCircle
+  AlertCircle,
+  FileDown,
+  Filter,
+  CheckCircle2,
+  SortAsc,
+  SortDesc,
+  ArrowUpDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -107,6 +113,9 @@ export default function UsersPermissionsPage() {
   const isRtl = lang === 'ar';
 
   const [search, setSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'manager' | 'staff'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
@@ -136,11 +145,30 @@ export default function UsersPermissionsPage() {
 
   const filteredUsers = useMemo(() => {
     if (!users) return [];
-    return users.filter(u => 
-      (u.fullName || '').toLowerCase().includes(search.toLowerCase()) || 
-      (u.email || '').toLowerCase().includes(search.toLowerCase())
-    ).sort((a, b) => (a.fullName || '').localeCompare(b.fullName || ''));
-  }, [users, search]);
+    let list = users.filter(u => u.status !== 'deleted');
+    
+    // Search Filter
+    if (search) {
+      const s = search.toLowerCase();
+      list = list.filter(u => 
+        (u.fullName || '').toLowerCase().includes(s) || 
+        (u.email || '').toLowerCase().includes(s)
+      );
+    }
+
+    // Role Filter
+    if (roleFilter !== 'all') {
+      list = list.filter(u => u.role === roleFilter);
+    }
+
+    // Status Filter
+    if (statusFilter !== 'all') {
+      const isActive = statusFilter === 'active';
+      list = list.filter(u => u.active === isActive);
+    }
+
+    return list.sort((a, b) => (a.fullName || '').localeCompare(b.fullName || ''));
+  }, [users, search, roleFilter, statusFilter]);
 
   const resetForm = useCallback(() => {
     setIsAddDialogOpen(false);
@@ -196,6 +224,39 @@ export default function UsersPermissionsPage() {
     setIsAddDialogOpen(true);
   };
 
+  const handleExportCSV = () => {
+    const headers = [
+      isRtl ? 'الاسم الكامل' : 'Full Name',
+      isRtl ? 'البريد الإلكتروني' : 'Email',
+      isRtl ? 'الدور' : 'Role',
+      isRtl ? 'الحالة' : 'Status',
+      isRtl ? 'تاريخ التسجيل' : 'Created At'
+    ];
+
+    const rows = filteredUsers.map(u => [
+      u.fullName,
+      u.email,
+      u.role,
+      u.active ? (isRtl ? 'نشط' : 'Active') : (isRtl ? 'معطل' : 'Inactive'),
+      u.createdAt?.toDate?.().toLocaleDateString('en-US') || '---'
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(val => `"${String(val || '').replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `System_Users_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast({ title: isRtl ? "تم تحميل كشف المستخدمين" : "Users List Exported" });
+  };
+
   const handleTogglePermission = (moduleId: string, type: 'read' | 'create' | 'edit' | 'delete') => {
     setFormData(prev => ({
       ...prev,
@@ -246,7 +307,6 @@ export default function UsersPermissionsPage() {
       const cleanEmail = formData.email.trim().toLowerCase();
       const cleanPassword = formData.password.trim();
 
-      // If new user, create in Firebase Auth first
       if (!editingUserId) {
         const tempAppName = `temp-auth-${Date.now()}`;
         tempApp = initializeApp(firebaseConfig, tempAppName);
@@ -270,7 +330,7 @@ export default function UsersPermissionsPage() {
       const userData = {
         fullName: formData.fullName.trim(),
         email: cleanEmail,
-        password: cleanPassword, // Stored as reference (hashed in real production)
+        password: cleanPassword,
         photoUrl: formData.photoUrl,
         role: formData.role,
         active: formData.active,
@@ -278,7 +338,6 @@ export default function UsersPermissionsPage() {
         updatedAt: serverTimestamp()
       };
 
-      // Save to Firestore using the Auth UID as doc ID
       await setDoc(doc(db, 'users', uid), {
         ...userData,
         createdAt: editingUserId ? (users?.find(u => u.id === uid)?.createdAt || serverTimestamp()) : serverTimestamp()
@@ -317,19 +376,50 @@ export default function UsersPermissionsPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <Search className={cn("absolute top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500", isRtl ? "right-3" : "left-3")} />
+          <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800/50 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 w-full lg:w-auto">
+            <div className="relative flex-1 lg:w-64">
+              <Search className={cn("absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 dark:text-slate-500", isRtl ? "right-3" : "left-3")} />
               <Input 
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={isRtl ? 'بحث باسم المستخدم...' : 'Search users...'}
-                className={cn(dir === 'rtl' ? 'pr-10' : 'pl-10', "h-10 w-64 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-xs font-bold dark:text-slate-100")}
+                className={cn(dir === 'rtl' ? 'pr-9' : 'pl-9', "h-9 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xs font-bold dark:text-slate-100")}
               />
             </div>
-            <Button onClick={() => { setFormData({...formData, permissions: initPermissions()}); setIsAddDialogOpen(true); }} className="h-10 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 transition-all border-none">
+
+            <div className="flex items-center gap-1.5 px-1.5 border-x border-slate-200 dark:border-slate-700">
+               <Button onClick={handleExportCSV} variant="ghost" className="h-9 px-3 rounded-lg text-xs font-bold gap-2 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 transition-colors">
+                  <FileDown className="w-4 h-4 text-emerald-600" />
+                  {isRtl ? 'تصدير' : 'Export'}
+               </Button>
+
+               <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="h-9 px-3 rounded-lg text-xs font-bold gap-2 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 transition-colors">
+                      <Filter className="w-4 h-4 text-slate-400" />
+                      {isRtl ? 'تصفية' : 'Filter'}
+                      {(roleFilter !== 'all' || statusFilter !== 'all') && <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align={isRtl ? 'start' : 'end'} className="w-56 rounded-xl shadow-xl border-slate-200 dark:border-slate-800 dark:bg-slate-900">
+                     <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest">{isRtl ? 'حسب الدور الوظيفي' : 'BY ROLE'}</DropdownMenuLabel>
+                     <DropdownMenuItem onClick={() => setRoleFilter('all')} className="flex justify-between text-xs font-bold dark:text-slate-200">{isRtl ? 'الكل' : 'All Roles'}{roleFilter === 'all' && <Check className="w-3 h-3 text-emerald-600" />}</DropdownMenuItem>
+                     <DropdownMenuItem onClick={() => setRoleFilter('admin')} className="flex justify-between text-xs font-bold dark:text-slate-200">Admin{roleFilter === 'admin' && <Check className="w-3 h-3 text-emerald-600" />}</DropdownMenuItem>
+                     <DropdownMenuItem onClick={() => setRoleFilter('manager')} className="flex justify-between text-xs font-bold dark:text-slate-200">Manager{roleFilter === 'manager' && <Check className="w-3 h-3 text-emerald-600" />}</DropdownMenuItem>
+                     <DropdownMenuItem onClick={() => setRoleFilter('staff')} className="flex justify-between text-xs font-bold dark:text-slate-200">Staff{roleFilter === 'staff' && <Check className="w-3 h-3 text-emerald-600" />}</DropdownMenuItem>
+                     
+                     <DropdownMenuSeparator className="dark:bg-slate-800" />
+                     <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest">{isRtl ? 'حسب حالة الحساب' : 'BY STATUS'}</DropdownMenuLabel>
+                     <DropdownMenuItem onClick={() => setStatusFilter('all')} className="flex justify-between text-xs font-bold dark:text-slate-200">{isRtl ? 'الكل' : 'All Status'}{statusFilter === 'all' && <Check className="w-3 h-3 text-emerald-600" />}</DropdownMenuItem>
+                     <DropdownMenuItem onClick={() => setStatusFilter('active')} className="flex justify-between text-xs font-bold dark:text-slate-200">{isRtl ? 'نشط فقط' : 'Active Only'}{statusFilter === 'active' && <Check className="w-3 h-3 text-emerald-600" />}</DropdownMenuItem>
+                     <DropdownMenuItem onClick={() => setStatusFilter('inactive')} className="flex justify-between text-xs font-bold dark:text-slate-200">{isRtl ? 'معطل فقط' : 'Inactive Only'}{statusFilter === 'inactive' && <Check className="w-3 h-3 text-emerald-600" />}</DropdownMenuItem>
+                  </DropdownMenuContent>
+               </DropdownMenu>
+            </div>
+
+            <Button onClick={() => { setFormData({...formData, permissions: initPermissions()}); setIsAddDialogOpen(true); }} className="h-9 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 transition-all border-none text-[11px]">
               <UserPlus className="w-4 h-4" />
-              {isRtl ? 'حساب جديد' : 'New Account'}
+              {isRtl ? 'حساب جديد' : 'Provision User'}
             </Button>
           </div>
         </div>
@@ -351,9 +441,9 @@ export default function UsersPermissionsPage() {
                  </TableHeader>
                  <TableBody>
                     {usersLoading ? (
-                      <TableRow><TableCell colSpan={5} className="text-center py-20 font-bold text-slate-400 animate-pulse">جاري التحميل...</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={5} className="text-center py-20 font-bold text-slate-400 animate-pulse">جاري سحب بيانات المستخدمين...</TableCell></TableRow>
                     ) : filteredUsers.length === 0 ? (
-                      <TableRow><TableCell colSpan={5} className="text-center py-20 text-slate-300 font-bold">{isRtl ? 'لا يوجد مستخدمين' : 'No users found'}</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={5} className="text-center py-20 text-slate-300 font-bold">{isRtl ? 'لا يوجد مستخدمين مطابقين للفلاتر' : 'No users match criteria'}</TableCell></TableRow>
                     ) : filteredUsers.map((user) => (
                       <TableRow key={user.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 transition-colors">
                          <TableCell className="px-6 py-4">
@@ -599,4 +689,3 @@ export default function UsersPermissionsPage() {
     </div>
   );
 }
-
