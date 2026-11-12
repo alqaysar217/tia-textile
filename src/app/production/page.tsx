@@ -47,6 +47,7 @@ import {
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 export default function ProductionDashboard() {
   const { lang, t, dir } = useTranslation();
@@ -113,7 +114,7 @@ export default function ProductionDashboard() {
     return Object.entries(months).map(([name, qty]) => ({ name, qty }));
   }, [allVouchers]);
 
-  // 3. Dynamic Labor Productivity by Order and Department
+  // 3. Dynamic Labor Productivity by Order
   const laborByOrder = useMemo(() => {
     if (!allVouchers || !allWorkers || !allOrders) return [];
     const receipts = allVouchers.filter(v => v.type === 'production_receipt' && v.status !== 'deleted');
@@ -182,10 +183,10 @@ export default function ProductionDashboard() {
         laborCost,
         overheadCost,
         data: [
-          { name: isRtl ? 'مواد' : 'Materials', value: materialCost, fill: '#f59e0b' },
-          { name: isRtl ? 'أجور' : 'Wages', value: laborCost, fill: '#7c3aed' },
-          { name: isRtl ? 'مصاريف' : 'Expenses', value: overheadCost, fill: '#ef4444' }
-        ].filter(d => d.value > 0) // Only show categories with actual costs
+          { name: isRtl ? 'مواد' : 'Materials', value: materialCost, fill: '#f59e0b' }, // Amber
+          { name: isRtl ? 'أجور' : 'Wages', value: laborCost, fill: '#8b5cf6' }, // Strong Violet
+          { name: isRtl ? 'مصاريف' : 'Expenses', value: overheadCost, fill: '#ef4444' } // Vibrant Red
+        ].filter(d => d.value > 0)
       };
     });
   }, [allOrders, allVouchers, allProducts, isRtl]);
@@ -281,7 +282,7 @@ export default function ProductionDashboard() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {laborByOrder.map((orderData, idx) => (
-            <Card key={idx} className="p-6 border-none shadow-xl bg-white rounded-2xl flex flex-col h-[350px] hover:shadow-2xl transition-all">
+            <Card key={idx} className="p-6 border-none shadow-xl bg-white rounded-2xl flex flex-col h-[380px] hover:shadow-2xl transition-all">
               <div className="flex items-center justify-between mb-6 border-b border-slate-50 pb-4">
                 <div className="flex flex-col">
                    <Badge variant="outline" className="text-[8px] font-black text-emerald-600 border-emerald-100 tabular-nums w-fit mb-1">{orderData.orderNumber}</Badge>
@@ -320,7 +321,7 @@ export default function ProductionDashboard() {
         </div>
       </div>
 
-      {/* ROW 3: REAL-TIME COST ARCHITECTURE (Donut Structure) */}
+      {/* ROW 3: REAL-TIME COST ARCHITECTURE (Donut Structure - Fixed Legend) */}
       <div className="space-y-6">
         <div className="flex items-center gap-4">
           <div className="p-2 bg-amber-500 rounded-lg text-white"><PieChartIcon className="w-5 h-5" /></div>
@@ -328,7 +329,7 @@ export default function ProductionDashboard() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {orderCostBreakdown.map((order, idx) => (
-            <Card key={idx} className="p-6 border-none shadow-xl bg-white rounded-2xl space-y-6 flex flex-col h-[420px] hover:shadow-2xl transition-all">
+            <Card key={idx} className="p-6 border-none shadow-xl bg-white rounded-2xl space-y-6 flex flex-col h-[460px] hover:shadow-2xl transition-all">
               <div className="flex flex-col gap-1 border-b border-slate-50 pb-4">
                 <div className="flex justify-between items-start">
                   <Badge variant="outline" className="text-[10px] font-black text-emerald-600 border-emerald-100 tabular-nums bg-emerald-50">{order.orderNumber}</Badge>
@@ -340,18 +341,19 @@ export default function ProductionDashboard() {
                 <p className="text-[10px] text-slate-400 font-bold uppercase">{order.productName}</p>
               </div>
               
-              <div className="flex-1 w-full grid grid-cols-1 md:grid-cols-2 items-center gap-4">
-                {/* DONUT CHART */}
-                <div className="h-full">
+              <div className="flex-1 w-full flex flex-col items-center justify-center gap-6">
+                {/* DONUT CHART - CENTERED */}
+                <div className="h-[180px] w-full relative">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
                         data={order.data}
-                        innerRadius={50}
-                        outerRadius={75}
+                        innerRadius={55}
+                        outerRadius={80}
                         paddingAngle={5}
                         dataKey="value"
                         animationDuration={1000}
+                        stroke="none"
                       >
                         {order.data.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={entry.fill} />
@@ -366,17 +368,17 @@ export default function ProductionDashboard() {
                   </ResponsiveContainer>
                 </div>
 
-                {/* VISUAL LEGEND WITH REAL NUMBERS */}
-                <div className="space-y-4">
+                {/* VISUAL LEGEND - NOW BELOW THE CHART FOR BETTER VISIBILITY */}
+                <div className="grid grid-cols-3 gap-2 w-full pt-2 border-t border-slate-50">
                    {order.data.map((item, i) => (
-                     <div key={i} className="flex flex-col gap-0.5">
-                        <div className="flex items-center gap-2">
-                           <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.fill }} />
-                           <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{item.name}</span>
+                     <div key={i} className="flex flex-col items-center text-center gap-1.5 px-1">
+                        <div className="flex items-center gap-1.5">
+                           <div className="w-2.5 h-2.5 rounded-full ring-2 ring-white shadow-sm" style={{ backgroundColor: item.fill }} />
+                           <span className="text-[9px] font-black text-slate-500 uppercase tracking-tighter">{item.name}</span>
                         </div>
-                        <div className="ps-4">
-                           <span className="text-xs font-black text-slate-800 tabular-nums">{formatCurrency(item.value)}</span>
-                           <span className="text-[8px] font-bold text-slate-400 ms-1 uppercase">YER</span>
+                        <div className="flex flex-col leading-none">
+                           <span className="text-[10px] font-black text-slate-800 tabular-nums">{formatCurrency(item.value)}</span>
+                           <span className="text-[7px] font-bold text-slate-300 uppercase mt-0.5">YER</span>
                         </div>
                      </div>
                    ))}
