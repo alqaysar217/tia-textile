@@ -173,65 +173,65 @@ export default function MaterialConsumptionReport() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#f8fafc] overflow-hidden" dir={dir}>
+    <div className="flex flex-col h-full bg-[#f8fafc] dark:bg-slate-950 overflow-hidden transition-colors duration-300" dir={dir}>
       
       {/* ERP HEADER */}
-      <div className="flex-none bg-white border-b border-slate-200 px-6 py-4 shadow-sm z-30">
+      <div className="flex-none bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-4 shadow-sm z-30">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div className="flex items-center gap-4">
-            <div className="p-2.5 bg-slate-900 rounded-lg text-white shadow-lg"><PieChart className="w-5 h-5 text-emerald-400" /></div>
+            <div className="p-2.5 bg-slate-900 dark:bg-emerald-900/20 rounded-lg text-white shadow-lg"><PieChart className="w-5 h-5 text-emerald-400" /></div>
             <div>
-              <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+              <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                 <span>{isRtl ? 'التقارير' : 'REPORTS'}</span>
                 <ChevronRight className={cn("w-3 h-3", isRtl ? "rotate-180" : "")} />
-                <span className="text-emerald-600">{dictionary.title}</span>
+                <span className="text-emerald-600 dark:text-emerald-400">{dictionary.title}</span>
               </div>
-              <h1 className="text-xl font-black text-slate-900 leading-tight">{dictionary.subtitle}</h1>
+              <h1 className="text-xl font-black text-slate-900 dark:text-slate-100 leading-tight">{dictionary.subtitle}</h1>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-xl border border-slate-200">
-            <div className="relative w-48 md:w-64">
-              <Search className={cn("absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400", isRtl ? "right-3" : "left-3")} />
+          <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800/50 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 w-full lg:w-auto">
+            <div className="relative flex-1 lg:w-64">
+              <Search className={cn("absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 dark:text-slate-500", isRtl ? "right-3" : "left-3")} />
               <Input 
                 value={search} 
                 onChange={(e) => setSearch(e.target.value)} 
                 placeholder={dictionary.search} 
-                className={cn("h-9 bg-white border-slate-200 text-[10px] font-bold", isRtl ? "pr-9" : "pl-9")} 
+                className={cn("h-9 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-[10px] font-bold dark:text-slate-100", isRtl ? "pr-9" : "pl-9")} 
               />
             </div>
 
-            <div className="flex items-center gap-1 px-1 border-x border-slate-200">
+            <div className="flex items-center gap-1 px-1 border-x border-slate-200 dark:border-slate-700">
                <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 transition-all", (dateFrom || dateTo) && "border-emerald-500 bg-emerald-50")}>
-                       <CalendarDays className={cn("w-4 h-4", (dateFrom || dateTo) ? "text-emerald-600" : "text-slate-400")} />
+                    <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all", (dateFrom || dateTo) && "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20")}>
+                       <CalendarDays className={cn("w-4 h-4", (dateFrom || dateTo) ? "text-emerald-600" : "text-slate-400 dark:text-slate-600")} />
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent align={isRtl ? "start" : "end"} className="w-72 p-4 rounded-xl shadow-2xl border-slate-200 text-right">
+                  <PopoverContent align={isRtl ? "start" : "end"} className="w-72 p-4 rounded-xl shadow-2xl border-slate-200 dark:border-slate-800 dark:bg-slate-900 text-right">
                      <div className="space-y-4">
-                        <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b pb-2"><CalendarDays className="w-3.5 h-3.5" />{isRtl ? 'تصفية زمنية' : 'DATE RANGE'}</div>
+                        <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest border-b dark:border-slate-800 pb-2"><CalendarDays className="w-3.5 h-3.5" />{isRtl ? 'تصفية زمنية' : 'DATE RANGE'}</div>
                         <div className="grid grid-cols-2 gap-3">
-                           <div className="space-y-1.5"><Label className="text-[9px] font-black text-slate-400">{isRtl ? 'من' : 'FROM'}</Label><Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-9 text-[10px] font-bold" /></div>
-                           <div className="space-y-1.5"><Label className="text-[9px] font-black text-slate-400">{isRtl ? 'إلى' : 'TO'}</Label><Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-9 text-[10px] font-bold" /></div>
+                           <div className="space-y-1.5"><Label className="text-[9px] font-black text-slate-400 dark:text-slate-500">{isRtl ? 'من' : 'FROM'}</Label><Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-9 text-[10px] font-bold dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100" /></div>
+                           <div className="space-y-1.5"><Label className="text-[9px] font-black text-slate-400 dark:text-slate-500">{isRtl ? 'إلى' : 'TO'}</Label><Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-9 text-[10px] font-bold dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100" /></div>
                         </div>
-                        {(dateFrom || dateTo) && <Button variant="link" onClick={() => { setDateFrom(''); setDateTo(''); }} className="text-[9px] h-auto p-0 font-bold text-rose-500 underline uppercase w-full">إعادة تعيين</Button>}
+                        {(dateFrom || dateTo) && <Button variant="link" onClick={() => { setDateFrom(''); setDateTo(''); }} className="text-[9px] h-auto p-0 font-bold text-rose-500 underline uppercase w-full">{isRtl ? 'إعادة تعيين' : 'RESET'}</Button>}
                      </div>
                   </PopoverContent>
                </Popover>
 
                <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 transition-all", materialFilter !== 'all' && "border-emerald-500 bg-emerald-50")}>
-                       <Box className={cn("w-4 h-4", materialFilter !== 'all' ? "text-emerald-600" : "text-slate-400")} />
+                    <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all", materialFilter !== 'all' && "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20")}>
+                       <Box className={cn("w-4 h-4", materialFilter !== 'all' ? "text-emerald-600" : "text-slate-400 dark:text-slate-600")} />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align={isRtl ? "start" : "end"} className="w-64 rounded-xl shadow-xl border-slate-200">
-                     <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'حسب المادة' : 'BY MATERIAL'}</DropdownMenuLabel>
+                  <DropdownMenuContent align={isRtl ? "start" : "end"} className="w-64 rounded-xl shadow-xl border-slate-200 dark:border-slate-800 dark:bg-slate-900">
+                     <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest">{isRtl ? 'حسب المادة' : 'BY MATERIAL'}</DropdownMenuLabel>
                      <ScrollArea className="h-48">
-                        <DropdownMenuItem onClick={() => setMaterialFilter('all')} className="flex justify-between text-xs font-bold cursor-pointer">{isRtl ? 'جميع المواد' : 'All Items'}{materialFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setMaterialFilter('all')} className="flex justify-between text-xs font-bold cursor-pointer dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">{isRtl ? 'جميع المواد' : 'All Items'}{materialFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}</DropdownMenuItem>
                         {allMaterials?.map(m => (
-                          <DropdownMenuItem key={m.id} onClick={() => setMaterialFilter(m.id)} className="flex justify-between text-xs font-bold cursor-pointer">
+                          <DropdownMenuItem key={m.id} onClick={() => setMaterialFilter(m.id)} className="flex justify-between text-xs font-bold cursor-pointer dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
                             {m.nameAr}
                             {materialFilter === m.id && <Check className="w-3.5 h-3.5 text-emerald-600" />}
                           </DropdownMenuItem>
@@ -242,16 +242,16 @@ export default function MaterialConsumptionReport() {
 
                <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 transition-all", batchFilter !== 'all' && "border-emerald-500 bg-emerald-50")}>
-                       <Workflow className={cn("w-4 h-4", batchFilter !== 'all' ? "text-emerald-600" : "text-slate-400")} />
+                    <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all", batchFilter !== 'all' && "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20")}>
+                       <Workflow className={cn("w-4 h-4", batchFilter !== 'all' ? "text-emerald-600" : "text-slate-400 dark:text-slate-600")} />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align={isRtl ? "start" : "end"} className="w-64 rounded-xl shadow-xl border-slate-200">
-                     <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'حسب الدفعة' : 'BY BATCH'}</DropdownMenuLabel>
+                  <DropdownMenuContent align={isRtl ? "start" : "end"} className="w-64 rounded-xl shadow-xl border-slate-200 dark:border-slate-800 dark:bg-slate-900">
+                     <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest">{isRtl ? 'حسب الدفعة' : 'BY BATCH'}</DropdownMenuLabel>
                      <ScrollArea className="h-48">
-                        <DropdownMenuItem onClick={() => setBatchFilter('all')} className="flex justify-between text-xs font-bold cursor-pointer">{isRtl ? 'جميع الدفعات' : 'All Batches'}{batchFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setBatchFilter('all')} className="flex justify-between text-xs font-bold cursor-pointer dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">{isRtl ? 'جميع الدفعات' : 'All Batches'}{batchFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}</DropdownMenuItem>
                         {allOrders?.filter(o => o.status !== 'deleted').map(o => (
-                          <DropdownMenuItem key={o.id} onClick={() => setBatchFilter(o.id)} className="flex justify-between text-xs font-bold cursor-pointer">
+                          <DropdownMenuItem key={o.id} onClick={() => setBatchFilter(o.id)} className="flex justify-between text-xs font-bold cursor-pointer dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
                             <span className="truncate">{o.orderNumber} - {o.title}</span>
                             {batchFilter === o.id && <Check className="w-3.5 h-3.5 text-emerald-600" />}
                           </DropdownMenuItem>
@@ -262,25 +262,25 @@ export default function MaterialConsumptionReport() {
 
                <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 transition-all">
-                       <Filter className="w-4 h-4 text-slate-400" />
+                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
+                       <Filter className="w-4 h-4 text-slate-400 dark:text-slate-500" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align={isRtl ? "start" : "end"} className="w-56 rounded-xl shadow-xl border-slate-200">
-                     <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'ترتيب النتائج' : 'SORT BY'}</DropdownMenuLabel>
-                     <DropdownMenuItem onClick={() => toggleSort('date')} className="flex justify-between text-xs font-bold cursor-pointer py-2.5">
+                  <DropdownMenuContent align={isRtl ? "start" : "end"} className="w-56 rounded-xl shadow-xl border-slate-200 dark:border-slate-800 dark:bg-slate-900">
+                     <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest">{isRtl ? 'ترتيب النتائج' : 'SORT BY'}</DropdownMenuLabel>
+                     <DropdownMenuItem onClick={() => toggleSort('date')} className="flex justify-between text-xs font-bold cursor-pointer py-2.5 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
                         {isRtl ? 'حسب التاريخ' : 'Date'}
-                        {sortBy === 'date' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
+                        {sortBy === 'date' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />)}
                      </DropdownMenuItem>
-                     <DropdownMenuItem onClick={() => toggleSort('qty')} className="flex justify-between text-xs font-bold cursor-pointer py-2.5">
+                     <DropdownMenuItem onClick={() => toggleSort('qty')} className="flex justify-between text-xs font-bold cursor-pointer py-2.5 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
                         {isRtl ? 'حسب الكمية' : 'Quantity'}
-                        {sortBy === 'qty' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
+                        {sortBy === 'qty' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />)}
                      </DropdownMenuItem>
                   </DropdownMenuContent>
                </DropdownMenu>
             </div>
 
-            <Button onClick={handleExportCSV} variant="ghost" size="icon" className="h-9 w-9 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 shadow-md">
+            <Button onClick={handleExportCSV} variant="ghost" size="icon" className="h-9 w-9 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 shadow-md border-none">
               <FileDown className="w-4 h-4" />
             </Button>
           </div>
@@ -291,62 +291,62 @@ export default function MaterialConsumptionReport() {
         
         {/* COMPACT STATS ROW */}
         <div className="flex items-center gap-3 overflow-x-auto no-scrollbar flex-none">
-          <div className="bg-white px-4 py-3 rounded-lg border border-slate-200 shadow-sm flex items-center gap-3 group hover:border-emerald-200 transition-all flex-1 min-w-[160px]">
-              <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg group-hover:bg-emerald-600 group-hover:text-white transition-all shrink-0"><Layers className="w-4 h-4" /></div>
+          <div className="bg-white dark:bg-slate-900 px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-3 group hover:border-emerald-200 dark:hover:border-emerald-900 transition-all flex-1 min-w-[160px]">
+              <div className="p-2 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-lg group-hover:bg-emerald-600 group-hover:text-white transition-all shrink-0"><Layers className="w-4 h-4" /></div>
               <div className="flex flex-col overflow-hidden text-right">
-                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest truncate">{isRtl ? 'سجلات الاستهلاك' : 'CONSUMPTION LOGS'}</p>
-                <h3 className="text-sm font-black text-slate-900 tabular-nums">{stats.totalItems.toLocaleString('en-US')}</h3>
+                <p className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest truncate">{isRtl ? 'سجلات الاستهلاك' : 'CONSUMPTION LOGS'}</p>
+                <h3 className="text-sm font-black text-slate-900 dark:text-slate-100 tabular-nums">{stats.totalItems.toLocaleString('en-US')}</h3>
               </div>
           </div>
-          <div className="bg-white px-4 py-3 rounded-lg border border-slate-200 shadow-sm flex items-center gap-3 group hover:border-blue-200 transition-all flex-1 min-w-[160px]">
-              <div className="p-2 bg-blue-50 text-blue-600 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-all shrink-0"><Workflow className="w-4 h-4" /></div>
+          <div className="bg-white dark:bg-slate-900 px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-3 group hover:border-blue-200 dark:hover:border-blue-900 transition-all flex-1 min-w-[160px]">
+              <div className="p-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-all shrink-0"><Workflow className="w-4 h-4" /></div>
               <div className="flex flex-col overflow-hidden text-right">
-                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest truncate">{isRtl ? 'أوامر إنتاج نشطة' : 'ACTIVE BATCHES'}</p>
-                <h3 className="text-sm font-black text-blue-700 tabular-nums">{stats.uniqueOrders}</h3>
+                <p className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest truncate">{isRtl ? 'أوامر إنتاج نشطة' : 'ACTIVE BATCHES'}</p>
+                <h3 className="text-sm font-black text-blue-700 dark:text-blue-400 tabular-nums">{stats.uniqueOrders}</h3>
               </div>
           </div>
-          <div className="bg-white px-4 py-3 rounded-lg border border-slate-200 shadow-sm flex items-center gap-3 group hover:border-purple-200 transition-all flex-1 min-w-[160px]">
-              <div className="p-2 bg-purple-50 text-purple-600 rounded-lg group-hover:bg-purple-600 group-hover:text-white transition-all shrink-0"><Users2 className="w-4 h-4" /></div>
+          <div className="bg-white dark:bg-slate-900 px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-3 group hover:border-purple-200 dark:hover:border-purple-900 transition-all flex-1 min-w-[160px]">
+              <div className="p-2 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 rounded-lg group-hover:bg-purple-600 group-hover:text-white transition-all shrink-0"><Users2 className="w-4 h-4" /></div>
               <div className="flex flex-col overflow-hidden text-right">
-                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest truncate">{isRtl ? 'حرفيين مستلمين' : 'UNIQUE PERSONNEL'}</p>
-                <h3 className="text-sm font-black text-purple-700 tabular-nums">{stats.uniqueWorkers}</h3>
+                <p className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest truncate">{isRtl ? 'حرفيين مستلمين' : 'UNIQUE PERSONNEL'}</p>
+                <h3 className="text-sm font-black text-purple-700 dark:text-purple-400 tabular-nums">{stats.uniqueWorkers}</h3>
               </div>
           </div>
         </div>
 
         {/* DATA TABLE */}
-        <div className="flex-1 min-h-0 bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+        <div className="flex-1 min-h-0 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col transition-colors duration-300">
           <div className="flex-1 overflow-auto no-scrollbar relative">
             <Table className={cn("text-right border-separate border-spacing-0 w-full", !isRtl && "text-left")}>
-               <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
-                  <TableRow>
-                     <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? "text-right" : "text-left")}>{dictionary.colDate}</TableHead>
-                     <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? "text-right" : "text-left")}>{dictionary.colRef}</TableHead>
-                     <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? "text-right" : "text-left")}>{dictionary.colWorker}</TableHead>
-                     <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? "text-right" : "text-left")}>{dictionary.colBatch}</TableHead>
-                     <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? "text-right" : "text-left")}>{dictionary.colMaterial}</TableHead>
-                     <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">{dictionary.colQty}</TableHead>
+               <TableHeader className="bg-slate-50 dark:bg-slate-800 sticky top-0 z-10 shadow-sm">
+                  <TableRow className="border-b dark:border-slate-700">
+                     <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase border-b border-slate-200 dark:border-slate-700", isRtl ? "text-right" : "text-left")}>{dictionary.colDate}</TableHead>
+                     <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase border-b border-slate-200 dark:border-slate-700", isRtl ? "text-right" : "text-left")}>{dictionary.colRef}</TableHead>
+                     <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase border-b border-slate-200 dark:border-slate-700", isRtl ? "text-right" : "text-left")}>{dictionary.colWorker}</TableHead>
+                     <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase border-b border-slate-200 dark:border-slate-700", isRtl ? "text-right" : "text-left")}>{dictionary.colBatch}</TableHead>
+                     <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase border-b border-slate-200 dark:border-slate-700", isRtl ? "text-right" : "text-left")}>{dictionary.colMaterial}</TableHead>
+                     <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase text-center border-b border-slate-200 dark:border-slate-700">{dictionary.colQty}</TableHead>
                   </TableRow>
                </TableHeader>
                <TableBody>
                   {loading ? (
-                    <TableRow><TableCell colSpan={6} className="text-center py-24 animate-pulse text-slate-400 font-black">{isRtl ? 'جاري سحب بيانات الاستهلاك...' : 'Loading Consumption Data...'}</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={6} className="text-center py-24 animate-pulse text-slate-400 dark:text-slate-600 font-black">{isRtl ? 'جاري سحب بيانات الاستهلاك...' : 'Loading Consumption Data...'}</TableCell></TableRow>
                   ) : filtered.length === 0 ? (
-                    <TableRow><TableCell colSpan={6} className="text-center py-24 text-slate-300 font-bold">{isRtl ? 'لا توجد بيانات مطابقة لهذه الفلاتر' : 'No matching consumption logs'}</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={6} className="text-center py-24 text-slate-300 dark:text-slate-800 font-bold">{isRtl ? 'لا توجد بيانات مطابقة لهذه الفلاتر' : 'No matching consumption logs'}</TableCell></TableRow>
                   ) : filtered.map((d) => (
-                    <TableRow key={d.id} className="hover:bg-slate-50/50 transition-colors border-b border-slate-100 group">
-                       <TableCell className={cn("px-6 py-4 font-bold text-slate-400 text-[11px] tabular-nums", isRtl ? "text-right" : "text-left")}>{d.date}</TableCell>
-                       <TableCell className={cn("px-6 py-4 font-black text-slate-900 text-[11px] tabular-nums", isRtl ? "text-right" : "text-left")}>{d.voucherNumber}</TableCell>
-                       <TableCell className={cn("px-6 py-4 font-bold text-slate-700 text-xs", isRtl ? "text-right" : "text-left")}>{d.workerName}</TableCell>
+                    <TableRow key={d.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors border-b border-slate-100 dark:border-slate-800 group">
+                       <TableCell className={cn("px-6 py-4 font-bold text-slate-400 dark:text-slate-500 text-[11px] tabular-nums", isRtl ? "text-right" : "text-left")}>{d.date}</TableCell>
+                       <TableCell className={cn("px-6 py-4 font-black text-slate-900 dark:text-slate-100 text-[11px] tabular-nums", isRtl ? "text-right" : "text-left")}>{d.voucherNumber}</TableCell>
+                       <TableCell className={cn("px-6 py-4 font-bold text-slate-700 dark:text-slate-300 text-xs", isRtl ? "text-right" : "text-left")}>{d.workerName}</TableCell>
                        <TableCell className={cn("px-6 py-4", isRtl ? "text-right" : "text-left")}>
                           <div className="flex flex-col">
-                             <span className="font-bold text-emerald-700 text-xs tabular-nums">{d.orderNumber}</span>
-                             <span className="text-[9px] text-slate-400 font-bold truncate max-w-[120px]">{d.orderTitle}</span>
+                             <span className="font-bold text-emerald-700 dark:text-emerald-400 text-xs tabular-nums">{d.orderNumber}</span>
+                             <span className="text-[9px] text-slate-400 dark:text-slate-500 font-bold truncate max-w-[120px]">{d.orderTitle}</span>
                           </div>
                        </TableCell>
-                       <TableCell className={cn("px-6 py-4 font-black text-slate-900 text-xs", isRtl ? "text-right" : "text-left")}>{d.nameAr}</TableCell>
+                       <TableCell className={cn("px-6 py-4 font-black text-slate-900 dark:text-slate-100 text-xs", isRtl ? "text-right" : "text-left")}>{d.nameAr}</TableCell>
                        <TableCell className="px-6 py-4 text-center">
-                          <Badge variant="outline" className="bg-emerald-50 text-emerald-700 font-black tabular-nums border-emerald-100 py-1 px-3">
+                          <Badge variant="outline" className="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 font-black tabular-nums border-emerald-100 dark:border-emerald-900/30 py-1 px-3">
                              {d.qty.toLocaleString('en-US')} <span className="ms-1 text-[8px] opacity-60 uppercase">{d.unit}</span>
                           </Badge>
                        </TableCell>
@@ -359,7 +359,7 @@ export default function MaterialConsumptionReport() {
       </div>
 
       {/* SYSTEM AUDIT FOOTER */}
-      <div className="flex-none p-3 bg-slate-900 text-white/40 flex items-center justify-center gap-4 border-t border-white/5">
+      <div className="flex-none p-3 bg-slate-900 dark:bg-slate-900/80 text-white/40 dark:text-slate-500 flex items-center justify-center gap-4 border-t border-white/5 shadow-2xl transition-colors duration-300">
          <ShieldCheck className="w-4 h-4 text-emerald-500" />
          <p className="text-[10px] font-bold tracking-tight">{dictionary.auditNote}</p>
       </div>
