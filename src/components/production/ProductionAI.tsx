@@ -133,9 +133,6 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
                </div>
              </div>
            </SheetHeader>
-           <button onClick={onClose} className="absolute top-6 left-6 text-white/50 hover:text-white transition-colors">
-             <X className="w-6 h-6" />
-           </button>
         </div>
 
         <ScrollArea dir={dir} className="flex-1 p-6 no-scrollbar bg-[#f8fafc] dark:bg-slate-950 transition-colors duration-300">

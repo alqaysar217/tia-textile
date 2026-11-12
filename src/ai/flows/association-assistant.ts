@@ -37,12 +37,12 @@ async function getFullSystemSnapshot() {
   
   const rawData: Record<string, any[]> = {};
   
-  // جلب البيانات من كل جدول
+  // جلب البيانات من كل جدول - تم تقليل ليميت السندات لسرعة الاستجابة
   await Promise.all(collections.map(async (colName) => {
     try {
       let q;
       if (colName === 'vouchers') {
-        q = query(collection(db, colName), orderBy('date', 'desc'), limit(300));
+        q = query(collection(db, colName), orderBy('date', 'desc'), limit(100));
       } else {
         q = collection(db, colName);
       }
@@ -140,22 +140,22 @@ export async function askAssociationAssistant(input: AssistantInput): Promise<As
     // جلب لقطة البيانات الحية المحدثة
     const liveContext = await getFullSystemSnapshot();
 
-    const systemContent = `أنت "المستشار التنفيذي الذكي" ومدير البيانات الأول لجمعية الصناعات النسيجية بـ "الروضة - شبوة".
+    const systemContent = `أنت "المستشار التنفيذي الذكي" لجمعية الصناعات النسيجية بـ "الروضة - شبوة".
 مهمتك: تحليل البيانات الحية المرفقة لك بدقة متناهية وتقديم إجابات قاطعة، إحصائية، ورقابية فورية للمدير.
 
 البيانات التالية هي "الحقيقة المطلقة" للنظام الآن (لا تطلب بيانات أخرى):
 ${liveContext}
 
 قواعد السلوك والرد (صارمة جداً):
-1. ممنوع منعاً باتاً الاعتذار عن عدم الوصول للبيانات أو قول "أحتاج لمزيد من المعلومات". البيانات أمامك بالكامل. ابحث في سجل السندات وتفاصيل الأصناف المشمولة وستجد كل شيء.
-2. التنسيق: استخدم لغة HTML حصراً. يُمنع استخدام Markdown نهائياً (لا تستخدم # أو * أو ** أو |).
-3. الجداول: أي بيانات مقارنة أو قوائم مخزنية يجب عرضها في جدول HTML منسق كالتالي:
+1. كن مختصراً جداً ومباشراً في إجاباتك لسرعة التنفيذ. قدم الأرقام والجداول فوراً دون مقدمات طويلة.
+2. التنسيق: استخدم لغة HTML حصراً. يُمنع استخدام Markdown نهائياً.
+3. الجداول: أي بيانات مقارنة يجب عرضها في جدول HTML منسق كالتالي:
    <table style="width:100%; border-collapse: collapse; text-align: right; margin: 15px 0; font-family: sans-serif; font-size: 13px;">
    <tr style="background: #f1f5f9;"><th style="padding: 10px; border: 1px solid #ddd;">...</th></tr>
    <tr><td style="padding: 10px; border: 1px solid #ddd;">...</td></tr>
    </table>
-4. الهوية: أنت لست بوت دردشة، أنت "لوحة تحكم ناطقة". ردودك يجب أن تكون موجهة للمدير بلهجة احترافية، سريعة، وعملية.
-5. الذكاء التحليلي: إذا سألك المدير عن مادة، ابحث في "سجل السندات" لتعرف من استلمها ومتى. إذا سألك عن أفضل عامل، قارن بين "إنتاجية العمال" المعطاة لك.
+4. الهوية: أنت لست بوت دردشة، أنت "لوحة تحكم ناطقة". ردودك يجب أن تكون موجهة للمدير بلهجة احترافية وسريعة.
+5. الذكاء التحليلي: ابحث في سجل السندات وتفاصيل الأصناف بدقة لتوليد التقارير.
 6. الأرقام: اعرض المبالغ والكميات بوضوح وبصيغة الأرقام الإنجليزية (1,234) متبوعة بالوحدة.
 
 استخدم <h3> للعناوين و <p> للنصوص و <strong> للتمييز. ابدأ الإجابة بالمعلومات المطلوبة مباشرة.`;
@@ -180,8 +180,8 @@ ${liveContext}
       body: JSON.stringify({
         model: 'google/gemma-2-27b-it',
         messages: apiMessages,
-        temperature: 0.1, // دقة عالية جداً لمنع الهلوسة
-        max_tokens: 4000
+        temperature: 0.1, 
+        max_tokens: 2000
       })
     });
 
@@ -190,7 +190,6 @@ ${liveContext}
     const data = await response.json();
     let answer = data.choices?.[0]?.message?.content || 'أعتذر، لم أستطع استخلاص النتائج حالياً.';
     
-    // تنظيف أي وسوم تقنية قد تظهر بالخطأ
     answer = answer.replace(/```html/g, '').replace(/```/g, '');
     
     return { answer };
