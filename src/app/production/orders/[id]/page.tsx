@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo, useState, useCallback, useRef, useEffect } from 'react';
@@ -83,7 +82,7 @@ export default function OrderDetailsDashboard() {
   const params = useParams();
   const id = params.id;
   const router = useRouter();
-  const { lang, dir } = useTranslation();
+  const { lang, t, dir } = useTranslation();
   const db = useFirestore();
   const tabsContainerRef = useRef<HTMLDivElement>(null);
 
@@ -248,20 +247,14 @@ export default function OrderDetailsDashboard() {
      return [...departments].sort((a, b) => (a.code || '').localeCompare(b.code || '')).pop();
   }, [departments]);
 
-  // Logic: Completion is count of items at final stage OR items already in warehouse
   const finalCompletedQty = useMemo(() => {
     if (!vouchers) return 0;
-    
-    // Sum from final stage receipts
     const stageCompletion = vouchers
       .filter(v => v.type === 'production_receipt' && v.currentStageId === finalStage?.id && v.status !== 'deleted')
       .reduce((sum, v) => sum + (v.qtyAccepted || 0), 0);
-    
-    // ALSO sum items that might have been transferred to warehouse regardless of stage
     const transferredCompletion = vouchers
       .filter(v => v.type === 'production_receipt' && v.isTransferred && v.status !== 'deleted' && v.currentStageId !== finalStage?.id)
       .reduce((sum, v) => sum + (v.qtyAccepted || 0), 0);
-
     return stageCompletion + transferredCompletion;
   }, [vouchers, finalStage]);
 
@@ -358,27 +351,20 @@ export default function OrderDetailsDashboard() {
     return Math.round((finalCompletedQty / order.targetQty) * 100);
   }, [finalCompletedQty, order]);
 
-  // REFINED FILTERING LOGIC FOR STAGE TABS
   const filteredStageVouchers = useMemo(() => {
     const specialTabs = ['info', 'summary', 'materials_summary', 'wages_summary', 'costs_summary'];
     if (!vouchers || specialTabs.includes(activeTab)) return [];
     
     let list = vouchers.filter(v => {
       if (v.status === 'deleted') return false;
-      
       const worker = workers?.find(w => w.id === v.workerId);
       const supervisor = workers?.find(w => w.id === v.supervisorId);
-
-      // Check if the activity "pertains" to this section/stage
       const isDirectStageMatch = v.currentStageId === activeTab;
       const isWorkerInStage = worker?.departmentId === activeTab;
       const isSupervisorInStage = supervisor?.departmentId === activeTab;
-
       const matchesStage = isDirectStageMatch || isWorkerInStage || isSupervisorInStage;
       if (!matchesStage) return false;
-
       if (stageTypeFilter !== 'all' && v.type !== stageTypeFilter) return false;
-      
       if (stageSearch) {
         const s = stageSearch.toLowerCase();
         const workerName = worker?.fullName?.toLowerCase() || '';
@@ -418,7 +404,6 @@ export default function OrderDetailsDashboard() {
       ? value.toLocaleString('en-US', isPcs ? {} : { minimumFractionDigits: 2, maximumFractionDigits: 2 }) 
       : value;
 
-    // Logic to split the value into integer and decimal parts for smaller decimal display
     let part1 = formattedValue;
     let part2 = "";
     if (typeof value === 'number' && !isPcs && String(formattedValue).includes('.')) {
@@ -428,9 +413,9 @@ export default function OrderDetailsDashboard() {
     }
 
     return (
-      <div className={cn("p-4 rounded-xl border shadow-sm transition-all hover:shadow-md", bgColor, isRtl ? 'text-right border-slate-200/50' : 'text-left border-slate-200/50')} dir={isRtl ? 'rtl' : 'ltr'}>
+      <div className={cn("p-4 rounded-xl border shadow-sm transition-all hover:shadow-md", bgColor, "dark:bg-slate-800 dark:border-slate-700/50", isRtl ? 'text-right border-slate-200/50' : 'text-left border-slate-200/50')} dir={isRtl ? 'rtl' : 'ltr'}>
          <div className={cn("flex items-center gap-2 mb-2")}>
-            <div className={cn("p-1.5 rounded-lg bg-white/80 shadow-sm", color)}>
+            <div className={cn("p-1.5 rounded-lg bg-white/80 dark:bg-slate-900/80 shadow-sm", color)}>
                {icon}
             </div>
             <span className={cn("text-[9px] font-black uppercase tracking-widest opacity-70", color)}>{label}</span>
@@ -440,13 +425,13 @@ export default function OrderDetailsDashboard() {
               {part1}
               {part2 && <span className="text-[0.7em] opacity-80">{part2}</span>}
             </span>
-            <span className="text-[9px] font-bold text-slate-500 uppercase shrink-0">{currency}</span>
+            <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase shrink-0">{currency}</span>
          </div>
       </div>
     );
   }
 
-  function InfoItem({ label, value, icon, color = "text-slate-900" }: { label: string, value: string | number, icon: any, color?: string }) {
+  function InfoItem({ label, value, icon, color = "text-slate-900 dark:text-slate-100" }: { label: string, value: string | number, icon: any, color?: string }) {
     return (
       <div className={cn("flex flex-col gap-1.5", isRtl ? 'text-right' : 'text-left')}>
         <div className={cn("flex items-center gap-2 opacity-50")}>
@@ -462,7 +447,7 @@ export default function OrderDetailsDashboard() {
 
   if (orderLoading || deptsLoading) {
     return (
-      <div className="h-full flex flex-col items-center justify-center gap-4 bg-[#f8fafc]">
+      <div className="h-full flex flex-col items-center justify-center gap-4 bg-[#f8fafc] dark:bg-slate-950">
         <Loader2 className="w-10 h-10 animate-spin text-emerald-600" />
         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">جاري فتح السجل الفني...</p>
       </div>
@@ -472,9 +457,9 @@ export default function OrderDetailsDashboard() {
   if (!order) return null;
 
   return (
-    <div className="flex flex-col h-full bg-[#f1f5f9] overflow-hidden" dir={dir}>
+    <div className="flex flex-col h-full bg-[#f1f5f9] dark:bg-slate-950 overflow-hidden transition-colors duration-300" dir={dir}>
       
-      <div className="flex-none bg-slate-900 z-30 shadow-2xl border-b border-white/10 w-full">
+      <div className="flex-none bg-slate-900 dark:bg-slate-950 z-30 shadow-2xl border-b border-white/10 w-full">
         <div className="flex items-center h-14 gap-0 px-2 overflow-hidden">
           <Button 
             variant="ghost" 
@@ -568,62 +553,62 @@ export default function OrderDetailsDashboard() {
       </div>
 
       <div className="flex-1 min-h-0 flex flex-col p-4 no-scrollbar">
-        <div className="flex-1 bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+        <div className="flex-1 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col">
           
           {activeTab === 'info' && (
             <ScrollArea className="flex-1 animate-in fade-in duration-300">
-               <div className="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between" dir={dir}>
-                  <h3 className={cn("text-xs font-black text-slate-900 uppercase tracking-widest flex items-center gap-2")}>
+               <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between" dir={dir}>
+                  <h3 className={cn("text-xs font-black text-slate-900 dark:text-slate-100 uppercase tracking-widest flex items-center gap-2")}>
                     <ClipboardList className="w-4 h-4 text-emerald-600" />
                     {isRtl ? 'سجل المواصفات الفنية المعتمد' : 'MASTER LEDGER'}
                   </h3>
-                  <Button variant="outline" size="sm" onClick={handleOpenEdit} className="h-8 px-4 rounded-lg font-black text-[10px] gap-2 border-slate-200 text-slate-600 hover:bg-white transition-all shadow-sm">
+                  <Button variant="outline" size="sm" onClick={handleOpenEdit} className="h-8 px-4 rounded-lg font-black text-[10px] gap-2 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 transition-all shadow-sm">
                     <Edit2 className="w-3.5 h-3.5 text-emerald-600" />
                     {isRtl ? 'تعديل البيانات' : 'EDIT SPECS'}
                   </Button>
                </div>
 
-               <div className="p-6 border-b border-slate-100 bg-white" dir={dir}>
+               <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900" dir={dir}>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3" dir={dir}>
-                    <SummaryStatCard label={isRtl ? 'إجمالي المواد' : 'MAT. COST'} value={totalMaterialsCost} currency={systemCurrency} icon={<Layers className="w-4 h-4" />} color="text-amber-700" bgColor="bg-amber-500/10" />
-                    <SummaryStatCard label={isRtl ? 'إجمالي الأجور' : 'WAGES'} value={totalWagesCost} currency={systemCurrency} icon={<Wallet className="w-4 h-4" />} color="text-purple-700" bgColor="bg-purple-500/10" />
-                    <SummaryStatCard label={isRtl ? 'تكاليف أخرى' : 'OVERHEAD'} value={totalOtherCosts} currency={systemCurrency} icon={<Receipt className="w-4 h-4" />} color="text-rose-700" bgColor="bg-rose-500/10" />
-                    <SummaryStatCard label={isRtl ? 'الإجمالي الكلي' : 'TOTAL COST'} value={grandTotalCost} currency={systemCurrency} icon={<Coins className="w-4 h-4" />} color="text-emerald-800" bgColor="bg-emerald-600/10" />
-                    <SummaryStatCard label={isRtl ? 'قطع منجزة' : 'FINISHED'} value={finalCompletedQty} currency={isRtl ? 'قطعة' : 'Pcs'} icon={<CheckCircle2 className="w-4 h-4" />} color="text-blue-700" bgColor="bg-blue-500/10" />
-                    <SummaryStatCard label={isRtl ? 'تكلفة القطعة' : 'COST/PCS'} value={avgCostPerPiece} currency={systemCurrency} icon={<Calculator className="w-4 h-4" />} color="text-rose-600" bgColor="bg-rose-600/5" />
+                    <SummaryStatCard label={isRtl ? 'إجمالي المواد' : 'MAT. COST'} value={totalMaterialsCost} currency={systemCurrency} icon={<Layers className="w-4 h-4" />} color="text-amber-700 dark:text-amber-500" bgColor="bg-amber-500/10" />
+                    <SummaryStatCard label={isRtl ? 'إجمالي الأجور' : 'WAGES'} value={totalWagesCost} currency={systemCurrency} icon={<Wallet className="w-4 h-4" />} color="text-purple-700 dark:text-purple-500" bgColor="bg-purple-500/10" />
+                    <SummaryStatCard label={isRtl ? 'تكاليف أخرى' : 'OVERHEAD'} value={totalOtherCosts} currency={systemCurrency} icon={<Receipt className="w-4 h-4" />} color="text-rose-700 dark:text-rose-500" bgColor="bg-rose-500/10" />
+                    <SummaryStatCard label={isRtl ? 'الإجمالي الكلي' : 'TOTAL COST'} value={grandTotalCost} currency={systemCurrency} icon={<Coins className="w-4 h-4" />} color="text-emerald-800 dark:text-emerald-400" bgColor="bg-emerald-600/10" />
+                    <SummaryStatCard label={isRtl ? 'قطع منجزة' : 'FINISHED'} value={finalCompletedQty} currency={isRtl ? 'قطعة' : 'Pcs'} icon={<CheckCircle2 className="w-4 h-4" />} color="text-blue-700 dark:text-blue-400" bgColor="bg-blue-500/10" />
+                    <SummaryStatCard label={isRtl ? 'تكلفة القطعة' : 'COST/PCS'} value={avgCostPerPiece} currency={systemCurrency} icon={<Calculator className="w-4 h-4" />} color="text-rose-600 dark:text-rose-400" bgColor="bg-rose-600/5" />
                   </div>
                </div>
 
-               <div className="p-8 bg-white space-y-10" dir={dir}>
+               <div className="p-8 bg-white dark:bg-slate-900 space-y-10" dir={dir}>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-y-10 gap-x-12" dir={dir}>
                     <div className="space-y-8">
-                      <InfoItem label={isRtl ? 'رقم السجل الموحد' : 'REFERENCE'} value={order.orderNumber} icon={<Hash className="w-4 h-4 text-slate-400" />} />
-                      <InfoItem label={isRtl ? 'تاريخ البدء' : 'LAUNCH DATE'} value={order.startDate} icon={<Calendar className="w-4 h-4 text-slate-400" />} />
-                      <InfoItem label={isRtl ? 'عنوان الدفعة' : 'BATCH TITLE'} value={order.title} icon={<Type className="w-4 h-4 text-slate-400" />} />
+                      <InfoItem label={isRtl ? 'رقم السجل الموحد' : 'REFERENCE'} value={order.orderNumber} icon={<Hash className="w-4 h-4 text-slate-400 dark:text-slate-600" />} />
+                      <InfoItem label={isRtl ? 'تاريخ البدء' : 'LAUNCH DATE'} value={order.startDate} icon={<Calendar className="w-4 h-4 text-slate-400 dark:text-slate-600" />} />
+                      <InfoItem label={isRtl ? 'عنوان الدفعة' : 'BATCH TITLE'} value={order.title} icon={<Type className="w-4 h-4 text-slate-400 dark:text-slate-600" />} />
                     </div>
                     
                     <div className="space-y-8">
-                      <InfoItem label={isRtl ? 'المنتج المستهدف' : 'TARGET PRODUCT'} value={product?.nameAr} icon={<ShoppingBag className="w-4 h-4 text-slate-400" />} />
-                      <InfoItem label={isRtl ? 'الكمية المستهدف' : 'TARGET QTY'} value={`${order.targetQty} قطعة`} icon={<Target className="w-4 h-4 text-slate-400" />} />
-                      <InfoItem label={isRtl ? 'الكمية المنجزة (النهائية)' : 'COMPLETED'} value={`${finalCompletedQty} قطعة`} icon={<CheckCircle2 className="w-4 h-4 text-emerald-500" />} color="text-emerald-700" />
+                      <InfoItem label={isRtl ? 'المنتج المستهدف' : 'TARGET PRODUCT'} value={product?.nameAr} icon={<ShoppingBag className="w-4 h-4 text-slate-400 dark:text-slate-600" />} />
+                      <InfoItem label={isRtl ? 'الكمية المستهدف' : 'TARGET QTY'} value={`${order.targetQty} قطعة`} icon={<Target className="w-4 h-4 text-slate-400 dark:text-slate-600" />} />
+                      <InfoItem label={isRtl ? 'الكمية المنجزة (النهائية)' : 'COMPLETED'} value={`${finalCompletedQty} قطعة`} icon={<CheckCircle2 className="w-4 h-4 text-emerald-500" />} color="text-emerald-700 dark:text-emerald-400" />
                     </div>
 
                     <div className="space-y-8">
-                      <InfoItem label={isRtl ? 'قيد العمل (WIP)' : 'WIP'} value={`${Math.max(0, order.targetQty - finalCompletedQty)} قطعة`} icon={<Package className="w-4 h-4 text-blue-400" />} color="text-blue-600" />
-                      <InfoItem label={isRtl ? 'الأولوية' : 'PRIORITY'} value={order.priority} icon={<ShieldCheck className="w-4 h-4 text-slate-400" />} />
-                      <InfoItem label={isRtl ? 'الحالة' : 'STATUS'} value={order.status} icon={<Tag className="w-4 h-4 text-slate-400" />} />
+                      <InfoItem label={isRtl ? 'قيد العمل (WIP)' : 'WIP'} value={`${Math.max(0, order.targetQty - finalCompletedQty)} قطعة`} icon={<Package className="w-4 h-4 text-blue-400" />} color="text-blue-600 dark:text-blue-400" />
+                      <InfoItem label={isRtl ? 'الأولوية' : 'PRIORITY'} value={order.priority} icon={<ShieldCheck className="w-4 h-4 text-slate-400 dark:text-slate-600" />} />
+                      <InfoItem label={isRtl ? 'الحالة' : 'STATUS'} value={order.status} icon={<Tag className="w-4 h-4 text-slate-400 dark:text-slate-600" />} />
                     </div>
                   </div>
 
-                  <div className="pt-8 border-t border-slate-100">
+                  <div className="pt-8 border-t border-slate-100 dark:border-slate-800">
                      <div className={cn("flex items-center justify-between mb-3")}>
                         <div className="flex items-center gap-2">
-                           <div className="p-1.5 bg-emerald-50 text-emerald-600 rounded"><Activity className="w-4 h-4" /></div>
-                           <span className="font-black text-[10px] text-slate-400 uppercase tracking-widest">{isRtl ? 'مستوى التقدم الإجمالي' : 'PROGRESS'}</span>
+                           <div className="p-1.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded"><Activity className="w-4 h-4" /></div>
+                           <span className="font-black text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-widest">{isRtl ? 'مستوى التقدم الإجمالي' : 'PROGRESS'}</span>
                         </div>
-                        <span className="text-sm font-black text-emerald-700 tabular-nums">{progress}%</span>
+                        <span className="text-sm font-black text-emerald-700 dark:text-emerald-400 tabular-nums">{progress}%</span>
                      </div>
-                     <div className="h-3 bg-slate-100 rounded-full overflow-hidden shadow-inner relative">
+                     <div className="h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden shadow-inner relative">
                         <div 
                           className={cn("h-full bg-emerald-500 transition-all duration-1000 ease-out absolute", isRtl ? "right-0" : "left-0")} 
                           style={{ width: `${progress}%` }} 
@@ -636,20 +621,20 @@ export default function OrderDetailsDashboard() {
 
           {activeTab === 'materials_summary' && (
             <div className="flex-1 flex-col flex animate-in fade-in duration-300 overflow-hidden" dir={dir}>
-               <div className={cn("p-4 bg-amber-50 border-b border-amber-100 flex items-center justify-between")}>
-                  <h3 className={cn("text-xs font-black text-amber-900 uppercase tracking-widest flex items-center gap-2")}>
+               <div className={cn("p-4 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-100 dark:border-amber-900/30 flex items-center justify-between")}>
+                  <h3 className={cn("text-xs font-black text-amber-900 dark:text-amber-400 uppercase tracking-widest flex items-center gap-2")}>
                     <Layers className="w-4 h-4" /> 
                     {isRtl ? 'سجل تفصيلي للمواد الخام وقيمتها' : 'DETAILED MATERIALS COSTING'}
                   </h3>
                   <Badge className="bg-amber-600 text-white font-black tabular-nums">{totalMaterialsCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {systemCurrency}</Badge>
                </div>
 
-               <div className="p-2 bg-slate-50 border-b border-slate-200 flex items-center gap-2 shadow-sm">
+               <div className="p-2 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2 shadow-sm">
                   <div className="relative flex-1">
-                    <Search className={cn("absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300", isRtl ? "right-3" : "left-3")} />
-                    <Input value={matSearch} onChange={(e) => setMatSearch(e.target.value)} placeholder={isRtl ? 'بحث في سجل المواد أو الموظف...' : 'Search materials or worker...'} className={cn("h-9 bg-white text-xs font-bold border-slate-200", isRtl ? "pr-9 pl-3" : "pl-9 pr-3")} />
+                    <Search className={cn("absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300 dark:text-slate-600", isRtl ? "right-3" : "left-3")} />
+                    <Input value={matSearch} onChange={(e) => setMatSearch(e.target.value)} placeholder={isRtl ? 'بحث في سجل المواد أو الموظف...' : 'Search materials or worker...'} className={cn("h-9 bg-white dark:bg-slate-900 text-xs font-bold border-slate-200 dark:border-slate-700", isRtl ? "pr-9 pl-3" : "pl-9 pr-3")} />
                   </div>
-                  <div className="flex items-center gap-1.5 px-1.5 border-x border-slate-200">
+                  <div className="flex items-center gap-1.5 px-1.5 border-x border-slate-200 dark:border-slate-700">
                     <Button variant="ghost" size="sm" onClick={() => {
                         const headers = ['Date', 'Voucher', 'Personnel', 'Material', 'Qty', 'Unit', 'Price', 'Total', 'Currency'];
                         const rows = filteredMaterialsDetailed.map(m => [m.date, m.voucherNumber, m.workerName, m.nameAr, m.qty, m.unit, m.price, m.total.toFixed(2), m.currency]);
@@ -660,52 +645,52 @@ export default function OrderDetailsDashboard() {
                         link.href = url; link.setAttribute('download', `MaterialsLog_${order.orderNumber}.csv`);
                         document.body.appendChild(link); link.click(); document.body.removeChild(link);
                         toast({ title: isRtl ? "تم تحميل ملف CSV" : "CSV Downloaded" });
-                      }} className="h-9 px-3 text-[10px] font-black gap-2 text-slate-600 hover:bg-white border border-transparent">
+                      }} className="h-9 px-3 text-[10px] font-black gap-2 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 border border-transparent">
                       <FileDown className="w-3.5 h-3.5 text-emerald-600" />{isRtl ? 'تصدير' : 'Export'}
                     </Button>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-9 px-3 text-[10px] font-black gap-2 text-slate-600 hover:bg-white">
+                        <Button variant="ghost" size="sm" className="h-9 px-3 text-[10px] font-black gap-2 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800">
                           <Filter className="w-3.5 h-3.5" />{isRtl ? 'تصفية وترتيب' : 'Filter & Sort'}
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align={isRtl ? 'start' : 'end'} className="w-64 rounded-xl shadow-xl border-slate-200">
-                        <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">CHRONOLOGY</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => { setMatSortBy('date'); setMatSortOrder(matSortOrder === 'asc' ? 'desc' : 'asc'); }} className="text-xs font-bold flex justify-between cursor-pointer py-2.5">
+                      <DropdownMenuContent align={isRtl ? 'start' : 'end'} className="w-64 rounded-xl shadow-xl border-slate-200 dark:border-slate-800 dark:bg-slate-900">
+                        <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest">CHRONOLOGY</DropdownMenuLabel>
+                        <DropdownMenuItem onClick={() => { setMatSortBy('date'); setMatSortOrder(matSortOrder === 'asc' ? 'desc' : 'asc'); }} className="text-xs font-bold flex justify-between cursor-pointer py-2.5 dark:text-slate-300">
                            {isRtl ? 'ترتيب حسب التاريخ' : 'Sort by Date'}
                            {matSortBy === 'date' && (matSortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => { setMatSortBy('total'); setMatSortOrder(matSortOrder === 'asc' ? 'desc' : 'asc'); }} className="text-xs font-bold flex justify-between cursor-pointer py-2.5">
+                        <DropdownMenuItem onClick={() => { setMatSortBy('total'); setMatSortOrder(matSortOrder === 'asc' ? 'desc' : 'asc'); }} className="text-xs font-bold flex justify-between cursor-pointer py-2.5 dark:text-slate-300">
                            {isRtl ? 'ترتيب حسب القيمة' : 'Sort by Total'}
                            {matSortBy === 'total' && (matSortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
-                  <div className="flex items-center gap-2 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest tabular-nums">{isRtl ? 'العدد:' : 'COUNT:'} <span className="text-emerald-600">{filteredMaterialsDetailed.length}</span></div>
+                  <div className="flex items-center gap-2 px-2 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest tabular-nums">{isRtl ? 'العدد:' : 'COUNT:'} <span className="text-emerald-600">{filteredMaterialsDetailed.length}</span></div>
                </div>
 
                <div className="flex-1 overflow-auto no-scrollbar">
                   <Table className="text-right border-separate border-spacing-0">
-                    <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
+                    <TableHeader className="bg-slate-50 dark:bg-slate-800 sticky top-0 z-10 shadow-sm">
                       <TableRow>
-                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", isRtl ? 'text-right' : 'text-left')}>DATE</TableHead>
-                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", isRtl ? 'text-right' : 'text-left')}>REF #</TableHead>
-                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", isRtl ? 'text-right' : 'text-left')}>PERSONNEL</TableHead>
-                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", isRtl ? 'text-right' : 'text-left')}>MATERIAL</TableHead>
-                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", isRtl ? 'text-right' : 'text-left')}>QTY</TableHead>
-                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", isRtl ? 'text-right' : 'text-left')}>TOTAL</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase", isRtl ? 'text-right' : 'text-left')}>DATE</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase", isRtl ? 'text-right' : 'text-left')}>REF #</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase", isRtl ? 'text-right' : 'text-left')}>PERSONNEL</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase", isRtl ? 'text-right' : 'text-left')}>MATERIAL</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase", isRtl ? 'text-right' : 'text-left')}>QTY</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase", isRtl ? 'text-right' : 'text-left')}>TOTAL</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredMaterialsDetailed.map((m, idx) => (
-                        <TableRow key={idx} className="hover:bg-slate-50 transition-colors border-b border-slate-100">
-                           <TableCell className={cn("px-6 py-4 text-[10px] font-bold text-slate-500 tabular-nums", isRtl ? 'text-right' : 'text-left')}>{m.date}</TableCell>
-                           <TableCell className={cn("px-6 py-4 text-[10px] font-black text-slate-400 tabular-nums", isRtl ? 'text-right' : 'text-left')}>{m.voucherNumber}</TableCell>
-                           <TableCell className={cn("px-6 py-4 font-bold text-slate-700 text-xs", isRtl ? 'text-right' : 'text-left')}>{m.workerName}</TableCell>
-                           <TableCell className={cn("px-6 py-4 font-black text-slate-900 text-xs", isRtl ? 'text-right' : 'text-left')}>{m.nameAr}</TableCell>
-                           <TableCell className={cn("px-6 py-4 font-bold text-slate-700 tabular-nums", isRtl ? 'text-right' : 'text-left')}>{m.qty} <span className="text-[8px] font-black text-slate-400 uppercase">{m.unit}</span></TableCell>
-                           <TableCell className={cn("px-6 py-4 font-black text-amber-700 tabular-nums", isRtl ? 'text-right' : 'text-left')}>{m.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-[8px] opacity-60 uppercase">{m.currency}</span></TableCell>
+                        <TableRow key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-b border-slate-100 dark:border-slate-800">
+                           <TableCell className={cn("px-6 py-4 text-[10px] font-bold text-slate-500 dark:text-slate-500 tabular-nums", isRtl ? 'text-right' : 'text-left')}>{m.date}</TableCell>
+                           <TableCell className={cn("px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-600 tabular-nums", isRtl ? 'text-right' : 'text-left')}>{m.voucherNumber}</TableCell>
+                           <TableCell className={cn("px-6 py-4 font-bold text-slate-700 dark:text-slate-300 text-xs", isRtl ? 'text-right' : 'text-left')}>{m.workerName}</TableCell>
+                           <TableCell className={cn("px-6 py-4 font-black text-slate-900 dark:text-slate-100 text-xs", isRtl ? 'text-right' : 'text-left')}>{m.nameAr}</TableCell>
+                           <TableCell className={cn("px-6 py-4 font-bold text-slate-700 dark:text-slate-300 tabular-nums", isRtl ? 'text-right' : 'text-left')}>{m.qty} <span className="text-[8px] font-black text-slate-400 uppercase">{m.unit}</span></TableCell>
+                           <TableCell className={cn("px-6 py-4 font-black text-amber-700 dark:text-amber-500 tabular-nums", isRtl ? 'text-right' : 'text-left')}>{m.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-[8px] opacity-60 uppercase">{m.currency}</span></TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -716,20 +701,20 @@ export default function OrderDetailsDashboard() {
 
           {activeTab === 'wages_summary' && (
             <div className="flex-1 flex flex-col animate-in fade-in duration-300 overflow-hidden" dir={dir}>
-               <div className={cn("p-4 bg-purple-50 border-b border-purple-100 flex items-center justify-between")}>
-                  <h3 className={cn("text-xs font-black text-purple-900 uppercase tracking-widest flex items-center gap-2")}>
+               <div className={cn("p-4 bg-purple-50 dark:bg-purple-900/20 border-b border-purple-100 dark:border-purple-900/30 flex items-center justify-between")}>
+                  <h3 className={cn("text-xs font-black text-purple-900 dark:text-purple-400 uppercase tracking-widest flex items-center gap-2")}>
                     <Wallet className="w-4 h-4" /> 
                     {isRtl ? 'سجل الأجور المستحقة عن عمليات الإنتاج' : 'PRODUCTION WAGES LEDGER'}
                   </h3>
                   <Badge className="bg-purple-600 text-white font-black tabular-nums">{totalWagesCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {systemCurrency}</Badge>
                </div>
 
-               <div className="p-2 bg-slate-50 border-b border-slate-200 flex items-center gap-2 shadow-sm">
+               <div className="p-2 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2 shadow-sm">
                   <div className="relative flex-1">
-                    <Search className={cn("absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300", isRtl ? "right-3" : "left-3")} />
-                    <Input value={wageSearch} onChange={(e) => setWageSearch(e.target.value)} placeholder={isRtl ? 'بحث في سجل الأجور...' : 'Search wages log...'} className={cn("h-9 bg-white text-xs font-bold border-slate-200", isRtl ? "pr-9 pl-3" : "pl-9 pr-3")} />
+                    <Search className={cn("absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300 dark:text-slate-600", isRtl ? "right-3" : "left-3")} />
+                    <Input value={wageSearch} onChange={(e) => setWageSearch(e.target.value)} placeholder={isRtl ? 'بحث في سجل الأجور...' : 'Search wages log...'} className={cn("h-9 bg-white dark:bg-slate-900 text-xs font-bold border-slate-200 dark:border-slate-700", isRtl ? "pr-9 pl-3" : "pl-9 pr-3")} />
                   </div>
-                  <div className="flex items-center gap-1.5 px-1.5 border-x border-slate-200">
+                  <div className="flex items-center gap-1.5 px-1.5 border-x border-slate-200 dark:border-slate-700">
                     <Button variant="ghost" size="sm" onClick={() => {
                         const headers = ['Date', 'Voucher', 'Worker', 'Qty', 'Rate', 'Total', 'Currency'];
                         const rows = filteredWagesDetailed.map(v => [v.date, v.voucherNumber, v.fullName, v.qtyAccepted, v.wageRate, v.wageAmount.toFixed(2), v.currency || systemCurrency]);
@@ -739,56 +724,56 @@ export default function OrderDetailsDashboard() {
                         const link = document.createElement('a'); link.href = url; link.setAttribute('download', `WagesLog_${order.orderNumber}.csv`);
                         document.body.appendChild(link); link.click(); document.body.removeChild(link);
                         toast({ title: isRtl ? "تم تحميل ملف CSV" : "CSV Downloaded" });
-                      }} className="h-9 px-3 text-[10px] font-black gap-2 text-slate-600 hover:bg-white border border-transparent">
+                      }} className="h-9 px-3 text-[10px] font-black gap-2 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 border border-transparent">
                       <FileDown className="w-3.5 h-3.5 text-emerald-600" />{isRtl ? 'تصدير' : 'Export'}
                     </Button>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-9 px-3 text-[10px] font-black gap-2 text-slate-600 hover:bg-white">
+                        <Button variant="ghost" size="sm" className="h-9 px-3 text-[10px] font-black gap-2 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800">
                           <Filter className="w-3.5 h-3.5" />{isRtl ? 'تصفية وترتيب' : 'Filter & Sort'}
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align={isRtl ? 'start' : 'end'} className="w-64 rounded-xl shadow-xl border-slate-200">
-                        <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">SORTING</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => { setWageSortBy('date'); setWageSortOrder(wageSortOrder === 'asc' ? 'desc' : 'asc'); }} className="text-xs font-bold flex justify-between cursor-pointer py-2.5">
+                      <DropdownMenuContent align={isRtl ? 'start' : 'end'} className="w-64 rounded-xl shadow-xl border-slate-200 dark:border-slate-800 dark:bg-slate-900">
+                        <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest">SORTING</DropdownMenuLabel>
+                        <DropdownMenuItem onClick={() => { setWageSortBy('date'); setWageSortOrder(wageSortOrder === 'asc' ? 'desc' : 'asc'); }} className="text-xs font-bold flex justify-between cursor-pointer py-2.5 dark:text-slate-300">
                            {isRtl ? 'حسب التاريخ' : 'By Date'}
                            {wageSortBy === 'date' && (wageSortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => { setWageSortBy('amount'); setWageSortOrder(wageSortOrder === 'asc' ? 'desc' : 'asc'); }} className="text-xs font-bold flex justify-between cursor-pointer py-2.5">
+                        <DropdownMenuItem onClick={() => { setWageSortBy('amount'); setWageSortOrder(wageSortOrder === 'asc' ? 'desc' : 'asc'); }} className="text-xs font-bold flex justify-between cursor-pointer py-2.5 dark:text-slate-300">
                            {isRtl ? 'حسب المبلغ' : 'By Amount'}
                            {wageSortBy === 'amount' && (wageSortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => { setWageSortBy('qtyAccepted'); setWageSortOrder(wageSortOrder === 'asc' ? 'desc' : 'asc'); }} className="text-xs font-bold flex justify-between cursor-pointer py-2.5">
+                        <DropdownMenuItem onClick={() => { setWageSortBy('qtyAccepted'); setWageSortOrder(wageSortOrder === 'asc' ? 'desc' : 'asc'); }} className="text-xs font-bold flex justify-between cursor-pointer py-2.5 dark:text-slate-300">
                            {isRtl ? 'حسب الكمية' : 'By Qty'}
                            {wageSortBy === 'qtyAccepted' && (wageSortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
-                  <div className="flex items-center gap-2 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest tabular-nums">{isRtl ? 'العدد:' : 'COUNT:'} <span className="text-emerald-600">{filteredWagesDetailed.length}</span></div>
+                  <div className="flex items-center gap-2 px-2 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest tabular-nums">{isRtl ? 'العدد:' : 'COUNT:'} <span className="text-emerald-600">{filteredWagesDetailed.length}</span></div>
                </div>
 
                <div className="flex-1 overflow-auto no-scrollbar">
                   <Table className="text-right border-separate border-spacing-0">
-                    <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
+                    <TableHeader className="bg-slate-50 dark:bg-slate-800 sticky top-0 z-10 shadow-sm">
                       <TableRow>
-                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", isRtl ? 'text-right' : 'text-left')}>DATE</TableHead>
-                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", isRtl ? 'text-right' : 'text-left')}>REF #</TableHead>
-                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", isRtl ? 'text-right' : 'text-left')}>PERSONNEL</TableHead>
-                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-center", isRtl ? 'text-right' : 'text-left')}>QTY</TableHead>
-                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase text-center", isRtl ? 'text-right' : 'text-left')}>RATE</TableHead>
-                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", isRtl ? 'text-right' : 'text-left')}>TOTAL</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase", isRtl ? 'text-right' : 'text-left')}>DATE</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase", isRtl ? 'text-right' : 'text-left')}>REF #</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase", isRtl ? 'text-right' : 'text-left')}>PERSONNEL</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase text-center", isRtl ? 'text-right' : 'text-left')}>QTY</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase text-center", isRtl ? 'text-right' : 'text-left')}>RATE</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase", isRtl ? 'text-right' : 'text-left')}>TOTAL</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredWagesDetailed.map((v, idx) => (
-                        <TableRow key={idx} className="hover:bg-slate-50 transition-colors border-b border-slate-100">
-                           <TableCell className={cn("px-6 py-4 text-[10px] font-bold text-slate-400 tabular-nums", isRtl ? 'text-right' : 'text-left')}>{v.date}</TableCell>
-                           <TableCell className={cn("px-6 py-4 text-[10px] font-black text-slate-900 tabular-nums", isRtl ? 'text-right' : 'text-left')}>{v.voucherNumber}</TableCell>
-                           <TableCell className={cn("px-6 py-4 font-bold text-slate-900 text-xs", isRtl ? 'text-right' : 'text-left')}>{v.fullName}</TableCell>
-                           <TableCell className={cn("px-6 py-4 font-black text-emerald-700 tabular-nums text-center", isRtl ? 'text-right' : 'text-left')}>{v.qtyAccepted} <span className="text-[8px] opacity-60">Pcs</span></TableCell>
-                           <TableCell className={cn("px-6 py-4 font-bold text-slate-500 tabular-nums text-center", isRtl ? 'text-right' : 'text-left')}>{v.wageRate.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                           <TableCell className={cn("px-6 py-4 font-black text-purple-700 tabular-nums", isRtl ? 'text-right' : 'text-left')}>{v.wageAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-[8px] opacity-60 uppercase">{v.currency || systemCurrency}</span></TableCell>
+                        <TableRow key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-b border-slate-100 dark:border-slate-800">
+                           <TableCell className={cn("px-6 py-4 text-[10px] font-bold text-slate-400 dark:text-slate-500 tabular-nums", isRtl ? 'text-right' : 'text-left')}>{v.date}</TableCell>
+                           <TableCell className={cn("px-6 py-4 text-[10px] font-black text-slate-900 dark:text-slate-100 tabular-nums", isRtl ? 'text-right' : 'text-left')}>{v.voucherNumber}</TableCell>
+                           <TableCell className={cn("px-6 py-4 font-bold text-slate-900 dark:text-slate-300 text-xs", isRtl ? 'text-right' : 'text-left')}>{v.fullName}</TableCell>
+                           <TableCell className={cn("px-6 py-4 font-black text-emerald-700 dark:text-emerald-400 tabular-nums text-center", isRtl ? 'text-right' : 'text-left')}>{v.qtyAccepted} <span className="text-[8px] opacity-60">Pcs</span></TableCell>
+                           <TableCell className={cn("px-6 py-4 font-bold text-slate-500 dark:text-slate-400 tabular-nums text-center", isRtl ? 'text-right' : 'text-left')}>{v.wageRate.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                           <TableCell className={cn("px-6 py-4 font-black text-purple-700 dark:text-purple-400 tabular-nums", isRtl ? 'text-right' : 'text-left')}>{v.wageAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-[8px] opacity-60 uppercase">{v.currency || systemCurrency}</span></TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -799,20 +784,20 @@ export default function OrderDetailsDashboard() {
 
           {activeTab === 'costs_summary' && (
             <div className="flex-1 flex flex-col animate-in fade-in duration-300 overflow-hidden" dir={dir}>
-               <div className={cn("p-4 bg-rose-50 border-b border-rose-100 flex items-center justify-between")}>
-                  <h3 className={cn("text-xs font-black text-rose-900 uppercase tracking-widest flex items-center gap-2")}>
+               <div className={cn("p-4 bg-rose-50 dark:bg-rose-900/20 border-b border-rose-100 dark:border-rose-900/30 flex items-center justify-between")}>
+                  <h3 className={cn("text-xs font-black text-rose-900 dark:text-rose-400 uppercase tracking-widest flex items-center gap-2")}>
                     <Receipt className="w-4 h-4" /> 
                     {isRtl ? 'المصاريف والتكاليف التشغيلية المرتبطة بالدفعة' : 'BATCH OVERHEAD COSTS'}
                   </h3>
                   <Badge className="bg-rose-600 text-white font-black tabular-nums">{totalOtherCosts.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {systemCurrency}</Badge>
                </div>
 
-               <div className="p-2 bg-slate-50 border-b border-slate-200 flex items-center gap-2 shadow-sm">
+               <div className="p-2 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2 shadow-sm">
                   <div className="relative flex-1">
-                    <Search className={cn("absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300", isRtl ? "right-3" : "left-3")} />
-                    <Input value={costSearch} onChange={(e) => setCostSearch(e.target.value)} placeholder={isRtl ? 'بحث في المصاريف، الشركة، أو البيان...' : 'Search costs, company, or description...'} className={cn("h-9 bg-white text-xs font-bold border-slate-200", isRtl ? "pr-9 pl-3" : "pl-9 pr-3")} />
+                    <Search className={cn("absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300 dark:text-slate-600", isRtl ? "right-3" : "left-3")} />
+                    <Input value={costSearch} onChange={(e) => setCostSearch(e.target.value)} placeholder={isRtl ? 'بحث في المصاريف، الشركة، أو البيان...' : 'Search costs, company, or description...'} className={cn("h-9 bg-white dark:bg-slate-900 text-xs font-bold border-slate-200 dark:border-slate-700", isRtl ? "pr-9 pl-3" : "pl-9 pr-3")} />
                   </div>
-                  <div className="flex items-center gap-1.5 px-1.5 border-x border-slate-200">
+                  <div className="flex items-center gap-1.5 px-1.5 border-x border-slate-200 dark:border-slate-700">
                     <Button variant="ghost" size="sm" onClick={() => {
                         const headers = ['Date', 'Voucher', 'Category', 'Recipient', 'Description', 'Amount', 'Currency'];
                         const rows = filteredCostsDetailed.map(v => [v.date, v.voucherNumber, costCategories[v.category]?.label || v.category, v.recipient, v.description, v.totalAmount.toFixed(2), v.currency || systemCurrency]);
@@ -822,57 +807,57 @@ export default function OrderDetailsDashboard() {
                         const link = document.createElement('a'); link.href = url; link.setAttribute('download', `CostsLog_${order.orderNumber}.csv`);
                         document.body.appendChild(link); link.click(); document.body.removeChild(link);
                         toast({ title: isRtl ? "تم تحميل ملف CSV" : "CSV Downloaded" });
-                      }} className="h-9 px-3 text-[10px] font-black gap-2 text-slate-600 hover:bg-white border border-transparent">
+                      }} className="h-9 px-3 text-[10px] font-black gap-2 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 border border-transparent">
                       <FileDown className="w-3.5 h-3.5 text-emerald-600" />{isRtl ? 'تصدير' : 'Export'}
                     </Button>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-9 px-3 text-[10px] font-black gap-2 text-slate-600 hover:bg-white">
+                        <Button variant="ghost" size="sm" className="h-9 px-3 text-[10px] font-black gap-2 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800">
                           <Filter className="w-3.5 h-3.5" />{isRtl ? 'تصفية وترتيب' : 'Filter & Sort'}
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align={isRtl ? 'start' : 'end'} className="w-64 rounded-xl shadow-xl border-slate-200">
-                        <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">SORTING</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => { setSortByState('date'); setCostSortOrder(costSortOrder === 'asc' ? 'desc' : 'asc'); }} className="text-xs font-bold flex justify-between cursor-pointer py-2.5">
+                      <DropdownMenuContent align={isRtl ? 'start' : 'end'} className="w-64 rounded-xl shadow-xl border-slate-200 dark:border-slate-800 dark:bg-slate-900">
+                        <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest">SORTING</DropdownMenuLabel>
+                        <DropdownMenuItem onClick={() => { setSortByState('date'); setCostSortOrder(costSortOrder === 'asc' ? 'desc' : 'asc'); }} className="text-xs font-bold flex justify-between cursor-pointer py-2.5 dark:text-slate-300">
                            {isRtl ? 'حسب التاريخ' : 'By Date'}
                            {costSortBy === 'date' && (costSortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => { setSortByState('amount'); setCostSortOrder(costSortOrder === 'asc' ? 'desc' : 'asc'); }} className="text-xs font-bold flex justify-between cursor-pointer py-2.5">
+                        <DropdownMenuItem onClick={() => { setSortByState('amount'); setCostSortOrder(costSortOrder === 'asc' ? 'desc' : 'asc'); }} className="text-xs font-bold flex justify-between cursor-pointer py-2.5 dark:text-slate-300">
                            {isRtl ? 'حسب المبلغ' : 'By Amount'}
                            {costSortBy === 'amount' && (costSortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
-                  <div className="flex items-center gap-2 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest tabular-nums">{isRtl ? 'العدد:' : 'COUNT:'} <span className="text-emerald-600">{filteredCostsDetailed.length}</span></div>
+                  <div className="flex items-center gap-2 px-2 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest tabular-nums">{isRtl ? 'العدد:' : 'COUNT:'} <span className="text-emerald-600">{filteredCostsDetailed.length}</span></div>
                </div>
 
                <div className="flex-1 overflow-auto no-scrollbar">
                   <Table className="text-right border-separate border-spacing-0">
-                    <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
+                    <TableHeader className="bg-slate-50 dark:bg-slate-800 sticky top-0 z-10 shadow-sm">
                       <TableRow>
-                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? 'text-right' : 'text-left')}>DATE</TableHead>
-                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? 'text-right' : 'text-left')}>REF #</TableHead>
-                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? 'text-right' : 'text-left')}>TYPE</TableHead>
-                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? 'text-right' : 'text-left')}>RECIPIENT / COMPANY</TableHead>
-                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? 'text-right' : 'text-left')}>DESCRIPTION</TableHead>
-                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? 'text-right' : 'text-left')}>COST</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase border-b border-slate-200 dark:border-slate-700", isRtl ? 'text-right' : 'text-left')}>DATE</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase border-b border-slate-200 dark:border-slate-700", isRtl ? 'text-right' : 'text-left')}>REF #</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase border-b border-slate-200 dark:border-slate-700", isRtl ? 'text-right' : 'text-left')}>TYPE</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase border-b border-slate-200 dark:border-slate-700", isRtl ? 'text-right' : 'text-left')}>RECIPIENT / COMPANY</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase border-b border-slate-200 dark:border-slate-700", isRtl ? 'text-right' : 'text-left')}>DESCRIPTION</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase border-b border-slate-200 dark:border-slate-700", isRtl ? 'text-right' : 'text-left')}>COST</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredCostsDetailed.map((v, idx) => (
-                        <TableRow key={idx} className="hover:bg-slate-50/50 transition-colors border-b border-slate-100">
-                           <TableCell className={cn("px-6 py-4 text-[10px] font-bold text-slate-500 tabular-nums", isRtl ? 'text-right' : 'text-left')}>{v.date}</TableCell>
-                           <TableCell className={cn("px-6 py-4 text-[10px] font-black text-slate-900 tabular-nums", isRtl ? 'text-right' : 'text-left')}>{v.voucherNumber}</TableCell>
+                        <TableRow key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors border-b border-slate-100 dark:border-slate-800">
+                           <TableCell className={cn("px-6 py-4 text-[10px] font-bold text-slate-500 dark:text-slate-500 tabular-nums", isRtl ? 'text-right' : 'text-left')}>{v.date}</TableCell>
+                           <TableCell className={cn("px-6 py-4 text-[10px] font-black text-slate-900 dark:text-slate-100 tabular-nums", isRtl ? 'text-right' : 'text-left')}>{v.voucherNumber}</TableCell>
                            <TableCell className={cn("px-6 py-4", isRtl ? 'text-right' : 'text-left')}>
-                              <div className="inline-flex items-center gap-2 px-2 py-0.5 rounded text-[9px] font-black uppercase bg-slate-50 border border-slate-100 text-slate-600">
+                              <div className="inline-flex items-center gap-2 px-2 py-0.5 rounded text-[9px] font-black uppercase bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 text-slate-600 dark:text-slate-400">
                                 {costCategories[v.category]?.icon || <Receipt className="w-3 h-3" />}
                                 {costCategories[v.category]?.label || v.category}
                               </div>
                            </TableCell>
-                           <TableCell className={cn("px-6 py-4 font-bold text-slate-800 text-xs", isRtl ? 'text-right' : 'text-left')}>{v.recipient || '---'}</TableCell>
-                           <TableCell className={cn("px-6 py-4 font-medium text-slate-600 text-xs", isRtl ? 'text-right' : 'text-left')}>{v.description}</TableCell>
-                           <TableCell className={cn("px-6 py-4 font-black text-rose-600 tabular-nums", isRtl ? 'text-right' : 'text-left')}>{v.totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-[8px] opacity-60 uppercase">{v.currency || systemCurrency}</span></TableCell>
+                           <TableCell className={cn("px-6 py-4 font-bold text-slate-800 dark:text-slate-200 text-xs", isRtl ? 'text-right' : 'text-left')}>{v.recipient || '---'}</TableCell>
+                           <TableCell className={cn("px-6 py-4 font-medium text-slate-600 dark:text-slate-400 text-xs", isRtl ? 'text-right' : 'text-left')}>{v.description}</TableCell>
+                           <TableCell className={cn("px-6 py-4 font-black text-rose-600 dark:text-rose-400 tabular-nums", isRtl ? 'text-right' : 'text-left')}>{v.totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-[8px] opacity-60 uppercase">{v.currency || systemCurrency}</span></TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -883,12 +868,12 @@ export default function OrderDetailsDashboard() {
 
           {(!['info', 'summary', 'materials_summary', 'wages_summary', 'costs_summary'].includes(activeTab)) && (
             <div className="flex-1 flex-col flex animate-in fade-in duration-300 overflow-hidden" dir={dir}>
-               <div className="p-2 bg-slate-50 border-b border-slate-200 flex items-center gap-2 shadow-sm">
+               <div className="p-2 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2 shadow-sm">
                   <div className="relative flex-1">
-                    <Search className={cn("absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300", isRtl ? "right-3" : "left-3")} />
-                    <Input value={stageSearch} onChange={(e) => setStageSearch(e.target.value)} placeholder={isRtl ? 'بحث في سجل المرحلة...' : 'Search stage log...'} className={cn("h-9 bg-white text-xs font-bold border-slate-200", isRtl ? "pr-9 pl-3" : "pl-9 pr-3")} />
+                    <Search className={cn("absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300 dark:text-slate-600", isRtl ? "right-3" : "left-3")} />
+                    <Input value={stageSearch} onChange={(e) => setStageSearch(e.target.value)} placeholder={isRtl ? 'بحث في سجل المرحلة...' : 'Search stage log...'} className={cn("h-9 bg-white dark:bg-slate-900 text-xs font-bold border-slate-200 dark:border-slate-700", isRtl ? "pr-9 pl-3" : "pl-9 pr-3")} />
                   </div>
-                  <div className="flex items-center gap-1.5 px-1.5 border-x border-slate-200">
+                  <div className="flex items-center gap-1.5 px-1.5 border-x border-slate-200 dark:border-slate-700">
                     <Button variant="ghost" size="sm" onClick={() => {
                         const headers = ['Date', 'Reference', 'Type', 'Personnel', 'Impact', 'Currency'];
                         const rows = filteredStageVouchers.map(v => {
@@ -903,44 +888,44 @@ export default function OrderDetailsDashboard() {
                         const link = document.createElement('a'); link.href = url; link.setAttribute('download', `StageLog_${activeTab}.csv`);
                         document.body.appendChild(link); link.click(); document.body.removeChild(link);
                         toast({ title: isRtl ? "تم تحميل سجل المرحلة" : "Stage Log Exported" });
-                      }} className="h-9 px-3 text-[10px] font-black gap-2 text-slate-600 hover:bg-white border border-transparent">
+                      }} className="h-9 px-3 text-[10px] font-black gap-2 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 border border-transparent">
                       <FileDown className="w-3.5 h-3.5 text-emerald-600" />{isRtl ? 'تصدير' : 'Export'}
                     </Button>
 
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-9 px-3 text-[10px] font-black gap-2 text-slate-600 hover:bg-white">
+                        <Button variant="ghost" size="sm" className="h-9 px-3 text-[10px] font-black gap-2 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800">
                           <Filter className="w-3.5 h-3.5" />{isRtl ? 'تصفية وترتيب' : 'Filter & Sort'}
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align={isRtl ? 'start' : 'end'} className="w-64 rounded-xl shadow-xl border-slate-200">
-                        <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">CHRONOLOGY</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => setStageSortOrder(stageSortOrder === 'asc' ? 'desc' : 'asc')} className="text-xs font-bold flex justify-between cursor-pointer py-2.5">
+                      <DropdownMenuContent align={isRtl ? 'start' : 'end'} className="w-64 rounded-xl shadow-xl border-slate-200 dark:border-slate-800 dark:bg-slate-900">
+                        <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest">CHRONOLOGY</DropdownMenuLabel>
+                        <DropdownMenuItem onClick={() => setStageSortOrder(stageSortOrder === 'asc' ? 'desc' : 'asc')} className="text-xs font-bold flex justify-between cursor-pointer py-2.5 dark:text-slate-300">
                           {isRtl ? 'ترتيب حسب التاريخ' : 'Sort by Date'}
                           {stageSortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />}
                         </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">VOUCHER TYPE</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => setStageTypeFilter('all')} className="text-xs font-bold flex justify-between cursor-pointer py-2">{isRtl ? 'الكل' : 'All'}{stageTypeFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setStageTypeFilter('material_issue')} className="text-xs font-bold flex justify-between cursor-pointer py-2">{isRtl ? 'صرف المواد' : 'Material Issue'}{stageTypeFilter === 'material_issue' && <Check className="w-3.5 h-3.5 text-emerald-600" />}</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setStageTypeFilter('production_receipt')} className="text-xs font-bold flex justify-between cursor-pointer py-2">{isRtl ? 'استلام الانتاج' : 'Receipt'}{stageTypeFilter === 'production_receipt' && <Check className="w-3.5 h-3.5 text-emerald-600" />}</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setStageTypeFilter('material_return')} className="text-xs font-bold flex justify-between cursor-pointer py-2">{isRtl ? 'توثيق المرتجع' : 'Return'}{stageTypeFilter === 'material_return' && <Check className="w-3.5 h-3.5 text-emerald-600" />}</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setStageTypeFilter('wage_payment')} className="text-xs font-bold flex justify-between cursor-pointer py-2">{isRtl ? 'صرف الاجور' : 'Wage Payment'}{stageTypeFilter === 'wage_payment' && <Check className="w-3.5 h-3.5 text-emerald-600" />}</DropdownMenuItem>
+                        <DropdownMenuSeparator className="dark:bg-slate-800" />
+                        <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest">VOUCHER TYPE</DropdownMenuLabel>
+                        <DropdownMenuItem onClick={() => setStageTypeFilter('all')} className="text-xs font-bold flex justify-between cursor-pointer py-2 dark:text-slate-300">{isRtl ? 'الكل' : 'All'}{stageTypeFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setStageTypeFilter('material_issue')} className="text-xs font-bold flex justify-between cursor-pointer py-2 dark:text-slate-300">{isRtl ? 'صرف المواد' : 'Material Issue'}{stageTypeFilter === 'material_issue' && <Check className="w-3.5 h-3.5 text-emerald-600" />}</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setStageTypeFilter('production_receipt')} className="text-xs font-bold flex justify-between cursor-pointer py-2 dark:text-slate-300">{isRtl ? 'استلام الانتاج' : 'Receipt'}{stageTypeFilter === 'production_receipt' && <Check className="w-3.5 h-3.5 text-emerald-600" />}</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setStageTypeFilter('material_return')} className="text-xs font-bold flex justify-between cursor-pointer py-2 dark:text-slate-300">{isRtl ? 'توثيق المرتجع' : 'Return'}{stageTypeFilter === 'material_return' && <Check className="w-3.5 h-3.5 text-emerald-600" />}</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setStageTypeFilter('wage_payment')} className="text-xs font-bold flex justify-between cursor-pointer py-2 dark:text-slate-300">{isRtl ? 'صرف الاجور' : 'Wage Payment'}{stageTypeFilter === 'wage_payment' && <Check className="w-3.5 h-3.5 text-emerald-600" />}</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
-                  <div className="flex items-center gap-2 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest tabular-nums">{isRtl ? 'العدد:' : 'LOG COUNT:'} <span className="text-emerald-600">{filteredStageVouchers.length}</span></div>
+                  <div className="flex items-center gap-2 px-2 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest tabular-nums">{isRtl ? 'العدد:' : 'LOG COUNT:'} <span className="text-emerald-600">{filteredStageVouchers.length}</span></div>
                </div>
                <div className="flex-1 overflow-auto no-scrollbar">
                   <Table className="text-right border-separate border-spacing-0">
-                    <TableHeader className="bg-slate-100 sticky top-0 z-10 shadow-sm">
+                    <TableHeader className="bg-slate-100 dark:bg-slate-800 sticky top-0 z-10 shadow-sm">
                       <TableRow>
-                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? "text-right" : "text-left")}>DATE</TableHead>
-                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? "text-right" : "text-left")}>REF #</TableHead>
-                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? "text-right" : "text-left")}>ACTIVITY</TableHead>
-                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase border-b border-slate-200", isRtl ? "text-right" : "text-left")}>PERSONNEL</TableHead>
-                        <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 uppercase text-center border-b border-slate-200">IMPACT</TableHead>
-                        <TableHead className="px-6 py-4 w-16 border-b border-slate-200"></TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase border-b border-slate-200 dark:border-slate-700", isRtl ? "text-right" : "text-left")}>DATE</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase border-b border-slate-200 dark:border-slate-700", isRtl ? "text-right" : "text-left")}>REF #</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase border-b border-slate-200 dark:border-slate-700", isRtl ? "text-right" : "text-left")}>ACTIVITY</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase border-b border-slate-200 dark:border-slate-700", isRtl ? "text-right" : "text-left")}>PERSONNEL</TableHead>
+                        <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase text-center border-b border-slate-200 dark:border-slate-700">IMPACT</TableHead>
+                        <TableHead className="px-6 py-4 w-16 border-b border-slate-200 dark:border-slate-700"></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -955,23 +940,22 @@ export default function OrderDetailsDashboard() {
 
           {activeTab === 'summary' && (
             <div className="flex-1 flex flex-col animate-in zoom-in-95 duration-300" dir={dir}>
-               <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
+               <div className="p-4 bg-slate-900 dark:bg-slate-950 text-white flex items-center justify-between">
                   <h3 className={cn("text-xs font-black uppercase tracking-widest flex items-center gap-2", isRtl ? "text-right" : "text-left")}>
                     <BarChart3 className="w-4 h-4 text-emerald-400" /> 
                     {isRtl ? 'التحليل الإحصائي لخطوط الإنتاج' : 'ANALYTICS'}
                   </h3>
                </div>
                
-               {/* Informative Header / Explanation Box */}
-               <div className="p-4 bg-blue-50 border-b border-blue-100 flex items-start gap-4">
-                  <div className="p-2 bg-white rounded-lg shadow-sm shrink-0">
-                    <Info className="w-5 h-5 text-blue-600" />
+               <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-900/30 flex items-start gap-4">
+                  <div className="p-2 bg-white dark:bg-slate-900 rounded-lg shadow-sm shrink-0">
+                    <Info className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                   </div>
                   <div className="space-y-1">
-                    <p className="text-[11px] font-black text-blue-900 uppercase tracking-widest">
+                    <p className="text-[11px] font-black text-blue-900 dark:text-blue-300 uppercase tracking-widest">
                       {isRtl ? 'ما هو الهدف من هذا التحليل؟' : 'What is the purpose of this analysis?'}
                     </p>
-                    <p className="text-[10px] text-blue-700 font-bold leading-relaxed">
+                    <p className="text-[10px] text-blue-700 dark:text-blue-400 font-bold leading-relaxed">
                       {isRtl 
                         ? 'يوفر هذا الجدول رؤية شاملة لمسار الدفعة عبر كافة الأقسام. يمكنك من خلاله معرفة "عنق الزجاجة" (القسم المتأخر)، وتوزيع تكاليف الأجور حسب المرحلة، ونسبة تقدم كل قسم على حدة تجاه الكمية المستهدفة لضمان سلاسة التدفق الإنتاجي.' 
                         : 'This table provides a holistic view of the batch pipeline across all work centers. It helps you identify bottlenecks (lagging stages), monitor wage distribution by stage, and track the specific progress of each department relative to the total target quantity.'}
@@ -981,12 +965,12 @@ export default function OrderDetailsDashboard() {
 
                <div className="flex-1 overflow-auto no-scrollbar">
                   <Table className="text-right border-separate border-spacing-0">
-                    <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
+                    <TableHeader className="bg-slate-50 dark:bg-slate-800 sticky top-0 z-10 shadow-sm">
                       <TableRow>
-                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500", isRtl ? 'text-right' : 'text-left')}>WORK CENTER</TableHead>
-                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 text-center">COMPLETED</TableHead>
-                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 text-center">WAGE COST</TableHead>
-                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 text-center">PROGRESS</TableHead>
+                        <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 dark:text-slate-400", isRtl ? 'text-right' : 'text-left')}>WORK CENTER</TableHead>
+                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 dark:text-slate-400 text-center">COMPLETED</TableHead>
+                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 dark:text-slate-400 text-center">WAGE COST</TableHead>
+                        <TableHead className="px-6 py-3 font-black text-[10px] text-slate-500 dark:text-slate-400 text-center">PROGRESS</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -996,12 +980,12 @@ export default function OrderDetailsDashboard() {
                         const cost = stageReceipts.reduce((sum, v) => sum + (v.wageAmount || 0), 0);
                         const p = Math.round((done / (order.targetQty || 1)) * 100);
                         return (
-                          <TableRow key={d.id} className="hover:bg-slate-50/50 transition-colors border-b border-slate-100">
-                             <TableCell className={cn("px-6 py-4 font-black text-slate-900 text-xs", isRtl ? 'text-right' : 'text-left')}>{d.nameAr}</TableCell>
-                             <TableCell className="px-6 py-4 text-center font-bold text-slate-700 tabular-nums">{done.toLocaleString('en-US')}</TableCell>
-                             <TableCell className="px-6 py-4 text-center font-black text-emerald-700 tabular-nums">{cost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {systemCurrency}</TableCell>
+                          <TableRow key={d.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors border-b border-slate-100 dark:border-slate-800">
+                             <TableCell className={cn("px-6 py-4 font-black text-slate-900 dark:text-slate-100 text-xs", isRtl ? 'text-right' : 'text-left')}>{d.nameAr}</TableCell>
+                             <TableCell className="px-6 py-4 text-center font-bold text-slate-700 dark:text-slate-300 tabular-nums">{done.toLocaleString('en-US')}</TableCell>
+                             <TableCell className="px-6 py-4 text-center font-black text-emerald-700 dark:text-emerald-400 tabular-nums">{cost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {systemCurrency}</TableCell>
                              <TableCell className="px-6 py-4 text-center">
-                                <div className="flex items-center gap-3 justify-center"><div className="flex-1 h-1.5 w-24 bg-slate-100 rounded-full overflow-hidden relative"><div className={cn("h-full bg-emerald-500 absolute", isRtl ? "right-0" : "left-0")} style={{ width: `${p}%` }} /></div><span className="text-[10px] font-black text-slate-400 tabular-nums">{p}%</span></div>
+                                <div className="flex items-center gap-3 justify-center"><div className="flex-1 h-1.5 w-24 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden relative"><div className={cn("h-full bg-emerald-500 absolute", isRtl ? "right-0" : "left-0")} style={{ width: `${p}%` }} /></div><span className="text-[10px] font-black text-slate-400 dark:text-slate-500 tabular-nums">{p}%</span></div>
                              </TableCell>
                           </TableRow>
                         );
@@ -1014,12 +998,13 @@ export default function OrderDetailsDashboard() {
         </div>
       </div>
 
-      {/* VOUCHER PRINT VIEW DIALOG */}
+      {/* VOUCHER PRINT VIEW DIALOG - FORCED LIGHT MODE */}
       <Dialog open={!!viewingVoucher} onOpenChange={(open) => !open && setViewingVoucher(null)}>
         <DialogContent className="sm:max-w-[850px] p-0 overflow-hidden border-none bg-white shadow-2xl">
           <DialogHeader className="sr-only"><DialogTitle>معاينة السند الرسمي</DialogTitle></DialogHeader>
           <ScrollArea className="max-h-[85vh]">
-            <div className="p-12 bg-white relative z-0" id="printable-voucher">
+            {/* The 'light' class and explicit white bg ensure this stays light for printing/saving */}
+            <div className="p-12 bg-white text-slate-900 relative z-0 light" id="printable-voucher">
               {viewingVoucher && (
                 <VoucherTemplate 
                   voucher={viewingVoucher}
@@ -1047,14 +1032,14 @@ export default function OrderDetailsDashboard() {
 
       {/* EDIT MODAL */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[500px] rounded-lg p-0 overflow-hidden border-none shadow-2xl">
+        <DialogContent className="sm:max-w-[500px] rounded-lg p-0 overflow-hidden border-none shadow-2xl dark:bg-slate-900">
           <div className="premium-gradient p-6 text-white"><DialogHeader className="text-start"><DialogTitle className="text-xl font-black flex items-center gap-3"><Edit2 className="w-5 h-5 text-emerald-300" />{isRtl ? 'تحديث مواصفات الدفعة' : 'Update Specs'}</DialogTitle></DialogHeader></div>
-          <form onSubmit={handleUpdateOrder} className="p-6 space-y-4 bg-white">
-            <div className="space-y-1.5 text-start"><Label className="text-[10px] font-black text-slate-400 uppercase">عنوان الطلب المميز</Label><Input value={editFormData.title} onChange={(e) => setEditFormDate({...editFormData, title: e.target.value})} className="h-11 font-bold text-xs bg-slate-50 text-start" required /></div>
-            <div className="space-y-1.5 text-start"><Label className="text-[10px] font-black text-slate-400 uppercase">نوع المعوز المستهدف</Label><select value={editFormData.productId} onChange={(e) => setEditFormDate({...editFormData, productId: e.target.value})} className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold text-start" required><option value="">-- Select Product --</option>{products?.map(p => <option key={p.id} value={p.id}>{p.nameAr}</option>)}</select></div>
-            <div className="grid grid-cols-2 gap-4"><div className="space-y-1.5 text-start"><Label className="text-[10px] font-black text-slate-400 uppercase">الكمية المستهدفة</Label><Input type="number" value={editFormData.targetQty} onChange={(e) => setEditFormDate({...editFormData, targetQty: Number(e.target.value)})} className="h-11 font-bold bg-slate-50 tabular-nums text-start" required /></div><div className="space-y-1.5 text-start"><Label className="text-[10px] font-black text-slate-400 uppercase">الأولوية</Label><select value={editFormData.priority} onChange={(e) => setEditFormDate({...editFormData, priority: e.target.value})} className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold text-start"><option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option></select></div></div>
-            <div className="space-y-1.5 text-start"><Label className="text-[10px) font-black text-slate-400 uppercase">ملاحظات إضافية</Label><Textarea value={editFormData.notes} onChange={(e) => setEditFormDate({...editFormData, notes: e.target.value})} className="min-h-[100px] text-xs font-medium bg-slate-50 text-start" /></div>
-            <div className="flex gap-3 pt-4 border-t border-slate-100"><Button type="submit" disabled={isSubmitting} className="flex-1 h-12 premium-gradient text-white rounded-lg font-black">Commit Changes</Button><Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)} className="px-6 h-12 font-black text-slate-400">Cancel</Button></div>
+          <form onSubmit={handleUpdateOrder} className="p-6 space-y-4 bg-white dark:bg-slate-900">
+            <div className="space-y-1.5 text-start"><Label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase">عنوان الطلب المميز</Label><Input value={editFormData.title} onChange={(e) => setEditFormDate({...editFormData, title: e.target.value})} className="h-11 font-bold text-xs bg-slate-50 dark:bg-slate-800 dark:text-slate-100 text-start border-slate-200 dark:border-slate-700" required /></div>
+            <div className="space-y-1.5 text-start"><Label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase">نوع المعوز المستهدف</Label><select value={editFormData.productId} onChange={(e) => setEditFormDate({...editFormData, productId: e.target.value})} className="w-full h-11 px-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold text-start dark:text-slate-100" required><option value="">-- Select Product --</option>{products?.map(p => <option key={p.id} value={p.id}>{p.nameAr}</option>)}</select></div>
+            <div className="grid grid-cols-2 gap-4"><div className="space-y-1.5 text-start"><Label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase">الكمية المستهدفة</Label><Input type="number" value={editFormData.targetQty} onChange={(e) => setEditFormDate({...editFormData, targetQty: Number(e.target.value)})} className="h-11 font-bold bg-slate-50 dark:bg-slate-800 dark:text-slate-100 tabular-nums text-start border-slate-200 dark:border-slate-700" required /></div><div className="space-y-1.5 text-start"><Label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase">الأولوية</Label><select value={editFormData.priority} onChange={(e) => setEditFormDate({...editFormData, priority: e.target.value})} className="w-full h-11 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-bold text-start dark:text-slate-100"><option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option></select></div></div>
+            <div className="space-y-1.5 text-start"><Label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase">ملاحظات إضافية</Label><Textarea value={editFormData.notes} onChange={(e) => setEditFormDate({...editFormData, notes: e.target.value})} className="min-h-[100px] text-xs font-medium bg-slate-50 dark:bg-slate-800 dark:text-slate-300 text-start border-slate-200 dark:border-slate-700" /></div>
+            <div className="flex gap-3 pt-4 border-t border-slate-100 dark:border-slate-800"><Button type="submit" disabled={isSubmitting} className="flex-1 h-12 premium-gradient text-white rounded-lg font-black">Commit Changes</Button><Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)} className="px-6 h-12 font-black text-slate-400 dark:text-slate-500 dark:border-slate-700">Cancel</Button></div>
           </form>
         </DialogContent>
       </Dialog>
@@ -1065,25 +1050,25 @@ export default function OrderDetailsDashboard() {
 function LedgerTransactionRow({ voucher, worker, systemCurrency, lang, onView }: { voucher: any, worker: any, systemCurrency: string, lang: string, onView: (v: any) => void }) {
   const isRtl = lang === 'ar';
   const typeMap: any = {
-    'material_issue': { labelAr: 'صرف مواد', icon: <FileInput className="w-3.5 h-3.5" />, color: 'text-amber-600 bg-amber-50 border-amber-100' },
-    'production_receipt': { labelAr: 'استلام انتاج', icon: <FileOutput className="w-3.5 h-3.5" />, color: 'text-blue-600 bg-blue-50 border-blue-100' },
-    'material_return': { labelAr: 'توريد مرتجع', icon: <RefreshCcw className="w-3.5 h-3.5" />, color: 'text-emerald-600 bg-emerald-50 border-emerald-100' },
-    'wage_payment': { labelAr: 'صرف أجور', icon: <HandCoins className="w-3.5 h-3.5" />, color: 'text-purple-600 bg-purple-50 border-purple-100' },
-    'overhead_cost': { labelAr: 'تكاليف تشغيل', icon: <Receipt className="w-3.5 h-3.5" />, color: 'text-rose-600 bg-rose-50 border-rose-100' }
+    'material_issue': { labelAr: 'صرف مواد', icon: <FileInput className="w-3.5 h-3.5" />, color: 'text-amber-600 bg-amber-50 dark:bg-amber-900/20 border-amber-100 dark:border-amber-900/30' },
+    'production_receipt': { labelAr: 'استلام انتاج', icon: <FileOutput className="w-3.5 h-3.5" />, color: 'text-blue-600 bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-900/30' },
+    'material_return': { labelAr: 'توريد مرتجع', icon: <RefreshCcw className="w-3.5 h-3.5" />, color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-900/30' },
+    'wage_payment': { labelAr: 'صرف أجور', icon: <HandCoins className="w-3.5 h-3.5" />, color: 'text-purple-600 bg-purple-50 dark:bg-purple-900/20 border-purple-100 dark:border-purple-900/30' },
+    'overhead_cost': { labelAr: 'تكاليف تشغيل', icon: <Receipt className="w-3.5 h-3.5" />, color: 'text-rose-600 bg-rose-50 dark:bg-rose-900/20 border-rose-100 dark:border-rose-900/30' }
   };
   
-  const config = typeMap[voucher.type] || { labelAr: 'أخرى', icon: <FileText className="w-3.5 h-3.5" />, color: 'text-slate-500 bg-slate-50 border-slate-200' };
+  const config = typeMap[voucher.type] || { labelAr: 'أخرى', icon: <FileText className="w-3.5 h-3.5" />, color: 'text-slate-500 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700' };
 
   return (
-    <TableRow className="hover:bg-slate-50/50 border-b border-slate-100 transition-colors group">
-      <TableCell className={cn("px-6 py-3 font-bold text-slate-400 text-[10px] tabular-nums", isRtl ? 'text-right' : 'text-left')}>
+    <TableRow className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 transition-colors group">
+      <TableCell className={cn("px-6 py-3 font-bold text-slate-400 dark:text-slate-500 text-[10px] tabular-nums", isRtl ? 'text-right' : 'text-left')}>
         {voucher.date}
       </TableCell>
-      <TableCell className={cn("px-6 py-3 font-black text-slate-900 text-[10px] tabular-nums tracking-wider", isRtl ? 'text-right' : 'text-left')}>
+      <TableCell className={cn("px-6 py-3 font-black text-slate-900 dark:text-slate-100 text-[10px] tabular-nums tracking-wider", isRtl ? 'text-right' : 'text-left')}>
         <div className="flex flex-col">
           <span>{voucher.voucherNumber}</span>
           {voucher.isTransferred && (
-            <span className="text-[8px] font-black text-emerald-600 flex items-center gap-1">
+            <span className="text-[8px] font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
               <Truck className="w-2.5 h-2.5" /> {isRtl ? 'مُرحل للمستودع' : 'IN WAREHOUSE'}
             </span>
           )}
@@ -1097,36 +1082,35 @@ function LedgerTransactionRow({ voucher, worker, systemCurrency, lang, onView }:
       </TableCell>
       <TableCell className={cn("px-6 py-3", isRtl ? 'text-right' : 'text-left')}>
         <div className={cn("flex items-center gap-2")}>
-          <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center border border-slate-200 overflow-hidden shrink-0">
-            {worker?.photoUrl ? <img src={worker.photoUrl} className="w-full h-full object-cover" /> : <User className="w-3.5 h-3.5 text-slate-400" />}
+          <div className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center border border-slate-200 dark:border-slate-700 overflow-hidden shrink-0">
+            {worker?.photoUrl ? <img src={worker.photoUrl} className="w-full h-full object-cover" /> : <User className="w-3.5 h-3.5 text-slate-400 dark:text-slate-600" />}
           </div>
-          <span className="text-[11px] font-black text-slate-800 truncate max-w-[120px]">{worker?.fullName || voucher.recipient || '---'}</span>
+          <span className="text-[11px] font-black text-slate-800 dark:text-slate-200 truncate max-w-[120px]">{worker?.fullName || voucher.recipient || '---'}</span>
         </div>
       </TableCell>
       <TableCell className="px-6 py-3 text-center">
         <div className="flex flex-col items-center justify-center">
            <span className={cn("text-xs font-black tabular-nums", 
-              voucher.type === 'material_issue' ? "text-amber-700" : 
-              voucher.type === 'wage_payment' ? "text-purple-700" : 
-              voucher.type === 'material_return' ? "text-emerald-700" :
-              voucher.type === 'overhead_cost' ? "text-rose-700" :
-              "text-blue-700"
+              voucher.type === 'material_issue' ? "text-amber-700 dark:text-amber-500" : 
+              voucher.type === 'wage_payment' ? "text-purple-700 dark:text-purple-500" : 
+              voucher.type === 'material_return' ? "text-emerald-700 dark:text-emerald-400" :
+              voucher.type === 'overhead_cost' ? "text-rose-700 dark:text-rose-500" :
+              "text-blue-700 dark:text-blue-400"
            )}>
              {voucher.type === 'production_receipt' 
                ? (voucher.qtyAccepted || 0).toLocaleString('en-US') 
                : (voucher.totalAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
            </span>
-           <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest">
+           <span className="text-[8px] font-black text-slate-300 dark:text-slate-600 uppercase tracking-widest">
              {voucher.type === 'production_receipt' ? 'Pcs' : (voucher.currency || systemCurrency)}
            </span>
         </div>
       </TableCell>
       <TableCell className="px-6 py-3 text-center">
-        <Button variant="ghost" size="icon" onClick={() => onView(voucher)} className="h-8 w-8 text-slate-400 hover:text-emerald-600 transition-colors rounded-lg">
+        <Button variant="ghost" size="icon" onClick={() => onView(voucher)} className="h-8 w-8 text-slate-400 dark:text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors rounded-lg">
           <Eye className="w-4 h-4" />
         </Button>
       </TableCell>
     </TableRow>
   );
 }
-
