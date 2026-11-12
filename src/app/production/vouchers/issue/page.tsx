@@ -3,7 +3,17 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useTranslation } from '@/components/LanguageProvider';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, addDoc, updateDoc, doc, serverTimestamp, query, where, writeBatch, getDoc } from 'firebase/firestore';
+import { 
+  collection, 
+  addDoc, 
+  updateDoc, 
+  doc, 
+  serverTimestamp, 
+  query, 
+  where, 
+  writeBatch, 
+  getDoc 
+} from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { toPng } from 'html-to-image';
 import { ShieldCheck } from 'lucide-react';
@@ -209,7 +219,7 @@ export default function MaterialIssuePage() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#f8fafc] overflow-hidden" dir={dir}>
+    <div className="flex flex-col h-full bg-[#f8fafc] dark:bg-slate-950 overflow-hidden transition-colors duration-300" dir={dir}>
       <IssueHeader 
         lang={lang} dir={dir} search={search} setSearch={setSearch} 
         handleExportCSV={handleExportCSV} batchFilter={batchFilter} setBatchFilter={setBatchFilter}
@@ -247,7 +257,7 @@ export default function MaterialIssuePage() {
         isSubmitting={isSubmitting} handleDelete={handleDeleteVoucher}
       />
 
-      <div className="flex-none p-2.5 bg-slate-900 text-white/50 flex items-center justify-center gap-3">
+      <div className="flex-none p-2.5 bg-slate-900 dark:bg-slate-900/80 text-white/50 flex items-center justify-center gap-3 border-t border-white/5 shadow-2xl">
         <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
         <p className="text-[10px] font-bold tracking-tight">
           {lang === 'ar' ? 'نظام الرقابة المخزنية: صرف المواد الخام يقلل الرصيد المباشر ويحمل التكلفة على الدفعة.' : 'Inventory Audit System Active.'}

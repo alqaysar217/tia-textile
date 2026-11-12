@@ -42,10 +42,11 @@ export function IssuePrintPreview({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[850px] p-0 overflow-hidden border-none bg-white">
+      <DialogContent className="sm:max-w-[850px] p-0 overflow-hidden border-none bg-white shadow-2xl">
         <DialogHeader className="sr-only"><DialogTitle>معاينة طباعة سند الصرف</DialogTitle></DialogHeader>
         <ScrollArea className="max-h-[85vh]">
-          <div className="p-12 bg-white relative z-0" id="printable-voucher">
+          {/* FORCED LIGHT MODE FOR PRINTABLE VOUCHER */}
+          <div className="p-12 bg-white text-slate-900 relative z-0 light" id="printable-voucher">
             <VoucherTemplate 
               voucher={voucher}
               order={allOrders?.find(o => o.id === voucher.orderId)}
@@ -58,7 +59,7 @@ export function IssuePrintPreview({
           </div>
         </ScrollArea>
         <DialogFooter className="p-6 bg-slate-50 border-t print:hidden">
-          <Button onClick={handleDownload} disabled={isDownloading} className="premium-gradient font-black gap-2 h-12 px-10 rounded-xl shadow-xl">
+          <Button onClick={handleDownload} disabled={isDownloading} className="premium-gradient font-black gap-2 h-12 px-10 rounded-xl shadow-xl hover:opacity-90 active:scale-95 transition-all">
             {isDownloading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
             {lang === 'ar' ? 'تحميل السند كصورة' : 'Download Image'}
           </Button>
