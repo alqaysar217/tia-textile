@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useCallback, useRef } from 'react';
@@ -32,6 +31,7 @@ import {
   UploadCloud,
   RefreshCcw,
   User as UserIcon,
+  Users,
   Image as ImageIcon,
   CheckCircle2,
   Settings as SettingsIcon,
@@ -85,6 +85,8 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, addDoc, updateDoc, doc, serverTimestamp, query, where } from 'firebase/firestore';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
