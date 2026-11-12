@@ -78,6 +78,7 @@ import { FirestorePermissionError } from '@/firebase/errors';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 export default function ProductsManagementPage() {
   const { lang, dir } = useTranslation();
@@ -345,15 +346,17 @@ export default function ProductsManagementPage() {
     toast({ title: lang === 'ar' ? "تم التصدير بنجاح" : "Exported Successfully" });
   };
 
+  const isRtl = lang === 'ar';
+
   return (
     <div className="flex flex-col h-full bg-[#f1f5f9] dark:bg-slate-950 overflow-hidden transition-colors duration-300">
       
       {/* ERP HUB - HEADER */}
-      <div className="flex-none bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 z-30 px-6 py-4">
+      <div className="flex-none bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 z-30 px-6 py-4 shadow-sm">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div className="flex items-center gap-4">
-            <div className="p-2.5 premium-gradient rounded-lg text-white shadow-lg shadow-emerald-900/20">
-              <ShoppingBag className="w-5 h-5" />
+            <div className="p-2.5 bg-slate-900 dark:bg-emerald-900/20 rounded-lg text-white shadow-lg">
+              <ShoppingBag className="w-5 h-5 text-emerald-400" />
             </div>
             <div>
               <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
@@ -439,14 +442,14 @@ export default function ProductsManagementPage() {
       <div className="flex-1 min-h-0 flex flex-col p-4">
         <div className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg shadow-sm overflow-hidden flex flex-col transition-colors duration-300">
           <div className="flex-1 overflow-auto no-scrollbar relative">
-            <Table className={cn("text-right", !isRtl && "text-left")}>
+            <Table className={cn("text-right border-separate border-spacing-0 w-full", !isRtl && "text-left")}>
               <TableHeader className="sticky top-0 z-20 bg-slate-100/95 dark:bg-slate-800/95 backdrop-blur-sm shadow-sm">
                 <TableRow className="border-b dark:border-slate-700">
-                  <TableHead className={cn("h-10 font-bold text-[11px] text-slate-500 dark:text-slate-400 px-6", isRtl ? "text-right" : "text-left")}>{lang === 'ar' ? 'المنتج' : 'PRODUCT'}</TableHead>
-                  <TableHead className={cn("h-10 font-bold text-[11px] text-slate-500 dark:text-slate-400 px-6", isRtl ? "text-right" : "text-left")}>{lang === 'ar' ? 'الفئة' : 'CATEGORY'}</TableHead>
-                  <TableHead className="h-10 font-bold text-[11px] text-slate-500 dark:text-slate-400 px-6 text-center">{lang === 'ar' ? 'سعر البيع' : 'UNIT PRICE'}</TableHead>
-                  <TableHead className="h-10 font-bold text-[11px] text-slate-500 dark:text-slate-400 px-6 text-center">{lang === 'ar' ? 'الحالة' : 'STATUS'}</TableHead>
-                  <TableHead className="h-10 w-[60px] sticky right-0 bg-inherit shadow-[-2px_0_5px_rgba(0,0,0,0.05)] dark:shadow-none"></TableHead>
+                  <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase", isRtl ? "text-right" : "text-left")}>{lang === 'ar' ? 'المنتج' : 'PRODUCT'}</TableHead>
+                  <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase", isRtl ? "text-right" : "text-left")}>{lang === 'ar' ? 'الفئة' : 'CATEGORY'}</TableHead>
+                  <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase text-center">{lang === 'ar' ? 'سعر البيع' : 'UNIT PRICE'}</TableHead>
+                  <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase text-center">{lang === 'ar' ? 'الحالة' : 'STATUS'}</TableHead>
+                  <TableHead className="w-[60px] sticky right-0 bg-inherit shadow-[-2px_0_5px_rgba(0,0,0,0.05)] dark:shadow-none"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -533,8 +536,8 @@ export default function ProductsManagementPage() {
       <Dialog open={isAddDialogOpen} onOpenChange={(open) => !open && resetForm()}>
         <DialogContent className="sm:max-w-[700px] rounded-lg p-0 overflow-hidden border-none shadow-2xl dark:bg-slate-900">
           <div className="premium-gradient p-6 text-white">
-            <DialogHeader className="text-right rtl:text-right ltr:text-left">
-              <DialogTitle className="text-xl font-black flex items-center gap-3">
+            <DialogHeader className={cn("text-right", !isRtl && "text-left")}>
+              <DialogTitle className="text-xl font-black flex items-center gap-3 text-white">
                 <LayoutGrid className="w-5 h-5 text-emerald-300" />
                 {editingProdId ? (lang === 'ar' ? 'تعديل بيانات المعوز' : 'Edit Product') : (lang === 'ar' ? 'تعريف منتج نسيجي جديد' : 'New Product Definition')}
               </DialogTitle>
@@ -626,14 +629,14 @@ export default function ProductsManagementPage() {
                 <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2">
                   <Languages className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'الاسم بالعربي' : 'ARABIC NAME'}
                 </Label>
-                <Input value={formData.nameAr} onChange={(e) => setFormData({...formData, nameAr: e.target.value})} className="h-10 font-bold text-xs bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 dark:text-slate-100" required />
+                <Input value={formData.nameAr} onChange={(e) => setFormData({...formData, nameAr: e.target.value})} className="h-10 font-bold text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 dark:text-slate-100" required />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2">
                   <Wallet className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'سعر البيع' : 'UNIT PRICE'}
                 </Label>
                 <div className="flex gap-2">
-                  <Input type="number" value={formData.price || ''} onChange={(e) => setFormData({...formData, price: Number(e.target.value)})} className="h-10 font-bold text-xs bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 tabular-nums flex-1 dark:text-slate-100" required />
+                  <Input type="number" value={formData.price || ''} onChange={(e) => setFormData({...formData, price: Number(e.target.value)})} className="h-10 font-bold text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 tabular-nums flex-1 dark:text-slate-100" required />
                   <select 
                     value={formData.currency} 
                     disabled 
