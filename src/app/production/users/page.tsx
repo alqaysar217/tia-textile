@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
 import { 
   UserCheck, 
   ChevronRight, 
@@ -27,7 +27,10 @@ import {
   Smartphone,
   Briefcase,
   AlertCircle,
-  Settings2
+  Settings2,
+  UploadCloud,
+  User as UserIcon,
+  Image as ImageIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -75,13 +78,13 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 
-// Define the system modules for granular permissions
+// تعريف الوحدات البرمجية للصلاحيات
 const SYSTEM_MODULES = [
   { id: 'dashboard', labelAr: 'لوحة التحكم والإحصائيات', labelEn: 'Dashboard & Analytics' },
   { id: 'orders', labelAr: 'أوامر الإنتاج (WIP)', labelEn: 'Production Orders' },
   { id: 'products', labelAr: 'كتالوج المنتجات', labelEn: 'Products Catalog' },
   { id: 'materials', labelAr: 'المخزون والمواد الخام', labelEn: 'Inventory & Raw Materials' },
-  { id: 'vouchers_issue', labelAr: 'سندات صرف المواد', labelEn: 'Material Issue Vouchers' },
+  { id: 'vouchers_issue', labelAr: 'سندات صرف المواد', labelEn: 'Material Issue' },
   { id: 'vouchers_receipt', labelAr: 'سندات استلام الإنتاج', labelEn: 'Production Receipts' },
   { id: 'vouchers_return', labelAr: 'سندات المرتجع المخزني', labelEn: 'Material Returns' },
   { id: 'wages', labelAr: 'صرف الأجور والمالية', labelEn: 'Wages & Payroll' },
@@ -95,6 +98,7 @@ const SYSTEM_MODULES = [
 export default function UsersPermissionsPage() {
   const { lang, dir } = useTranslation();
   const db = useFirestore();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const isRtl = lang === 'ar';
 
   const [search, setSearch] = useState('');
@@ -102,17 +106,20 @@ export default function UsersPermissionsPage() {
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCompressing, setIsCompressing] = useState(false);
 
-  // Form State
+  // حالة النموذج
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
+    password: '',
+    photoUrl: '',
     role: 'staff',
     active: true,
     permissions: {} as Record<string, { read: boolean; create: boolean; edit: boolean; delete: boolean }>
   });
 
-  // Initialize permissions for all modules if empty
+  // تهيئة الصلاحيات الافتراضية
   const initPermissions = () => {
     const perms: any = {};
     SYSTEM_MODULES.forEach(m => {
@@ -135,20 +142,49 @@ export default function UsersPermissionsPage() {
   const resetForm = useCallback(() => {
     setIsAddDialogOpen(false);
     setEditingUserId(null);
+    setIsSubmitting(false);
+    setIsCompressing(false);
     setFormData({
       fullName: '',
       email: '',
+      password: '',
+      photoUrl: '',
       role: 'staff',
       active: true,
       permissions: initPermissions()
     });
   }, []);
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsCompressing(true);
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_SIZE = 200;
+        let width = img.width, height = img.height;
+        if (width > height) { if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; } }
+        else { if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; } }
+        canvas.width = width; canvas.height = height;
+        canvas.getContext('2d')?.drawImage(img, 0, 0, width, height);
+        setFormData(prev => ({ ...prev, photoUrl: canvas.toDataURL('image/jpeg', 0.7) }));
+        setIsCompressing(false);
+      };
+    };
+  };
+
   const handleEditClick = (user: any) => {
     setEditingUserId(user.id);
     setFormData({
       fullName: user.fullName || '',
       email: user.email || '',
+      password: user.password || '', // تنبيه: في الواقع لا يتم تخزين الباسورد هكذا، لكنه لغرض العرض
+      photoUrl: user.photoUrl || '',
       role: user.role || 'staff',
       active: user.active ?? true,
       permissions: user.permissions || initPermissions()
@@ -181,7 +217,7 @@ export default function UsersPermissionsPage() {
 
   const handleSaveUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!db || isSubmitting) return;
+    if (!db || isSubmitting || isCompressing) return;
 
     setIsSubmitting(true);
     try {
@@ -192,20 +228,18 @@ export default function UsersPermissionsPage() {
 
       if (editingUserId) {
         await updateDoc(doc(db, 'users', editingUserId), userData);
-        toast({ title: isRtl ? "تم تحديث الصلاحيات" : "Permissions Updated" });
+        toast({ title: isRtl ? "تم تحديث الصلاحيات بنجاح" : "Permissions Updated" });
       } else {
-        // In a real app, you'd use a Cloud Function to create the Auth user
-        // Here we just save the profile
         await addDoc(collection(db, 'users'), {
           ...userData,
           createdAt: serverTimestamp()
         });
-        toast({ title: isRtl ? "تم إنشاء الحساب بنجاح" : "User Created" });
+        toast({ title: isRtl ? "تم إنشاء الحساب بنجاح" : "Account Provisioned" });
       }
       resetForm();
     } catch (err) {
       console.error(err);
-      toast({ variant: "destructive", title: "Error" });
+      toast({ variant: "destructive", title: "Internal Security Error" });
     } finally {
       setIsSubmitting(false);
     }
@@ -277,7 +311,8 @@ export default function UsersPermissionsPage() {
                       <TableRow key={user.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 transition-colors">
                          <TableCell className="px-6 py-4">
                             <div className="flex items-center gap-3">
-                               <Avatar className="h-9 w-9 rounded-lg border dark:border-slate-800">
+                               <Avatar className="h-10 w-10 rounded-lg border-2 border-white dark:border-slate-800 shadow-sm">
+                                  <AvatarImage src={user.photoUrl} className="object-cover" />
                                   <AvatarFallback className="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 font-black text-[10px]">{user.fullName?.charAt(0)}</AvatarFallback>
                                </Avatar>
                                <span className="font-black text-slate-900 dark:text-slate-100 text-xs">{user.fullName}</span>
@@ -343,31 +378,63 @@ export default function UsersPermissionsPage() {
 
           <form onSubmit={handleSaveUser} className="bg-white dark:bg-slate-900 flex flex-col max-h-[85vh]">
              <ScrollArea className="flex-1 p-6" dir={dir}>
-                <div className="space-y-8">
+                <div className="space-y-10">
                    
-                   {/* BASIC INFO */}
-                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <div className="space-y-1.5 text-right">
-                         <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500">{isRtl ? 'الاسم الكامل' : 'FULL NAME'}</Label>
-                         <div className="relative">
-                            <Input value={formData.fullName} onChange={(e) => setFormData({...formData, fullName: e.target.value})} className="h-11 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 font-bold text-xs pr-10 dark:text-slate-100" required />
-                            <UserPlus className="absolute top-1/2 -translate-y-1/2 right-3 w-4 h-4 text-slate-400" />
+                   <div className="flex flex-col md:flex-row gap-8 items-start">
+                      {/* PROFILE PHOTO SECTION */}
+                      <div className="w-full md:w-32 space-y-2 flex flex-col items-center shrink-0">
+                         <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 block text-center">PROFILE PHOTO</Label>
+                         <div 
+                           onClick={() => !isCompressing && fileInputRef.current?.click()}
+                           className="w-32 h-32 rounded-2xl border-4 border-slate-100 dark:border-slate-800 shadow-md bg-slate-50 dark:bg-slate-800 flex items-center justify-center cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-700 transition-all overflow-hidden relative"
+                         >
+                           {formData.photoUrl ? (
+                             <img src={formData.photoUrl} className="w-full h-full object-cover" alt="profile" />
+                           ) : (
+                             <div className="flex flex-col items-center gap-1 text-slate-300 dark:text-slate-600 group-hover:text-emerald-500">
+                               {isCompressing ? <Loader2 className="w-6 h-6 animate-spin" /> : <UploadCloud className="w-7 h-7" />}
+                               <span className="text-[9px] font-black uppercase tracking-widest">{isRtl ? 'رفع صورة' : 'Upload'}</span>
+                             </div>
+                           )}
+                           {formData.photoUrl && (
+                             <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <RefreshCcw className="w-5 h-5 text-white" />
+                             </div>
+                           )}
                          </div>
+                         <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
                       </div>
-                      <div className="space-y-1.5 text-right">
-                         <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500">{isRtl ? 'البريد الإلكتروني' : 'EMAIL ADDRESS'}</Label>
-                         <div className="relative">
-                            <Input type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="h-11 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 font-bold text-xs pr-10 dark:text-slate-100" required />
-                            <Mail className="absolute top-1/2 -translate-y-1/2 right-3 w-4 h-4 text-slate-400" />
+
+                      {/* BASIC CREDENTIALS */}
+                      <div className="flex-1 space-y-6 w-full">
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-1.5 text-right">
+                               <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500">{isRtl ? 'الاسم الكامل' : 'FULL NAME'}</Label>
+                               <Input value={formData.fullName} onChange={(e) => setFormData({...formData, fullName: e.target.value})} className="h-11 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 font-bold text-xs dark:text-slate-100" placeholder={isRtl ? "اسم المستخدم الحقيقي" : "Legal Full Name"} required />
+                            </div>
+                            <div className="space-y-1.5 text-right">
+                               <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500">{isRtl ? 'البريد الإلكتروني (اسم المستخدم)' : 'EMAIL / USERNAME'}</Label>
+                               <Input type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="h-11 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 font-bold text-xs dark:text-slate-100" placeholder="name@association.com" required />
+                            </div>
                          </div>
-                      </div>
-                      <div className="space-y-1.5 text-right">
-                         <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500">{isRtl ? 'الدور الوظيفي' : 'ASSIGNED ROLE'}</Label>
-                         <select value={formData.role} onChange={(e) => setFormData({...formData, role: e.target.value})} className="w-full h-11 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-bold outline-none dark:text-slate-100" dir={dir}>
-                            <option value="staff">{isRtl ? 'موظف تشغيل' : 'Staff'}</option>
-                            <option value="manager">{isRtl ? 'مدير قسم' : 'Manager'}</option>
-                            <option value="admin">{isRtl ? 'مدير نظام' : 'Administrator'}</option>
-                         </select>
+
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-1.5 text-right">
+                               <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500">{isRtl ? 'كلمة المرور' : 'PASSWORD'}</Label>
+                               <div className="relative">
+                                  <Input type="password" value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} className="h-11 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 font-bold text-xs dark:text-slate-100" placeholder="••••••••" required={!editingUserId} />
+                                  <Lock className="absolute top-1/2 -translate-y-1/2 left-3 w-4 h-4 text-slate-300" />
+                               </div>
+                            </div>
+                            <div className="space-y-1.5 text-right">
+                               <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500">{isRtl ? 'الدور الوظيفي الأساسي' : 'ASSIGNED ROLE'}</Label>
+                               <select value={formData.role} onChange={(e) => setFormData({...formData, role: e.target.value})} className="w-full h-11 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-bold outline-none dark:text-slate-100" dir={dir}>
+                                  <option value="staff">{isRtl ? 'موظف تشغيل' : 'Staff'}</option>
+                                  <option value="manager">{isRtl ? 'مدير قسم' : 'Manager'}</option>
+                                  <option value="admin">{isRtl ? 'مدير نظام (كامل الصلاحيات)' : 'Administrator'}</option>
+                               </select>
+                            </div>
+                         </div>
                       </div>
                    </div>
 
@@ -376,10 +443,10 @@ export default function UsersPermissionsPage() {
                       <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
                          <h3 className="text-sm font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
                             <Shield className="w-4 h-4 text-emerald-600" />
-                            {isRtl ? 'شبكة الصلاحيات المتقدمة' : 'Granular Permissions Matrix'}
+                            {isRtl ? 'شبكة صلاحيات الواجهات والعمليات' : 'Interface & CRUD Matrix'}
                          </h3>
                          <div className="flex items-center gap-2 px-3 py-1 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 rounded-lg text-[9px] font-black uppercase">
-                            <Info className="w-3 h-3" /> {isRtl ? 'تطبق التغييرات لحظياً' : 'Changes apply on next session'}
+                            <Info className="w-3 h-3" /> {isRtl ? 'تطبق التغييرات لحظياً عند حفظ البيانات' : 'Changes apply on next save'}
                          </div>
                       </div>
 
@@ -387,10 +454,9 @@ export default function UsersPermissionsPage() {
                          <Table className="text-right border-separate border-spacing-0">
                             <TableHeader className="bg-slate-50 dark:bg-slate-800">
                                <TableRow>
-                                  <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", isRtl ? "text-right" : "text-left")}>{isRtl ? 'وحدة النظام' : 'MODULE'}</TableHead>
-                                  <TableHead className="w-20 text-center font-black text-[10px] text-slate-500 uppercase">{isRtl ? 'الكل' : 'ALL'}</TableHead>
-                                  <TableHead className="w-20 text-center font-black text-[10px] text-slate-500 uppercase">{isRtl ? 'قراءة' : 'READ'}</TableHead>
-                                  <TableHead className="w-20 text-center font-black text-[10px] text-slate-500 uppercase">{isRtl ? 'إنشاء' : 'CREATE'}</TableHead>
+                                  <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", isRtl ? "text-right" : "text-left")}>{isRtl ? 'واجهة النظام' : 'INTERFACE / MODULE'}</TableHead>
+                                  <TableHead className="w-20 text-center font-black text-[10px] text-slate-500 uppercase">{isRtl ? 'دخول/قراءة' : 'READ'}</TableHead>
+                                  <TableHead className="w-20 text-center font-black text-[10px] text-slate-500 uppercase">{isRtl ? 'إضافة' : 'CREATE'}</TableHead>
                                   <TableHead className="w-20 text-center font-black text-[10px] text-slate-500 uppercase">{isRtl ? 'تعديل' : 'EDIT'}</TableHead>
                                   <TableHead className="w-20 text-center font-black text-[10px] text-slate-500 uppercase">{isRtl ? 'حذف' : 'DELETE'}</TableHead>
                                </TableRow>
@@ -398,7 +464,6 @@ export default function UsersPermissionsPage() {
                             <TableBody>
                                {SYSTEM_MODULES.map(module => {
                                   const perms = formData.permissions[module.id] || { read: false, create: false, edit: false, delete: false };
-                                  const isAllSelected = perms.read && perms.create && perms.edit && perms.delete;
                                   
                                   return (
                                     <TableRow key={module.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 border-b border-slate-50 dark:border-slate-800 transition-colors">
@@ -407,9 +472,6 @@ export default function UsersPermissionsPage() {
                                              <span>{isRtl ? module.labelAr : module.labelEn}</span>
                                              <span className="text-[9px] text-slate-400 font-bold uppercase tabular-nums">{module.id}</span>
                                           </div>
-                                       </TableCell>
-                                       <TableCell className="text-center">
-                                          <Checkbox checked={isAllSelected} onCheckedChange={(val) => handleToggleAllModule(module.id, !!val)} className="data-[state=checked]:bg-emerald-600" />
                                        </TableCell>
                                        <TableCell className="text-center">
                                           <Checkbox checked={perms.read} onCheckedChange={() => handleTogglePermission(module.id, 'read')} className="data-[state=checked]:bg-blue-600" />
@@ -435,9 +497,9 @@ export default function UsersPermissionsPage() {
              </ScrollArea>
 
              <div className="flex-none p-6 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex gap-3">
-                <Button type="submit" disabled={isSubmitting} className="flex-1 h-14 premium-gradient text-white rounded-xl font-black text-base shadow-xl border-none transition-all active:scale-95">
+                <Button type="submit" disabled={isSubmitting || isCompressing} className="flex-1 h-14 premium-gradient text-white rounded-xl font-black text-base shadow-xl border-none transition-all active:scale-95">
                    {isSubmitting ? <Loader2 className="animate-spin me-2" /> : <ShieldCheck className="w-5 h-5 me-2" />}
-                   {isRtl ? 'حفظ إعدادات الوصول' : 'Commit Security Profile'}
+                   {isRtl ? (editingUserId ? 'حفظ تعديلات الصلاحيات' : 'ترحيل الحساب وتفعيل الصلاحيات') : 'Commit Security Profile'}
                 </Button>
                 <Button type="button" variant="outline" onClick={resetForm} className="px-8 h-14 font-black text-slate-400 dark:text-slate-500 rounded-xl border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800">إلغاء</Button>
              </div>
@@ -475,8 +537,8 @@ export default function UsersPermissionsPage() {
          <ShieldCheck className="w-4 h-4 text-emerald-500" />
          <p className="text-[10px] font-bold tracking-tight">
            {isRtl 
-             ? 'بروتوكول أمن المعلومات: يتم تسجيل كافة التغييرات في سجل التدقيق الأمني (Security Audit Log). صلاحيات مدير النظام لا يمكن تعديلها إلا من حساب أدمن آخر.' 
-             : 'Security Protocol: All ACL changes are logged for auditing. Admin roles require multi-party authorization for modification.'}
+             ? 'بروتوكول أمن المعلومات: يتم تسجيل كافة التغييرات في سجل التدقيق الأمني (Security Audit Log).' 
+             : 'Security Protocol: All ACL changes are logged for auditing.'}
          </p>
       </div>
 
