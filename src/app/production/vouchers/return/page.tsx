@@ -15,7 +15,7 @@ import {
 } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { toPng } from 'html-to-image';
-import { Info } from 'lucide-react';
+import { Info, ShieldCheck } from 'lucide-react';
 
 import { ReturnHeader } from './components/ReturnHeader';
 import { ReturnTable } from './components/ReturnTable';
@@ -101,6 +101,25 @@ export default function MaterialReturnPage() {
     } finally { setIsSubmitting(false); }
   };
 
+  const handleDownloadImage = async () => {
+    const el = document.getElementById('printable-voucher');
+    if (!el || !printingVoucher) return;
+    setIsDownloading(true);
+    try { 
+      await new Promise(r => setTimeout(r, 800)); 
+      const dataUrl = await toPng(el, { 
+        backgroundColor: '#ffffff', 
+        pixelRatio: 2,
+        cacheBust: true,
+        fontEmbedCSS: '' 
+      }); 
+      const link = document.createElement('a'); 
+      link.download = `Return-${printingVoucher.voucherNumber}.png`; 
+      link.href = dataUrl; 
+      link.click(); 
+    } finally { setIsDownloading(false); }
+  };
+
   return (
     <div className="flex flex-col h-full bg-[#f8fafc] dark:bg-slate-950 overflow-hidden transition-colors duration-300" dir={dir}>
       <ReturnHeader 
@@ -111,9 +130,11 @@ export default function MaterialReturnPage() {
         allWorkers={allWorkers || []} allOrders={allOrders || []} onExport={() => {}}
       />
       <div className="flex-1 min-h-0 p-6 overflow-auto no-scrollbar">
-        <div className="p-3 bg-amber-50/50 border-b border-amber-100 flex items-center gap-3 mb-4 rounded-xl">
-           <Info className="w-4 h-4 text-amber-600" />
-           <p className="text-[10px] font-bold text-amber-800">{isRtl ? 'بروتوكول التدقيق: يجب مطابقة المرتجع الميداني مع السجل المخزني الفعلي قبل تأكيد الدخول.' : 'Audit Protocol Required.'}</p>
+        <div className="p-3 bg-amber-50/50 dark:bg-amber-900/10 border-b border-amber-100 dark:border-amber-900/30 flex items-center gap-3 mb-6 rounded-xl">
+           <Info className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+           <p className="text-[10px] font-bold text-amber-800 dark:text-amber-200">
+             {isRtl ? 'بروتوكول التدقيق: يجب مطابقة المرتجع الميداني مع السجل المخزني الفعلي قبل تأكيد الدخول.' : 'Audit Protocol: Field returns must be verified against physical stock before confirmation.'}
+           </p>
         </div>
         <ReturnTable 
           list={activeTab === 'pending' ? pendingReturns : verifiedReturns} allWorkers={allWorkers || []} allOrders={allOrders || []}
@@ -122,25 +143,25 @@ export default function MaterialReturnPage() {
         />
       </div>
 
-      <ReturnFormDialog isOpen={isAddDialogOpen} onClose={() => setIsAddDialogOpen(false)} lang={lang} isSubmitting={isSubmitting} formData={formData} setFormData={setFormData} allWorkers={allWorkers || []} allOrders={allOrders || []} onSubmit={handleSaveVoucher} />
-      <ReturnPrintPreview isOpen={!!printingVoucher} onClose={() => setPrintingVoucher(null)} voucher={printingVoucher} lang={lang} allOrders={allOrders || []} allWorkers={allWorkers || []} allDepartments={allDepartments || []} allProducts={allProducts || []} isDownloading={isDownloading} onDownload={async () => {
-          const el = document.getElementById('printable-voucher');
-          if (!el) return;
-          setIsDownloading(true);
-          try { 
-            await new Promise(r => setTimeout(r, 800)); 
-            const dataUrl = await toPng(el, { 
-              backgroundColor: '#ffffff', 
-              pixelRatio: 2,
-              cacheBust: true,
-              fontEmbedCSS: '' 
-            }); 
-            const link = document.createElement('a'); 
-            link.download = `Return-${printingVoucher.voucherNumber}.png`; 
-            link.href = dataUrl; 
-            link.click(); 
-          } finally { setIsDownloading(false); }
-      }} />
+      <ReturnFormDialog 
+        isOpen={isAddDialogOpen} onClose={() => setIsAddDialogOpen(false)} lang={lang} isSubmitting={isSubmitting} 
+        formData={formData} setFormData={setFormData} allWorkers={allWorkers || []} allOrders={allOrders || []} onSubmit={handleSaveVoucher} 
+      />
+      
+      <ReturnPrintPreview 
+        isOpen={!!printingVoucher} onClose={() => setPrintingVoucher(null)} voucher={printingVoucher} 
+        lang={lang} allOrders={allOrders || []} allWorkers={allWorkers || []} allDepartments={allDepartments || []} 
+        allProducts={allProducts || []} isDownloading={isDownloading} onDownload={handleDownloadImage} 
+      />
+
+      <div className="flex-none p-3 bg-slate-900 dark:bg-slate-900/80 text-white/50 flex items-center justify-center gap-4 border-t border-white/5 shadow-2xl">
+         <ShieldCheck className="w-4 h-4 text-emerald-500" />
+         <p className="text-[10px] font-bold tracking-tight">
+           {isRtl 
+             ? 'نظام الرقابة المخزنية: توريد المرتجع يعيد الكميات الصالحة لعهدة المخزن ويقلل تكلفة المواد الخام على الدفعة.' 
+             : 'Inventory Audit System: Returning materials restores stock and reduces material overhead on batches.'}
+         </p>
+      </div>
     </div>
   );
 }

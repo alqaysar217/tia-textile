@@ -36,7 +36,8 @@ export function ReturnPrintPreview({
       <DialogContent className="sm:max-w-[850px] p-0 overflow-hidden border-none bg-white shadow-2xl">
         <DialogHeader className="sr-only"><DialogTitle>{lang === 'ar' ? 'معاينة سند المرتجع' : 'Return Voucher Preview'}</DialogTitle></DialogHeader>
         <ScrollArea className="max-h-[85vh]">
-          <div className="p-12 bg-white relative z-0" id="printable-voucher">
+          {/* FORCED LIGHT MODE FOR PRINTABLE VOUCHER */}
+          <div className="p-12 bg-white text-slate-900 relative z-0 light" id="printable-voucher">
             <VoucherTemplate 
               voucher={voucher}
               order={allOrders?.find(o => o.id === voucher.orderId)}
@@ -48,12 +49,12 @@ export function ReturnPrintPreview({
             />
           </div>
         </ScrollArea>
-        <DialogFooter className="p-6 bg-slate-50 border-t border-slate-100">
+        <DialogFooter className="p-6 bg-slate-50 border-t border-slate-100 flex flex-row gap-3 justify-end">
            <Button onClick={onDownload} disabled={isDownloading} className="premium-gradient font-black gap-2 h-12 px-10 rounded-xl shadow-xl hover:opacity-90 active:scale-95 transition-all">
-              {isDownloading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
+              {isDownloading ? <Loader2 className="w-5 h-5 animate-spin me-2" /> : <Download className="w-5 h-5" />}
               {lang === 'ar' ? 'تحميل كصورة PNG' : 'Download PNG'}
            </Button>
-           <Button variant="ghost" onClick={onClose} className="font-black h-12 px-8 rounded-xl border border-slate-200 text-slate-500">{lang === 'ar' ? 'إغلاق' : 'Close'}</Button>
+           <Button variant="ghost" onClick={onClose} className="font-black h-12 px-8 rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-100 transition-all">{lang === 'ar' ? 'إغلاق' : 'Close'}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
