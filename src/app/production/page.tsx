@@ -9,20 +9,21 @@ import {
   Box, 
   Users, 
   TrendingUp, 
-  ShieldCheck,
-  Loader2,
-  Layers,
-  Wallet,
-  Receipt,
-  Activity,
-  BarChart3,
-  ChevronRight,
-  Target,
-  ArrowUpRight,
-  TrendingDown,
-  Sparkles,
-  PieChart,
-  UserCheck
+  ShieldCheck, 
+  Loader2, 
+  Layers, 
+  Wallet, 
+  Receipt, 
+  Activity, 
+  BarChart3, 
+  ChevronRight, 
+  Target, 
+  ArrowUpRight, 
+  TrendingDown, 
+  Sparkles, 
+  PieChart as PieChartIcon, 
+  UserCheck,
+  Package
 } from 'lucide-react';
 import Link from 'next/link';
 import { useTranslation } from '@/components/LanguageProvider';
@@ -39,6 +40,8 @@ import {
   XAxis, 
   YAxis, 
   Cell,
+  PieChart,
+  Pie,
   Legend
 } from 'recharts';
 import { Card } from '@/components/ui/card';
@@ -70,6 +73,10 @@ export default function ProductionDashboard() {
   // Formatting helper to force English numbers
   const formatNum = (val: number | string) => {
     return Number(val).toLocaleString('en-US');
+  };
+
+  const formatCurrency = (val: number) => {
+    return Number(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
   // 1. Stats Processing
@@ -106,27 +113,41 @@ export default function ProductionDashboard() {
     return Object.entries(months).map(([name, qty]) => ({ name, qty }));
   }, [allVouchers]);
 
-  // 3. Dynamic Labor Productivity by Department
-  const laborByStage = useMemo(() => {
-    if (!allVouchers || !allWorkers || !allDepartments) return [];
+  // 3. Dynamic Labor Productivity by Order and Department
+  const laborByOrder = useMemo(() => {
+    if (!allVouchers || !allWorkers || !allOrders) return [];
     const receipts = allVouchers.filter(v => v.type === 'production_receipt' && v.status !== 'deleted');
     
-    return allDepartments.filter(d => d.status === 'active').map(dept => {
-      const deptWorkers = allWorkers.filter(w => w.departmentId === dept.id);
-      const workerData = deptWorkers.map(w => {
-        const qty = receipts.filter(r => r.workerId === w.id).reduce((sum, r) => sum + (r.qtyAccepted || 0), 0);
-        return { name: w.fullName.split(' ')[0], qty, fullName: w.fullName };
-      }).filter(w => w.qty > 0).sort((a, b) => b.qty - a.qty);
+    return allOrders.filter(o => o.status === 'active').map(order => {
+      const orderReceipts = receipts.filter(r => r.orderId === order.id);
+      const workersData = orderReceipts.reduce((acc: any[], curr: any) => {
+        const worker = allWorkers.find(w => w.id === curr.workerId);
+        if (!worker) return acc;
+        const existing = acc.find(a => a.workerId === worker.id);
+        if (existing) {
+          existing.qty += (curr.qtyAccepted || 0);
+        } else {
+          acc.push({ 
+            workerId: worker.id, 
+            name: worker.fullName.split(' ')[0], 
+            fullName: worker.fullName,
+            qty: (curr.qtyAccepted || 0),
+            dept: allDepartments?.find(d => d.id === worker.departmentId)?.nameAr || '---'
+          });
+        }
+        return acc;
+      }, []).sort((a, b) => b.qty - a.qty).slice(0, 5);
 
       return {
-        deptId: dept.id,
-        deptName: dept.nameAr,
-        workers: workerData
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        orderTitle: order.title,
+        workers: workersData
       };
-    }).filter(d => d.workers.length > 0);
-  }, [allVouchers, allWorkers, allDepartments]);
+    }).filter(o => o.workers.length > 0);
+  }, [allVouchers, allWorkers, allOrders, allDepartments]);
 
-  // 4. Detailed Cost Analysis for Active Orders (Using REAL Data)
+  // 4. Financial Cost Architecture for Active Orders (Pie Structure)
   const orderCostBreakdown = useMemo(() => {
     if (!allOrders || !allVouchers || !allProducts) return [];
     
@@ -134,7 +155,6 @@ export default function ProductionDashboard() {
       const product = allProducts.find(p => p.id === order.productId);
       const vouchers = allVouchers.filter(v => v.orderId === order.id && v.status !== 'deleted');
       
-      // Calculate REAL sums from vouchers
       const materialCost = vouchers
         .filter(v => v.type === 'material_issue')
         .reduce((sum, v) => sum + (Number(v.totalAmount) || 0), 0);
@@ -158,11 +178,14 @@ export default function ProductionDashboard() {
         productName: product?.nameAr,
         total,
         profit,
+        materialCost,
+        laborCost,
+        overheadCost,
         data: [
-          { category: isRtl ? 'مواد' : 'Mat', amount: materialCost, fill: '#f59e0b' },
-          { category: isRtl ? 'أجور' : 'Labor', amount: laborCost, fill: '#7c3aed' },
-          { category: isRtl ? 'مصاريف' : 'Misc', amount: overheadCost, fill: '#ef4444' }
-        ]
+          { name: isRtl ? 'مواد' : 'Materials', value: materialCost, fill: '#f59e0b' },
+          { name: isRtl ? 'أجور' : 'Wages', value: laborCost, fill: '#7c3aed' },
+          { name: isRtl ? 'مصاريف' : 'Expenses', value: overheadCost, fill: '#ef4444' }
+        ].filter(d => d.value > 0) // Only show categories with actual costs
       };
     });
   }, [allOrders, allVouchers, allProducts, isRtl]);
@@ -179,7 +202,7 @@ export default function ProductionDashboard() {
   }
 
   return (
-    <div className="h-full overflow-y-auto p-4 md:p-8 space-y-8 bg-[#F3F5F9] no-scrollbar">
+    <div className="h-full overflow-y-auto p-4 md:p-8 space-y-10 bg-[#F3F5F9] no-scrollbar">
       
       {/* HEADER SECTION */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 pb-6">
@@ -189,12 +212,12 @@ export default function ProductionDashboard() {
               <h1 className="text-3xl font-black text-slate-900 tracking-tight">{t.production.dashboard}</h1>
            </div>
            <p className="text-sm text-slate-500 font-bold opacity-80 ps-12">
-             {isRtl ? 'نظام الرقابة الذكي والتحليل المالي المتقدم للجمعية.' : 'Advanced smart control and financial analysis system.'}
+             {isRtl ? 'الرقابة المباشرة على جودة الإنتاج وهيكل التكاليف.' : 'Real-time oversight of production quality and cost structure.'}
            </p>
         </div>
         <div className="hidden md:flex items-center gap-3 bg-white p-2 rounded-2xl border border-slate-200 shadow-sm">
            <ShieldCheck className="w-5 h-5 text-emerald-500" />
-           <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Secured Management Session</span>
+           <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Secure ERP Session</span>
         </div>
       </div>
 
@@ -221,9 +244,9 @@ export default function ProductionDashboard() {
           <div className="space-y-1">
             <h3 className="text-lg font-black text-slate-900 flex items-center gap-3">
               <div className="w-2 h-8 bg-emerald-500 rounded-full" />
-              {isRtl ? 'مؤشر نمو الإنتاج التراكمي' : 'Production Growth Pulse'}
+              {isRtl ? 'منحنى نمو الإنتاج الشهري' : 'Production Growth Pulse'}
             </h3>
-            <p className="text-[11px] text-slate-400 font-bold ps-5 uppercase tracking-widest">{isRtl ? 'إحصائيات الوحدات المنجزة شهرياً' : 'Completed pieces stats'}</p>
+            <p className="text-[11px] text-slate-400 font-bold ps-5 uppercase tracking-widest">{isRtl ? 'إجمالي القطع الجاهزة النهائية' : 'Completed pieces stats'}</p>
           </div>
           <div className="p-3 bg-emerald-50 rounded-2xl text-emerald-600"><TrendingUp className="w-6 h-6" /></div>
         </div>
@@ -250,38 +273,42 @@ export default function ProductionDashboard() {
         </div>
       </Card>
 
-      {/* ROW 2: LABOR OUTPUT BY CENTER */}
+      {/* ROW 2: WORKER OUTPUT BY ACTIVE ORDERS */}
       <div className="space-y-6">
         <div className="flex items-center gap-4">
           <div className="p-2 bg-violet-600 rounded-lg text-white"><UserCheck className="w-5 h-5" /></div>
-          <h3 className="text-xl font-black text-slate-800 uppercase tracking-widest">{isRtl ? 'تحليل كفاءة الحرفيين حسب مركز الإنتاج' : 'Workforce Efficiency Analysis'}</h3>
+          <h3 className="text-xl font-black text-slate-800 uppercase tracking-widest">{isRtl ? 'تحليل إنتاجية الحرفيين حسب الدفعة' : 'Artisan Performance by Batch'}</h3>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {laborByStage.map((stage, idx) => (
-            <Card key={idx} className="p-6 border-none shadow-xl bg-white rounded-2xl flex flex-col h-[320px] hover:shadow-2xl transition-all">
+          {laborByOrder.map((orderData, idx) => (
+            <Card key={idx} className="p-6 border-none shadow-xl bg-white rounded-2xl flex flex-col h-[350px] hover:shadow-2xl transition-all">
               <div className="flex items-center justify-between mb-6 border-b border-slate-50 pb-4">
                 <div className="flex flex-col">
-                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">CENTER / PHASE</span>
-                   <span className="text-base font-black text-slate-900">{stage.deptName}</span>
+                   <Badge variant="outline" className="text-[8px] font-black text-emerald-600 border-emerald-100 tabular-nums w-fit mb-1">{orderData.orderNumber}</Badge>
+                   <span className="text-sm font-black text-slate-900 truncate max-w-[180px]">{orderData.orderTitle}</span>
                 </div>
-                <Badge className="bg-violet-50 text-violet-700 hover:bg-violet-100 px-4 py-1 font-black tabular-nums">{formatNum(stage.workers.length)} {isRtl ? 'حرفي' : 'Staff'}</Badge>
+                <div className="text-right">
+                   <span className="text-[10px] font-black text-slate-400 block uppercase">OUTPUT</span>
+                   <span className="text-lg font-black text-slate-900 tabular-nums">{formatNum(orderData.workers.reduce((s:number, w:any) => s+w.qty, 0))}</span>
+                </div>
               </div>
               <div className="flex-1 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={stage.workers} layout="vertical" margin={{ left: -10, right: 40 }}>
+                  <BarChart data={orderData.workers} layout="vertical" margin={{ left: -10, right: 40 }}>
                     <XAxis type="number" hide />
-                    <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 900, fill: '#475569' }} width={70} />
+                    <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 900, fill: '#475569' }} width={80} />
                     <Tooltip 
                       cursor={{ fill: 'rgba(124, 58, 237, 0.05)' }} 
                       content={({ active, payload }) => active && payload ? (
                         <div className="bg-slate-900 text-white p-3 rounded-xl shadow-2xl border-none text-[11px] font-black">
                           {payload[0].payload.fullName}
+                          <div className="text-slate-400 text-[9px] mt-0.5">{payload[0].payload.dept}</div>
                           <div className="mt-1 text-emerald-400">{formatNum(payload[0].value)} {isRtl ? 'قطعة' : 'Pcs'}</div>
                         </div>
                       ) : null} 
                     />
                     <Bar dataKey="qty" fill="#7c3aed" radius={[0, 6, 6, 0]} barSize={16}>
-                       {stage.workers.map((entry, index) => (
+                       {orderData.workers.map((entry:any, index:number) => (
                          <Cell key={`cell-${index}`} fill={index === 0 ? '#7c3aed' : '#a78bfa'} />
                        ))}
                     </Bar>
@@ -293,16 +320,16 @@ export default function ProductionDashboard() {
         </div>
       </div>
 
-      {/* ROW 3: FINANCIALS BY ORDER (Using REAL sums) */}
+      {/* ROW 3: REAL-TIME COST ARCHITECTURE (Donut Structure) */}
       <div className="space-y-6">
         <div className="flex items-center gap-4">
-          <div className="p-2 bg-amber-500 rounded-lg text-white"><PieChart className="w-5 h-5" /></div>
-          <h3 className="text-xl font-black text-slate-800 uppercase tracking-widest">{isRtl ? 'هيكل التكاليف الحقيقي للأوامر النشطة' : 'Real-time Cost Architecture'}</h3>
+          <div className="p-2 bg-amber-500 rounded-lg text-white"><PieChartIcon className="w-5 h-5" /></div>
+          <h3 className="text-xl font-black text-slate-800 uppercase tracking-widest">{isRtl ? 'تحليل هيكل التكاليف للأوامر النشطة' : 'Real-time Cost Architecture'}</h3>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {orderCostBreakdown.map((order, idx) => (
-            <Card key={idx} className="p-6 border-none shadow-xl bg-white rounded-2xl space-y-6 flex flex-col h-[380px] hover:shadow-2xl transition-all">
-              <div className="flex flex-col gap-1">
+            <Card key={idx} className="p-6 border-none shadow-xl bg-white rounded-2xl space-y-6 flex flex-col h-[420px] hover:shadow-2xl transition-all">
+              <div className="flex flex-col gap-1 border-b border-slate-50 pb-4">
                 <div className="flex justify-between items-start">
                   <Badge variant="outline" className="text-[10px] font-black text-emerald-600 border-emerald-100 tabular-nums bg-emerald-50">{order.orderNumber}</Badge>
                   <div className={cn("p-1.5 rounded-lg text-white shadow-md", order.profit >= 0 ? "bg-emerald-500" : "bg-rose-500")}>
@@ -313,38 +340,58 @@ export default function ProductionDashboard() {
                 <p className="text-[10px] text-slate-400 font-bold uppercase">{order.productName}</p>
               </div>
               
-              <div className="flex-1 w-full bg-slate-50/50 rounded-2xl p-4 border border-slate-100">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={order.data} margin={{ top: 5, right: 0, left: -25, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="2 2" vertical={false} stroke="#e2e8f0" />
-                    <XAxis dataKey="category" axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: 900, fill: '#64748b' }} />
-                    <YAxis axisLine={false} tickLine={false} hide />
-                    <Tooltip 
-                      cursor={{ fill: 'transparent' }} 
-                      content={({ active, payload }) => active && payload ? (
-                        <div className="bg-slate-900 text-white p-2 rounded-lg text-[10px] font-black tabular-nums border-none shadow-xl">
-                          {formatNum(payload[0].value)} YER
+              <div className="flex-1 w-full grid grid-cols-1 md:grid-cols-2 items-center gap-4">
+                {/* DONUT CHART */}
+                <div className="h-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={order.data}
+                        innerRadius={50}
+                        outerRadius={75}
+                        paddingAngle={5}
+                        dataKey="value"
+                        animationDuration={1000}
+                      >
+                        {order.data.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.fill} />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '12px', color: '#fff' }}
+                        itemStyle={{ fontWeight: 900, fontSize: '11px' }}
+                        formatter={(value: any) => [formatCurrency(value) + ' YER', '']}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* VISUAL LEGEND WITH REAL NUMBERS */}
+                <div className="space-y-4">
+                   {order.data.map((item, i) => (
+                     <div key={i} className="flex flex-col gap-0.5">
+                        <div className="flex items-center gap-2">
+                           <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.fill }} />
+                           <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{item.name}</span>
                         </div>
-                      ) : null} 
-                    />
-                    <Bar dataKey="amount" radius={[5, 5, 0, 0]} barSize={28}>
-                      {order.data.map((entry, i) => (
-                        <Cell key={`cell-${i}`} fill={entry.fill} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+                        <div className="ps-4">
+                           <span className="text-xs font-black text-slate-800 tabular-nums">{formatCurrency(item.value)}</span>
+                           <span className="text-[8px] font-bold text-slate-400 ms-1 uppercase">YER</span>
+                        </div>
+                     </div>
+                   ))}
+                </div>
               </div>
 
-              <div className="pt-4 border-t border-slate-100 flex justify-between items-center">
+              <div className="pt-4 border-t border-slate-100 flex justify-between items-center bg-slate-50/50 -mx-6 -mb-6 px-6 py-4 rounded-b-2xl">
                 <div className="flex flex-col">
                   <span className="text-[9px] font-black text-slate-400 uppercase leading-none">TOTAL COST</span>
-                  <span className="text-sm font-black text-slate-900 tabular-nums mt-1">{formatNum(order.total)}</span>
+                  <span className="text-sm font-black text-slate-900 tabular-nums mt-1">{formatCurrency(order.total)}</span>
                 </div>
                 <div className="flex flex-col text-right">
                   <span className="text-[9px] font-black text-slate-400 uppercase leading-none">EST. PROFIT</span>
-                  <span className={cn("text-sm font-black tabular-nums mt-1", order.profit >= 0 ? "text-emerald-600" : "text-rose-600")}>
-                    {formatNum(order.profit)}
+                  <span className={cn("text-base font-black tabular-nums mt-1", order.profit >= 0 ? "text-emerald-600" : "text-rose-600")}>
+                    {formatCurrency(order.profit)}
                   </span>
                 </div>
               </div>
@@ -361,17 +408,17 @@ export default function ProductionDashboard() {
           </div>
           <p className="text-[11px] font-bold tracking-tight leading-relaxed max-w-2xl">
             {isRtl 
-              ? 'تنويه: كافة الرسومات البيانية تعكس "البيانات الحقيقية" المستخرجة من السندات المرحلة رسمياً (مواد، أجور، مصاريف). الأرقام تُحدث لحظياً مع كل عملية ترحيل لضمان أعلى درجات النزاهة المالية والمخزنية.' 
-              : 'Security Note: All visualizations reflect "Live Real Data" extracted from officially posted vouchers. Numerical values update instantly with each transaction for maximum audit integrity.'}
+              ? 'تنويه: كافة الرسومات البيانية تعكس البيانات الحقيقية من واقع السندات المعتمدة (مواد، أجور، مصاريف). الأرقام تُحدث لحظياً لضمان أعلى درجات النزاهة المالية.' 
+              : 'Audit Note: All visualizations reflect live data from officially posted vouchers. Values update instantly for maximum fiscal integrity.'}
           </p>
         </div>
         <div className="hidden md:flex flex-col items-end gap-1">
            <div className="flex items-center gap-3 text-[10px] font-black text-emerald-400 uppercase tracking-widest tabular-nums">
-              <span>ERP ENGINE v2.5.0</span>
+              <span>ERP v2.5.0</span>
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
               <span>TIA SYSTEM</span>
            </div>
-           <span className="text-[8px] font-bold text-slate-600 uppercase">Proprietary Management Cluster</span>
+           <span className="text-[8px] font-bold text-slate-600 uppercase">Proprietary Cluster Control</span>
         </div>
       </div>
 
