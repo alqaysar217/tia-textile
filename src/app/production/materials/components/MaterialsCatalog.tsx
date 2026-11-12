@@ -50,11 +50,14 @@ interface MaterialsCatalogProps {
   sortBy: string;
   sortOrder: 'asc' | 'desc';
   toggleSort: (key: any) => void;
+  canEdit: boolean;
+  canDelete: boolean;
+  canCreate: boolean;
 }
 
 export function MaterialsCatalog({
   loading, filteredMaterials, categories, lang, dir, onEdit, onDelete, onStockIn,
-  sortBy, sortOrder, toggleSort
+  sortBy, sortOrder, toggleSort, canEdit, canDelete, canCreate
 }: MaterialsCatalogProps) {
   const isRtl = lang === 'ar';
 
@@ -167,17 +170,25 @@ export function MaterialsCatalog({
                         <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 border border-transparent transition-colors"><MoreVertical className="w-4 h-4 text-slate-400 dark:text-slate-500" /></Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="rounded-lg border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl min-w-[200px]">
-                        <DropdownMenuItem onClick={() => onStockIn(mat.id)} className="gap-3 font-bold text-xs py-2.5 cursor-pointer dark:text-slate-200 focus:bg-slate-50 dark:focus:bg-slate-800">
-                          <PlusCircle className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> {isRtl ? 'توريد كمية' : 'Add Stock'}
-                        </DropdownMenuItem>
+                        {canCreate && (
+                          <DropdownMenuItem onClick={() => onStockIn(mat.id)} className="gap-3 font-bold text-xs py-2.5 cursor-pointer dark:text-slate-200 focus:bg-slate-50 dark:focus:bg-slate-800">
+                            <PlusCircle className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> {isRtl ? 'توريد كمية' : 'Add Stock'}
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuSeparator className="dark:bg-slate-800" />
-                        <DropdownMenuItem onClick={() => onEdit(mat)} className="gap-3 font-bold text-xs py-2.5 cursor-pointer dark:text-slate-200 focus:bg-slate-50 dark:focus:bg-slate-800">
-                          <Edit2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> {isRtl ? 'تعديل البيانات' : 'Update Record'}
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator className="dark:bg-slate-800" />
-                        <DropdownMenuItem onClick={() => onDelete(mat.id)} className="gap-3 font-bold text-xs text-red-600 dark:text-rose-400 py-2.5 cursor-pointer focus:bg-rose-50 dark:focus:bg-rose-900/20">
-                          <Trash2 className="w-3.5 h-3.5" /> {isRtl ? 'نقل للأرشيف' : 'Archive'}
-                        </DropdownMenuItem>
+                        {canEdit && (
+                          <DropdownMenuItem onClick={() => onEdit(mat)} className="gap-3 font-bold text-xs py-2.5 cursor-pointer dark:text-slate-200 focus:bg-slate-50 dark:focus:bg-slate-800">
+                            <Edit2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> {isRtl ? 'تعديل البيانات' : 'Update Record'}
+                          </DropdownMenuItem>
+                        )}
+                        {canDelete && (
+                          <>
+                            <DropdownMenuSeparator className="dark:bg-slate-800" />
+                            <DropdownMenuItem onClick={() => onDelete(mat.id)} className="gap-3 font-bold text-xs text-red-600 dark:text-rose-400 py-2.5 cursor-pointer focus:bg-rose-50 dark:focus:bg-rose-900/20">
+                              <Trash2 className="w-3.5 h-3.5" /> {isRtl ? 'نقل للأرشيف' : 'Archive'}
+                            </DropdownMenuItem>
+                          </>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

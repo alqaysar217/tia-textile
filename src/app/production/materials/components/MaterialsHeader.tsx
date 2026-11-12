@@ -49,12 +49,13 @@ interface MaterialsHeaderProps {
   toggleSort: (key: any) => void;
   sortOrder: 'asc' | 'desc';
   categories: any[];
+  canCreate: boolean;
 }
 
 export function MaterialsHeader({
   lang, dir, search, setSearch, stats, loading, onExport, onAdd, onStockIn,
   categoryFilter, setCategoryFilter, statusFilter, setStatusFilter,
-  sortBy, toggleSort, sortOrder, categories
+  sortBy, toggleSort, sortOrder, categories, canCreate
 }: MaterialsHeaderProps) {
   const isRtl = lang === 'ar';
 
@@ -90,15 +91,19 @@ export function MaterialsHeader({
             </div>
           </div>
           
-          <Button onClick={onStockIn} variant="outline" className="h-10 px-6 border-slate-200 dark:border-slate-700 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg shadow-sm font-black gap-2 transition-all">
-            <PlusCircle className="w-4 h-4" />
-            {isRtl ? 'توريد كمية' : 'Stock In'}
-          </Button>
+          {canCreate && (
+            <>
+              <Button onClick={onStockIn} variant="outline" className="h-10 px-6 border-slate-200 dark:border-slate-700 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg shadow-sm font-black gap-2 transition-all">
+                <PlusCircle className="w-4 h-4" />
+                {isRtl ? 'توريد كمية' : 'Stock In'}
+              </Button>
 
-          <Button onClick={onAdd} className="h-10 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 transition-all border-none">
-            <Plus className="w-4 h-4" />
-            {isRtl ? 'إضافة مادة' : 'Add Material'}
-          </Button>
+              <Button onClick={onAdd} className="h-10 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 transition-all border-none">
+                <Plus className="w-4 h-4" />
+                {isRtl ? 'إضافة مادة' : 'Add Material'}
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -153,7 +158,7 @@ export function MaterialsHeader({
                 {sortBy === 'currentQty' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />)}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => toggleSort('price')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
-                <div className="flex items-center gap-2"><Wallet className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" /> {isRtl ? 'السعر' : 'Price'}</div>
+                <div className="flex items-center gap-2"><Wallet className="w-3.5 h-3.5 text-slate-400 dark:text-slate-600" /> {isRtl ? 'السعر' : 'Price'}</div>
                 {sortBy === 'price' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />)}
               </DropdownMenuItem>
 

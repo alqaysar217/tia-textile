@@ -33,11 +33,18 @@ import { MaterialsCatalog } from './components/MaterialsCatalog';
 import { MaterialsLog } from './components/MaterialsLog';
 import { MaterialsFormDialog } from './components/MaterialsFormDialog';
 import { MaterialsStockInDialog } from './components/MaterialsStockInDialog';
+import { useProduction } from '../ProductionContext';
 
 export default function MaterialsPage() {
   const { lang, dir } = useTranslation();
   const db = useFirestore();
   const isRtl = lang === 'ar';
+
+  // استيراد الصلاحيات
+  const { permissions, isAdmin } = useProduction();
+  const canCreate = isAdmin || permissions.materials?.create;
+  const canEdit = isAdmin || permissions.materials?.edit;
+  const canDelete = isAdmin || permissions.materials?.delete;
 
   // State Management
   const [activeTab, setActiveTab] = useState('catalog');
@@ -203,6 +210,16 @@ export default function MaterialsPage() {
   const handleSaveMaterial = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!db || isSubmitting || isCompressing || formData.currentQty < 0) return;
+
+    if (editingMatId && !canEdit) {
+      toast({ variant: "destructive", title: isRtl ? "غير مسموح بالتعديل" : "Permission Denied" });
+      return;
+    }
+    if (!editingMatId && !canCreate) {
+      toast({ variant: "destructive", title: isRtl ? "غير مسموح بالإدراج" : "Permission Denied" });
+      return;
+    }
+
     setIsSubmitting(true);
     const materialData = {
       ...formData,
@@ -234,6 +251,12 @@ export default function MaterialsPage() {
   const handleStockInSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!db || isSubmitting || !stockInForm.materialId || stockInForm.qty <= 0) return;
+    
+    if (!canCreate) {
+      toast({ variant: "destructive", title: isRtl ? "غير مسموح بالتوريد" : "Permission Denied" });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       await updateDoc(doc(db, 'materials', stockInForm.materialId), {
@@ -253,7 +276,7 @@ export default function MaterialsPage() {
   };
 
   const handleArchiveMaterial = async () => {
-    if (!db || !deletingMatId) return;
+    if (!db || !deletingMatId || !canDelete) return;
     await updateDoc(doc(db, 'materials', deletingMatId), { status: 'deleted', deletedAt: serverTimestamp() });
     setDeletingMatId(null);
     toast({ title: isRtl ? "تم الأرشفة" : "Archived" });
@@ -298,6 +321,7 @@ export default function MaterialsPage() {
         statusFilter={statusFilter} setStatusFilter={setStatusFilter}
         sortBy={sortBy} toggleSort={(k) => { if (sortBy === k) setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); else { setSortBy(k); setSortOrder('asc'); } }}
         sortOrder={sortOrder} categories={categories}
+        canCreate={canCreate}
       />
 
       <div className="flex-1 min-h-0 flex flex-col p-4 overflow-hidden">
@@ -308,6 +332,7 @@ export default function MaterialsPage() {
                 lang={lang} dir={dir} onStockIn={(id) => { setStockInForm({ materialId: id, qty: 1 }); setIsStockInDialogOpen(true); }}
                 onEdit={(mat) => { setEditingMatId(mat.id); setFormData({...mat}); setIsAddDialogOpen(true); }}
                 onDelete={(id) => setDeletingMatId(id)} sortBy={sortBy} sortOrder={sortOrder} toggleSort={(k) => setSortBy(k)}
+                canEdit={canEdit} canDelete={canDelete} canCreate={canCreate}
               />
           </TabsContent>
 
@@ -339,7 +364,7 @@ export default function MaterialsPage() {
 
       <MaterialsStockInDialog 
         isOpen={isStockInDialogOpen} onClose={() => setIsStockInDialogOpen(false)}
-        onSubmit={handleStockInSubmit} formData={stockInForm} setFormData={setStockInForm}
+        onSubmit={handleStockInSubmit} formData={stockInForm} setFormData={setSortBy as any}
         materials={materials || []} isSubmitting={isSubmitting} lang={lang}
       />
 
