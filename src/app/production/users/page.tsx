@@ -34,7 +34,8 @@ import {
   HandCoins,
   Receipt,
   FileBarChart,
-  Settings as SettingsIcon
+  Settings as SettingsIcon,
+  AlertCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

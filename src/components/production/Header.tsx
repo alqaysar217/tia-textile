@@ -112,7 +112,7 @@ export function Header() {
   // بيانات عرض الهوية
   const displayName = userProfile?.fullName || authUser?.displayName || (isRtl ? 'مستخدم النظام' : 'System User');
   const displayRole = userProfile?.role || 'staff';
-  const displayPhoto = userProfile?.photoUrl || authUser?.photoURL || 'https://picsum.photos/seed/user/200/200';
+  const displayPhoto = userProfile?.photoUrl || authUser?.photoURL || '';
 
   return (
     <header className="h-20 bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between px-6 md:px-10 z-20 shadow-sm transition-colors duration-300">
