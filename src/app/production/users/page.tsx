@@ -255,11 +255,9 @@ export default function UsersPermissionsPage() {
     try {
       let uid = editingUserId;
       
-      // CRITICAL FIX: Trim email and password to avoid invisible character errors
       const cleanEmail = formData.email.trim().toLowerCase();
       const cleanPassword = formData.password.trim();
 
-      // 1. إذا كان مستخدم جديد، أنشئ له حساب في Firebase Auth أولاً
       if (!editingUserId) {
         const tempAppName = `temp-auth-${Date.now()}`;
         tempApp = initializeApp(firebaseConfig, tempAppName);
@@ -270,7 +268,7 @@ export default function UsersPermissionsPage() {
           uid = authResult.user.uid;
         } catch (authErr: any) {
           if (authErr.code === 'auth/email-already-in-use') {
-            toast({ variant: "destructive", title: isRtl ? "البريد مستخدم بالفعل" : "Email already exists" });
+            toast({ variant: "destructive", title: isRtl ? "البريد مستخدم بالفعل" : "Email exists" });
             setIsSubmitting(false);
             return;
           }
@@ -280,7 +278,6 @@ export default function UsersPermissionsPage() {
 
       if (!uid) throw new Error("Could not determine UID");
 
-      // 2. احفظ البيانات والصلاحيات في Firestore باستخدام الـ UID كمعرف للمستند
       const userData = {
         fullName: formData.fullName.trim(),
         email: cleanEmail,
@@ -297,11 +294,11 @@ export default function UsersPermissionsPage() {
         createdAt: editingUserId ? (users?.find(u => u.id === uid)?.createdAt || serverTimestamp()) : serverTimestamp()
       }, { merge: true });
 
-      toast({ title: isRtl ? "تم تفعيل الحساب والصلاحيات بنجاح" : "Account Provisioned Successfully" });
+      toast({ title: isRtl ? "تم تفعيل الحساب والصلاحيات بنجاح" : "Success" });
       resetForm();
     } catch (err: any) {
       console.error("User Save Error:", err);
-      toast({ variant: "destructive", title: isRtl ? "خطأ في معالجة الحساب" : "System Error" });
+      toast({ variant: "destructive", title: isRtl ? "خطأ في النظام" : "Error" });
     } finally {
       if (tempApp) await deleteApp(tempApp);
       setIsSubmitting(false);
@@ -311,7 +308,6 @@ export default function UsersPermissionsPage() {
   return (
     <div className="flex flex-col h-full bg-[#f8fafc] dark:bg-slate-950 overflow-hidden transition-colors duration-300" dir={dir}>
       
-      {/* ERP HUB - HEADER */}
       <div className="flex-none bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 z-30 px-6 py-4 shadow-sm">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div className="flex items-center gap-4">
@@ -337,10 +333,7 @@ export default function UsersPermissionsPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={isRtl ? 'بحث باسم المستخدم...' : 'Search users...'}
-                className={cn(
-                  dir === 'rtl' ? 'pr-10' : 'pl-10',
-                  "h-10 w-64 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-xs font-bold dark:text-slate-100"
-                )}
+                className={cn(dir === 'rtl' ? 'pr-10' : 'pl-10', "h-10 w-64 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-xs font-bold dark:text-slate-100")}
               />
             </div>
             <Button onClick={() => { setFormData({...formData, permissions: initPermissions()}); setIsAddDialogOpen(true); }} className="h-10 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 transition-all border-none">
@@ -351,7 +344,6 @@ export default function UsersPermissionsPage() {
         </div>
       </div>
 
-      {/* DATA GRID */}
       <div className="flex-1 min-h-0 overflow-auto p-4 md:p-6 no-scrollbar">
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col h-full">
            <div className="flex-1 overflow-auto no-scrollbar relative">
@@ -367,7 +359,7 @@ export default function UsersPermissionsPage() {
                  </TableHeader>
                  <TableBody>
                     {usersLoading ? (
-                      <TableRow><TableCell colSpan={5} className="text-center py-20 font-bold text-slate-400 animate-pulse">جاري جلب القائمة...</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={5} className="text-center py-20 font-bold text-slate-400 animate-pulse">جاري التحميل...</TableCell></TableRow>
                     ) : filteredUsers.length === 0 ? (
                       <TableRow><TableCell colSpan={5} className="text-center py-20 text-slate-300 font-bold">{isRtl ? 'لا يوجد مستخدمين' : 'No users found'}</TableCell></TableRow>
                     ) : filteredUsers.map((user) => (
@@ -383,20 +375,10 @@ export default function UsersPermissionsPage() {
                          </TableCell>
                          <TableCell className="px-6 py-4 text-xs font-bold text-slate-500 tabular-nums">{user.email}</TableCell>
                          <TableCell className="px-6 py-4 text-center">
-                            <Badge variant="outline" className={cn(
-                               "text-[9px] font-black uppercase",
-                               user.role === 'admin' ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
-                               user.role === 'manager' ? "bg-blue-50 text-blue-700 border-blue-200" :
-                               "bg-slate-50 text-slate-600 border-slate-200"
-                            )}>
-                               {user.role}
-                            </Badge>
+                            <Badge variant="outline" className={cn("text-[9px] font-black uppercase", user.role === 'admin' ? "bg-emerald-50 text-emerald-700 border-emerald-200" : user.role === 'manager' ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-slate-50 text-slate-600 border-slate-200")}>{user.role}</Badge>
                          </TableCell>
                          <TableCell className="px-6 py-4 text-center">
-                            <div className={cn(
-                               "inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[9px] font-black uppercase border",
-                               user.active ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-rose-50 text-rose-700 border-rose-100"
-                            )}>
+                            <div className={cn("inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[9px] font-black uppercase border", user.active ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-rose-50 text-rose-700 border-rose-100")}>
                                <div className={cn("w-1 h-1 rounded-full", user.active ? "bg-emerald-600" : "bg-rose-600")} />
                                {user.active ? (isRtl ? 'نشط' : 'ACTIVE') : (isRtl ? 'معطل' : 'INACTIVE')}
                             </div>
@@ -407,13 +389,9 @@ export default function UsersPermissionsPage() {
                                   <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"><MoreVertical className="w-4 h-4 text-slate-400" /></Button>
                                </DropdownMenuTrigger>
                                <DropdownMenuContent align={isRtl ? 'start' : 'end'} className="w-56 rounded-xl shadow-xl dark:bg-slate-900">
-                                  <DropdownMenuItem onClick={() => handleEditClick(user)} className="gap-2 font-bold py-2 cursor-pointer text-xs dark:text-slate-200">
-                                     <Settings2 className="w-3.5 h-3.5 text-emerald-600" /> {isRtl ? 'تعديل الصلاحيات' : 'Edit Permissions'}
-                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleEditClick(user)} className="gap-2 font-bold py-2 cursor-pointer text-xs dark:text-slate-200"><Settings2 className="w-3.5 h-3.5 text-emerald-600" /> {isRtl ? 'تعديل الصلاحيات' : 'Edit Permissions'}</DropdownMenuItem>
                                   <DropdownMenuSeparator className="dark:bg-slate-800" />
-                                  <DropdownMenuItem onClick={() => setDeletingUserId(user.id)} className="gap-2 font-bold py-2 text-rose-600 cursor-pointer text-xs focus:bg-rose-50">
-                                     <Trash2 className="w-3.5 h-3.5" /> {isRtl ? 'حذف الحساب' : 'Delete Account'}
-                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => setDeletingUserId(user.id)} className="gap-2 font-bold py-2 text-rose-600 cursor-pointer text-xs focus:bg-rose-50"><Trash2 className="w-3.5 h-3.5" /> {isRtl ? 'حذف الحساب' : 'Delete Account'}</DropdownMenuItem>
                                </DropdownMenuContent>
                             </DropdownMenu>
                          </TableCell>
@@ -425,7 +403,6 @@ export default function UsersPermissionsPage() {
         </div>
       </div>
 
-      {/* ADD/EDIT USER DIALOG */}
       <Dialog open={isAddDialogOpen} onOpenChange={(open) => !open && resetForm()}>
         <DialogContent className="sm:max-w-[950px] rounded-[1.5rem] p-0 overflow-hidden border-none shadow-2xl dark:bg-slate-900">
           <div className="premium-gradient p-6 text-white relative">
@@ -435,74 +412,57 @@ export default function UsersPermissionsPage() {
                    <Key className="w-5 h-5 text-emerald-300" />
                    {editingUserId ? (isRtl ? 'إدارة صلاحيات المستخدم' : 'Manage User Permissions') : (isRtl ? 'إنشاء حساب مستخدم جديد' : 'Provision New User')}
                 </DialogTitle>
-                <p className="text-emerald-100/70 font-bold text-[10px] uppercase tracking-widest mt-1">Granular access control & role mapping</p>
+                <p className="text-emerald-100/70 font-bold text-[10px] uppercase mt-1">Granular access control & role mapping</p>
              </DialogHeader>
           </div>
 
           <form onSubmit={handleSaveUser} className="bg-white dark:bg-slate-900 flex flex-col max-h-[85vh]">
              <ScrollArea className="flex-1 p-6" dir={dir}>
                 <div className="space-y-10">
-                   
                    <div className="flex flex-col md:flex-row gap-8 items-start">
-                      {/* PROFILE PHOTO SECTION */}
                       <div className="w-full md:w-32 space-y-2 flex flex-col items-center shrink-0">
                          <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 block text-center">PROFILE PHOTO</Label>
-                         <div 
-                           onClick={() => !isCompressing && fileInputRef.current?.click()}
-                           className="w-32 h-32 rounded-2xl border-4 border-slate-100 dark:border-slate-800 shadow-md bg-slate-50 dark:bg-slate-800 flex items-center justify-center cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-700 transition-all overflow-hidden relative"
-                         >
-                           {formData.photoUrl ? (
-                             <img src={formData.photoUrl} className="w-full h-full object-cover" alt="profile" />
-                           ) : (
+                         <div onClick={() => !isCompressing && fileInputRef.current?.click()} className="w-32 h-32 rounded-2xl border-4 border-slate-100 dark:border-slate-800 shadow-md bg-slate-50 dark:bg-slate-800 flex items-center justify-center cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-700 transition-all overflow-hidden relative">
+                           {formData.photoUrl ? <img src={formData.photoUrl} className="w-full h-full object-cover" alt="profile" /> : (
                              <div className="flex flex-col items-center gap-1 text-slate-300 dark:text-slate-600 group-hover:text-emerald-500">
                                {isCompressing ? <Loader2 className="w-6 h-6 animate-spin" /> : <UploadCloud className="w-7 h-7" />}
                                <span className="text-[9px] font-black uppercase tracking-widest">{isRtl ? 'رفع صورة' : 'Upload'}</span>
                              </div>
                            )}
-                           {formData.photoUrl && (
-                             <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                <RefreshCcw className="w-5 h-5 text-white" />
-                             </div>
-                           )}
+                           {formData.photoUrl && <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><RefreshCcw className="w-5 h-5 text-white" /></div>}
                          </div>
                          <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
                       </div>
 
-                      {/* BASIC CREDENTIALS */}
                       <div className="flex-1 space-y-6 w-full">
                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2 text-right">
-                               <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start">
-                                 <UserIcon className="w-3 h-3 text-emerald-600" />
-                                 {isRtl ? 'الاسم الكامل' : 'FULL NAME'}
-                               </Label>
+                               <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start"><UserIcon className="w-3 h-3 text-emerald-600" /> {isRtl ? 'الاسم الكامل' : 'FULL NAME'}</Label>
                                <Input value={formData.fullName} onChange={(e) => setFormData({...formData, fullName: e.target.value})} className="h-11 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 font-bold text-xs dark:text-slate-100" placeholder={isRtl ? "اسم المستخدم الحقيقي" : "Legal Full Name"} required />
                             </div>
                             <div className="space-y-2 text-right">
-                               <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start">
-                                 <Mail className="w-3 h-3 text-emerald-600" />
-                                 {isRtl ? 'البريد الإلكتروني' : 'EMAIL / USERNAME'}
-                               </Label>
+                               <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start"><Mail className="w-3 h-3 text-emerald-600" /> {isRtl ? 'البريد الإلكتروني' : 'EMAIL / USERNAME'}</Label>
                                <Input type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="h-11 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 font-bold text-xs dark:text-slate-100" placeholder="name@association.com" required />
                             </div>
                          </div>
 
                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2 text-right">
-                               <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start">
-                                 <Key className="w-3 h-3 text-emerald-600" />
-                                 {isRtl ? 'كلمة المرور' : 'PASSWORD'}
-                               </Label>
-                               <div className="relative">
-                                  <Input type="password" value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} className="h-11 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 font-bold text-xs dark:text-slate-100" placeholder="••••••••" required={!editingUserId} />
-                                  <Lock className="absolute top-1/2 -translate-y-1/2 left-3 w-4 h-4 text-slate-300" />
-                               </div>
+                               <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start"><Key className="w-3 h-3 text-emerald-600" /> {isRtl ? 'كلمة المرور' : 'PASSWORD'}</Label>
+                               {editingUserId ? (
+                                 <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-900/30 rounded-lg flex items-center gap-2">
+                                   <AlertCircle className="w-4 h-4 text-amber-600" />
+                                   <p className="text-[10px] font-bold text-amber-700 dark:text-amber-400">{isRtl ? 'يتم إدارة كلمات المرور عبر بريد استعادة الحساب للأمان.' : 'Passwords must be reset via recovery email for security.'}</p>
+                                 </div>
+                               ) : (
+                                 <div className="relative">
+                                    <Input type="password" value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} className="h-11 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 font-bold text-xs dark:text-slate-100" placeholder="••••••••" required />
+                                    <Lock className="absolute top-1/2 -translate-y-1/2 left-3 w-4 h-4 text-slate-300" />
+                                 </div>
+                               )}
                             </div>
                             <div className="space-y-2 text-right">
-                               <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start">
-                                 <Briefcase className="w-3 h-3 text-emerald-600" />
-                                 {isRtl ? 'الدور الوظيفي الأساسي' : 'ASSIGNED ROLE'}
-                               </Label>
+                               <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start"><Briefcase className="w-3 h-3 text-emerald-600" /> {isRtl ? 'الدور الوظيفي الأساسي' : 'ASSIGNED ROLE'}</Label>
                                <select value={formData.role} onChange={(e) => setFormData({...formData, role: e.target.value})} className="w-full h-11 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-bold outline-none dark:text-slate-100" dir={dir}>
                                   <option value="staff">{isRtl ? 'موظف تشغيل' : 'Staff'}</option>
                                   <option value="manager">{isRtl ? 'مدير قسم' : 'Manager'}</option>
@@ -513,18 +473,12 @@ export default function UsersPermissionsPage() {
                       </div>
                    </div>
 
-                   {/* PERMISSIONS GRID */}
                    <div className="space-y-4">
                       <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
-                         <h3 className="text-sm font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                            <Shield className="w-4 h-4 text-emerald-600" />
-                            {isRtl ? 'شبكة صلاحيات الواجهات والعمليات' : 'Interface & CRUD Matrix'}
-                         </h3>
-                         <div className="flex items-center gap-3">
-                            <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900/20 px-3 py-1.5 rounded-lg border border-emerald-100 dark:border-emerald-800">
-                               <Checkbox id="selectAll" onCheckedChange={(val) => handleToggleAll(!!val)} className="data-[state=checked]:bg-emerald-600" />
-                               <label htmlFor="selectAll" className="text-[9px] font-black text-emerald-700 dark:text-emerald-400 cursor-pointer uppercase">{isRtl ? 'تحديد الكل' : 'ALL ACCESS'}</label>
-                            </div>
+                         <h3 className="text-sm font-black text-slate-900 dark:text-slate-100 flex items-center gap-2"><Shield className="w-4 h-4 text-emerald-600" /> {isRtl ? 'شبكة صلاحيات الواجهات والعمليات' : 'Access Matrix'}</h3>
+                         <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900/20 px-3 py-1.5 rounded-lg border border-emerald-100 dark:border-emerald-800">
+                            <Checkbox id="selectAll" onCheckedChange={(val) => handleToggleAll(!!val)} className="data-[state=checked]:bg-emerald-600" />
+                            <label htmlFor="selectAll" className="text-[9px] font-black text-emerald-700 dark:text-emerald-400 cursor-pointer uppercase">{isRtl ? 'تحديد الكل' : 'ALL ACCESS'}</label>
                          </div>
                       </div>
 
@@ -532,9 +486,7 @@ export default function UsersPermissionsPage() {
                          <Table className="text-right border-separate border-spacing-0">
                             <TableHeader className="bg-slate-50 dark:bg-slate-800">
                                <TableRow>
-                                  <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", isRtl ? "text-right" : "text-left")}>
-                                     {isRtl ? 'واجهة النظام' : 'INTERFACE / MODULE'}
-                                  </TableHead>
+                                  <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", isRtl ? "text-right" : "text-left")}>INTERFACE / MODULE</TableHead>
                                   <TableHead className="w-24 text-center">
                                      <div className="flex flex-col items-center gap-1.5 py-1">
                                         <Checkbox onCheckedChange={(val) => handleToggleColumn('read', !!val)} className="data-[state=checked]:bg-blue-600" />
@@ -565,20 +517,13 @@ export default function UsersPermissionsPage() {
                                {SYSTEM_MODULES.map(module => {
                                   const perms = formData.permissions[module.id] || { read: false, create: false, edit: false, delete: false };
                                   const isRowFull = perms.read && perms.create && perms.edit && perms.delete;
-                                  
                                   return (
                                     <TableRow key={module.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 border-b border-slate-50 dark:border-slate-800 transition-colors">
                                        <TableCell className={cn("px-6 py-3 font-bold text-xs dark:text-slate-200", isRtl ? "text-right" : "text-left")}>
                                           <div className="flex items-center gap-4">
-                                             <Checkbox 
-                                               checked={isRowFull} 
-                                               onCheckedChange={(val) => handleToggleRow(module.id, !!val)} 
-                                               className="data-[state=checked]:bg-slate-900" 
-                                             />
+                                             <Checkbox checked={isRowFull} onCheckedChange={(val) => handleToggleRow(module.id, !!val)} className="data-[state=checked]:bg-slate-900" />
                                              <div className="flex items-center gap-3">
-                                                <div className="p-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-400 group-hover:text-emerald-500 transition-colors">
-                                                   {module.icon}
-                                                </div>
+                                                <div className="p-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-400 transition-colors">{module.icon}</div>
                                                 <div className="flex flex-col">
                                                    <span className="font-black text-slate-800 dark:text-slate-100">{isRtl ? module.labelAr : module.labelEn}</span>
                                                    <span className="text-[9px] text-slate-400 font-bold uppercase tabular-nums">{module.id}</span>
@@ -586,18 +531,10 @@ export default function UsersPermissionsPage() {
                                              </div>
                                           </div>
                                        </TableCell>
-                                       <TableCell className="text-center">
-                                          <Checkbox checked={perms.read} onCheckedChange={() => handleTogglePermission(module.id, 'read')} className="data-[state=checked]:bg-blue-600" />
-                                       </TableCell>
-                                       <TableCell className="text-center">
-                                          <Checkbox checked={perms.create} onCheckedChange={() => handleTogglePermission(module.id, 'create')} className="data-[state=checked]:bg-emerald-600" />
-                                       </TableCell>
-                                       <TableCell className="text-center">
-                                          <Checkbox checked={perms.edit} onCheckedChange={() => handleTogglePermission(module.id, 'edit')} className="data-[state=checked]:bg-amber-600" />
-                                       </TableCell>
-                                       <TableCell className="text-center">
-                                          <Checkbox checked={perms.delete} onCheckedChange={() => handleTogglePermission(module.id, 'delete')} className="data-[state=checked]:bg-rose-600" />
-                                       </TableCell>
+                                       <TableCell className="text-center"><Checkbox checked={perms.read} onCheckedChange={() => handleTogglePermission(module.id, 'read')} className="data-[state=checked]:bg-blue-600" /></TableCell>
+                                       <TableCell className="text-center"><Checkbox checked={perms.create} onCheckedChange={() => handleTogglePermission(module.id, 'create')} className="data-[state=checked]:bg-emerald-600" /></TableCell>
+                                       <TableCell className="text-center"><Checkbox checked={perms.edit} onCheckedChange={() => handleTogglePermission(module.id, 'edit')} className="data-[state=checked]:bg-amber-600" /></TableCell>
+                                       <TableCell className="text-center"><Checkbox checked={perms.delete} onCheckedChange={() => handleTogglePermission(module.id, 'delete')} className="data-[state=checked]:bg-rose-600" /></TableCell>
                                     </TableRow>
                                   );
                                })}
@@ -605,7 +542,6 @@ export default function UsersPermissionsPage() {
                          </Table>
                       </div>
                    </div>
-
                 </div>
              </ScrollArea>
 
@@ -620,31 +556,20 @@ export default function UsersPermissionsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* DELETE CONFIRMATION */}
       <AlertDialog open={!!deletingUserId} onOpenChange={() => setDeletingUserId(null)}>
         <AlertDialogContent className="max-w-[400px] rounded-[1.5rem] p-0 overflow-hidden dark:bg-slate-900 border-none shadow-2xl">
            <div className="bg-rose-950 p-8 text-center relative overflow-hidden">
               <div className="absolute top-0 right-0 p-4 opacity-5"><ShieldAlert className="w-32 h-32 text-white" /></div>
-              <div className="w-16 h-16 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-rose-500/20 shadow-inner">
-                 <ShieldAlert className="w-8 h-8 text-rose-500" />
-              </div>
+              <div className="w-16 h-16 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-rose-500/20 shadow-inner"><ShieldAlert className="w-8 h-8 text-rose-500" /></div>
               <AlertDialogTitle className="text-white text-xl font-black">{isRtl ? 'حذف حساب مستخدم' : 'Revoke Account'}</AlertDialogTitle>
-              <AlertDialogDescription className="text-rose-200/50 font-bold mt-2 text-xs leading-relaxed">
-                 {isRtl ? 'هل أنت متأكد من سحب صلاحيات هذا المستخدم تماماً؟ لن يتمكن من تسجيل الدخول للنظام مرة أخرى.' : 'Are you sure you want to revoke all access? The user will be immediately logged out and blocked.'}
-              </AlertDialogDescription>
+              <AlertDialogDescription className="text-rose-200/50 font-bold mt-2 text-xs leading-relaxed">{isRtl ? 'هل أنت متأكد من سحب صلاحيات هذا المستخدم تماماً؟ لن يتمكن من تسجيل الدخول للنظام مرة أخرى.' : 'Are you sure?'}</AlertDialogDescription>
            </div>
            <div className="bg-white dark:bg-slate-900 p-6 flex gap-3">
-              <AlertDialogAction onClick={async () => {
-                 if (!db || !deletingUserId) return;
-                 await updateDoc(doc(db, 'users', deletingUserId), { active: false, status: 'deleted', deletedAt: serverTimestamp() });
-                 setDeletingUserId(null);
-                 toast({ title: isRtl ? "تم تعطيل الحساب" : "Access Revoked" });
-              }} className="flex-1 h-12 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-xl border-none">تأكيد الحذف</AlertDialogAction>
+              <AlertDialogAction onClick={async () => { if (!db || !deletingUserId) return; await updateDoc(doc(db, 'users', deletingUserId), { active: false, status: 'deleted', deletedAt: serverTimestamp() }); setDeletingUserId(null); toast({ title: isRtl ? "تم تعطيل الحساب" : "Access Revoked" }); }} className="flex-1 h-12 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-xl border-none">تأكيد الحذف</AlertDialogAction>
               <AlertDialogCancel className="flex-1 h-12 bg-slate-50 dark:bg-slate-800 font-black rounded-xl text-slate-400 border-none">تراجع</AlertDialogCancel>
            </div>
         </AlertDialogContent>
       </AlertDialog>
-
     </div>
   );
 }
