@@ -5,6 +5,11 @@ import {
   Send, 
   X, 
   Loader2, 
+  Sparkles,
+  BarChart3,
+  Box,
+  Wallet,
+  MessageSquare
 } from 'lucide-react';
 import { 
   Sheet, 
@@ -38,8 +43,8 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
   const isRtl = lang === 'ar';
 
   const welcomeMessage = isRtl 
-    ? "مرحباً بك! أنا مساعد الإنتاج الذكي الخاص بجمعية الصناعات النسيجية. كيف يمكنني مساعدتك اليوم؟"
-    : "Welcome! I am the AI Production Assistant for the Textile Association. How can I help you today?";
+    ? "مرحباً بك يا مدير! أنا مساعدك الأول في النظام. لدي الآن صلاحية كاملة لرؤية الأوامر والمخزون والتكاليف. كيف يمكنني مساعدتك اليوم؟"
+    : "Welcome Manager! I am your primary assistant. I now have full access to orders, inventory, and costs. How can I assist you today?";
 
   useEffect(() => {
     if (isOpen && messages.length === 0) {
@@ -53,11 +58,11 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
     }
   }, [messages]);
 
-  const handleSend = async (e?: React.FormEvent) => {
+  const handleSend = async (e?: React.FormEvent, customText?: string) => {
     if (e) e.preventDefault();
-    if (!input.trim() || isLoading) return;
+    const userQuery = customText || input.trim();
+    if (!userQuery || isLoading) return;
 
-    const userQuery = input.trim();
     const newMessages: Message[] = [...messages, { role: 'user', content: userQuery }];
     setMessages(newMessages);
     setInput('');
@@ -71,21 +76,26 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
       
       setMessages(prev => [...prev, { role: 'assistant', content: result.answer }]);
     } catch (error) {
-      console.error('AI Interaction Error:', error);
       setMessages(prev => [...prev, { 
         role: 'assistant', 
-        content: isRtl ? "❌ عذراً، واجهت مشكلة في معالجة طلبك حالياً." : "Error processing request." 
+        content: isRtl ? "❌ عذراً، واجهت مشكلة في تحليل البيانات حالياً." : "Data analysis error." 
       }]);
     } finally {
       setIsLoading(false);
     }
   };
 
+  const quickActions = [
+    { label: isRtl ? 'ملخص المخزون' : 'Stock Summary', icon: <Box className="w-3 h-3" />, text: isRtl ? 'أعطني ملخصاً للمواد الخام المتبقية وما الذي أوشك على النفاد؟' : 'Give me a summary of raw materials and what is low?' },
+    { label: isRtl ? 'أوامر الإنتاج' : 'Order Stats', icon: <BarChart3 className="w-3 h-3" />, text: isRtl ? 'لخص لي حالة أوامر الإنتاج النشطة ونسبة الإنجاز فيها.' : 'Summarize active orders and their progress.' },
+    { label: isRtl ? 'تحليل التكاليف' : 'Cost Analysis', icon: <Wallet className="w-3 h-3" />, text: isRtl ? 'كم إجمالي الأجور والمصاريف التشغيلية المسجلة حتى الآن؟' : 'What is the total wages and overhead costs?' },
+  ];
+
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <SheetContent 
         side={isRtl ? "left" : "right"} 
-        className="w-full sm:max-w-[500px] p-0 border-none flex flex-col bg-white dark:bg-slate-950 shadow-2xl transition-colors duration-300"
+        className="w-full sm:max-w-[550px] p-0 border-none flex flex-col bg-white dark:bg-slate-950 shadow-2xl transition-colors duration-300"
       >
         {/* HEADER */}
         <div className="premium-gradient p-6 text-white shrink-0 relative overflow-hidden">
@@ -94,15 +104,15 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
            </div>
 
            <SheetHeader className={cn("text-right relative z-10")}>
-             <div className="flex items-center gap-3">
-               <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center border border-white/20 shadow-xl p-1 shrink-0">
+             <div className="flex items-center gap-4">
+               <div className="w-14 h-14 bg-white rounded-lg flex items-center justify-center border border-white/20 shadow-xl p-1 shrink-0">
                  <img src="/images/logo.png" alt="Logo" className="w-full h-full object-contain" />
                </div>
                <div className="flex flex-col text-right">
-                 <SheetTitle className="text-xl font-black text-white">{isRtl ? 'مساعد الإنتاج الذكي' : 'Production AI'}</SheetTitle>
+                 <SheetTitle className="text-xl font-black text-white">{isRtl ? 'مساعد الإنتاج الذكي (بيانات حية)' : 'Live Data AI Assistant'}</SheetTitle>
                  <div className="text-[10px] font-black text-emerald-200/60 uppercase tracking-widest mt-1 flex items-center gap-2">
                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                   Powered by Gemma 2 • OpenRouter
+                   Connected to Production Database
                  </div>
                </div>
              </div>
@@ -141,13 +151,29 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
            </div>
         </ScrollArea>
 
-        {/* INPUT */}
+        {/* QUICK ACTIONS & INPUT */}
         <div className="p-6 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 shrink-0 transition-colors duration-300">
+           <div className="flex gap-2 overflow-x-auto no-scrollbar mb-4">
+              {quickActions.map((action, i) => (
+                <Button 
+                  key={i} 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => handleSend(undefined, action.text)}
+                  disabled={isLoading}
+                  className="rounded-full h-8 px-4 text-[10px] font-black border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 shrink-0 gap-2"
+                >
+                  {action.icon}
+                  {action.label}
+                </Button>
+              ))}
+           </div>
+
            <form onSubmit={handleSend} className="relative">
               <Input 
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder={isRtl ? "اكتب سؤالك هنا..." : "Ask anything..."}
+                placeholder={isRtl ? "اسأل عن المخزون، الأوامر، أو التكاليف..." : "Ask about inventory, orders, or costs..."}
                 className={cn(
                   "h-14 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-bold focus:ring-emerald-500/10 focus:border-emerald-500 dark:text-slate-100 transition-all",
                   isRtl ? "pr-5 pl-14 text-right" : "pl-5 pr-14 text-left"
