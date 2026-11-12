@@ -180,7 +180,7 @@ export function Header() {
                   {displayName}
                 </p>
                 <p className="text-[9px] text-slate-400 font-bold mt-1.5 uppercase tracking-widest">
-                  {displayRole === 'admin' ? (isRtl ? 'مدير النظام' : 'Administrator') : 
+                  {displayRole === 'admin' ? (isRtl ? 'مدير نظام' : 'Administrator') : 
                    displayRole === 'manager' ? (isRtl ? 'مدير إنتاج' : 'Manager') : 
                    (isRtl ? 'موظف تشغيل' : 'Staff')}
                 </p>

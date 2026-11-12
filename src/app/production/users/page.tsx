@@ -256,7 +256,7 @@ export default function UsersPermissionsPage() {
       let uid = editingUserId;
       
       // CRITICAL FIX: Trim email and password to avoid invisible character errors
-      const cleanEmail = formData.email.trim();
+      const cleanEmail = formData.email.trim().toLowerCase();
       const cleanPassword = formData.password.trim();
 
       // 1. إذا كان مستخدم جديد، أنشئ له حساب في Firebase Auth أولاً

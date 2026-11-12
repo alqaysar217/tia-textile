@@ -73,8 +73,8 @@ export default function LoginPage() {
     setError('');
     
     try {
-      // CRITICAL FIX: Trim email and password to avoid invisible character or network request failed errors
-      const cleanEmail = email.trim();
+      // CRITICAL FIX: Extreme trimming and cleaning of inputs
+      const cleanEmail = email.trim().toLowerCase();
       const cleanPassword = password.trim();
 
       await signInWithEmailAndPassword(auth, cleanEmail, cleanPassword);
@@ -105,7 +105,7 @@ export default function LoginPage() {
       }));
 
       // Specific Error Messages
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential' || err.code === 'auth/invalid-email') {
         setError(lang === 'ar' ? 'خطأ في البريد الإلكتروني أو كلمة المرور. تأكد من عدم وجود مسافات زائدة.' : 'Invalid email or password. Please ensure there are no extra spaces.');
       } else if (err.code === 'auth/user-disabled') {
         setError(lang === 'ar' ? 'تم تعطيل هذا الحساب من قبل الإدارة' : 'This account has been disabled by management');
@@ -139,10 +139,6 @@ export default function LoginPage() {
           backgroundSize: '40px 40px'
         }} 
       />
-
-      {/* Heritage-Tech Pattern Blobs */}
-      <div className="fixed -top-[10%] -right-[10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px] animate-pulse" />
-      <div className="fixed -bottom-[10%] -left-[10%] w-[40%] h-[40%] bg-secondary/5 rounded-full blur-[120px]" />
 
       <div className="w-full max-w-[460px] animate-in fade-in zoom-in-95 duration-1000 relative z-10">
         {/* Main Login Card */}
