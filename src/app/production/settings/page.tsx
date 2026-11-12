@@ -31,10 +31,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from '@/lib/utils';
+import { useProduction } from '../ProductionContext';
 
 export default function GeneralSettingsPage() {
   const { lang, dir, setLang } = useTranslation();
   const db = useFirestore();
+  
+  // استيراد الصلاحيات
+  const { permissions, isAdmin } = useProduction();
+  const canEdit = isAdmin || permissions.settings?.edit;
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -65,6 +70,12 @@ export default function GeneralSettingsPage() {
 
   const handleSaveSettings = async () => {
     if (!db || isSubmitting) return;
+
+    // حماية برمجية
+    if (!canEdit) {
+      toast({ variant: "destructive", title: lang === 'ar' ? "غير مسموح بتعديل الإعدادات" : "Permission Denied" });
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -128,14 +139,16 @@ export default function GeneralSettingsPage() {
             </div>
           </div>
 
-          <Button 
-            onClick={handleSaveSettings} 
-            disabled={isSubmitting}
-            className="h-10 px-8 premium-gradient hover:opacity-90 text-white rounded-lg shadow-lg font-black text-xs gap-2 border-none transition-all active:scale-95"
-          >
-            {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            {lang === 'ar' ? 'حفظ التغييرات' : 'Save Changes'}
-          </Button>
+          {canEdit && (
+            <Button 
+              onClick={handleSaveSettings} 
+              disabled={isSubmitting}
+              className="h-10 px-8 premium-gradient hover:opacity-90 text-white rounded-lg shadow-lg font-black text-xs gap-2 border-none transition-all active:scale-95"
+            >
+              {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              {lang === 'ar' ? 'حفظ التغييرات' : 'Save Changes'}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -167,7 +180,7 @@ export default function GeneralSettingsPage() {
                 title={lang === 'ar' ? 'عملة النظام الأساسية' : 'System Currency'}
                 description={lang === 'ar' ? 'تحديد العملة المرجعية لكافة التقارير المالية' : 'Base currency for financial reporting'}
               >
-                <Select value={formData.baseCurrency} onValueChange={(v) => setFormData({...formData, baseCurrency: v})}>
+                <Select disabled={!canEdit} value={formData.baseCurrency} onValueChange={(v) => setFormData({...formData, baseCurrency: v})}>
                   <SelectTrigger className="w-[180px] h-9 text-xs font-bold bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 dark:text-slate-100">
                     <SelectValue />
                   </SelectTrigger>
@@ -184,7 +197,7 @@ export default function GeneralSettingsPage() {
                 title={lang === 'ar' ? 'لغة واجهة الإنتاج' : 'Dashboard Language'}
                 description={lang === 'ar' ? 'اللغة الافتراضية عند فتح لوحة التحكم' : 'Default language when accessing production'}
               >
-                <Select value={formData.defaultLanguage} onValueChange={(v) => setFormData({...formData, defaultLanguage: v})}>
+                <Select disabled={!canEdit} value={formData.defaultLanguage} onValueChange={(v) => setFormData({...formData, defaultLanguage: v})}>
                   <SelectTrigger className="w-[180px] h-9 text-xs font-bold bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 dark:text-slate-100">
                     <SelectValue />
                   </SelectTrigger>
@@ -211,7 +224,7 @@ export default function GeneralSettingsPage() {
                 title={lang === 'ar' ? 'وضع العرض للنظام' : 'System Theme Mode'}
                 description={lang === 'ar' ? 'الوضع الفاتح أو الداكن لواجهات الإنتاج فقط' : 'Light or Dark mode for ERP only'}
               >
-                <Select value={formData.themeMode} onValueChange={(v) => setFormData({...formData, themeMode: v})}>
+                <Select disabled={!canEdit} value={formData.themeMode} onValueChange={(v) => setFormData({...formData, themeMode: v})}>
                   <SelectTrigger className="w-[180px] h-9 text-xs font-bold bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 dark:text-slate-100">
                     <SelectValue />
                   </SelectTrigger>
@@ -239,6 +252,7 @@ export default function GeneralSettingsPage() {
                 description={lang === 'ar' ? 'تفعيل ميزات الذكاء الاصطناعي لتحليل البيانات وتوقع التكاليف' : 'Enable AI for data analysis and predictive costing'}
               >
                 <Switch 
+                  disabled={!canEdit}
                   checked={formData.aiEnabled} 
                   onCheckedChange={(val) => setFormData({...formData, aiEnabled: val})} 
                   className="data-[state=checked]:bg-emerald-600"
@@ -251,6 +265,7 @@ export default function GeneralSettingsPage() {
                 description={lang === 'ar' ? 'مزامنة وحماية البيانات بشكل تلقائي ودوري' : 'Automated synchronization and data protection'}
               >
                 <Switch 
+                  disabled={!canEdit}
                   checked={formData.autoBackup} 
                   onCheckedChange={(val) => setFormData({...formData, autoBackup: val})} 
                   className="data-[state=checked]:bg-emerald-600"

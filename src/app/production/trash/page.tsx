@@ -20,7 +20,8 @@ import {
   FileText,
   RefreshCcw,
   FileOutput,
-  Loader2
+  Loader2,
+  ShieldCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -47,12 +48,18 @@ import { useFirestore, useCollection } from '@/firebase';
 import { collection, updateDoc, doc, serverTimestamp, query, where, deleteDoc, getDoc, writeBatch } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { useProduction } from '../ProductionContext';
 
 export default function TrashPage() {
   const { lang, dir } = useTranslation();
   const db = useFirestore();
   const [search, setSearch] = useState('');
   
+  // استيراد الصلاحيات
+  const { permissions, isAdmin } = useProduction();
+  const canRestore = isAdmin || permissions.trash?.edit;
+  const canPurge = isAdmin || permissions.trash?.delete;
+
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
   const [actionType, setActionType] = useState<'restore' | 'purge' | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -95,6 +102,17 @@ export default function TrashPage() {
 
   const handleAction = async () => {
     if (!db || !selectedItem || !actionType || isSubmitting) return;
+
+    // حماية برمجية
+    if (actionType === 'restore' && !canRestore) {
+      toast({ variant: "destructive", title: lang === 'ar' ? "غير مسموح بالاستعادة" : "Permission Denied" });
+      return;
+    }
+    if (actionType === 'purge' && !canPurge) {
+      toast({ variant: "destructive", title: lang === 'ar' ? "غير مسموح بالحذف النهائي" : "Permission Denied" });
+      return;
+    }
+
     setIsSubmitting(true);
     const batch = writeBatch(db);
     const targetId = selectedItem.id;
@@ -171,7 +189,7 @@ export default function TrashPage() {
               onChange={(e) => setSearch(e.target.value)} 
               placeholder={lang === 'ar' ? 'بحث في الأرشيف...' : 'Search archive...'} 
               className={cn(
-                "h-9 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xs font-bold focus:ring-emerald-500/10 focus:border-emerald-500 dark:text-slate-100",
+                "h-9 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold focus:ring-emerald-500/10 focus:border-emerald-500 dark:text-slate-100",
                 isRtl ? 'pr-10 pl-4' : 'pl-10 pr-4'
               )} 
             />
@@ -229,12 +247,16 @@ export default function TrashPage() {
                     </TableCell>
                     <TableCell className="px-6 py-3">
                       <div className="flex justify-end gap-2">
-                        <Button onClick={() => { setSelectedItem(item); setActionType('restore'); }} variant="outline" className="h-8 px-3 rounded text-[10px] font-black gap-1.5 text-emerald-700 dark:text-emerald-400 border-slate-200 dark:border-slate-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/20">
-                          <RotateCcw className="w-3 h-3" /> {lang === 'ar' ? 'استعادة' : 'Restore'}
-                        </Button>
-                        <Button onClick={() => { setSelectedItem(item); setActionType('purge'); }} variant="outline" className="h-8 px-3 rounded text-[10px] font-black gap-1.5 text-rose-600 dark:text-rose-400 border-slate-200 dark:border-slate-700 hover:bg-rose-50 dark:hover:bg-rose-900/20">
-                          <Trash2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'حذف نهائي' : 'Purge'}
-                        </Button>
+                        {canRestore && (
+                          <Button onClick={() => { setSelectedItem(item); setActionType('restore'); }} variant="outline" className="h-8 px-3 rounded text-[10px] font-black gap-1.5 text-emerald-700 dark:text-emerald-400 border-slate-200 dark:border-slate-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/20">
+                            <RotateCcw className="w-3 h-3" /> {lang === 'ar' ? 'استعادة' : 'Restore'}
+                          </Button>
+                        )}
+                        {canPurge && (
+                          <Button onClick={() => { setSelectedItem(item); setActionType('purge'); }} variant="outline" className="h-8 px-3 rounded text-[10px] font-black gap-1.5 text-rose-600 dark:text-rose-400 border-slate-200 dark:border-slate-700 hover:bg-rose-50 dark:hover:bg-rose-900/20">
+                            <Trash2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'حذف نهائي' : 'Purge'}
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -283,6 +305,17 @@ export default function TrashPage() {
           </div>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* SYSTEM INTEGRITY NOTE */}
+      <div className="flex-none p-3 bg-slate-900 dark:bg-slate-900/80 text-white/40 dark:text-slate-500 flex items-center justify-center gap-4 border-t border-white/5 shadow-2xl transition-colors duration-300">
+         <ShieldCheck className="w-4 h-4 text-emerald-500" />
+         <p className="text-[10px] font-bold tracking-tight">
+           {lang === 'ar' 
+             ? 'بروتوكول الرقابة: تمنح صلاحيات استعادة البيانات وحذفها نهائياً فقط للمسؤولين المباشرين لضمان عدم ضياع السجلات المالية والمخزنية.' 
+             : 'Integrity Protocol: Restore and purge permissions are limited to direct administrators to prevent data loss.'}
+         </p>
+      </div>
+
     </div>
   );
 }
