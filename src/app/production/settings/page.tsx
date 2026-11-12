@@ -99,30 +99,30 @@ export default function GeneralSettingsPage() {
 
   if (loading) {
     return (
-      <div className="h-full flex flex-col items-center justify-center gap-4 bg-[#f8fafc]">
+      <div className="h-full flex flex-col items-center justify-center gap-4 bg-[#f8fafc] dark:bg-slate-950">
         <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest animate-pulse">جاري جلب تهيئة النظام...</p>
+        <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest animate-pulse">جاري جلب تهيئة النظام...</p>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full bg-[#f8fafc] overflow-hidden" dir={dir}>
+    <div className="flex flex-col h-full bg-[#f8fafc] dark:bg-slate-950 overflow-hidden transition-colors duration-300" dir={dir}>
       
       {/* ERP HEADER */}
-      <div className="flex-none bg-white border-b border-slate-200 z-30 px-6 py-4 shadow-sm">
+      <div className="flex-none bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 z-30 px-6 py-4 shadow-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-slate-900 rounded-lg text-white shadow-lg">
+            <div className="p-2.5 bg-slate-900 dark:bg-emerald-900/20 rounded-lg text-white shadow-lg">
               <Settings className="w-5 h-5 text-emerald-400" />
             </div>
             <div>
-              <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+              <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                 <span>{lang === 'ar' ? 'النظام' : 'System'}</span>
                 <ChevronRight className={cn("w-3 h-3", dir === 'rtl' ? "rotate-180" : "")} />
-                <span className="text-emerald-600">{lang === 'ar' ? 'إعدادات نظام الإنتاج' : 'Production Core Settings'}</span>
+                <span className="text-emerald-600 dark:text-emerald-400">{lang === 'ar' ? 'إعدادات نظام الإنتاج' : 'Production Core Settings'}</span>
               </div>
-              <h1 className="text-xl font-black text-slate-900 leading-tight">
+              <h1 className="text-xl font-black text-slate-900 dark:text-slate-100 leading-tight">
                 {lang === 'ar' ? 'تهيئة بيئة العمل الداخلية' : 'ERP Workspace Configuration'}
               </h1>
             </div>
@@ -142,11 +142,11 @@ export default function GeneralSettingsPage() {
       <div className="flex-1 overflow-y-auto p-6 no-scrollbar">
         <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 pb-20">
           
-          <div className="p-4 bg-amber-50 border border-amber-100 rounded-xl flex items-center gap-4 mb-4">
-             <div className="p-2 bg-white rounded-lg shadow-sm">
-                <Info className="w-5 h-5 text-amber-600" />
+          <div className="p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 rounded-xl flex items-center gap-4 mb-4">
+             <div className="p-2 bg-white dark:bg-slate-900 rounded-lg shadow-sm">
+                <Info className="w-5 h-5 text-amber-600 dark:text-amber-400" />
              </div>
-             <p className="text-[11px] font-bold text-amber-800 leading-relaxed">
+             <p className="text-[11px] font-bold text-amber-800 dark:text-amber-200 leading-relaxed">
                 {lang === 'ar' 
                   ? 'تنبيه: الإعدادات في هذه الصفحة تخص "نظام إدارة الإنتاج" فقط ولن تؤثر على المظهر أو اللغة في الموقع الإلكتروني العام المخصص للزوار.' 
                   : 'Note: Settings here apply to the "Production Management System" only and will not affect the public website appearance.'}
@@ -156,22 +156,22 @@ export default function GeneralSettingsPage() {
           {/* SECTION 1: REGIONAL & LOCALIZATION */}
           <div className="space-y-3">
             <div className="flex items-center gap-2 px-1 mb-2">
-              <Globe className="w-4 h-4 text-emerald-600" />
-              <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest">
+              <Globe className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <h3 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-widest">
                 {lang === 'ar' ? 'الإعدادات الإقليمية واللغة' : 'Regional & Localization'}
               </h3>
             </div>
-            <Card className="border-slate-200 shadow-sm rounded-xl bg-white divide-y divide-slate-100 overflow-hidden">
+            <Card className="border-slate-200 dark:border-slate-800 shadow-sm rounded-xl bg-white dark:bg-slate-900 divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden">
               <SettingRow 
-                icon={<Coins className="w-4 h-4 text-slate-400" />}
+                icon={<Coins className="w-4 h-4 text-slate-400 dark:text-slate-500" />}
                 title={lang === 'ar' ? 'عملة النظام الأساسية' : 'System Currency'}
                 description={lang === 'ar' ? 'تحديد العملة المرجعية لكافة التقارير المالية' : 'Base currency for financial reporting'}
               >
                 <Select value={formData.baseCurrency} onValueChange={(v) => setFormData({...formData, baseCurrency: v})}>
-                  <SelectTrigger className="w-[180px] h-9 text-xs font-bold bg-slate-50 border-slate-200">
+                  <SelectTrigger className="w-[180px] h-9 text-xs font-bold bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 dark:text-slate-100">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="dark:bg-slate-900 dark:border-slate-800">
                     <SelectItem value="YER" className="text-xs font-bold">YER - ريال يمني</SelectItem>
                     <SelectItem value="SAR" className="text-xs font-bold">SAR - ريال سعودي</SelectItem>
                     <SelectItem value="USD" className="text-xs font-bold">USD - دولار أمريكي</SelectItem>
@@ -180,15 +180,15 @@ export default function GeneralSettingsPage() {
               </SettingRow>
 
               <SettingRow 
-                icon={<Languages className="w-4 h-4 text-slate-400" />}
+                icon={<Languages className="w-4 h-4 text-slate-400 dark:text-slate-500" />}
                 title={lang === 'ar' ? 'لغة واجهة الإنتاج' : 'Dashboard Language'}
                 description={lang === 'ar' ? 'اللغة الافتراضية عند فتح لوحة التحكم' : 'Default language when accessing production'}
               >
                 <Select value={formData.defaultLanguage} onValueChange={(v) => setFormData({...formData, defaultLanguage: v})}>
-                  <SelectTrigger className="w-[180px] h-9 text-xs font-bold bg-slate-50 border-slate-200">
+                  <SelectTrigger className="w-[180px] h-9 text-xs font-bold bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 dark:text-slate-100">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="dark:bg-slate-900 dark:border-slate-800">
                     <SelectItem value="ar" className="text-xs font-bold">العربية (Arabic)</SelectItem>
                     <SelectItem value="en" className="text-xs font-bold">English (الإنجليزية)</SelectItem>
                   </SelectContent>
@@ -200,22 +200,22 @@ export default function GeneralSettingsPage() {
           {/* SECTION 2: INTERFACE & EXPERIENCE */}
           <div className="space-y-3">
             <div className="flex items-center gap-2 px-1 mb-2">
-              <Monitor className="w-4 h-4 text-emerald-600" />
-              <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest">
+              <Monitor className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <h3 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-widest">
                 {lang === 'ar' ? 'المظهر وتجربة المستخدم' : 'Interface & Experience'}
               </h3>
             </div>
-            <Card className="border-slate-200 shadow-sm rounded-xl bg-white divide-y divide-slate-100 overflow-hidden">
+            <Card className="border-slate-200 dark:border-slate-800 shadow-sm rounded-xl bg-white dark:bg-slate-900 divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden">
               <SettingRow 
-                icon={<div className="w-4 h-4 rounded-full border-2 border-slate-300" />}
+                icon={<div className="w-4 h-4 rounded-full border-2 border-slate-300 dark:border-slate-700" />}
                 title={lang === 'ar' ? 'وضع العرض للنظام' : 'System Theme Mode'}
                 description={lang === 'ar' ? 'الوضع الفاتح أو الداكن لواجهات الإنتاج فقط' : 'Light or Dark mode for ERP only'}
               >
                 <Select value={formData.themeMode} onValueChange={(v) => setFormData({...formData, themeMode: v})}>
-                  <SelectTrigger className="w-[180px] h-9 text-xs font-bold bg-slate-50 border-slate-200">
+                  <SelectTrigger className="w-[180px] h-9 text-xs font-bold bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 dark:text-slate-100">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="dark:bg-slate-900 dark:border-slate-800">
                     <SelectItem value="light" className="text-xs font-bold">{lang === 'ar' ? 'الوضع الفاتح' : 'Light Mode'}</SelectItem>
                     <SelectItem value="dark" className="text-xs font-bold">{lang === 'ar' ? 'الوضع الداكن' : 'Dark Mode'}</SelectItem>
                   </SelectContent>
@@ -227,14 +227,14 @@ export default function GeneralSettingsPage() {
           {/* SECTION 3: INTELLIGENCE & ADVANCED FEATURES */}
           <div className="space-y-3">
             <div className="flex items-center gap-2 px-1 mb-2">
-              <Cpu className="w-4 h-4 text-emerald-600" />
-              <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest">
+              <Cpu className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <h3 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-widest">
                 {lang === 'ar' ? 'الذكاء الاصطناعي والميزات المتقدمة' : 'Intelligence & Features'}
               </h3>
             </div>
-            <Card className="border-slate-200 shadow-sm rounded-xl bg-white divide-y divide-slate-100 overflow-hidden">
+            <Card className="border-slate-200 dark:border-slate-800 shadow-sm rounded-xl bg-white dark:bg-slate-900 divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden">
               <SettingRow 
-                icon={<Cpu className="w-4 h-4 text-slate-400" />}
+                icon={<Cpu className="w-4 h-4 text-slate-400 dark:text-slate-500" />}
                 title={lang === 'ar' ? 'مساعد الإنتاج الذكي (AI)' : 'AI Production Assistant'}
                 description={lang === 'ar' ? 'تفعيل ميزات الذكاء الاصطناعي لتحليل البيانات وتوقع التكاليف' : 'Enable AI for data analysis and predictive costing'}
               >
@@ -246,7 +246,7 @@ export default function GeneralSettingsPage() {
               </SettingRow>
 
               <SettingRow 
-                icon={<Database className="w-4 h-4 text-slate-400" />}
+                icon={<Database className="w-4 h-4 text-slate-400 dark:text-slate-500" />}
                 title={lang === 'ar' ? 'النسخ الاحتياطي السحابي' : 'Auto Cloud Backup'}
                 description={lang === 'ar' ? 'مزامنة وحماية البيانات بشكل تلقائي ودوري' : 'Automated synchronization and data protection'}
               >
@@ -263,9 +263,9 @@ export default function GeneralSettingsPage() {
       </div>
 
       {/* FOOTER BAR */}
-      <div className="flex-none p-3 bg-white border-t border-slate-200 flex items-center justify-center gap-3">
+      <div className="flex-none p-3 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex items-center justify-center gap-3 transition-colors duration-300">
         <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-        <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.4em]">
+        <p className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.4em]">
           Production Control System • Isolated Environment Configuration
         </p>
       </div>
@@ -280,14 +280,14 @@ export default function GeneralSettingsPage() {
 function SettingRow({ icon, title, description, children }: { icon: React.ReactNode, title: string, description: string, children: React.ReactNode }) {
   const { dir } = useTranslation();
   return (
-    <div className="p-5 flex items-center justify-between hover:bg-slate-50 transition-colors">
+    <div className="p-5 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
       <div className="flex items-center gap-4 text-right rtl:text-right ltr:text-left">
-        <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 shrink-0">
+        <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 dark:text-slate-500 shrink-0">
           {icon}
         </div>
         <div className="space-y-0.5">
-          <p className="text-xs font-black text-slate-900">{title}</p>
-          <p className="text-[10px] text-slate-400 font-bold">{description}</p>
+          <p className="text-xs font-black text-slate-900 dark:text-slate-100">{title}</p>
+          <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold">{description}</p>
         </div>
       </div>
       <div className={cn("shrink-0", dir === 'rtl' ? "mr-4" : "ml-4")}>
