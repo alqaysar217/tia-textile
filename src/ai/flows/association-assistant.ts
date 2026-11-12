@@ -1,13 +1,13 @@
 'use server';
 /**
- * @fileOverview المساعد الذكي الشامل لنظام إنتاج الجمعية النسيجية.
- * يقوم بجلب البيانات الحية من Firestore وتحليلها باستخدام Gemma 2 عبر OpenRouter.
+ * @fileOverview المساعد الذكي التنفيذي لنظام إنتاج الجمعية النسيجية.
+ * يقوم المساعد بتحليل كامل قاعدة بيانات Firestore وتقديم تقارير دقيقة للمدير.
  */
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getFirestore, collection, getDocs, query, where } from 'firebase/firestore';
+import { getFirestore, collection, getDocs, query, where, orderBy } from 'firebase/firestore';
 import { firebaseConfig } from '@/firebase/config';
 
 // تهيئة الفايربيز للسيرفر
@@ -26,54 +26,66 @@ const AssistantOutputSchema = z.object({
 export type AssistantOutput = z.infer<typeof AssistantOutputSchema>;
 
 /**
- * دالة لجلب ملخص شامل لبيانات النظام
+ * دالة جلب البيانات الحية وتحويلها إلى سياق نصي شامل للموديل
  */
-async function getSystemContext() {
+async function getFullSystemData() {
   try {
-    const [ordersSnap, materialsSnap, productsSnap, workersSnap, vouchersSnap] = await Promise.all([
+    const [ordersSnap, materialsSnap, workersSnap, vouchersSnap, productsSnap] = await Promise.all([
       getDocs(collection(db, 'productionOrders')),
       getDocs(collection(db, 'materials')),
-      getDocs(collection(db, 'products')),
       getDocs(collection(db, 'workers')),
-      getDocs(collection(db, 'vouchers'))
+      getDocs(collection(db, 'vouchers')),
+      getDocs(collection(db, 'products'))
     ]);
 
-    const activeOrders = ordersSnap.docs
-      .map(d => ({ id: d.id, ...d.data() }))
-      .filter((o: any) => o.status === 'active' || o.status === 'completed');
+    // 1. معالجة أوامر الإنتاج
+    const orders = ordersSnap.docs.map(d => {
+      const data = d.data();
+      return `- أمر [${data.orderNumber}]: ${data.title} | المنتج: ${data.productId} | المستهدف: ${data.targetQty} | المنجز النهائي: ${data.completedQty} | الحالة: ${data.status}`;
+    }).filter(o => !o.includes('deleted')).join('\n');
 
-    const materials = materialsSnap.docs
-      .map(d => ({ id: d.id, ...d.data() }))
-      .filter((m: any) => m.status !== 'deleted');
+    // 2. معالجة المخزون
+    const materials = materialsSnap.docs.map(d => {
+      const data = d.data();
+      const isLow = (data.currentQty || 0) <= (data.minQty || 0);
+      return `- ${data.nameAr} (${data.code}): الرصيد الحالي [${data.currentQty} ${data.unit}] | حد الأمان: ${data.minQty} ${isLow ? '⚠️ مخزون منخفض' : ''}`;
+    }).filter(m => !m.includes('deleted')).join('\n');
 
-    const workers = workersSnap.docs
-      .map(d => ({ id: d.id, ...d.data() }))
-      .filter((w: any) => w.status !== 'deleted');
+    // 3. معالجة القوى العاملة
+    const workers = workersSnap.docs.map(d => {
+      const data = d.data();
+      return `- ${data.fullName} (${data.workerId}): ${data.isSupervisor ? 'مشرف' : 'حرفي'} | نشط: ${data.active ? 'نعم' : 'لا'}`;
+    }).filter(w => !w.includes('deleted')).join('\n');
 
-    const vouchers = vouchersSnap.docs
-      .map(d => ({ id: d.id, ...d.data() }))
-      .filter((v: any) => v.status !== 'deleted');
-
-    // حساب إجماليات مالية
-    const totalWages = vouchers
-      .filter((v: any) => v.type === 'production_receipt')
-      .reduce((sum, v: any) => sum + (v.wageAmount || 0), 0);
-
-    const totalCosts = vouchers
-      .filter((v: any) => v.type === 'overhead_cost')
-      .reduce((sum, v: any) => sum + (v.totalAmount || 0), 0);
+    // 4. معالجة المالية (السندات)
+    const allVouchers = vouchersSnap.docs.map(d => d.data()).filter(v => v.status !== 'deleted');
+    const totalWages = allVouchers.filter(v => v.type === 'production_receipt').reduce((sum, v) => sum + (v.wageAmount || 0), 0);
+    const totalExpenses = allVouchers.filter(v => v.type === 'overhead_cost').reduce((sum, v) => sum + (v.totalAmount || 0), 0);
+    const materialIssues = allVouchers.filter(v => v.type === 'material_issue').length;
+    const materialReturns = allVouchers.filter(v => v.type === 'material_return').length;
 
     return `
-سياق النظام الحالي (بيانات حقيقية مستخرجة الآن):
-1. أوامر الإنتاج: يوجد ${activeOrders.length} أمر (نشط/مكتمل). أهمها: ${activeOrders.slice(0, 5).map((o: any) => `${o.orderNumber}: ${o.title} (منجز: ${o.completedQty}/${o.targetQty})`).join(' | ')}.
-2. المخزون والمواد: يوجد ${materials.length} صنف. المواد منخفضة المخزون: ${materials.filter((m: any) => (m.currentQty || 0) <= (m.minQty || 0)).map((m: any) => `${m.nameAr} (${m.currentQty} ${m.unit})`).join(', ')}.
-3. القوى العاملة: لدينا ${workers.length} موظف مسجل. المشرفين: ${workers.filter((w: any) => w.isSupervisor).map((w: any) => w.fullName).join(', ')}.
-4. المالية والتقارير: إجمالي الأجور المستحقة الموثقة بالسندات: ${totalWages} ريال. إجمالي المصاريف التشغيلية: ${totalCosts} ريال.
-5. المرتجعات: تم تسجيل ${vouchers.filter((v: any) => v.type === 'material_return').length} عملية توريد مرتجع.
+=== قاعدة البيانات الحية (حدثت الآن) ===
+
+[أوامر الإنتاج النشطة والمكتملة]:
+${orders || 'لا توجد أوامر حالياً.'}
+
+[سجل المواد الخام والمخزون]:
+${materials || 'لا توجد مواد مسجلة.'}
+
+[قائمة الموظفين والعمال]:
+${workers || 'لا يوجد عمال مسجلون.'}
+
+[الملخص المالي والعمليات]:
+- إجمالي الأجور المستحقة (من واقع سندات الاستلام): ${totalWages} ريال.
+- إجمالي المصاريف التشغيلية (كهرباء، إيجار، إلخ): ${totalExpenses} ريال.
+- عمليات صرف المواد: ${materialIssues} عملية.
+- عمليات توريد المرتجعات: ${materialReturns} عملية.
+====================================
 `;
   } catch (error) {
-    console.error("Error fetching context:", error);
-    return "لا يمكن الوصول للبيانات الحية حالياً.";
+    console.error("Error fetching full data:", error);
+    return "خطأ: تعذر جلب البيانات الحية من قاعدة البيانات.";
   }
 }
 
@@ -83,43 +95,39 @@ export async function askAssociationAssistant(input: AssistantInput): Promise<As
     const apiKey = process.env.OPENROUTER_API_KEY;
 
     if (!apiKey) {
-      return { answer: "⚠️ عذراً، مفتاح API غير مهيأ." };
+      return { answer: "⚠️ عذراً، مفتاح OpenRouter غير مهيأ في السيرفر." };
     }
 
-    const dynamicContext = await getSystemContext();
+    // جلب البيانات الحية ووضعها في السياق
+    const liveContext = await getFullSystemData();
 
-    const systemContent = `أنت "مساعد الإنتاج الأول" لجمعية الصناعات النسيجية بالروضة.
-هويتك: خبير تقني ومالي وإداري، وظيفتك مساعدة المدير في اتخاذ القرارات بناءً على البيانات.
+    const systemContent = `أنت "المساعد التنفيذي الأول" لجمعية الصناعات النسيجية بالروضة. 
+وظيفتك: تحليل البيانات الحية المقدمة لك والإجابة على استفسارات المدير بدقة متناهية.
 
-قواعد الرد:
-1. الدقة: استخدم الأرقام المذكورة في "سياق النظام" للإجابة. إذا سألك عن أمر معين، ابحث عنه في القائمة المذكورة.
-2. التقارير: إذا طُلب منك تقرير، استخدم جداول Markdown.
-3. التحليل: حلل التكاليف (أجور + مواد + مصاريف) وقارنها بالإنتاج.
-4. المخزون: نبه دائماً للمواد التي أوشكت على النفاد.
-5. المرتجعات: تتبع المرتجعات لضمان عدم هدر المواد.
-6. لا تهلوس: إذا لم تجد معلومة محددة (مثل اسم عامل معين غير موجود في القائمة)، قل "لم أجد هذا السجل في قاعدة البيانات الحالية".
+قواعد صارمة للتعامل:
+1. أنت تملك وصولاً كاملاً للبيانات المذكورة في "قاعدة البيانات الحية" أدناه. لا تقل أبداً "لا يمكنني الوصول" أو "أحتاج لمعلومات".
+2. استخدم الأرقام الحقيقية المذكورة في السياق فقط. إذا سألك عن مخزون "الخيوط"، ابحث عنها في قائمة المواد وأعطه الرقم بدقة.
+3. التنسيق: استخدم جداول Markdown لعرض الإحصائيات والقوائم الطويلة. استخدم الترقيم والنقاط بوضوح.
+4. الذكاء السياقي: تذكر ما قاله المدير سابقاً. إذا سأل عن "العمال" ثم قال "كم أجورهم؟"، فإنه يقصد إجمالي الأجور المذكور في الملخص المالي.
+5. الهوية: أنت خبير إداري ومالي، ردودك مهنية، واثقة، ومختصرة ومفيدة.
+6. إذا لم تجد معلومة محددة (مثل اسم عامل غير موجود في القائمة)، قل: "لم أجد هذا الاسم في السجلات الحالية المتاحة لي".
 
-${dynamicContext}
+${liveContext}
 
-معلومات عامة عن الجمعية:
-- التأسيس: 1973م. المقر: الروضة، شبوة. الفروع: عتق، شبوة مول.
-- نظام الإنتاج: تكاليف المراحل (Process Costing) والأجر بالقطعة.
-- المنتجات: (ملكي، حليسي، بيضاني، سلاطيني، شبواني).
-
-تواصل: واتساب الإدارة: 777263091.`;
+معلومات تاريخية عن الجمعية:
+- التأسيس: 1973م بالروضة، شبوة.
+- التخصص: حياكة المعاوز اليدوية (ملكي، حليسي، بيضاني، سلاطيني، شبواني).
+- نظام الإنتاج: تكاليف المراحل (Process Costing) والأجر بالقطعة.`;
 
     const apiMessages: any[] = [
       { role: 'system', content: systemContent }
     ];
 
+    // إضافة التاريخ لضمان الذاكرة الموقوتة
     if (history && Array.isArray(history)) {
       history.slice(-10).forEach(m => {
         const role = (m.role === 'user') ? 'user' : 'assistant';
-        let textContent = "";
-        if (typeof m.content === 'string') textContent = m.content;
-        else if (Array.isArray(m.content)) textContent = m.content[0]?.text || "";
-        else textContent = m.text || "";
-
+        let textContent = m.content || m.text || "";
         if (textContent) apiMessages.push({ role, content: textContent });
       });
     }
@@ -131,28 +139,27 @@ ${dynamicContext}
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://tia-system.vercel.app',
-        'X-Title': 'TIA Intelligent Assistant'
+        'X-Title': 'TIA Executive Assistant'
       },
       body: JSON.stringify({
         model: 'google/gemma-2-27b-it',
         messages: apiMessages,
-        temperature: 0.2, // تقليل درجة الحرارة لزيادة الدقة ومنع الهلوسة
-        max_tokens: 2000
+        temperature: 0.1, // تقليل الحرارة لأقصى درجة لضمان الدقة ومنع الهلوسة
+        max_tokens: 2500
       })
     });
 
     if (!response.ok) {
-      return { answer: "🌐 عذراً، هناك مشكلة في الاتصال بالخادم." };
+      return { answer: "🌐 عذراً، هناك مشكلة في الاتصال بمحرك الذكاء الاصطناعي." };
     }
 
     const data = await response.json();
-    return { 
-      answer: data.choices?.[0]?.message?.content || 'أعتذر، لم أتمكن من صياغة رد حالياً.' 
-    };
+    const answer = data.choices?.[0]?.message?.content || 'أعتذر، لم أتمكن من استخلاص الإجابة.';
+    
+    return { answer };
 
   } catch (error: any) {
     console.error("askAssociationAssistant Error:", error);
-    return { answer: "❌ حدث خطأ في النظام الذكي." };
+    return { answer: "❌ حدث خطأ فني أثناء معالجة البيانات." };
   }
 }
