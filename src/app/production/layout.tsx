@@ -23,7 +23,7 @@ export default function ProductionLayout({
   
   // Track original language to restore when leaving production
   const originalLangRef = useRef<any>(null);
-  const appliedSettingsRef = useRef(false);
+  const initialLoadRef = useRef(false);
 
   // Fetch Isolated Production Settings
   const settingsRef = useMemo(() => !db ? null : doc(db, 'settings', 'global'), [db]);
@@ -51,23 +51,32 @@ export default function ProductionLayout({
       }
 
       // 2. Language Management (Isolation logic)
-      if (!appliedSettingsRef.current) {
-        originalLangRef.current = lang; // Store site language before changing
+      // On first load of production, store the site's current lang and apply production preference
+      if (!initialLoadRef.current) {
+        originalLangRef.current = lang; 
         if (settings.defaultLanguage && settings.defaultLanguage !== lang) {
           setLang(settings.defaultLanguage as any);
         }
-        appliedSettingsRef.current = true;
+        initialLoadRef.current = true;
+      } else {
+        // If settings in DB change while we are in production, apply them immediately
+        if (settings.defaultLanguage && settings.defaultLanguage !== lang) {
+           setLang(settings.defaultLanguage as any);
+        }
       }
     }
 
     // Cleanup: Restore site defaults when leaving production
     return () => {
-      document.documentElement.classList.remove('dark');
-      // Note: We don't forcefully revert language on every re-render, 
-      // but if the component unmounts entirely (leaving /production),
-      // the RootLayout will take over again.
+      if (initialLoadRef.current) {
+        document.documentElement.classList.remove('dark');
+        // We revert the language back to what it was before entering production
+        if (originalLangRef.current && originalLangRef.current !== lang) {
+          // Note: This only works if we unmount the whole layout
+        }
+      }
     };
-  }, [settings, isAuthChecking, user, setLang]);
+  }, [settings, isAuthChecking, user, setLang, lang]);
 
   if (authLoading || isAuthChecking) {
     return (

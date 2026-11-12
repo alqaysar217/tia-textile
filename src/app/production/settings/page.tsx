@@ -33,7 +33,7 @@ import {
 import { cn } from '@/lib/utils';
 
 export default function GeneralSettingsPage() {
-  const { lang, dir } = useTranslation();
+  const { lang, dir, setLang } = useTranslation();
   const db = useFirestore();
   
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -73,9 +73,21 @@ export default function GeneralSettingsPage() {
         updatedAt: serverTimestamp()
       }, { merge: true });
       
+      // APPLY IMMEDIATELY: Trigger the language change in the current session
+      if (formData.defaultLanguage !== lang) {
+        setLang(formData.defaultLanguage as any);
+      }
+
+      // APPLY IMMEDIATELY: Trigger theme change
+      if (formData.themeMode === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+
       toast({ 
         title: lang === 'ar' ? "تم حفظ إعدادات النظام" : "Production Settings Saved",
-        description: lang === 'ar' ? "تم تحديث بيئة عمل نظام الإنتاج بنجاح." : "Production environment configuration updated."
+        description: lang === 'ar' ? "تم تحديث بيئة عمل نظام الإنتاج وتطبيق التغييرات فوراً." : "Production environment updated and applied immediately."
       });
     } catch (error) {
       console.error(error);
