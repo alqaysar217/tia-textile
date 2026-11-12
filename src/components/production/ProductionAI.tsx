@@ -100,10 +100,10 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
                </div>
                <div>
                  <SheetTitle className="text-xl font-black text-white">{isRtl ? 'مساعد الإنتاج الذكي' : 'Production AI'}</SheetTitle>
-                 <p className="text-[10px] font-black text-emerald-200/60 uppercase tracking-widest mt-1 flex items-center gap-2">
+                 <div className="text-[10px] font-black text-emerald-200/60 uppercase tracking-widest mt-1 flex items-center gap-2">
                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                    Powered by Gemini AI • TIA System
-                 </p>
+                 </div>
                </div>
              </div>
            </SheetHeader>
