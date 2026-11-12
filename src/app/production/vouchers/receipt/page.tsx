@@ -43,7 +43,7 @@ export default function ProductionReceiptPage() {
   const searchParams = useSearchParams();
   const isRtl = lang === 'ar';
 
-  // استيراد الصلاحيات من المحرك المركزي
+  // استيراد الصلاحيات من المحرك المركزي للمرحلة الثالثة
   const { permissions, isAdmin } = useProduction();
   const canCreate = isAdmin || permissions.vouchers_receipt?.create;
   const canEdit = isAdmin || permissions.vouchers_receipt?.edit;
@@ -62,7 +62,6 @@ export default function ProductionReceiptPage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [batchFilter, setBatchFilter] = useState('all');
 
-  // Fetch Global Settings for Currency
   const settingsRef = useMemo(() => !db ? null : doc(db, 'settings', 'global'), [db]);
   const { data: savedSettings } = useDoc<any>(settingsRef);
   const systemCurrency = savedSettings?.baseCurrency || 'YER';
@@ -80,7 +79,6 @@ export default function ProductionReceiptPage() {
     returnedItems: [] as any[],
   });
 
-  // Sync currency with system settings
   useEffect(() => {
     if (!editingVoucherId && systemCurrency) {
       setFormData(prev => ({ ...prev, currency: systemCurrency }));
@@ -121,27 +119,10 @@ export default function ProductionReceiptPage() {
     });
   }, [vouchers, allOrders, allWorkers, search, batchFilter, sortBy, sortOrder]);
 
-  const availableOrderProducts = useMemo(() => {
-    if (!formData.orderId || !productionReceipts || !allProducts) return [];
-    const order = allOrders?.find(o => o.id === formData.orderId);
-    const product = allProducts?.find(p => p.id === order?.productId);
-    if (!product) return [];
-
-    const totalReceived = (allVouchers || []).filter(r => r.orderId === formData.orderId && r.type === 'production_receipt' && r.status !== 'deleted').reduce((sum, r) => sum + (r.qtyAccepted || 0), 0);
-    const totalIssued = (allVouchers || []).filter(v => v.orderId === formData.orderId && v.type === 'material_issue' && v.status !== 'deleted' && v.id !== editingVoucherId).reduce((sum, v) => {
-      const productItems = v.items?.filter((i: any) => i.itemType === 'product') || [];
-      return sum + productItems.reduce((s: number, i: any) => s + i.qty, 0);
-    }, 0);
-
-    const left = Math.max(0, totalReceived - totalIssued);
-    return left > 0 ? [{ id: product.id, nameAr: product.nameAr, image: product.image, sku: product.sku, availableQty: left, unit: 'Pcs' }] : [];
-  }, [formData.orderId, allVouchers, allOrders, allProducts, editingVoucherId]);
-
   const handleSaveVoucher = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!db || isSubmitting || !formData.workerId || !formData.orderId || formData.linkedMIVs.length === 0 || formData.qtyAccepted <= 0) return;
     
-    // منع الحفظ بدون صلاحية
     if (editingVoucherId && !canEdit) {
       toast({ variant: "destructive", title: isRtl ? "غير مسموح بالتعديل" : "Access Denied" });
       return;
@@ -198,8 +179,6 @@ export default function ProductionReceiptPage() {
 
   const handleTransferToWarehouse = async () => {
     if (!db || !transferringVoucher || isSubmitting) return;
-    
-    // فحص صلاحية التعديل لأن الترحيل يغير حالة السند
     if (!canEdit) {
       toast({ variant: "destructive", title: isRtl ? "غير مسموح بالترحيل" : "Permission Denied" });
       return;

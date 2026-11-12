@@ -33,7 +33,7 @@ export default function MaterialIssuePage() {
   const filterOrderId = searchParams.get('orderId');
   const isRtl = lang === 'ar';
 
-  // استيراد الصلاحيات
+  // استيراد الصلاحيات من المحرك المركزي للمرحلة الثالثة
   const { permissions, isAdmin } = useProduction();
   const canCreate = isAdmin || permissions.vouchers_issue?.create;
   const canEdit = isAdmin || permissions.vouchers_issue?.edit;
@@ -47,13 +47,11 @@ export default function MaterialIssuePage() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [search, setSearch] = useState('');
   
-  // Filtering & Sorting State
   const [sortBy, setSortBy] = useState<'voucherNumber' | 'date' | 'totalAmount'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [batchFilter, setBatchFilter] = useState<string>('all');
   const [deptFilter, setDeptFilter] = useState<string>('all');
 
-  // Fetch Global Settings for Currency
   const [systemCurrency, setSystemCurrency] = useState('YER');
   
   useEffect(() => {
@@ -63,7 +61,6 @@ export default function MaterialIssuePage() {
     });
   }, [db]);
 
-  // Form State
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     orderId: filterOrderId || '',
@@ -72,7 +69,6 @@ export default function MaterialIssuePage() {
     items: [] as any[]
   });
 
-  // Data Fetching
   const ordersQuery = useMemo(() => !db ? null : collection(db, 'productionOrders'), [db]);
   const workersQuery = useMemo(() => !db ? null : collection(db, 'workers'), [db]);
   const deptsQuery = useMemo(() => !db ? null : collection(db, 'departments'), [db]);
@@ -144,7 +140,7 @@ export default function MaterialIssuePage() {
       return;
     }
     if (!editingVoucherId && !canCreate) {
-      toast({ variant: "destructive", title: isRtl ? "غير مسموح بالإدراج" : "Access Denied" });
+      toast({ variant: "destructive", title: isRtl ? "غير مسموح بالصرف" : "Access Denied" });
       return;
     }
 

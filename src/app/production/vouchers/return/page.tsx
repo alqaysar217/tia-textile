@@ -28,10 +28,10 @@ export default function MaterialReturnPage() {
   const db = useFirestore();
   const isRtl = lang === 'ar';
 
-  // استيراد الصلاحيات من المحرك المركزي
+  // استيراد الصلاحيات من المحرك المركزي للمرحلة الثالثة
   const { permissions, isAdmin } = useProduction();
   const canCreate = isAdmin || permissions.vouchers_return?.create;
-  const canVerify = canCreate; // التوثيق في هذه الواجهة هو عملية إنشاء سند المرتجع
+  const canVerify = canCreate; 
 
   const [activeTab, setActiveTab] = useState<'pending' | 'verified'>('pending');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -93,7 +93,6 @@ export default function MaterialReturnPage() {
     e.preventDefault();
     if (!db || isSubmitting || formData.items.length === 0 || !formData.workerId) return;
 
-    // حماية برمجية للصلاحيات
     if (!canVerify) {
       toast({ variant: "destructive", title: isRtl ? "غير مسموح بالتوثيق" : "Access Denied" });
       return;

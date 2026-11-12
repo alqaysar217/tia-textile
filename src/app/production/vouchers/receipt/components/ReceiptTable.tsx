@@ -102,7 +102,7 @@ export function ReceiptTable({
                           {v.isTransferred ? <CheckCircle2 className="w-4 h-4" /> : <Truck className="w-4 h-4" />}
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent className="dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700">
+                      <TooltipContent className="dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700">
                         <p className="text-[10px] font-black">{v.isTransferred ? (isRtl ? 'تم الترحيل' : 'Transferred') : (isRtl ? 'ترحيل للمستودع' : 'Transfer to Warehouse')}</p>
                       </TooltipContent>
                     </Tooltip>
@@ -112,7 +112,7 @@ export function ReceiptTable({
                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"><MoreVertical className="w-4 h-4 text-slate-400 dark:text-slate-500" /></Button></DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-44 rounded-xl shadow-xl dark:bg-slate-900 dark:border-slate-800">
                       {canEdit && (
-                        <DropdownMenuItem onClick={() => onEdit(v)} disabled={v.isTransferred} className="gap-2 font-bold py-2 cursor-pointer text-xs dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
+                        <DropdownMenuItem onClick={() => onEdit(v)} disabled={v.isTransferred} className="gap-2 font-bold py-2 cursor-pointer text-xs dark:text-slate-100 focus:bg-slate-100 dark:focus:bg-slate-800">
                           <Edit2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> {isRtl ? 'تعديل السند' : 'Edit Voucher'}
                         </DropdownMenuItem>
                       )}
