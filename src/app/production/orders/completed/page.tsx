@@ -14,12 +14,16 @@ import {
   ShoppingBag, 
   Loader2, 
   ArrowUpRight, 
-  TrendingUp, 
-  Briefcase, 
-  ShieldCheck 
+  ShieldCheck,
+  CalendarDays,
+  Check,
+  SortAsc,
+  SortDesc,
+  ArrowUpDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useTranslation } from '@/components/LanguageProvider';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
@@ -35,51 +39,87 @@ import { Badge } from '@/components/ui/badge';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from '@/components/ui/dropdown-menu';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 export default function CompletedOrdersPage() {
   const { lang, dir } = useTranslation();
   const db = useFirestore();
   const router = useRouter();
-  const [search, setSearch] = useState('');
   const isRtl = lang === 'ar';
 
-  // FIX: Remove orderBy from query to avoid Firebase Index requirement.
-  // We will sort manually in the filteredOrders useMemo.
+  // State Management
+  const [search, setSearch] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [sortBy, setSortBy] = useState<'orderNumber' | 'completedAt' | 'completedQty'>('completedAt');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  // Queries
   const ordersQuery = useMemo(() => !db ? null : query(
     collection(db, 'productionOrders'), 
     where('status', '==', 'completed')
   ), [db]);
 
   const productsQuery = useMemo(() => !db ? null : collection(db, 'products'), [db]);
-  const deptsQuery = useMemo(() => !db ? null : collection(db, 'departments'), [db]);
-  const vouchersQuery = useMemo(() => !db ? null : query(collection(db, 'vouchers'), where('status', '==', 'posted')), [db]);
 
   const { data: orders, loading: ordersLoading } = useCollection<any>(ordersQuery);
   const { data: products } = useCollection<any>(productsQuery);
-  const { data: departments } = useCollection<any>(deptsQuery);
-  const { data: allReceipts } = useCollection<any>(vouchersQuery);
 
+  // Filtering Logic
   const filteredOrders = useMemo(() => {
     if (!orders) return [];
     
-    // 1. Search Filter
     let list = orders.filter(o => {
       const product = products?.find(p => p.id === o.productId);
       const s = search.toLowerCase();
-      return (
+      
+      const matchesSearch = (
         o.orderNumber?.toLowerCase().includes(s) || 
         o.title?.toLowerCase().includes(s) || 
         product?.nameAr?.includes(s)
       );
+
+      // Date Range Filtering
+      const completedDate = o.completedAt?.toDate?.().toISOString().split('T')[0] || '';
+      const matchesDateFrom = dateFrom ? completedDate >= dateFrom : true;
+      const matchesDateTo = dateTo ? completedDate <= dateTo : true;
+
+      return matchesSearch && matchesDateFrom && matchesDateTo;
     });
 
-    // 2. Manual Sort by completedAt DESC to avoid index error
+    // Manual Sort
     return list.sort((a, b) => {
-      const timeA = a.completedAt?.seconds || 0;
-      const timeB = b.completedAt?.seconds || 0;
-      return timeB - timeA;
+      let valA: any, valB: any;
+
+      if (sortBy === 'completedAt') {
+        valA = a.completedAt?.seconds || 0;
+        valB = b.completedAt?.seconds || 0;
+      } else if (sortBy === 'completedQty') {
+        valA = Number(a.completedQty || 0);
+        valB = Number(b.completedQty || 0);
+      } else {
+        valA = a.orderNumber || '';
+        valB = b.orderNumber || '';
+      }
+
+      if (typeof valA === 'string') {
+        return sortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+      }
+      return sortOrder === 'asc' ? valA - valB : valB - valA;
     });
-  }, [orders, products, search]);
+  }, [orders, products, search, dateFrom, dateTo, sortBy, sortOrder]);
 
   const handleExportCSV = () => {
     const headers = isRtl 
@@ -108,49 +148,116 @@ export default function CompletedOrdersPage() {
     toast({ title: isRtl ? "تم تحميل الأرشيف" : "Archive Exported" });
   };
 
+  const toggleSort = (field: typeof sortBy) => {
+    if (sortBy === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(field);
+      setSortOrder('desc');
+    }
+  };
+
   return (
     <div className="flex flex-col h-full bg-[#f8fafc] overflow-hidden" dir={dir}>
       
-      {/* HEADER */}
+      {/* UNIFIED TOOLBAR HEADER */}
       <div className="flex-none bg-white border-b border-slate-200 z-30 px-6 py-4 shadow-sm">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div className="flex items-center gap-4">
             <div className="p-2.5 bg-slate-900 rounded-lg text-white shadow-lg">
               <History className="w-5 h-5 text-emerald-400" />
             </div>
-            <div>
+            <div className="hidden sm:block">
               <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                 <span>{isRtl ? 'الإنتاج' : 'PRODUCTION'}</span>
                 <ChevronRight className={cn("w-3 h-3", isRtl ? "rotate-180" : "")} />
-                <span className="text-emerald-600">{isRtl ? 'أرشيف الأوامر المكتملة' : 'CLOSED ORDERS'}</span>
+                <span className="text-emerald-600">{isRtl ? 'الأوامر المكتملة' : 'CLOSED ORDERS'}</span>
               </div>
               <h1 className="text-xl font-black text-slate-900 leading-tight">
-                {isRtl ? 'سجل عمليات الإنتاج التاريخي' : 'Production History Archive'}
+                {isRtl ? 'أرشيف العمليات' : 'Historical Archive'}
               </h1>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-             <div className="bg-slate-50 px-4 py-2 rounded-xl border border-slate-100 text-center">
-                <p className="text-[10px] font-black text-slate-400 uppercase leading-tight">{isRtl ? 'إجمالي المكتمل' : 'TOTAL CLOSED'}</p>
-                <p className="text-lg font-black text-emerald-600 tabular-nums">{orders?.length || 0}</p>
-             </div>
-             <Button onClick={handleExportCSV} variant="outline" className="h-10 px-4 rounded-lg font-black text-xs gap-2 border-slate-200 text-slate-600 hover:bg-slate-50 transition-all">
-                <FileDown className="w-4 h-4 text-emerald-600" />
-                {isRtl ? 'تصدير الأرشيف' : 'Export Archive'}
-             </Button>
-          </div>
-        </div>
+          <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-xl border border-slate-200 w-full lg:w-auto">
+            {/* Search Bar */}
+            <div className="relative flex-1 lg:w-64">
+              <Search className={cn("absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400", isRtl ? "right-3" : "left-3")} />
+              <Input 
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={isRtl ? 'بحث...' : 'Search...'}
+                className={cn("h-9 bg-white border-slate-200 text-[10px] font-bold", isRtl ? "pr-9" : "pl-9")}
+              />
+            </div>
 
-        <div className="mt-4 flex items-center gap-2 bg-slate-50 p-1.5 rounded-xl border border-slate-200">
-          <div className="relative flex-1">
-            <Search className={cn("absolute top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400", isRtl ? "right-3" : "left-3")} />
-            <Input 
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={isRtl ? 'بحث في الأرشيف برقم الأمر أو العنوان...' : 'Search completed batches...'}
-              className={cn("h-10 bg-white border-slate-200 text-xs font-bold", isRtl ? "pr-10" : "pl-10")}
-            />
+            {/* Date Range Popover */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 transition-all", (dateFrom || dateTo) && "border-emerald-500 bg-emerald-50")}>
+                  <CalendarDays className={cn("w-4 h-4", (dateFrom || dateTo) ? "text-emerald-600" : "text-slate-400")} />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align={isRtl ? "start" : "end"} className="w-72 p-4 rounded-xl shadow-2xl border-slate-200 text-right">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b pb-2">
+                    <CalendarDays className="w-3.5 h-3.5" />
+                    {isRtl ? 'فلترة حسب تاريخ الإغلاق' : 'CLOSE DATE FILTER'}
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-[9px] font-black text-slate-400">{isRtl ? 'من' : 'FROM'}</Label>
+                      <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-9 text-[10px] font-bold" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[9px] font-black text-slate-400">{isRtl ? 'إلى' : 'TO'}</Label>
+                      <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-9 text-[10px] font-bold" />
+                    </div>
+                  </div>
+                  {(dateFrom || dateTo) && (
+                    <Button variant="link" onClick={() => { setDateFrom(''); setDateTo(''); }} className="text-[9px] h-auto p-0 font-bold text-rose-500 underline uppercase w-full">
+                      {isRtl ? 'إعادة تعيين' : 'RESET'}
+                    </Button>
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            {/* Filter & Sort Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 transition-all">
+                  <Filter className="w-4 h-4 text-slate-400" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align={isRtl ? "start" : "end"} className="w-56 rounded-xl shadow-xl border-slate-200">
+                <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'ترتيب حسب' : 'SORT BY'}</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => toggleSort('completedAt')} className="flex justify-between text-xs font-bold cursor-pointer py-2.5">
+                  {isRtl ? 'تاريخ الإتمام' : 'Completion Date'}
+                  {sortBy === 'completedAt' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => toggleSort('completedQty')} className="flex justify-between text-xs font-bold cursor-pointer py-2.5">
+                  {isRtl ? 'الكمية النهائية' : 'Final Yield'}
+                  {sortBy === 'completedQty' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => toggleSort('orderNumber')} className="flex justify-between text-xs font-bold cursor-pointer py-2.5">
+                  {isRtl ? 'رقم السجل' : 'Reference Number'}
+                  {sortBy === 'orderNumber' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600" />)}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Export Button */}
+            <Button onClick={handleExportCSV} variant="ghost" size="icon" className="h-9 w-9 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 shadow-md">
+              <FileDown className="w-4 h-4" />
+            </Button>
+
+            {/* Compact Stats */}
+            <div className="h-9 w-px bg-slate-200 mx-1 hidden sm:block" />
+            <div className="bg-slate-900 text-white px-3 py-1 rounded-lg flex flex-col items-center justify-center min-w-[60px] hidden sm:flex">
+              <span className="text-[7px] font-black uppercase opacity-50 leading-none">{isRtl ? 'المجموع' : 'TOTAL'}</span>
+              <span className="text-xs font-black tabular-nums leading-none mt-0.5">{orders?.length || 0}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -186,7 +293,7 @@ export default function CompletedOrdersPage() {
                     ) : filteredOrders.length === 0 ? (
                       <TableRow><TableCell colSpan={6} className="text-center py-24 text-slate-300 font-bold border-dashed border-2 border-slate-50 m-4 rounded-xl">
                         <CheckCircle2 className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                        {isRtl ? 'لا توجد أوامر مكتملة حالياً' : 'No closed orders found'}
+                        {isRtl ? 'لا توجد أوامر مطابقة للبحث حالياً' : 'No matching closed orders found'}
                       </TableCell></TableRow>
                     ) : filteredOrders.map((order) => {
                       const product = products?.find(p => p.id === order.productId);
