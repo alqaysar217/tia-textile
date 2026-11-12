@@ -243,13 +243,10 @@ export default function UsersPermissionsPage() {
     let tempApp = null;
     try {
       let uid = editingUserId;
-      
-      // DATA CLEANING: Trim all text fields to avoid auth mismatch
       const cleanEmail = formData.email.trim().toLowerCase();
       const cleanPassword = formData.password.trim();
 
       if (!editingUserId) {
-        // Create actual Auth User using a secondary Firebase app (to avoid logging out current user)
         const tempAppName = `temp-auth-${Date.now()}`;
         tempApp = initializeApp(firebaseConfig, tempAppName);
         const tempAuth = getAuth(tempApp);
@@ -280,7 +277,6 @@ export default function UsersPermissionsPage() {
         updatedAt: serverTimestamp()
       };
 
-      // Save/Merge to Firestore
       await setDoc(doc(db, 'users', uid), {
         ...userData,
         createdAt: editingUserId ? (users?.find(u => u.id === uid)?.createdAt || serverTimestamp()) : serverTimestamp()
@@ -437,7 +433,7 @@ export default function UsersPermissionsPage() {
                                <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start">
                                  <UserIcon className="w-3 h-3 text-emerald-600" /> {isRtl ? 'الاسم الكامل' : 'FULL NAME'}
                                </Label>
-                               <Input value={formData.fullName} onChange={(e) => setFormData({...formData, fullName: e.target.value})} className="h-11 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 font-bold text-xs dark:text-slate-100" placeholder={isRtl ? "اسم المستخدم الحقيقي" : "Legal Full Name"} required />
+                               <Input value={formData.fullName} onChange={(e) => setFormData({...formData, fullName: e.target.value})} className="h-10 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 font-bold text-xs dark:text-slate-100" placeholder={isRtl ? "اسم المستخدم الحقيقي" : "Legal Full Name"} required />
                             </div>
                             <div className="space-y-2 text-right">
                                <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start">
