@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -120,42 +121,42 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
               {messages.map((msg, idx) => (
                 <div key={idx} className={cn(
                   "flex flex-col max-w-[85%] animate-in fade-in slide-in-from-bottom-2 duration-500",
-                  msg.role === 'user' ? "self-start items-start" : "self-end items-end"
+                  msg.role === 'assistant' ? "self-start items-start" : "self-end items-end"
                 )}>
                   <div className={cn(
                     "flex items-center gap-2 mb-1.5",
-                    msg.role === 'user' ? "flex-row" : "flex-row-reverse"
+                    msg.role === 'assistant' ? "flex-row" : "flex-row-reverse"
                   )}>
-                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                      {msg.role === 'user' ? (isRtl ? 'أنت' : 'YOU') : (isRtl ? 'المساعد الذكي' : 'AI ASSISTANT')}
-                    </span>
                     <div className={cn(
                       "w-5 h-5 rounded-md flex items-center justify-center text-[10px]",
-                      msg.role === 'user' ? "bg-slate-200 dark:bg-slate-800 text-slate-500" : "bg-emerald-600 text-white"
+                      msg.role === 'assistant' ? "bg-emerald-600 text-white" : "bg-slate-200 dark:bg-slate-800 text-slate-500"
                     )}>
                       {msg.role === 'user' ? <User className="w-3 h-3" /> : <div className="w-3 h-3"><img src="/images/logo.png" className="w-full h-full object-contain brightness-0 invert" /></div>}
                     </div>
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                      {msg.role === 'user' ? (isRtl ? 'أنت' : 'YOU') : (isRtl ? 'المساعد الذكي' : 'AI ASSISTANT')}
+                    </span>
                   </div>
                   
                   <div className={cn(
                     "p-4 rounded-2xl text-xs md:text-sm leading-relaxed font-bold shadow-sm border",
-                    msg.role === 'user' 
-                      ? "bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-800 rounded-tr-none text-right" 
-                      : "bg-emerald-50 dark:bg-emerald-900/10 text-emerald-900 dark:text-emerald-300 border-emerald-100 dark:border-emerald-900/30 rounded-tl-none text-left"
+                    msg.role === 'assistant' 
+                      ? "bg-emerald-50 dark:bg-emerald-900/10 text-emerald-900 dark:text-emerald-300 border-emerald-100 dark:border-emerald-900/30 rounded-tr-none text-right" 
+                      : "bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-800 rounded-tl-none text-left"
                   )}>
                     {msg.content}
                   </div>
                 </div>
               ))}
               {isLoading && (
-                <div className={cn("flex flex-col self-end items-end max-w-[85%] animate-pulse")}>
-                   <div className="flex items-center gap-2 mb-1.5 flex-row-reverse">
-                      <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">جاري التفكير...</span>
+                <div className={cn("flex flex-col self-start items-start max-w-[85%] animate-pulse")}>
+                   <div className="flex items-center gap-2 mb-1.5">
                       <div className="w-5 h-5 rounded-md bg-emerald-600 flex items-center justify-center text-white">
                         <Loader2 className="w-3 h-3 animate-spin" />
                       </div>
+                      <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">جاري التفكير...</span>
                    </div>
-                   <div className="p-4 rounded-2xl bg-emerald-50/50 dark:bg-emerald-900/5 text-emerald-900/40 dark:text-emerald-400/40 border border-emerald-100/50 dark:border-emerald-900/20 rounded-tl-none w-32 h-10" />
+                   <div className="p-4 rounded-2xl bg-emerald-50/50 dark:bg-emerald-900/10 text-emerald-900/40 dark:text-emerald-400/40 border border-emerald-100/50 dark:border-emerald-900/20 rounded-tr-none w-32 h-10" />
                 </div>
               )}
               <div ref={scrollRef} />
@@ -203,7 +204,7 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
                 {isLoading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
-                  <Send className={cn("w-4 h-4", isRtl && "rotate-[135deg]")} />
+                  <Send className={cn("w-4 h-4", isRtl && "rotate-180")} />
                 )}
               </Button>
            </form>
