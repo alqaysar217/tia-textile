@@ -66,7 +66,7 @@ export default function FinishedGoodsWarehousePage() {
   const { lang, dir } = useTranslation();
   const db = useFirestore();
   
-  // استيراد الصلاحيات
+  // استيراد الصلاحيات من المحرك المركزي
   const { permissions, isAdmin } = useProduction();
   const canEdit = isAdmin || permissions.materials?.edit;
 
@@ -226,8 +226,8 @@ export default function FinishedGoodsWarehousePage() {
     postedStatus: isRtl ? 'مرحل' : 'Posted',
     reversedStatus: isRtl ? 'ملغي' : 'Reversed',
     auditNote: isRtl 
-      ? 'نظام الرقابة المخزنية: يمكنك عكس أي عملية ترحيل من سجل العمليات لاستعادة الرصيد الأصلي.' 
-      : 'Inventory Audit: You can reverse transfers from history to restore balance.',
+      ? 'نظام الرقابة المخزنية: ترحيل المنجز وإلغاؤه يخضع لرقابة صارمة. يمكنك التراجع عن الترحيل لاستعادة الحالة الأصلية للسند.' 
+      : 'Inventory Audit: Access to stock reversal and transfers is strictly controlled.',
     navWarehouse: isRtl ? 'المستودعات' : 'Warehousing',
     navFinished: isRtl ? 'المنتجات الجاهزة' : 'Finished Goods'
   };
@@ -427,7 +427,7 @@ export default function FinishedGoodsWarehousePage() {
                                   {isReversed ? dictionary.reversedStatus : dictionary.postedStatus}
                                 </Badge>
                             </TableCell>
-                            <TableCell className="px-6 py-3">
+                            <TableCell className="px-6 py-3 text-center">
                                {!isReversed && canEdit && (
                                   <Button variant="ghost" size="sm" onClick={() => setReversingTx(tx)} className="h-8 px-3 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 font-black text-[9px] gap-2 transition-all">
                                      <RefreshCcw className="w-3 h-3" /> {dictionary.reverseBtn}

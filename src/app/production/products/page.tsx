@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
@@ -79,6 +78,7 @@ import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useProduction } from '../ProductionContext';
 
 export default function ProductsManagementPage() {
   const { lang, dir } = useTranslation();
@@ -87,6 +87,12 @@ export default function ProductsManagementPage() {
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const [search, setSearch] = useState('');
   
+  // استيراد الصلاحيات من المحرك المركزي
+  const { permissions, isAdmin } = useProduction();
+  const canCreate = isAdmin || permissions.products?.create;
+  const canEdit = isAdmin || permissions.products?.edit;
+  const canDelete = isAdmin || permissions.products?.delete;
+
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'sku' | 'nameAr' | 'price'>('sku');
@@ -256,6 +262,16 @@ export default function ProductsManagementPage() {
     e.preventDefault();
     if (!db || isSubmitting || isCompressing) return;
 
+    // حماية تنفيذية
+    if (editingProdId && !canEdit) {
+      toast({ variant: "destructive", title: lang === 'ar' ? "غير مسموح بالتعديل" : "Permission Denied" });
+      return;
+    }
+    if (!editingProdId && !canCreate) {
+      toast({ variant: "destructive", title: lang === 'ar' ? "غير مسموح بالإضافة" : "Permission Denied" });
+      return;
+    }
+
     setIsSubmitting(true);
     const generatedSku = editingProdId ? formData.sku : `PROD-${Math.floor(1000 + Math.random() * 9000)}`;
 
@@ -263,7 +279,7 @@ export default function ProductsManagementPage() {
       ...formData,
       sku: generatedSku,
       price: Number(formData.price),
-      currency: formData.currency, // Ensure locked currency is saved
+      currency: formData.currency, 
       updatedAt: serverTimestamp(),
     };
 
@@ -289,7 +305,7 @@ export default function ProductsManagementPage() {
   };
 
   const handleArchiveProduct = () => {
-    if (!db || !deletingProdId) return;
+    if (!db || !deletingProdId || !canDelete) return;
     const targetId = deletingProdId;
     setDeletingProdId(null);
     updateDoc(doc(db, 'products', targetId), { status: 'deleted', deletedAt: serverTimestamp() });
@@ -297,6 +313,7 @@ export default function ProductsManagementPage() {
   };
 
   const handleEditClick = (prod: any) => {
+    if (!canEdit) return;
     setEditingProdId(prod.id);
     setFormData({
       sku: prod.sku || '',
@@ -378,10 +395,12 @@ export default function ProductsManagementPage() {
               </div>
             </div>
             
-            <Button onClick={() => setIsAddDialogOpen(true)} className="h-10 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 transition-all border-none">
-              <Plus className="w-4 h-4" />
-              {lang === 'ar' ? 'إضافة منتج' : 'Add Product'}
-            </Button>
+            {canCreate && (
+              <Button onClick={() => setIsAddDialogOpen(true)} className="h-10 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 transition-all border-none">
+                <Plus className="w-4 h-4" />
+                {lang === 'ar' ? 'إضافة منتج' : 'Add Product'}
+              </Button>
+            )}
           </div>
         </div>
 
@@ -395,20 +414,20 @@ export default function ProductsManagementPage() {
               placeholder={lang === 'ar' ? 'بحث بالكود أو اسم المنتج...' : 'Quick search catalog...'}
               className={cn(
                 dir === 'rtl' ? 'pr-10' : 'pl-10',
-                "h-9 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xs font-bold dark:text-slate-100"
+                "h-9 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold dark:text-slate-100"
               )}
             />
           </div>
           
           <div className="flex items-center gap-1.5 px-1.5">
-            <Button onClick={handleExportCSV} variant="ghost" className="h-9 px-4 rounded-md text-xs font-bold gap-2 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
+            <Button onClick={handleExportCSV} variant="ghost" className="h-9 px-4 rounded-md text-xs font-bold gap-2 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition-colors">
               <FileDown className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
               {lang === 'ar' ? 'تصدير CSV' : 'Export CSV'}
             </Button>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-9 px-4 rounded-md text-xs font-bold gap-2 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
+                <Button variant="ghost" className="h-9 px-4 rounded-md text-xs font-bold gap-2 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition-colors">
                   <Filter className="w-3.5 h-3.5" />
                   {lang === 'ar' ? 'تصفية' : 'Filter'}
                 </Button>
@@ -458,7 +477,7 @@ export default function ProductsManagementPage() {
                 ) : filtered.length === 0 ? (
                   <TableRow><TableCell colSpan={5} className="text-center py-20 font-bold text-slate-300 dark:text-slate-700">لا توجد منتجات مسجلة</TableCell></TableRow>
                 ) : filtered.map((prod) => (
-                  <TableRow key={prod.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
+                  <TableRow key={prod.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 transition-colors">
                     <TableCell className="px-6 py-3">
                       <div className="flex items-center gap-3">
                         <Avatar className="h-10 w-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 overflow-hidden">
@@ -498,16 +517,20 @@ export default function ProductsManagementPage() {
                     <TableCell className="px-6 py-3 sticky right-0 bg-white dark:bg-slate-900 group-hover:bg-slate-50/50 dark:group-hover:bg-slate-800/50 shadow-[-10px_0_10px_-5px_rgba(0,0,0,0.05)] dark:shadow-none border-l dark:border-slate-800">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-slate-200 dark:hover:bg-slate-800"><MoreVertical className="w-4 h-4 text-slate-400 dark:text-slate-500" /></Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"><MoreVertical className="w-4 h-4 text-slate-400 dark:text-slate-500" /></Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="rounded-lg border-slate-200 dark:border-slate-800 dark:bg-slate-900 shadow-xl min-w-[180px]">
-                          <DropdownMenuItem onClick={() => handleEditClick(prod)} className="gap-3 font-bold text-xs py-2.5 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
-                            <Edit2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'تعديل المنتج' : 'Edit Product'}
-                          </DropdownMenuItem>
+                          {canEdit && (
+                            <DropdownMenuItem onClick={() => handleEditClick(prod)} className="gap-3 font-bold text-xs py-2.5 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
+                              <Edit2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'تعديل المنتج' : 'Edit Product'}
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuSeparator className="dark:bg-slate-800" />
-                          <DropdownMenuItem onClick={() => setDeletingProdId(prod.id)} className="gap-3 font-bold text-xs text-red-600 dark:text-rose-400 py-2.5 focus:bg-rose-50 dark:focus:bg-rose-900/20">
-                            <Trash2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'نقل للأرشيف' : 'Archive'}
-                          </DropdownMenuItem>
+                          {canDelete && (
+                            <DropdownMenuItem onClick={() => setDeletingProdId(prod.id)} className="gap-3 font-bold text-xs text-red-600 dark:text-rose-400 py-2.5 focus:bg-rose-50 dark:focus:bg-rose-900/20">
+                              <Trash2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'نقل للأرشيف' : 'Archive'}
+                            </DropdownMenuItem>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -520,13 +543,13 @@ export default function ProductsManagementPage() {
 
         {/* SYSTEM FOOTER */}
         <div className="mt-4 flex-none bg-slate-900 dark:bg-slate-900/80 rounded-lg p-3 text-white flex items-center gap-4 border border-slate-800 shadow-inner transition-colors duration-300">
-          <div className="w-8 h-8 bg-emerald-500/20 rounded flex items-center justify-center text-emerald-400"><Info className="w-4 h-4" /></div>
-          <div className="flex-1">
+          <div className="w-8 h-8 bg-emerald-500/20 rounded flex items-center justify-center text-emerald-400 shrink-0"><Info className="w-4 h-4" /></div>
+          <div className="flex-1 text-right">
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 leading-none mb-1">
               {lang === 'ar' ? 'بروتوكول جودة البيانات' : 'Catalog Quality Protocol'}
             </p>
-            <p className="text-[10px] text-slate-300 dark:text-slate-400 font-bold opacity-80">
-              {lang === 'ar' ? 'تعديل بيانات المنتج ينعكس فوراً على المتجر الإلكتروني العام للجمهور.' : 'Modifying product data reflects instantly on the public online store.'}
+            <p className="text-[10px] text-slate-300 dark:text-slate-400 font-bold opacity-80 leading-relaxed">
+              {lang === 'ar' ? 'تعديل بيانات المنتج ينعكس فوراً على المتجر الإلكتروني العام للجمهور. الحذف يتم عبر نقل السجل للأرشيف لضمان إمكانية استرجاعه.' : 'Modifying product data reflects instantly on the public online store.'}
             </p>
           </div>
         </div>
@@ -608,14 +631,14 @@ export default function ProductsManagementPage() {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2">
+              <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
+                <Label className={cn("text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start")}>
                   <Hash className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'كود التخزين' : 'AUTO SKU'}
                 </Label>
                 <Input value={editingProdId ? formData.sku : 'AUTO-GENERATE'} disabled className="h-10 font-bold text-xs bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 tabular-nums border-slate-200 dark:border-slate-700" />
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2">
+              <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
+                <Label className={cn("text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start")}>
                   <Activity className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'فئة المعوز' : 'CATEGORY'}
                 </Label>
                 <select value={formData.category} onChange={(e) => setFormData({...formData, category: e.target.value})} className="w-full h-10 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-bold outline-none dark:text-slate-100">
@@ -625,14 +648,14 @@ export default function ProductsManagementPage() {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2">
+              <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
+                <Label className={cn("text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start")}>
                   <Languages className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'الاسم بالعربي' : 'ARABIC NAME'}
                 </Label>
                 <Input value={formData.nameAr} onChange={(e) => setFormData({...formData, nameAr: e.target.value})} className="h-10 font-bold text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 dark:text-slate-100" required />
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2">
+              <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
+                <Label className={cn("text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start")}>
                   <Wallet className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'سعر البيع' : 'UNIT PRICE'}
                 </Label>
                 <div className="flex gap-2">
@@ -650,8 +673,8 @@ export default function ProductsManagementPage() {
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2">
+            <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
+              <Label className={cn("text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start")}>
                 <Activity className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'حالة التوفر' : 'AVAILABILITY'}
               </Label>
               <select value={formData.status} onChange={(e) => setFormData({...formData, status: e.target.value})} className="w-full h-10 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-bold outline-none dark:text-slate-100">
@@ -659,8 +682,8 @@ export default function ProductsManagementPage() {
               </select>
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2">
+            <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
+              <Label className={cn("text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start")}>
                 {lang === 'ar' ? 'وصف المنتج (عربي)' : 'ARABIC DESCRIPTION'}
               </Label>
               <textarea 
@@ -675,7 +698,7 @@ export default function ProductsManagementPage() {
                 {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : <Save className="w-4 h-4 me-2" />}
                 {lang === 'ar' ? (isSubmitting ? 'جاري الحفظ...' : 'حفظ المنتج') : 'Commit Product'}
               </Button>
-              <Button type="button" variant="outline" onClick={resetForm} className="px-6 h-11 font-black text-slate-400 dark:text-slate-500 rounded-md border-slate-200 dark:border-slate-700">
+              <Button type="button" variant="outline" onClick={resetForm} className="px-6 h-11 font-black text-slate-400 dark:text-slate-500 rounded-md border border-slate-200 dark:border-slate-700">
                 {lang === 'ar' ? 'إلغاء' : 'Cancel'}
               </Button>
             </div>
@@ -686,17 +709,18 @@ export default function ProductsManagementPage() {
       {/* ARCHIVE DIALOG */}
       <AlertDialog open={!!deletingProdId} onOpenChange={(open) => !open && setDeletingProdId(null)}>
         <AlertDialogContent className="max-w-[400px] rounded-lg border-none shadow-2xl p-0 overflow-hidden dark:bg-slate-900">
-          <div className="bg-slate-950 p-8 text-center">
+          <div className="bg-slate-950 p-8 text-center relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-4 opacity-5"><History className="w-32 h-32 text-white" /></div>
             <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20 shadow-inner">
               <History className="w-8 h-8 text-red-500" />
             </div>
             <AlertDialogTitle className="text-white text-xl font-black">{lang === 'ar' ? 'أرشفة المنتج' : 'Archive Product'}</AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-400 font-bold mt-2 text-xs leading-relaxed">
-              {lang === 'ar' ? 'سيتم إخفاء هذا المنتج من المتجر العام ونقله لسلة المهملات.' : 'Product will be hidden from public store and moved to trash.'}
+            <AlertDialogDescription className="text-slate-400 font-bold mt-2 text-xs leading-relaxed text-center">
+              {lang === 'ar' ? 'سيتم إخفاء هذا المنتج من المتجر العام ونقله لسلة المهملات. يمكنك استعادته خلال 30 يوماً.' : 'Product will be hidden from public store and moved to trash.'}
             </AlertDialogDescription>
           </div>
           <div className="bg-white dark:bg-slate-900 p-6 flex gap-3">
-            <AlertDialogAction onClick={handleArchiveProduct} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-md font-black border-none">
+            <AlertDialogAction onClick={handleArchiveProduct} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-md font-black border-none shadow-lg">
               {lang === 'ar' ? 'تأكيد الأرشفة' : 'Confirm'}
             </AlertDialogAction>
             <AlertDialogCancel onClick={() => setDeletingProdId(null)} className="flex-1 h-11 bg-slate-50 dark:bg-slate-800 border-none text-slate-400 dark:text-slate-500 rounded-md font-black">

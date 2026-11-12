@@ -40,7 +40,7 @@ export default function MaterialsPage() {
   const db = useFirestore();
   const isRtl = lang === 'ar';
 
-  // استيراد الصلاحيات
+  // استيراد الصلاحيات من المحرك المركزي
   const { permissions, isAdmin } = useProduction();
   const canCreate = isAdmin || permissions.materials?.create;
   const canEdit = isAdmin || permissions.materials?.edit;
@@ -211,12 +211,13 @@ export default function MaterialsPage() {
     e.preventDefault();
     if (!db || isSubmitting || isCompressing || formData.currentQty < 0) return;
 
+    // حماية تنفيذية
     if (editingMatId && !canEdit) {
       toast({ variant: "destructive", title: isRtl ? "غير مسموح بالتعديل" : "Permission Denied" });
       return;
     }
     if (!editingMatId && !canCreate) {
-      toast({ variant: "destructive", title: isRtl ? "غير مسموح بالإدراج" : "Permission Denied" });
+      toast({ variant: "destructive", title: isRtl ? "غير مسموح بالإضافة" : "Permission Denied" });
       return;
     }
 
@@ -252,6 +253,7 @@ export default function MaterialsPage() {
     e.preventDefault();
     if (!db || isSubmitting || !stockInForm.materialId || stockInForm.qty <= 0) return;
     
+    // حماية تنفيذية للتوريد
     if (!canCreate) {
       toast({ variant: "destructive", title: isRtl ? "غير مسموح بالتوريد" : "Permission Denied" });
       return;
@@ -330,9 +332,9 @@ export default function MaterialsPage() {
               <MaterialsCatalog 
                 loading={mLoading} filteredMaterials={filteredMaterials} categories={categories} 
                 lang={lang} dir={dir} onStockIn={(id) => { setStockInForm({ materialId: id, qty: 1 }); setIsStockInDialogOpen(true); }}
-                onEdit={(mat) => { setEditingMatId(mat.id); setFormData({...mat}); setIsAddDialogOpen(true); }}
-                onDelete={(id) => setDeletingMatId(id)} sortBy={sortBy} sortOrder={sortOrder} toggleSort={(k) => setSortBy(k)}
-                canEdit={canEdit} canDelete={canDelete} canCreate={canCreate}
+                onEdit={(mat) => { if(!canEdit) return; setEditingMatId(mat.id); setFormData({...mat}); setIsAddDialogOpen(true); }}
+                onDelete={(id) => { if(!canDelete) return; setDeletingMatId(id); }} sortBy={sortBy} sortOrder={sortOrder} toggleSort={(k) => setSortBy(k)}
+                canCreate={canCreate} canEdit={canEdit} canDelete={canDelete}
               />
           </TabsContent>
 
@@ -348,8 +350,8 @@ export default function MaterialsPage() {
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 leading-none mb-1">
               {isRtl ? 'بروتوكول حماية المخزون' : 'Stock Protection Protocol'}
             </p>
-            <p className="text-[10px] text-slate-300 dark:text-slate-400 font-bold opacity-80">
-              {isRtl ? 'كل حركة توريد أو صرف موثقة تاريخياً لضمان الشفافية التامة في أرصدة المستودعات.' : 'Every supply or issue is historically documented to ensure full transparency.'}
+            <p className="text-[10px] text-slate-300 dark:text-slate-400 font-bold opacity-80 leading-relaxed">
+              {isRtl ? 'كل حركة توريد أو صرف موثقة تاريخياً. الإضافات والتعديلات محكومة بصلاحيات الموظف المسجل دخوله.' : 'Every supply or issue is historically documented to ensure full transparency.'}
             </p>
           </div>
         </div>
@@ -370,20 +372,21 @@ export default function MaterialsPage() {
 
       <AlertDialog open={!!deletingMatId} onOpenChange={(open) => !open && setDeletingMatId(null)}>
         <AlertDialogContent className="max-w-[400px] rounded-lg border-none shadow-2xl p-0 overflow-hidden text-right dark:bg-slate-900" dir={dir}>
-          <div className="bg-slate-950 p-8 text-center">
+          <div className="bg-slate-950 p-8 text-center relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-4 opacity-5"><History className="w-32 h-32 text-white" /></div>
             <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20 shadow-inner">
               <History className="w-8 h-8 text-red-500" />
             </div>
             <AlertDialogTitle className="text-white text-xl font-black">{isRtl ? 'أرشفة الصنف' : 'Confirm Archive'}</AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-400 font-bold mt-2 text-xs leading-relaxed">
-              {isRtl ? 'سيتم نقل هذه المادة للأرشيف. يمكنك استعادتها لاحقاً من سلة المهملات.' : 'Item will be moved to archive.'}
+            <AlertDialogDescription className="text-slate-400 font-bold mt-2 text-xs leading-relaxed text-center">
+              {isRtl ? 'سيتم نقل هذه المادة للأرشيف. يمكنك استعادتها لاحقاً من سلة المهملات قبل الحذف النهائي.' : 'Item will be moved to archive.'}
             </AlertDialogDescription>
           </div>
           <div className="bg-white dark:bg-slate-900 p-6 flex gap-3">
-            <AlertDialogAction onClick={handleArchiveMaterial} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-md font-black border-none shadow-lg">
+            <AlertDialogAction onClick={handleArchiveMaterial} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-md font-black border-none shadow-lg transition-all active:scale-95">
               {isRtl ? 'تأكيد' : 'Confirm'}
             </AlertDialogAction>
-            <AlertDialogCancel className="flex-1 h-11 bg-slate-50 dark:bg-slate-800 border-none text-slate-400 dark:text-slate-500 rounded-md font-black hover:bg-slate-100 dark:hover:bg-slate-700">
+            <AlertDialogCancel className="flex-1 h-11 bg-slate-50 dark:bg-slate-800 border-none text-slate-400 dark:text-slate-500 rounded-md font-black hover:bg-slate-100 transition-all">
               {isRtl ? 'تراجع' : 'Cancel'}
             </AlertDialogCancel>
           </div>
