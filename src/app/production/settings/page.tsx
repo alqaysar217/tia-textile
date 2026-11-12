@@ -278,7 +278,6 @@ export default function GeneralSettingsPage() {
  * A reusable component for a single setting row in the ERP style.
  */
 function SettingRow({ icon, title, description, children }: { icon: React.ReactNode, title: string, description: string, children: React.ReactNode }) {
-  const { dir } = useTranslation();
   return (
     <div className="p-5 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
       <div className="flex items-center gap-4 text-right rtl:text-right ltr:text-left">
@@ -290,7 +289,7 @@ function SettingRow({ icon, title, description, children }: { icon: React.ReactN
           <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold">{description}</p>
         </div>
       </div>
-      <div className={cn("shrink-0", dir === 'rtl' ? "mr-4" : "ml-4")}>
+      <div className="shrink-0 ms-6">
         {children}
       </div>
     </div>
