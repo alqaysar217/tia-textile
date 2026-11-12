@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useCallback, useRef } from 'react';
@@ -31,7 +32,18 @@ import {
   UploadCloud,
   RefreshCcw,
   User as UserIcon,
-  Image as ImageIcon
+  Image as ImageIcon,
+  CheckCircle2,
+  Settings as SettingsIcon,
+  Workflow,
+  ShoppingBag,
+  Layers,
+  FileInput,
+  FileOutput,
+  HandCoins,
+  Receipt,
+  FileBarChart,
+  LayoutDashboard
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -81,19 +93,19 @@ import { Badge } from '@/components/ui/badge';
 
 // تعريف الوحدات البرمجية للصلاحيات
 const SYSTEM_MODULES = [
-  { id: 'dashboard', labelAr: 'لوحة التحكم والإحصائيات', labelEn: 'Dashboard & Analytics' },
-  { id: 'orders', labelAr: 'أوامر الإنتاج (WIP)', labelEn: 'Production Orders' },
-  { id: 'products', labelAr: 'كتالوج المنتجات', labelEn: 'Products Catalog' },
-  { id: 'materials', labelAr: 'المخزون والمواد الخام', labelEn: 'Inventory & Raw Materials' },
-  { id: 'vouchers_issue', labelAr: 'سندات صرف المواد', labelEn: 'Material Issue' },
-  { id: 'vouchers_receipt', labelAr: 'سندات استلام الإنتاج', labelEn: 'Production Receipts' },
-  { id: 'vouchers_return', labelAr: 'سندات المرتجع المخزني', labelEn: 'Material Returns' },
-  { id: 'wages', labelAr: 'صرف الأجور والمالية', labelEn: 'Wages & Payroll' },
-  { id: 'overhead', labelAr: 'المصاريف التشغيلية', labelEn: 'Overhead Costs' },
-  { id: 'workers', labelAr: 'إدارة العمال والأقسام', labelEn: 'Workers & Departments' },
-  { id: 'reports', labelAr: 'التقارير التحليلية', labelEn: 'System Reports' },
-  { id: 'settings', labelAr: 'إعدادات النظام', labelEn: 'System Settings' },
-  { id: 'trash', labelAr: 'سلة المهملات والأرشفة', labelEn: 'Smart Trash' },
+  { id: 'dashboard', labelAr: 'لوحة التحكم والإحصائيات', labelEn: 'Dashboard', icon: <LayoutDashboard className="w-3.5 h-3.5" /> },
+  { id: 'orders', labelAr: 'أوامر الإنتاج (WIP)', labelEn: 'Production Orders', icon: <Workflow className="w-3.5 h-3.5" /> },
+  { id: 'products', labelAr: 'كتالوج المنتجات', labelEn: 'Products Catalog', icon: <ShoppingBag className="w-3.5 h-3.5" /> },
+  { id: 'materials', labelAr: 'المخزون والمواد الخام', labelEn: 'Inventory', icon: <Layers className="w-3.5 h-3.5" /> },
+  { id: 'vouchers_issue', labelAr: 'سندات صرف المواد', labelEn: 'Material Issue', icon: <FileInput className="w-3.5 h-3.5" /> },
+  { id: 'vouchers_receipt', labelAr: 'سندات استلام الإنتاج', labelEn: 'Production Receipts', icon: <FileOutput className="w-3.5 h-3.5" /> },
+  { id: 'vouchers_return', labelAr: 'سندات المرتجع المخزني', labelEn: 'Material Returns', icon: <RefreshCcw className="w-3.5 h-3.5" /> },
+  { id: 'wages', labelAr: 'صرف الأجور والمالية', labelEn: 'Wages', icon: <HandCoins className="w-3.5 h-3.5" /> },
+  { id: 'overhead', labelAr: 'المصاريف التشغيلية', labelEn: 'Overhead Costs', icon: <Receipt className="w-3.5 h-3.5" /> },
+  { id: 'workers', labelAr: 'إدارة العمال والأقسام', labelEn: 'Workforce', icon: <Users className="w-3.5 h-3.5" /> },
+  { id: 'reports', labelAr: 'التقارير التحليلية', labelEn: 'Reports', icon: <FileBarChart className="w-3.5 h-3.5" /> },
+  { id: 'settings', labelAr: 'إعدادات النظام', labelEn: 'Settings', icon: <SettingsIcon className="w-3.5 h-3.5" /> },
+  { id: 'trash', labelAr: 'سلة المهملات والأرشفة', labelEn: 'Trash', icon: <Trash2 className="w-3.5 h-3.5" /> },
 ];
 
 export default function UsersPermissionsPage() {
@@ -109,7 +121,14 @@ export default function UsersPermissionsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCompressing, setIsCompressing] = useState(false);
 
-  // حالة النموذج
+  const initPermissions = () => {
+    const perms: any = {};
+    SYSTEM_MODULES.forEach(m => {
+      perms[m.id] = { read: false, create: false, edit: false, delete: false };
+    });
+    return perms;
+  };
+
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -117,17 +136,8 @@ export default function UsersPermissionsPage() {
     photoUrl: '',
     role: 'staff',
     active: true,
-    permissions: {} as Record<string, { read: boolean; create: boolean; edit: boolean; delete: boolean }>
+    permissions: initPermissions() as Record<string, { read: boolean; create: boolean; edit: boolean; delete: boolean }>
   });
-
-  // تهيئة الصلاحيات الافتراضية
-  const initPermissions = () => {
-    const perms: any = {};
-    SYSTEM_MODULES.forEach(m => {
-      perms[m.id] = { read: true, create: false, edit: false, delete: false };
-    });
-    return perms;
-  };
 
   const usersQuery = useMemo(() => !db ? null : collection(db, 'users'), [db]);
   const { data: users, loading: usersLoading } = useCollection<any>(usersQuery);
@@ -207,6 +217,32 @@ export default function UsersPermissionsPage() {
     }));
   };
 
+  const handleToggleRow = (moduleId: string, checked: boolean) => {
+    setFormData(prev => ({
+      ...prev,
+      permissions: {
+        ...prev.permissions,
+        [moduleId]: { read: checked, create: checked, edit: checked, delete: checked }
+      }
+    }));
+  };
+
+  const handleToggleColumn = (type: 'read' | 'create' | 'edit' | 'delete', checked: boolean) => {
+    const newPerms = { ...formData.permissions };
+    SYSTEM_MODULES.forEach(m => {
+      newPerms[m.id] = { ...newPerms[m.id], [type]: checked };
+    });
+    setFormData(prev => ({ ...prev, permissions: newPerms }));
+  };
+
+  const handleToggleAll = (checked: boolean) => {
+    const newPerms: any = {};
+    SYSTEM_MODULES.forEach(m => {
+      newPerms[m.id] = { read: checked, create: checked, edit: checked, delete: checked };
+    });
+    setFormData(prev => ({ ...prev, permissions: newPerms }));
+  };
+
   const handleSaveUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!db || isSubmitting || isCompressing) return;
@@ -220,7 +256,7 @@ export default function UsersPermissionsPage() {
 
       if (editingUserId) {
         await updateDoc(doc(db, 'users', editingUserId), userData);
-        toast({ title: isRtl ? "تم تحديث الصلاحيات بنجاح" : "Permissions Updated" });
+        toast({ title: isRtl ? "تم تحديث الحساب بنجاح" : "Account Updated" });
       } else {
         await addDoc(collection(db, 'users'), {
           ...userData,
@@ -231,7 +267,7 @@ export default function UsersPermissionsPage() {
       resetForm();
     } catch (err) {
       console.error(err);
-      toast({ variant: "destructive", title: "Internal Security Error" });
+      toast({ variant: "destructive", title: "Security Error" });
     } finally {
       setIsSubmitting(false);
     }
@@ -356,7 +392,7 @@ export default function UsersPermissionsPage() {
 
       {/* ADD/EDIT USER DIALOG */}
       <Dialog open={isAddDialogOpen} onOpenChange={(open) => !open && resetForm()}>
-        <DialogContent className="sm:max-w-[850px] rounded-[1.5rem] p-0 overflow-hidden border-none shadow-2xl dark:bg-slate-900">
+        <DialogContent className="sm:max-w-[950px] rounded-[1.5rem] p-0 overflow-hidden border-none shadow-2xl dark:bg-slate-900">
           <div className="premium-gradient p-6 text-white relative">
              <div className="absolute top-0 right-0 p-4 opacity-5"><ShieldCheck className="w-32 h-32 text-white" /></div>
              <DialogHeader className={cn("text-right rtl:text-right ltr:text-left relative z-10")}>
@@ -400,26 +436,38 @@ export default function UsersPermissionsPage() {
                       {/* BASIC CREDENTIALS */}
                       <div className="flex-1 space-y-6 w-full">
                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-1.5 text-right">
-                               <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500">{isRtl ? 'الاسم الكامل' : 'FULL NAME'}</Label>
+                            <div className="space-y-2 text-right">
+                               <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start">
+                                 <UserIcon className="w-3 h-3 text-emerald-600" />
+                                 {isRtl ? 'الاسم الكامل' : 'FULL NAME'}
+                               </Label>
                                <Input value={formData.fullName} onChange={(e) => setFormData({...formData, fullName: e.target.value})} className="h-11 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 font-bold text-xs dark:text-slate-100" placeholder={isRtl ? "اسم المستخدم الحقيقي" : "Legal Full Name"} required />
                             </div>
-                            <div className="space-y-1.5 text-right">
-                               <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500">{isRtl ? 'البريد الإلكتروني (اسم المستخدم)' : 'EMAIL / USERNAME'}</Label>
+                            <div className="space-y-2 text-right">
+                               <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start">
+                                 <Mail className="w-3 h-3 text-emerald-600" />
+                                 {isRtl ? 'البريد الإلكتروني' : 'EMAIL / USERNAME'}
+                               </Label>
                                <Input type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="h-11 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 font-bold text-xs dark:text-slate-100" placeholder="name@association.com" required />
                             </div>
                          </div>
 
                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-1.5 text-right">
-                               <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500">{isRtl ? 'كلمة المرور' : 'PASSWORD'}</Label>
+                            <div className="space-y-2 text-right">
+                               <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start">
+                                 <Key className="w-3 h-3 text-emerald-600" />
+                                 {isRtl ? 'كلمة المرور' : 'PASSWORD'}
+                               </Label>
                                <div className="relative">
                                   <Input type="password" value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} className="h-11 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 font-bold text-xs dark:text-slate-100" placeholder="••••••••" required={!editingUserId} />
                                   <Lock className="absolute top-1/2 -translate-y-1/2 left-3 w-4 h-4 text-slate-300" />
                                </div>
                             </div>
-                            <div className="space-y-1.5 text-right">
-                               <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500">{isRtl ? 'الدور الوظيفي الأساسي' : 'ASSIGNED ROLE'}</Label>
+                            <div className="space-y-2 text-right">
+                               <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start">
+                                 <Briefcase className="w-3 h-3 text-emerald-600" />
+                                 {isRtl ? 'الدور الوظيفي الأساسي' : 'ASSIGNED ROLE'}
+                               </Label>
                                <select value={formData.role} onChange={(e) => setFormData({...formData, role: e.target.value})} className="w-full h-11 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-bold outline-none dark:text-slate-100" dir={dir}>
                                   <option value="staff">{isRtl ? 'موظف تشغيل' : 'Staff'}</option>
                                   <option value="manager">{isRtl ? 'مدير قسم' : 'Manager'}</option>
@@ -437,8 +485,14 @@ export default function UsersPermissionsPage() {
                             <Shield className="w-4 h-4 text-emerald-600" />
                             {isRtl ? 'شبكة صلاحيات الواجهات والعمليات' : 'Interface & CRUD Matrix'}
                          </h3>
-                         <div className="flex items-center gap-2 px-3 py-1 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 rounded-lg text-[9px] font-black uppercase">
-                            <Info className="w-3 h-3" /> {isRtl ? 'تطبق التغييرات لحظياً عند حفظ البيانات' : 'Changes apply on next save'}
+                         <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900/20 px-3 py-1.5 rounded-lg border border-emerald-100 dark:border-emerald-800">
+                               <Checkbox id="selectAll" onCheckedChange={(val) => handleToggleAll(!!val)} className="data-[state=checked]:bg-emerald-600" />
+                               <label htmlFor="selectAll" className="text-[9px] font-black text-emerald-700 dark:text-emerald-400 cursor-pointer uppercase">{isRtl ? 'تحديد الكل' : 'ALL ACCESS'}</label>
+                            </div>
+                            <div className="flex items-center gap-2 px-3 py-1 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 rounded-lg text-[9px] font-black uppercase">
+                               <Info className="w-3 h-3" /> {isRtl ? 'تطبق التغييرات لحظياً عند الحفظ' : 'Changes apply on next save'}
+                            </div>
                          </div>
                       </div>
 
@@ -446,23 +500,58 @@ export default function UsersPermissionsPage() {
                          <Table className="text-right border-separate border-spacing-0">
                             <TableHeader className="bg-slate-50 dark:bg-slate-800">
                                <TableRow>
-                                  <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", isRtl ? "text-right" : "text-left")}>{isRtl ? 'واجهة النظام' : 'INTERFACE / MODULE'}</TableHead>
-                                  <TableHead className="w-20 text-center font-black text-[10px] text-slate-500 uppercase">{isRtl ? 'دخول/قراءة' : 'READ'}</TableHead>
-                                  <TableHead className="w-20 text-center font-black text-[10px] text-slate-500 uppercase">{isRtl ? 'إضافة' : 'CREATE'}</TableHead>
-                                  <TableHead className="w-20 text-center font-black text-[10px] text-slate-500 uppercase">{isRtl ? 'تعديل' : 'EDIT'}</TableHead>
-                                  <TableHead className="w-20 text-center font-black text-[10px] text-slate-500 uppercase">{isRtl ? 'حذف' : 'DELETE'}</TableHead>
+                                  <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", isRtl ? "text-right" : "text-left")}>
+                                     {isRtl ? 'واجهة النظام' : 'INTERFACE / MODULE'}
+                                  </TableHead>
+                                  <TableHead className="w-24 text-center">
+                                     <div className="flex flex-col items-center gap-1.5 py-1">
+                                        <Checkbox onCheckedChange={(val) => handleToggleColumn('read', !!val)} className="data-[state=checked]:bg-blue-600" />
+                                        <span className="text-[9px] font-black text-blue-600 uppercase">{isRtl ? 'دخول' : 'READ'}</span>
+                                     </div>
+                                  </TableHead>
+                                  <TableHead className="w-24 text-center">
+                                     <div className="flex flex-col items-center gap-1.5 py-1">
+                                        <Checkbox onCheckedChange={(val) => handleToggleColumn('create', !!val)} className="data-[state=checked]:bg-emerald-600" />
+                                        <span className="text-[9px] font-black text-emerald-600 uppercase">{isRtl ? 'إضافة' : 'CREATE'}</span>
+                                     </div>
+                                  </TableHead>
+                                  <TableHead className="w-24 text-center">
+                                     <div className="flex flex-col items-center gap-1.5 py-1">
+                                        <Checkbox onCheckedChange={(val) => handleToggleColumn('edit', !!val)} className="data-[state=checked]:bg-amber-600" />
+                                        <span className="text-[9px] font-black text-amber-600 uppercase">{isRtl ? 'تعديل' : 'EDIT'}</span>
+                                     </div>
+                                  </TableHead>
+                                  <TableHead className="w-24 text-center">
+                                     <div className="flex flex-col items-center gap-1.5 py-1">
+                                        <Checkbox onCheckedChange={(val) => handleToggleColumn('delete', !!val)} className="data-[state=checked]:bg-rose-600" />
+                                        <span className="text-[9px] font-black text-rose-600 uppercase">{isRtl ? 'حذف' : 'DELETE'}</span>
+                                     </div>
+                                  </TableHead>
                                </TableRow>
                             </TableHeader>
                             <TableBody>
                                {SYSTEM_MODULES.map(module => {
                                   const perms = formData.permissions[module.id] || { read: false, create: false, edit: false, delete: false };
+                                  const isRowFull = perms.read && perms.create && perms.edit && perms.delete;
                                   
                                   return (
                                     <TableRow key={module.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 border-b border-slate-50 dark:border-slate-800 transition-colors">
                                        <TableCell className={cn("px-6 py-3 font-bold text-xs dark:text-slate-200", isRtl ? "text-right" : "text-left")}>
-                                          <div className="flex flex-col">
-                                             <span>{isRtl ? module.labelAr : module.labelEn}</span>
-                                             <span className="text-[9px] text-slate-400 font-bold uppercase tabular-nums">{module.id}</span>
+                                          <div className="flex items-center gap-4">
+                                             <Checkbox 
+                                               checked={isRowFull} 
+                                               onCheckedChange={(val) => handleToggleRow(module.id, !!val)} 
+                                               className="data-[state=checked]:bg-slate-900" 
+                                             />
+                                             <div className="flex items-center gap-3">
+                                                <div className="p-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-400 group-hover:text-emerald-500 transition-colors">
+                                                   {module.icon}
+                                                </div>
+                                                <div className="flex flex-col">
+                                                   <span className="font-black text-slate-800 dark:text-slate-100">{isRtl ? module.labelAr : module.labelEn}</span>
+                                                   <span className="text-[9px] text-slate-400 font-bold uppercase tabular-nums">{module.id}</span>
+                                                </div>
+                                             </div>
                                           </div>
                                        </TableCell>
                                        <TableCell className="text-center">
