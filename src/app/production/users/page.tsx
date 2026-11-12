@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useCallback, useRef } from 'react';
@@ -184,7 +183,7 @@ export default function UsersPermissionsPage() {
         const MAX_SIZE = 200;
         let width = img.width, height = img.height;
         if (width > height) { if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; } }
-        else { if (height > MAX_SIZE) { width *= MAX_SIZE / h; height = MAX_SIZE; } }
+        else { if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; } }
         canvas.width = width; canvas.height = height;
         const ctx = canvas.getContext('2d');
         ctx?.drawImage(img, 0, 0, width, height);
@@ -256,7 +255,7 @@ export default function UsersPermissionsPage() {
     try {
       let uid = editingUserId;
       
-      // Clean inputs
+      // CRITICAL FIX: Trim email and password to avoid invisible character errors
       const cleanEmail = formData.email.trim();
       const cleanPassword = formData.password.trim();
 
@@ -526,9 +525,6 @@ export default function UsersPermissionsPage() {
                                <Checkbox id="selectAll" onCheckedChange={(val) => handleToggleAll(!!val)} className="data-[state=checked]:bg-emerald-600" />
                                <label htmlFor="selectAll" className="text-[9px] font-black text-emerald-700 dark:text-emerald-400 cursor-pointer uppercase">{isRtl ? 'تحديد الكل' : 'ALL ACCESS'}</label>
                             </div>
-                            <div className="flex items-center gap-2 px-3 py-1 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 rounded-lg text-[9px] font-black uppercase">
-                               <Info className="w-3 h-3" /> {isRtl ? 'تطبق التغييرات لحظياً عند الحفظ' : 'Changes apply on next save'}
-                            </div>
                          </div>
                       </div>
 
@@ -648,16 +644,6 @@ export default function UsersPermissionsPage() {
            </div>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* FOOTER AUDIT NOTE */}
-      <div className="flex-none p-3 bg-slate-900 dark:bg-slate-900/90 text-white/30 dark:text-slate-500 flex items-center justify-center gap-4 border-t border-white/5 transition-colors duration-300">
-         <ShieldCheck className="w-4 h-4 text-emerald-500" />
-         <p className="text-[10px] font-bold tracking-tight">
-           {isRtl 
-             ? 'بروتوكول أمن المعلومات: يتم تسجيل كافة التغييرات في سجل التدقيق الأمني (Security Audit Log).' 
-             : 'Security Protocol: All ACL changes are logged for auditing.'}
-         </p>
-      </div>
 
     </div>
   );

@@ -170,7 +170,6 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
         </ScrollArea>
 
         <div className="p-6 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 shrink-0 transition-colors duration-300">
-           {/* SCROLLABLE QUICK ACTIONS */}
            <div className="flex gap-2 overflow-x-auto no-scrollbar mb-4 pb-2 scroll-smooth">
               {quickActions.map((action, i) => (
                 <Button 
@@ -209,11 +208,6 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
                 <Send className={cn("w-4 h-4", isRtl ? "rotate-[180deg]" : "")} />
               </Button>
            </form>
-           
-           <div className="mt-4 flex items-center justify-center gap-2 opacity-30 text-[8px] font-black uppercase tracking-[0.3em] dark:text-slate-500">
-              <History className="w-3 h-3" />
-              TIA Executive Core • Live Audit Active
-           </div>
         </div>
       </SheetContent>
     </Sheet>

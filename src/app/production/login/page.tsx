@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -9,7 +8,7 @@ import { useTranslation } from '@/components/LanguageProvider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Lock, Mail, Globe, AlertCircle, LogIn, ShieldCheck, Timer } from 'lucide-react';
+import { Lock, Mail, Globe, AlertCircle, LogIn, ShieldCheck, Timer, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function LoginPage() {
@@ -31,10 +30,14 @@ export default function LoginPage() {
   useEffect(() => {
     const saved = localStorage.getItem('prod_login_attempts');
     if (saved) {
-      const { count, until } = JSON.parse(saved);
-      setFailedAttempts(count);
-      if (until && until > Date.now()) {
-        setLockoutUntil(until);
+      try {
+        const { count, until } = JSON.parse(saved);
+        setFailedAttempts(count);
+        if (until && until > Date.now()) {
+          setLockoutUntil(until);
+        }
+      } catch (e) {
+        console.error("Failed to parse login attempts", e);
       }
     }
   }, []);
@@ -70,8 +73,11 @@ export default function LoginPage() {
     setError('');
     
     try {
-      // CRITICAL FIX: Trim email and password to avoid invisible character errors
-      await signInWithEmailAndPassword(auth, email.trim(), password.trim());
+      // CRITICAL FIX: Trim email and password to avoid invisible character errors (auth/invalid-credential)
+      const cleanEmail = email.trim();
+      const cleanPassword = password.trim();
+
+      await signInWithEmailAndPassword(auth, cleanEmail, cleanPassword);
       
       // SUCCESS: Clear attempts
       setFailedAttempts(0);
@@ -136,21 +142,12 @@ export default function LoginPage() {
       <div className="fixed -top-[10%] -right-[10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px] animate-pulse" />
       <div className="fixed -bottom-[10%] -left-[10%] w-[40%] h-[40%] bg-secondary/5 rounded-full blur-[120px]" />
 
-      {/* Textile-inspired technical lines */}
-      <div className="fixed inset-0 opacity-[0.02] pointer-events-none" 
-        style={{ 
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M54.826 10.531c-.347.026-.642.239-.773.532L53.11 13H50v2h2.247l1.053-2.106c.038-.076.126-.145.247-.145.121 0 .209.069.247.145L54.753 15H57v-2h-3.11l-.943-1.937c-.131-.293-.426-.506-.773-.532zM5.174 10.531c-.347.026-.642.239-.773.532L3.457 13H1v2h2.247l1.053-2.106c.038-.076.126-.145.247-.145.121 0 .209.069.247.145L5.753 15H8v-2h-3.11l-.943-1.937c-.131-.293-.426-.506-.773-.532zM30 55a5 5 0 1 0 0-10 5 5 0 0 0 0 10zm0-2a3 3 0 1 1 0-6 3 3 0 0 1 0 6z' fill='%23065F34' fill-opacity='1' fill-rule='evenodd'/%3E%3C/svg%3E")`,
-        }} 
-      />
-
       <div className="w-full max-w-[460px] animate-in fade-in zoom-in-95 duration-1000 relative z-10">
         {/* Main Login Card */}
         <div className="bg-white/80 backdrop-blur-xl border border-white rounded-2xl shadow-[0_40px_80px_rgba(0,0,0,0.08)] relative overflow-hidden">
-          {/* Top Decorative Gradient Line */}
           <div className="h-1.5 w-full bg-gradient-to-r from-primary via-[#0a7a44] to-secondary" />
           
           <div className="p-8 md:p-12 relative z-10">
-            {/* Branding Section Inside the Card */}
             <div className="flex flex-col items-center text-center space-y-4 mb-10">
               <div className="w-20 h-20 bg-white rounded-xl flex items-center justify-center shadow-lg border border-gray-50 p-2 group hover:scale-105 transition-transform duration-500">
                 <img src="/images/logo.png" alt="Logo" className="w-full h-full object-contain" />
@@ -188,50 +185,40 @@ export default function LoginPage() {
                 </Alert>
               )}
 
-              {/* Email Field */}
               <div className="space-y-2.5">
                 <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2 ps-1">
                   <Mail className="w-3.5 h-3.5 text-primary/60" />
                   {lang === 'ar' ? 'البريد الإلكتروني' : 'Staff Email'}
                 </Label>
-                <div className="relative">
-                  <Input 
-                    type="email" 
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="name@association.com" 
-                    required
-                    disabled={timeLeft > 0 || loading}
-                    className="h-12 rounded-xl bg-gray-50/50 border-gray-100 focus:bg-white focus:ring-primary/5 focus:border-primary/30 transition-all text-sm font-bold placeholder:text-gray-300 disabled:opacity-50"
-                  />
-                </div>
+                <Input 
+                  type="email" 
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="name@association.com" 
+                  required
+                  disabled={timeLeft > 0 || loading}
+                  className="h-12 rounded-xl bg-gray-50/50 border-gray-100 focus:bg-white focus:ring-primary/5 focus:border-primary/30 transition-all text-sm font-bold placeholder:text-gray-300 disabled:opacity-50"
+                />
               </div>
 
-              {/* Password Field */}
               <div className="space-y-2.5">
                 <div className="flex justify-between items-center px-1">
                   <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
                     <Lock className="w-3.5 h-3.5 text-primary/60" />
                     {lang === 'ar' ? 'كلمة المرور' : 'Secure Password'}
                   </Label>
-                  <button type="button" className="text-[9px] font-black text-primary/40 hover:text-primary transition-colors uppercase">
-                    {lang === 'ar' ? 'نسيت؟' : 'Forgot?'}
-                  </button>
                 </div>
-                <div className="relative">
-                  <Input 
-                    type="password" 
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••" 
-                    required
-                    disabled={timeLeft > 0 || loading}
-                    className="h-12 rounded-xl bg-gray-50/50 border-gray-100 focus:bg-white focus:ring-primary/5 focus:border-primary/30 transition-all text-sm font-bold placeholder:text-gray-300 disabled:opacity-50"
-                  />
-                </div>
+                <Input 
+                  type="password" 
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••" 
+                  required
+                  disabled={timeLeft > 0 || loading}
+                  className="h-12 rounded-xl bg-gray-50/50 border-gray-100 focus:bg-white focus:ring-primary/5 focus:border-primary/30 transition-all text-sm font-bold placeholder:text-gray-300 disabled:opacity-50"
+                />
               </div>
 
-              {/* Submit Button with Gradient */}
               <div className="pt-2">
                 <Button 
                   type="submit" 
@@ -240,7 +227,7 @@ export default function LoginPage() {
                 >
                   {loading ? (
                     <span className="flex items-center gap-2 animate-pulse">
-                      <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                      <Loader2 className="w-4 h-4 animate-spin" />
                       {lang === 'ar' ? 'جاري التحقق...' : 'Verifying...'}
                     </span>
                   ) : (
@@ -253,10 +240,8 @@ export default function LoginPage() {
               </div>
             </form>
 
-            {/* Security Indicator */}
             <div className="mt-10 pt-6 border-t border-gray-50 flex items-center justify-center gap-2.5">
               <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <ShieldCheck className="w-4 h-4 text-emerald-500/50" />
               <span className="text-[9px] font-black text-gray-300 uppercase tracking-widest">
                 {lang === 'ar' ? 'اتصال محمي ومشفر' : 'Secure Encrypted Session'}
               </span>
@@ -264,7 +249,6 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Footer Actions Outside Card */}
         <div className="flex flex-col items-center gap-6 mt-8">
           <Button 
             variant="ghost" 
@@ -279,9 +263,6 @@ export default function LoginPage() {
           <div className="text-center space-y-1.5 opacity-40">
             <p className="text-[9px] font-black text-gray-400 uppercase tracking-[0.4em]">
               © 2027 PRODUCTION MANAGEMENT SYSTEM
-            </p>
-            <p className="text-[8px] font-bold text-primary uppercase tracking-[0.2em]">
-              {lang === 'ar' ? 'وحدة تكنولوجيا المعلومات' : 'IT Department - Al-Rawdah'}
             </p>
           </div>
         </div>
