@@ -94,7 +94,7 @@ export default function OverheadCostsPage() {
   const db = useFirestore();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // استيراد الصلاحيات
+  // استيراد الصلاحيات من المحرك المركزي
   const { permissions, isAdmin } = useProduction();
   const canCreate = isAdmin || permissions.overhead?.create;
   const canEdit = isAdmin || permissions.overhead?.edit;
@@ -227,7 +227,7 @@ export default function OverheadCostsPage() {
     e.preventDefault();
     if (!db || isSubmitting || !formData.recipient || !formData.description || formData.totalAmount <= 0) return;
 
-    // حماية الصلاحيات برمجياً
+    // حماية برمجية للصلاحيات
     if (editingVoucherId && !canEdit) {
       toast({ variant: "destructive", title: isRtl ? "غير مسموح بالتعديل" : "Permission Denied" });
       return;

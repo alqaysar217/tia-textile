@@ -689,7 +689,7 @@ export default function PayrollManagementPage() {
                 <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 block">TOTAL DISBURSEMENT</Label>
                 <div className="relative">
                   <Input type="number" step="any" value={formData.amount || ''} onChange={(e) => setFormData(prev => ({...prev, amount: Number(e.target.value)}))} className="h-14 font-black text-2xl text-center tabular-nums bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-900/30 text-emerald-700 dark:text-emerald-400" required />
-                  <div className={cn("absolute top-1/2 -translate-y-1/2", isRtl ? "left-4" : "right-4")}><div className="h-9 px-3 bg-white dark:bg-slate-800 border border-emerald-100 dark:border-slate-700 rounded-lg flex items-center justify-center text-xs font-black dark:text-slate-100">{formData.currency}</div></div>
+                  <div className={cn("absolute top-1/2 -translate-y-1/2", isRtl ? "left-4" : "right-4")}><div className="h-9 px-3 bg-white dark:bg-slate-900 border border-emerald-100 dark:border-slate-700 rounded-lg flex items-center justify-center text-xs font-black dark:text-slate-100">{formData.currency}</div></div>
                 </div>
               </div>
               <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}><Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 block">BATCH COUNT</Label><div className="h-14 flex items-center justify-center bg-slate-900 dark:bg-slate-800 text-white rounded-lg font-black text-xl tabular-nums border border-slate-700 shadow-inner">{formData.linkedReceipts.length}</div></div>
@@ -700,7 +700,7 @@ export default function PayrollManagementPage() {
                 {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin me-2" /> : <Save className="w-5 h-4 me-2" />}
                 {isRtl ? (editingVoucherId ? 'حفظ التعديلات' : 'تأكيد الترحيل المالي') : 'Confirm & Post Payment'}
               </Button>
-              <Button type="button" variant="outline" onClick={resetDialog} className="px-8 h-14 font-black text-slate-400 dark:text-slate-500 rounded-lg border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800">Cancel</Button>
+              <Button type="button" variant="outline" onClick={resetDialog} className="px-8 h-14 font-black text-slate-400 dark:text-slate-500 rounded-lg border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800">Cancel</Button>
             </div>
           </form>
         </DialogContent>
@@ -711,7 +711,6 @@ export default function PayrollManagementPage() {
         <DialogContent className="sm:max-w-[850px] p-0 overflow-hidden border-none bg-white shadow-2xl">
           <DialogHeader className="sr-only"><DialogTitle>سند صرف مالي</DialogTitle></DialogHeader>
           <ScrollArea className="max-h-[85vh]">
-            {/* FORCED LIGHT MODE FOR VOUCHER */}
             <div className="p-12 bg-white text-slate-900 relative z-0 light" id="printable-payment">
                {printingVoucher && (
                 <VoucherTemplate 
