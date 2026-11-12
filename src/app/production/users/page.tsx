@@ -84,9 +84,10 @@ import {
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, addDoc, updateDoc, doc, serverTimestamp, query, where } from 'firebase/firestore';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
+import { collection, setDoc, updateDoc, doc, serverTimestamp, query, where } from 'firebase/firestore';
+import { initializeApp, deleteApp } from 'firebase/app';
+import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
+import { firebaseConfig } from '@/firebase/config';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -147,8 +148,8 @@ export default function UsersPermissionsPage() {
   const filteredUsers = useMemo(() => {
     if (!users) return [];
     return users.filter(u => 
-      u.fullName?.toLowerCase().includes(search.toLowerCase()) || 
-      u.email?.toLowerCase().includes(search.toLowerCase())
+      (u.fullName || '').toLowerCase().includes(search.toLowerCase()) || 
+      (u.email || '').toLowerCase().includes(search.toLowerCase())
     ).sort((a, b) => (a.fullName || '').localeCompare(b.fullName || ''));
   }, [users, search]);
 
@@ -250,27 +251,55 @@ export default function UsersPermissionsPage() {
     if (!db || isSubmitting || isCompressing) return;
 
     setIsSubmitting(true);
+    let tempApp = null;
     try {
+      let uid = editingUserId;
+
+      // 1. إذا كان مستخدم جديد، أنشئ له حساب في Firebase Auth أولاً
+      if (!editingUserId) {
+        const tempAppName = `temp-auth-${Date.now()}`;
+        tempApp = initializeApp(firebaseConfig, tempAppName);
+        const tempAuth = getAuth(tempApp);
+        
+        try {
+          const authResult = await createUserWithEmailAndPassword(tempAuth, formData.email, formData.password);
+          uid = authResult.user.uid;
+        } catch (authErr: any) {
+          if (authErr.code === 'auth/email-already-in-use') {
+            toast({ variant: "destructive", title: isRtl ? "البريد مستخدم بالفعل" : "Email already exists" });
+            setIsSubmitting(false);
+            return;
+          }
+          throw authErr;
+        }
+      }
+
+      if (!uid) throw new Error("Could not determine UID");
+
+      // 2. احفظ البيانات والصلاحيات في Firestore باستخدام الـ UID كمعرف للمستند
       const userData = {
-        ...formData,
+        fullName: formData.fullName,
+        email: formData.email,
+        password: formData.password, // للمرجعية فقط في النموذج
+        photoUrl: formData.photoUrl,
+        role: formData.role,
+        active: formData.active,
+        permissions: formData.permissions,
         updatedAt: serverTimestamp()
       };
 
-      if (editingUserId) {
-        await updateDoc(doc(db, 'users', editingUserId), userData);
-        toast({ title: isRtl ? "تم تحديث الحساب بنجاح" : "Account Updated" });
-      } else {
-        await addDoc(collection(db, 'users'), {
-          ...userData,
-          createdAt: serverTimestamp()
-        });
-        toast({ title: isRtl ? "تم إنشاء الحساب بنجاح" : "Account Provisioned" });
-      }
+      await setDoc(doc(db, 'users', uid), {
+        ...userData,
+        createdAt: editingUserId ? (users?.find(u => u.id === uid)?.createdAt || serverTimestamp()) : serverTimestamp()
+      }, { merge: true });
+
+      toast({ title: isRtl ? "تم تفعيل الحساب والصلاحيات بنجاح" : "Account Provisioned Successfully" });
       resetForm();
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      toast({ variant: "destructive", title: "Security Error" });
+      toast({ variant: "destructive", title: isRtl ? "خطأ في معالجة الحساب" : "System Error" });
     } finally {
+      if (tempApp) await deleteApp(tempApp);
       setIsSubmitting(false);
     }
   };

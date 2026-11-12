@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
@@ -40,80 +40,114 @@ import {
 } from '@/components/ui/collapsible';
 import { useTranslation } from '@/components/LanguageProvider';
 import { useSidebar } from '@/components/ui/sidebar';
+import { useUser, useFirestore, useDoc } from '@/firebase';
+import { doc } from 'firebase/firestore';
 
 type NavItem = {
+  id: string;
   name: string;
   icon: React.ReactNode;
-  children?: { name: string; href: string; icon: React.ReactNode }[];
+  children?: { id: string; name: string; href: string; icon: React.ReactNode }[];
 };
 
 export function Sidebar() {
   const pathname = usePathname();
   const { lang, t, dir } = useTranslation();
   const { state } = useSidebar();
+  const { user } = useUser();
+  const db = useFirestore();
+
+  // جلب صلاحيات المستخدم الحالي من Firestore
+  const userDocRef = useMemo(() => (!db || !user) ? null : doc(db, 'users', user.uid), [db, user]);
+  const { data: userProfile } = useDoc<any>(userDocRef);
+
+  const permissions = useMemo(() => userProfile?.permissions || {}, [userProfile]);
 
   const navigation: NavItem[] = [
     {
+      id: 'dashboard',
       name: t.production.dashboard,
       icon: <LayoutDashboard className="w-5 h-5" />,
-      children: [{ name: t.production.dashboard, href: '/production', icon: <LayoutDashboard className="w-3.5 h-3.5" /> }]
+      children: [{ id: 'dashboard', name: t.production.dashboard, href: '/production', icon: <LayoutDashboard className="w-3.5 h-3.5" /> }]
     },
     {
+      id: 'production',
       name: t.production.production,
       icon: <Factory className="w-5 h-5" />,
       children: [
-        { name: lang === 'ar' ? 'أوامر الإنتاج (WIP)' : 'Production Orders', href: '/production/orders', icon: <Workflow className="w-3.5 h-3.5" /> },
-        { name: lang === 'ar' ? 'الأوامر المكتملة' : 'Completed Orders', href: '/production/orders/completed', icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
-        { name: lang === 'ar' ? 'دليل المنتجات' : 'Products Catalog', href: '/production/products', icon: <ShoppingBag className="w-3.5 h-3.5" /> },
+        { id: 'orders', name: lang === 'ar' ? 'أوامر الإنتاج (WIP)' : 'Production Orders', href: '/production/orders', icon: <Workflow className="w-3.5 h-3.5" /> },
+        { id: 'orders', name: lang === 'ar' ? 'الأوامر المكتملة' : 'Completed Orders', href: '/production/orders/completed', icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
+        { id: 'products', name: lang === 'ar' ? 'دليل المنتجات' : 'Products Catalog', href: '/production/products', icon: <ShoppingBag className="w-3.5 h-3.5" /> },
       ]
     },
     {
+      id: 'vouchers',
       name: t.production.vouchers,
       icon: <FileText className="w-5 h-5" />,
       children: [
-        { name: lang === 'ar' ? 'سندات صرف مواد' : 'Material Issue', href: '/production/vouchers/issue', icon: <FileInput className="w-3.5 h-3.5" /> },
-        { name: lang === 'ar' ? 'سندات استلام انتاج' : 'Production Receipt', href: '/production/vouchers/receipt', icon: <FileOutput className="w-3.5 h-3.5" /> },
-        { name: lang === 'ar' ? 'سندات توريد مرتجع' : 'Material Returns', href: '/production/vouchers/return', icon: <RefreshCcw className="w-3.5 h-3.5" /> },
-        { name: lang === 'ar' ? 'سندات صرف الأجور' : 'Wage Payments', href: '/production/wages', icon: <HandCoins className="w-3.5 h-3.5" /> },
-        { name: lang === 'ar' ? 'سند تكاليف أخرى' : 'Other Costs', href: '/production/vouchers/costs', icon: <Receipt className="w-3.5 h-3.5" /> },
+        { id: 'vouchers_issue', name: lang === 'ar' ? 'سندات صرف مواد' : 'Material Issue', href: '/production/vouchers/issue', icon: <FileInput className="w-3.5 h-3.5" /> },
+        { id: 'vouchers_receipt', name: lang === 'ar' ? 'سندات استلام انتاج' : 'Production Receipt', href: '/production/vouchers/receipt', icon: <FileOutput className="w-3.5 h-3.5" /> },
+        { id: 'vouchers_return', name: lang === 'ar' ? 'سندات توريد مرتجع' : 'Material Returns', href: '/production/vouchers/return', icon: <RefreshCcw className="w-3.5 h-3.5" /> },
+        { id: 'wages', name: lang === 'ar' ? 'سندات صرف الأجور' : 'Wage Payments', href: '/production/wages', icon: <HandCoins className="w-3.5 h-3.5" /> },
+        { id: 'overhead', name: lang === 'ar' ? 'سند تكاليف أخرى' : 'Other Costs', href: '/production/vouchers/costs', icon: <Receipt className="w-3.5 h-3.5" /> },
       ]
     },
     {
+      id: 'materials',
       name: t.production.materials,
       icon: <Box className="w-5 h-5" />,
       children: [
-        { name: t.production.rawMaterials, href: '/production/materials', icon: <Layers className="w-3.5 h-3.5" /> },
-        { name: lang === 'ar' ? 'مستودع المنجز الجاهز' : 'Finished Goods Wh', href: '/production/warehouses/finished-goods', icon: <PackageCheck className="w-3.5 h-3.5" /> },
+        { id: 'materials', name: t.production.rawMaterials, href: '/production/materials', icon: <Layers className="w-3.5 h-3.5" /> },
+        { id: 'materials', name: lang === 'ar' ? 'مستودع المنجز الجاهز' : 'Finished Goods Wh', href: '/production/warehouses/finished-goods', icon: <PackageCheck className="w-3.5 h-3.5" /> },
       ]
     },
     {
+      id: 'workers',
       name: t.production.workersAndWages,
       icon: <Users className="w-5 h-5" />,
       children: [
-        { name: t.production.workersList, href: '/production/workers', icon: <Users2 className="w-3.5 h-3.5" /> },
-        { name: t.production.departments, href: '/production/departments', icon: <ShieldCheck className="w-3.5 h-3.5" /> },
+        { id: 'workers', name: t.production.workersList, href: '/production/workers', icon: <Users2 className="w-3.5 h-3.5" /> },
+        { id: 'workers', name: t.production.departments, href: '/production/departments', icon: <ShieldCheck className="w-3.5 h-3.5" /> },
       ]
     },
     {
+      id: 'reports',
       name: lang === 'ar' ? 'التقارير والتحليل' : 'Reports & Analytics',
       icon: <FileBarChart className="w-5 h-5" />,
       children: [
-        { name: lang === 'ar' ? 'إنتاجية وأجور العمال' : 'Worker Performance', href: '/production/reports/productivity', icon: <UserCheck className="w-3.5 h-3.5" /> },
-        { name: lang === 'ar' ? 'تحليل تكاليف الأوامر' : 'Order Cost Analysis', href: '/production/reports/costs', icon: <Calculator className="w-3.5 h-3.5" /> },
-        { name: lang === 'ar' ? 'استهلاك المواد الخام' : 'Material Consumption', href: '/production/reports/materials', icon: <PieChart className="w-3.5 h-3.5" /> },
-        { name: lang === 'ar' ? 'الملخص المالي والنمو' : 'Financial Summary', href: '/production/reports/financial', icon: <TrendingUp className="w-3.5 h-3.5" /> },
+        { id: 'reports', name: lang === 'ar' ? 'إنتاجية وأجور العمال' : 'Worker Performance', href: '/production/reports/productivity', icon: <UserCheck className="w-3.5 h-3.5" /> },
+        { id: 'reports', name: lang === 'ar' ? 'تحليل تكاليف الأوامر' : 'Order Cost Analysis', href: '/production/reports/costs', icon: <Calculator className="w-3.5 h-3.5" /> },
+        { id: 'reports', name: lang === 'ar' ? 'استهلاك المواد الخام' : 'Material Consumption', href: '/production/reports/materials', icon: <PieChart className="w-3.5 h-3.5" /> },
+        { id: 'reports', name: lang === 'ar' ? 'الملخص المالي والنمو' : 'Financial Summary', href: '/production/reports/financial', icon: <TrendingUp className="w-3.5 h-3.5" /> },
       ]
     },
     {
+      id: 'management',
       name: t.production.management,
       icon: <Settings className="w-5 h-5" />,
       children: [
-        { name: lang === 'ar' ? 'المستخدمين والصلاحيات' : 'Users & Permissions', href: '/production/users', icon: <UserCheck className="w-3.5 h-3.5" /> },
-        { name: t.production.settings, href: '/production/settings', icon: <Settings2 className="w-3.5 h-3.5" /> },
-        { name: t.production.trash, href: '/production/trash', icon: <Trash2 className="w-3.5 h-3.5" /> },
+        { id: 'settings', name: lang === 'ar' ? 'المستخدمين والصلاحيات' : 'Users & Permissions', href: '/production/users', icon: <UserCheck className="w-3.5 h-3.5" /> },
+        { id: 'settings', name: t.production.settings, href: '/production/settings', icon: <Settings2 className="w-3.5 h-3.5" /> },
+        { id: 'trash', name: t.production.trash, href: '/production/trash', icon: <Trash2 className="w-3.5 h-3.5" /> },
       ]
     },
   ];
+
+  // فلترة القائمة الجانبية بناءً على صلاحيات القراءة
+  const filteredNavigation = useMemo(() => {
+    if (userProfile?.role === 'admin') return navigation; // الأدمن يرى كل شيء
+
+    return navigation.map(group => {
+      if (!group.children) return group;
+      
+      const visibleChildren = group.children.filter(child => {
+        const modulePerms = permissions[child.id];
+        return modulePerms?.read === true;
+      });
+
+      return { ...group, children: visibleChildren };
+    }).filter(group => (group.children && group.children.length > 0));
+  }, [permissions, userProfile]);
 
   const isCollapsed = state === 'collapsed';
 
@@ -122,7 +156,6 @@ export function Sidebar() {
       "flex flex-col h-full premium-gradient text-white/80 transition-all duration-300 border-l border-white/5 dark:border-slate-800 shadow-2xl relative overflow-hidden",
       isCollapsed ? "w-20" : "w-72"
     )}>
-      {/* Decorative Blur - Dynamic in Dark Mode */}
       <div className="absolute -top-24 -right-24 w-64 h-64 bg-emerald-400/10 dark:bg-emerald-500/5 rounded-full blur-[100px] pointer-events-none" />
       <div className="absolute inset-0 opacity-[0.04] dark:opacity-[0.02] pointer-events-none textile-pattern mix-blend-overlay" />
 
@@ -141,7 +174,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 space-y-2 px-4 overflow-y-auto overflow-x-hidden no-scrollbar relative z-10">
-        {navigation.map((group) => {
+        {filteredNavigation.map((group) => {
           const isGroupActive = group.children?.some(child => pathname === child.href);
           
           return (
