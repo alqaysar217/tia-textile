@@ -191,10 +191,7 @@ export default function MaterialsPage() {
       });
     }
 
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.map(val => `"${String(val || '').replace(/"/g, '""')}"`).join(','))
-    ].join('\n');
+    const csvContent = [headers.join(','), ...rows.map(row => row.map(val => `"${String(val || '').replace(/"/g, '""')}"`).join(','))].join('\n');
 
     const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -331,7 +328,7 @@ export default function MaterialsPage() {
           <TabsContent value="catalog" className="flex-1 min-h-0 focus-visible:ring-0 mt-0 data-[state=active]:flex flex-col overflow-hidden">
               <MaterialsCatalog 
                 loading={mLoading} filteredMaterials={filteredMaterials} categories={categories} 
-                lang={lang} dir={dir} onStockIn={(id) => { setStockInForm({ materialId: id, qty: 1 }); setIsStockInDialogOpen(true); }}
+                lang={lang} dir={dir} onStockIn={(id) => { if(!canCreate) return; setStockInForm({ materialId: id, qty: 1 }); setIsStockInDialogOpen(true); }}
                 onEdit={(mat) => { if(!canEdit) return; setEditingMatId(mat.id); setFormData({...mat}); setIsAddDialogOpen(true); }}
                 onDelete={(id) => { if(!canDelete) return; setDeletingMatId(id); }} sortBy={sortBy} sortOrder={sortOrder} toggleSort={(k) => setSortBy(k)}
                 canCreate={canCreate} canEdit={canEdit} canDelete={canDelete}

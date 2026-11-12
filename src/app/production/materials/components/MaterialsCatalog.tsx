@@ -77,7 +77,7 @@ export function MaterialsCatalog({
   return (
     <div className="flex-1 min-h-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg shadow-sm overflow-hidden flex flex-col transition-colors duration-300">
       <div className="flex-1 overflow-auto relative no-scrollbar">
-        <Table className="text-right border-separate border-spacing-0">
+        <Table className="text-right border-separate border-spacing-0 w-full">
           <TableHeader className="sticky top-0 z-20 bg-slate-100/95 dark:bg-slate-800/95 backdrop-blur-sm shadow-sm">
             <TableRow className="border-b border-slate-200 dark:border-slate-700">
               <TableHead className={cn("h-10 font-bold text-[11px] text-slate-500 dark:text-slate-400 px-6 whitespace-nowrap bg-inherit", isRtl ? "text-right" : "text-left")}>

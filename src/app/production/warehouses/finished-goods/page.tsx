@@ -221,7 +221,7 @@ export default function FinishedGoodsWarehousePage() {
     txCol: isRtl ? 'رقم السند' : 'REF #',
     qtyCol: isRtl ? 'الكمية' : 'QTY',
     statusCol: isRtl ? 'الحالة' : 'STATUS',
-    pcsLabel: isRtl ? 'قطعة جاهزة' : 'Pcs Ready',
+    pcsLabel: isRtl ? 'حبة جاهزة' : 'Pcs Ready',
     reverseBtn: isRtl ? 'إلغاء الترحيل' : 'Reverse',
     postedStatus: isRtl ? 'مرحل' : 'Posted',
     reversedStatus: isRtl ? 'ملغي' : 'Reversed',
@@ -308,15 +308,15 @@ export default function FinishedGoodsWarehousePage() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align={isRtl ? "start" : "end"} className="w-64 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-900 shadow-xl">
                    <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest">{isRtl ? 'ترتيب حسب' : 'SORT BY'}</DropdownMenuLabel>
-                   <DropdownMenuItem onClick={() => { setSortBy('nameAr'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }} className="flex justify-between text-xs font-bold cursor-pointer py-2.5 dark:text-slate-300 focus:bg-slate-100 dark:focus:bg-slate-800">
+                   <DropdownMenuItem onClick={() => { setSortBy('nameAr'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }} className="flex justify-between text-xs font-bold cursor-pointer py-2 dark:text-slate-300 focus:bg-slate-100 dark:focus:bg-slate-800">
                       <div className="flex items-center gap-2"><Layers className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" /> {isRtl ? 'اسم المنتج' : 'Product Name'}</div>
                       {sortBy === 'nameAr' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />)}
                    </DropdownMenuItem>
-                   <DropdownMenuItem onClick={() => { setSortBy('currentStock'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }} className="flex justify-between text-xs font-bold cursor-pointer py-2.5 dark:text-slate-300 focus:bg-slate-100 dark:focus:bg-slate-800">
+                   <DropdownMenuItem onClick={() => { setSortBy('currentStock'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }} className="flex justify-between text-xs font-bold cursor-pointer py-2 dark:text-slate-300 focus:bg-slate-100 dark:focus:bg-slate-800">
                       <div className="flex items-center gap-2"><Activity className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" /> {isRtl ? 'الرصيد المتاح' : 'Available Stock'}</div>
                       {sortBy === 'currentStock' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />)}
                    </DropdownMenuItem>
-                   <DropdownMenuItem onClick={() => { setSortBy('sku'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }} className="flex justify-between text-xs font-bold cursor-pointer py-2.5 dark:text-slate-300 focus:bg-slate-100 dark:focus:bg-slate-800">
+                   <DropdownMenuItem onClick={() => { setSortBy('sku'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }} className="flex justify-between text-xs font-bold cursor-pointer py-2 dark:text-slate-300 focus:bg-slate-100 dark:focus:bg-slate-800">
                       <div className="flex items-center gap-2"><Hash className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" /> {isRtl ? 'كود الصنف' : 'Product SKU'}</div>
                       {sortBy === 'sku' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />)}
                    </DropdownMenuItem>
