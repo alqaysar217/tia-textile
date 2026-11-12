@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -32,7 +31,6 @@ import {
   PieChart,
   CheckCircle2,
   Settings2,
-  Users as UsersIcon
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -121,21 +119,22 @@ export function Sidebar() {
 
   return (
     <div className={cn(
-      "flex flex-col h-full premium-gradient text-white/80 transition-all duration-300 border-l border-white/5 shadow-2xl relative overflow-hidden",
+      "flex flex-col h-full premium-gradient text-white/80 transition-all duration-300 border-l border-white/5 dark:border-slate-800 shadow-2xl relative overflow-hidden",
       isCollapsed ? "w-20" : "w-72"
     )}>
-      <div className="absolute -top-24 -right-24 w-64 h-64 bg-emerald-400/10 rounded-full blur-[100px] pointer-events-none" />
-      <div className="absolute inset-0 opacity-[0.04] pointer-events-none textile-pattern mix-blend-overlay" />
+      {/* Decorative Blur - Dynamic in Dark Mode */}
+      <div className="absolute -top-24 -right-24 w-64 h-64 bg-emerald-400/10 dark:bg-emerald-500/5 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute inset-0 opacity-[0.04] dark:opacity-[0.02] pointer-events-none textile-pattern mix-blend-overlay" />
 
       <div className={cn("mb-10 pt-8 relative z-10", isCollapsed ? "px-4" : "px-8")}>
         <div className="flex items-center gap-4 group">
-          <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center border border-white/20 shrink-0 overflow-hidden p-1 shadow-xl group-hover:scale-105 transition-transform duration-300">
-            <img src="/images/logo.png" alt="Logo" className="w-full h-full object-contain rounded-xl" />
+          <div className="w-12 h-12 bg-white dark:bg-slate-900 rounded-2xl flex items-center justify-center border border-white/20 dark:border-slate-800 shrink-0 overflow-hidden p-1 shadow-xl group-hover:scale-105 transition-transform duration-300">
+            <img src="/images/logo.png" alt="Logo" className="w-full h-full object-contain rounded-xl dark:opacity-80" />
           </div>
           {!isCollapsed && (
             <div className="animate-in fade-in duration-500">
-              <h2 className="text-sm font-black text-white leading-tight uppercase tracking-tight">{t.production.systemTitle}</h2>
-              <p className="text-[10px] text-emerald-200/50 font-bold uppercase tracking-widest mt-0.5">{t.production.cooperative}</p>
+              <h2 className="text-sm font-black text-white dark:text-slate-100 leading-tight uppercase tracking-tight">{t.production.systemTitle}</h2>
+              <p className="text-[10px] text-emerald-200/50 dark:text-slate-500 font-bold uppercase tracking-widest mt-0.5">{t.production.cooperative}</p>
             </div>
           )}
         </div>
@@ -153,19 +152,19 @@ export function Sidebar() {
               <CollapsibleTrigger 
                 disabled={isCollapsed} 
                 className={cn(
-                  "flex items-center justify-between w-full p-3 rounded-xl transition-all group",
-                  isCollapsed ? "justify-center" : "hover:bg-white/10",
-                  isGroupActive && !isCollapsed && "bg-white/5 text-white"
+                  "flex items-center justify-between w-full p-3 rounded-xl transition-all group outline-none",
+                  isCollapsed ? "justify-center" : "hover:bg-white/10 dark:hover:bg-slate-800/50",
+                  isGroupActive && !isCollapsed && "bg-white/5 dark:bg-slate-800/50 text-white dark:text-emerald-400"
                 )}
               >
                 <div className="flex items-center gap-3">
                   <span className={cn(
                     "transition-colors",
-                    isGroupActive ? "text-emerald-400" : "text-emerald-100/40 group-hover:text-white"
+                    isGroupActive ? "text-emerald-400 dark:text-emerald-500" : "text-emerald-100/40 dark:text-slate-600 group-hover:text-white dark:group-hover:text-emerald-400"
                   )}>{group.icon}</span>
-                  {!isCollapsed && <span className={cn("text-[11px] font-black uppercase tracking-wider animate-in fade-in duration-500", isGroupActive ? "text-white" : "text-emerald-100/60")}>{group.name}</span>}
+                  {!isCollapsed && <span className={cn("text-[11px] font-black uppercase tracking-wider animate-in fade-in duration-500", isGroupActive ? "text-white dark:text-emerald-400" : "text-emerald-100/60 dark:text-slate-500")}>{group.name}</span>}
                 </div>
-                {!isCollapsed && <ChevronDown className={cn("w-3 h-3 text-emerald-100/30 transition-transform duration-200", isGroupActive && "rotate-180 text-emerald-400")} />}
+                {!isCollapsed && <ChevronDown className={cn("w-3 h-3 text-emerald-100/30 dark:text-slate-700 transition-transform duration-200", isGroupActive && "rotate-180 text-emerald-400 dark:text-emerald-500")} />}
               </CollapsibleTrigger>
               {!isCollapsed && (
                 <CollapsibleContent className="space-y-1 mt-1 px-2">
@@ -178,20 +177,20 @@ export function Sidebar() {
                         className={cn(
                           "flex items-center gap-3 p-2.5 rounded-lg text-[10px] font-black uppercase tracking-tight transition-all relative group/item",
                           isActive 
-                            ? "bg-gradient-to-r from-emerald-600 to-emerald-800 text-white shadow-lg shadow-emerald-950/20" 
-                            : "text-emerald-100/40 hover:text-white hover:bg-white/5"
+                            ? "bg-gradient-to-r from-emerald-600 to-emerald-800 dark:from-emerald-900/40 dark:to-slate-900/40 text-white dark:text-emerald-400 shadow-lg dark:shadow-none" 
+                            : "text-emerald-100/40 dark:text-slate-600 hover:text-white dark:hover:text-emerald-400 hover:bg-white/5 dark:hover:bg-slate-800/50"
                         )}
                       >
                         <span className={cn(
                           "shrink-0 transition-transform group-hover/item:scale-110",
-                          isActive ? "text-white" : "text-emerald-100/20 group-hover/item:text-emerald-400"
+                          isActive ? "text-white dark:text-emerald-400" : "text-emerald-100/20 dark:text-slate-700 group-hover/item:text-emerald-400"
                         )}>
                           {item.icon}
                         </span>
                         <span className="truncate">{item.name}</span>
                         {isActive && (
                           <span className={cn(
-                            "absolute w-1 h-4 bg-white rounded-full",
+                            "absolute w-1 h-4 bg-white dark:bg-emerald-500 rounded-full",
                             dir === 'rtl' ? "-right-1" : "-left-1"
                           )} />
                         )}
@@ -205,8 +204,8 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className={cn("pt-6 mt-6 border-t border-white/10 pb-8 relative z-10 px-6")}>
-        <Link href="/" className="flex items-center justify-center gap-2 py-3 text-[10px] font-black text-white/60 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition-all border border-white/5 uppercase tracking-widest">
+      <div className={cn("pt-6 mt-6 border-t border-white/10 dark:border-slate-800 pb-8 relative z-10 px-6")}>
+        <Link href="/" className="flex items-center justify-center gap-2 py-3 text-[10px] font-black text-white/60 dark:text-slate-500 hover:text-white dark:hover:text-emerald-400 bg-white/5 dark:bg-slate-900 hover:bg-white/10 dark:hover:bg-slate-800 rounded-xl transition-all border border-white/5 dark:border-slate-800 uppercase tracking-widest">
           <History className="w-3.5 h-3.5" />
           {!isCollapsed && <span>{t.production.backToSite}</span>}
         </Link>

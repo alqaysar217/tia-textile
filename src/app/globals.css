@@ -27,24 +27,24 @@
   }
 
   .dark {
-    --background: 222 47% 11%; /* Deep Slate Navy */
+    --background: 222 47% 4%; /* Ultra Deep Navy/Black */
     --foreground: 213 27% 84%;
-    --card: 222 47% 13%;
+    --card: 222 47% 7%;
     --card-foreground: 213 27% 84%;
-    --popover: 222 47% 11%;
+    --popover: 222 47% 5%;
     --popover-foreground: 213 27% 84%;
     --primary: 142 71% 45%;
     --primary-foreground: 210 40% 98%;
-    --secondary: 222 47% 15%;
+    --secondary: 222 47% 10%;
     --secondary-foreground: 210 40% 98%;
-    --muted: 223 47% 18%;
+    --muted: 223 47% 12%;
     --muted-foreground: 215.4 16.3% 56.9%;
-    --accent: 216 34% 17%;
+    --accent: 216 34% 12%;
     --accent-foreground: 210 40% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
-    --border: 216 34% 17%;
-    --input: 216 34% 17%;
+    --border: 216 34% 12%;
+    --input: 216 34% 12%;
     --ring: 142 71% 45%;
   }
 }
@@ -83,7 +83,8 @@
 }
 
 .dark .premium-gradient {
-  background: linear-gradient(165deg, #021a15 0%, #012a20 45%, #022c22 100%);
+  /* Matte Professional Dark ERP Background */
+  background: linear-gradient(165deg, #020617 0%, #06100a 45%, #020617 100%);
 }
 
 .textile-pattern {
