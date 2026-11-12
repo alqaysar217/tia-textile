@@ -1,4 +1,3 @@
-'use server';
 'use client';
 
 import React, { useState, useMemo, useCallback, useRef } from 'react';
