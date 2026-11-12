@@ -184,7 +184,7 @@ export default function DepartmentsPage() {
       return;
     }
 
-    const isDuplicate) = departments?.some(d => 
+    const isDuplicate = departments?.some(d => 
       d.code?.toLowerCase() === formData.code.toLowerCase() && 
       d.id !== editingDeptId && 
       d.status !== 'deleted'
@@ -525,10 +525,10 @@ export default function DepartmentsPage() {
                         <DropdownMenuContent align={isRtl ? 'start' : 'end'} className="rounded-lg border-slate-200 dark:border-slate-800 dark:bg-slate-900 shadow-xl min-w-[180px]">
                           {canEdit && (
                             <>
-                              <DropdownMenuItem onClick={() => handleEditClick(dept)} className="gap-3 font-bold text-xs cursor-pointer py-2.5 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
+                              <DropdownMenuItem onClick={() => handleEditClick(dept)} className="gap-3 font-bold text-xs py-2.5 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
                                 <Edit2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'تعديل' : 'Edit'}
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleStatusToggle(dept)} className="gap-3 font-bold text-xs cursor-pointer py-2.5 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
+                              <DropdownMenuItem onClick={() => handleStatusToggle(dept)} className="gap-3 font-bold text-xs py-2.5 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
                                 {dept.status === 'active' ? <PowerOff className="w-3.5 h-3.5 text-amber-600" /> : <Power className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />}
                                 {dept.status === 'active' ? (lang === 'ar' ? 'تعطيل' : 'Deactivate') : (lang === 'ar' ? 'تفعيل' : 'Activate')}
                               </DropdownMenuItem>
@@ -537,7 +537,7 @@ export default function DepartmentsPage() {
                           {canDelete && (
                             <>
                               <div className="h-px bg-slate-100 dark:bg-slate-800 my-1" />
-                              <DropdownMenuItem onClick={() => setDeletingDeptId(dept.id)} className="gap-3 font-bold text-xs cursor-pointer text-red-600 dark:text-rose-400 focus:text-red-700 dark:focus:bg-rose-900/20 py-2.5">
+                              <DropdownMenuItem onClick={() => setDeletingDeptId(dept.id)} className="gap-3 font-bold text-xs text-red-600 dark:text-rose-400 focus:text-red-700 dark:focus:bg-rose-900/20 py-2.5">
                                 <Trash2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'نقل للأرشيف' : 'Archive'}
                               </DropdownMenuItem>
                             </>
@@ -588,7 +588,7 @@ export default function DepartmentsPage() {
                   <Hash className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                   {lang === 'ar' ? 'كود القسم' : 'DEPT CODE'}
                 </Label>
-                <Input 
+                <input 
                   value={formData.code} 
                   onChange={(e) => {
                     setFormData({...formData, code: e.target.value});
@@ -596,7 +596,7 @@ export default function DepartmentsPage() {
                   }} 
                   placeholder="DEPT-100" 
                   className={cn(
-                    "h-10 font-bold text-xs bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 dark:text-slate-100",
+                    "flex h-10 w-full rounded-md border px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-xs font-bold bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 dark:text-slate-100",
                     codeError && "border-red-500 focus:ring-red-500/10"
                   )} 
                   required 
