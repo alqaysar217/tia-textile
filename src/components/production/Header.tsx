@@ -28,10 +28,12 @@ import { useAuth, useFirestore, useDoc } from '@/firebase';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
+import { ProductionAI } from './ProductionAI';
 
 export function Header() {
   const [mounted, setMounted] = useState(false);
   const [today, setToday] = useState('');
+  const [isAIOpen, setIsAIOpen] = useState(false);
   const { toggleSidebar } = useSidebar();
   const { lang, setLang, t } = useTranslation();
   const auth = useAuth();
@@ -115,6 +117,7 @@ export function Header() {
           <Button 
             variant="ghost" 
             size="icon" 
+            onClick={() => setIsAIOpen(true)}
             className="text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-white dark:hover:bg-slate-800 rounded-lg h-9 w-9 transition-all"
             title={lang === 'ar' ? 'مساعد الذكاء الاصطناعي' : 'AI Assistant'}
           >
@@ -188,6 +191,9 @@ export function Header() {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      {/* PRODUCTION AI ASSISTANT DRAWER */}
+      <ProductionAI isOpen={isAIOpen} onClose={() => setIsAIOpen(false)} />
     </header>
   );
 }
