@@ -51,7 +51,7 @@ export function MaterialsStockInDialog({
 
         <form onSubmit={onSubmit} className="p-6 space-y-5 bg-white dark:bg-slate-900">
           <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
-            <Label className={cn("text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2", isRtl ? "justify-end" : "justify-start")}>
+            <Label className={cn("text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2", isRtl ? "justify-start" : "justify-start")}>
               {isRtl ? 'اختر الصنف المراد توريده' : 'SELECT MATERIAL'} <Box className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
             </Label>
             <select 
@@ -68,7 +68,7 @@ export function MaterialsStockInDialog({
           </div>
 
           <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
-            <Label className={cn("text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2", isRtl ? "justify-end" : "justify-start")}>
+            <Label className={cn("text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2", isRtl ? "justify-start" : "justify-start")}>
               {isRtl ? 'الكمية الواردة الجديدة' : 'QUANTITY TO ADD'} <ArrowUpToLine className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
             </Label>
             <div className="relative">

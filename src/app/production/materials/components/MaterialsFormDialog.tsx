@@ -87,13 +87,13 @@ export function MaterialsFormDialog({
 
           <div className="grid grid-cols-2 gap-4">
             <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
-              <Label className={cn("text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2", isRtl ? "justify-end" : "justify-start")}>
+              <Label className={cn("text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2", isRtl ? "justify-start" : "justify-start")}>
                 {isRtl ? 'كود المادة (تلقائي)' : 'AUTO SKU'} <Hash className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
               </Label>
               <Input value={editingId ? formData.code : 'AUTO-GENERATE'} disabled className="h-10 font-bold text-xs bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 tabular-nums border-slate-200 dark:border-slate-700" />
             </div>
             <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
-              <Label className={cn("text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2", isRtl ? "justify-end" : "justify-start")}>
+              <Label className={cn("text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2", isRtl ? "justify-start" : "justify-start")}>
                 {isRtl ? 'الفئة' : 'CATEGORY'} <Activity className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
               </Label>
               <select value={formData.category} onChange={(e) => setFormData({...formData, category: e.target.value})} className="w-full h-10 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-bold outline-none dark:text-slate-100 transition-colors">
@@ -103,7 +103,7 @@ export function MaterialsFormDialog({
           </div>
 
           <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
-            <Label className={cn("text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2", isRtl ? "justify-end" : "justify-start")}>
+            <Label className={cn("text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2", isRtl ? "justify-start" : "justify-start")}>
               {isRtl ? 'اسم المادة (عربي)' : 'ARABIC NAME'} <Languages className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
             </Label>
             <Input value={formData.nameAr} onChange={(e) => setFormData({...formData, nameAr: e.target.value})} className="h-10 font-bold text-xs bg-slate-50 dark:bg-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-700" required />
@@ -111,7 +111,7 @@ export function MaterialsFormDialog({
 
           <div className="grid grid-cols-3 gap-3">
             <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
-              <Label className={cn("text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2", isRtl ? "justify-end" : "justify-start")}>
+              <Label className={cn("text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2", isRtl ? "justify-start" : "justify-start")}>
                 {isRtl ? 'الوحدة' : 'UNIT'} <Scale className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
               </Label>
               <select value={formData.unit} onChange={(e) => setFormData({...formData, unit: e.target.value})} className="w-full h-10 px-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-[10px] font-bold outline-none dark:text-slate-100">
@@ -119,7 +119,7 @@ export function MaterialsFormDialog({
               </select>
             </div>
             <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
-              <Label className={cn("text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2", isRtl ? "justify-end" : "justify-start")}>
+              <Label className={cn("text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2", isRtl ? "justify-start" : "justify-start")}>
                 {isRtl ? 'العملة' : 'CURR.'} <Coins className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
               </Label>
               <select 
@@ -131,7 +131,7 @@ export function MaterialsFormDialog({
               </select>
             </div>
             <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
-              <Label className={cn("text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2", isRtl ? "justify-end" : "justify-start")}>
+              <Label className={cn("text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2", isRtl ? "justify-start" : "justify-start")}>
                 {isRtl ? 'سعر الوحدة' : 'PRICE'} <Wallet className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
               </Label>
               <Input type="number" value={formData.price || ''} onChange={(e) => setFormData({...formData, price: Number(e.target.value)})} className="h-10 font-bold text-xs bg-slate-50 dark:bg-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-700 tabular-nums" />
@@ -140,7 +140,7 @@ export function MaterialsFormDialog({
 
           <div className="grid grid-cols-2 gap-4">
             <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
-              <Label className={cn("text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2", isRtl ? "justify-end" : "justify-start")}>
+              <Label className={cn("text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2", isRtl ? "justify-start" : "justify-start")}>
                 {isRtl ? 'الكمية الحالية' : 'OPENING QTY'} <Box className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
               </Label>
               <Input 
@@ -154,14 +154,14 @@ export function MaterialsFormDialog({
                 )} 
               />
               {formData.currentQty < 0 && (
-                <p className={cn("text-[9px] font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1.5 mt-1", isRtl ? "justify-end" : "justify-start")}>
-                  {isRtl ? 'لا يسمح بالكميات السالبة' : 'Negative values not allowed'}
+                <p className={cn("text-[9px] font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1.5 mt-1", isRtl ? "justify-start" : "justify-start")}>
                   <AlertTriangle className="w-2.5 h-2.5" />
+                  {isRtl ? 'لا يسمح بالكميات السالبة' : 'Negative values not allowed'}
                 </p>
               )}
             </div>
             <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
-              <Label className={cn("text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2", isRtl ? "justify-end" : "justify-start")}>
+              <Label className={cn("text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2", isRtl ? "justify-start" : "justify-start")}>
                 {isRtl ? 'حد الأمان' : 'MIN LEVEL'} <Gauge className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
               </Label>
               <Input type="number" min="0" value={formData.minQty || ''} onChange={(e) => setFormData({...formData, minQty: Number(e.target.value)})} className="h-10 font-bold text-xs bg-slate-50 dark:bg-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-700 tabular-nums" />
