@@ -1,1 +1,3 @@
-export default function DeletedComponent() { return null; }
+
+// This component is deprecated and removed
+export default function HassaniVerse() { return null; }

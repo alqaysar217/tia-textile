@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -9,11 +10,9 @@ import {
   Box, 
   Users, 
   FileText, 
-  BarChart3, 
   Settings, 
   ChevronDown,
   Trash2,
-  ChevronRight,
   ShoppingBag,
   Layers,
   Users2,
@@ -29,10 +28,8 @@ import {
   FileBarChart,
   UserCheck,
   HandCoins,
-  PackageSearch,
   Receipt,
   PieChart,
-  Target,
   CheckCircle2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
