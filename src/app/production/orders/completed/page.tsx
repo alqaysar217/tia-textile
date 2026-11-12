@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -53,12 +52,16 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { useProduction } from '../../ProductionContext';
 
 export default function CompletedOrdersPage() {
   const { lang, dir } = useTranslation();
   const db = useFirestore();
   const router = useRouter();
   const isRtl = lang === 'ar';
+
+  // استيراد الصلاحيات للتأكد من هوية المستخدم
+  const { isAdmin, permissions } = useProduction();
 
   // State Management
   const [search, setSearch] = useState('');
@@ -185,11 +188,11 @@ export default function CompletedOrdersPage() {
             <div className="relative flex-1 lg:w-64">
               <Search className={cn("absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 dark:text-slate-500", isRtl ? "right-3" : "left-3")} />
               <Input 
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                value={search} 
+                onChange={(e) => setSearch(e.target.value)} 
                 placeholder={isRtl ? 'بحث...' : 'Search...'}
                 className={cn(
-                  "h-9 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-[10px] font-bold dark:text-slate-100",
+                  "h-9 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-[10px] font-bold dark:text-slate-100",
                   isRtl ? "pr-9" : "pl-9"
                 )}
               />

@@ -46,11 +46,15 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useProduction } from './ProductionContext';
 
 export default function ProductionDashboard() {
   const { lang, t, dir } = useTranslation();
   const db = useFirestore();
   const isRtl = lang === 'ar';
+
+  // استيراد الصلاحيات للتأكد من هوية المستخدم في لوحة التحكم
+  const { isAdmin, permissions } = useProduction();
 
   // Data Fetching
   const ordersQuery = useMemo(() => !db ? null : collection(db, 'productionOrders'), [db]);
@@ -253,7 +257,7 @@ export default function ProductionDashboard() {
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={growthChartData}>
               <defs>
-                <linearGradient id="colorGrowth" x1="0" y1="0" x2="0" y2="1">
+                <linearGradient id="colorGrowth" x1="0" x1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
                   <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
                 </linearGradient>

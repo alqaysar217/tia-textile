@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useCallback } from 'react';
@@ -79,7 +78,7 @@ export default function ProductionOrdersPage() {
   const [deletingOrder, setDeletingOrder] = useState<any | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // استيراد الصلاحيات
+  // استيراد الصلاحيات من المحرك المركزي
   const { permissions, isAdmin } = useProduction();
   const canCreate = isAdmin || permissions.orders?.create;
   const canEdit = isAdmin || permissions.orders?.edit;
@@ -148,13 +147,13 @@ export default function ProductionOrdersPage() {
     e.preventDefault();
     if (!db || isSubmitting) return;
 
-    // حماية برمجية إضافية
+    // حماية تنفيذية
     if (editingOrderId && !canEdit) {
       toast({ variant: "destructive", title: lang === 'ar' ? "غير مسموح بالتعديل" : "Access Denied" });
       return;
     }
     if (!editingOrderId && !canCreate) {
-      toast({ variant: "destructive", title: lang === 'ar' ? "غير مسموح بالإنشاء" : "Access Denied" });
+      toast({ variant: "destructive", title: lang === 'ar' ? "غير مسموح بإنشاء طلبات" : "Access Denied" });
       return;
     }
 
@@ -171,7 +170,7 @@ export default function ProductionOrdersPage() {
     try {
       if (editingOrderId) {
         await updateDoc(doc(db, 'productionOrders', editingOrderId), orderData);
-        toast({ title: lang === 'ar' ? "تم تحديث الأمر" : "Order Updated" });
+        toast({ title: lang === 'ar' ? "تم تحديث الأمر بنجاح" : "Order Updated" });
       } else {
         const orderNumber = `PO-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
         const newOrder = {
@@ -195,8 +194,7 @@ export default function ProductionOrdersPage() {
   };
 
   const handleCompleteOrder = async () => {
-    if (!db || !completingOrder || isSubmitting) return;
-    if (!canEdit) return;
+    if (!db || !completingOrder || isSubmitting || !canEdit) return;
 
     setIsSubmitting(true);
     try {
@@ -301,8 +299,6 @@ export default function ProductionOrdersPage() {
           </div>
         ) : filteredOrders.map((order) => {
           const product = products?.find(p => p.id === order.productId);
-          
-          // Logic: Only output from the LAST stage is considered "READY" (Finished Good)
           const finalStage = sortedDepts[sortedDepts.length - 1];
           const finalStageReceipts = allReceipts?.filter(r => 
             r.orderId === order.id && 
@@ -341,7 +337,6 @@ export default function ProductionOrdersPage() {
                   <Progress value={progress} className="h-1.5 bg-slate-100 dark:bg-slate-800" />
                 </div>
 
-                {/* TARGET & READY STATS */}
                 <div className="flex items-center gap-8 px-4">
                   <div className="text-center">
                     <p className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase leading-none">{lang === 'ar' ? 'المستهدف' : 'TARGET'}</p>
@@ -353,7 +348,6 @@ export default function ProductionOrdersPage() {
                   </div>
                 </div>
 
-                {/* STATUS TEXT LABEL */}
                 <div className="hidden md:flex items-center gap-2 border-r border-slate-100 dark:border-slate-800 px-4 h-full">
                   <div className={cn(
                     "w-2 h-2 rounded-full",
