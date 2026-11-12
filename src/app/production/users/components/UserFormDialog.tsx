@@ -64,7 +64,7 @@ export function UserFormDialog({
       const current = { ...newPerms[moduleId] };
       current[type] = !current[type];
 
-      // Smart Logic: If any "Action" (Create/Edit/Delete) is checked, "Read" MUST be checked
+      // المنطق الذكي: إذا تم تفعيل (إضافة/تعديل/حذف) يجب تفعيل (قراءة) تلقائياً
       if ((current.create || current.edit || current.delete) && !current.read) {
         current.read = true;
       }
@@ -80,7 +80,7 @@ export function UserFormDialog({
       const current = newPerms[moduleId];
       
       if (checked) {
-        // If row was empty, default to READ. If already has READ, default to ALL.
+        // إذا كان السطر فارغاً، نبدأ بالقراءة فقط. إذا كان فيه قراءة، نفعل الكل.
         if (!current.read && !current.create && !current.edit && !current.delete) {
           newPerms[moduleId] = { read: true, create: false, edit: false, delete: false };
         } else {
@@ -99,7 +99,7 @@ export function UserFormDialog({
       const newPerms = { ...prev.permissions };
       Object.keys(newPerms).forEach(moduleId => {
         newPerms[moduleId] = { ...newPerms[moduleId], [type]: checked };
-        // If enabling create/edit/delete, force read
+        // عند تفعيل أي صلاحية تنفيذية، نفعل القراءة تلقائياً
         if (checked && type !== 'read') {
           newPerms[moduleId].read = true;
         }
@@ -120,7 +120,7 @@ export function UserFormDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[950px] rounded-[1.5rem] p-0 overflow-hidden border-none shadow-2xl dark:bg-slate-900">
+      <DialogContent className="sm:max-w-[950px] rounded-[1.5rem] p-0 overflow-hidden border-none shadow-2xl dark:bg-slate-900 transition-colors duration-300">
         <div className="premium-gradient p-6 text-white relative">
           <div className="absolute top-0 right-0 p-4 opacity-5"><ShieldCheck className="w-32 h-32 text-white" /></div>
           <DialogHeader className={cn("text-right rtl:text-right ltr:text-left relative z-10")}>
@@ -132,7 +132,7 @@ export function UserFormDialog({
           </DialogHeader>
         </div>
 
-        <form onSubmit={onSave} className="bg-white dark:bg-slate-900 flex flex-col max-h-[85vh]">
+        <form onSubmit={onSave} className="bg-white dark:bg-slate-900 flex flex-col max-h-[85vh] transition-colors duration-300">
           <ScrollArea className="flex-1 p-6" dir={dir}>
             <div className="space-y-10">
               <div className="flex flex-col md:flex-row gap-8 items-start">

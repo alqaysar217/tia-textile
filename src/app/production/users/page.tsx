@@ -14,7 +14,10 @@ import {
   Trash2, 
   Loader2,
   History,
-  ShieldAlert
+  ShieldAlert,
+  SortAsc,
+  SortDesc,
+  ArrowUpDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -54,6 +57,7 @@ import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { firebaseConfig } from '@/firebase/config';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { useProduction } from '../ProductionContext';
 
 // Sub-components & Constants
 import { SYSTEM_MODULES } from './constants';
@@ -63,6 +67,12 @@ export default function UsersPermissionsPage() {
   const { lang, dir } = useTranslation();
   const db = useFirestore();
   const isRtl = lang === 'ar';
+
+  // استيراد الصلاحيات من المحرك المركزي
+  const { permissions, isAdmin } = useProduction();
+  const canCreate = isAdmin || permissions.settings?.create;
+  const canEdit = isAdmin || permissions.settings?.edit;
+  const canDelete = isAdmin || permissions.settings?.delete;
 
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
@@ -98,7 +108,7 @@ export default function UsersPermissionsPage() {
   const filteredUsers = useMemo(() => {
     if (!users) return [];
     
-    // Hide Root Developer Account for Safety
+    // إخفاء حساب المطور الجذري دائماً للحماية
     let list = users.filter(u => 
       u.status !== 'deleted' && 
       u.email !== 'alqaysarpc219@gmail.com'
@@ -115,6 +125,7 @@ export default function UsersPermissionsPage() {
   }, [users, search, roleFilter, statusFilter]);
 
   const handleEditClick = (user: any) => {
+    if (!canEdit) return;
     setEditingUserId(user.id);
     setFormData({
       fullName: user.fullName || '',
@@ -132,12 +143,22 @@ export default function UsersPermissionsPage() {
     e.preventDefault();
     if (!db || isSubmitting || isCompressing) return;
 
+    // حماية إضافية برمجية
+    if (editingUserId && !canEdit) {
+      toast({ variant: "destructive", title: isRtl ? "غير مسموح بالتعديل" : "Permission Denied" });
+      return;
+    }
+    if (!editingUserId && !canCreate) {
+      toast({ variant: "destructive", title: isRtl ? "غير مسموح بإنشاء مستخدمين" : "Permission Denied" });
+      return;
+    }
+
     setIsSubmitting(true);
     let tempApp = null;
     try {
       let uid = editingUserId;
       if (!editingUserId) {
-        // Handle Firebase Auth creation via secondary app instance
+        // إنشاء حساب في Firebase Auth عبر نسخة مؤقتة من التطبيق
         const tempAppName = `temp-auth-${Date.now()}`;
         tempApp = initializeApp(firebaseConfig, tempAppName);
         const tempAuth = getAuth(tempApp);
@@ -222,7 +243,7 @@ export default function UsersPermissionsPage() {
               <Input 
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder={isRtl ? 'بحث...' : 'Search...'}
+                placeholder={isRtl ? 'بحث باسم المستخدم أو البريد...' : 'Search users...'}
                 className={cn(dir === 'rtl' ? 'pr-9' : 'pl-9', "h-9 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold dark:text-slate-100")}
               />
             </div>
@@ -251,10 +272,18 @@ export default function UsersPermissionsPage() {
                </DropdownMenu>
             </div>
 
-            <Button onClick={() => { setFormData({...formData, permissions: initPermissions()}); setIsAddDialogOpen(true); }} className="h-9 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 transition-all border-none text-[11px]">
-              <UserPlus className="w-4 h-4" />
-              {isRtl ? 'حساب جديد' : 'Provision User'}
-            </Button>
+            <div className="h-9 w-px bg-slate-200 dark:bg-slate-700 mx-1 hidden sm:block" />
+            <div className="bg-slate-900 dark:bg-slate-950 text-white px-3 py-1 rounded-lg flex flex-col items-center justify-center min-w-[80px] hidden sm:flex">
+              <span className="text-[7px] font-black uppercase opacity-50 leading-none">{isRtl ? 'إجمالي المستخدمين' : 'TOTAL USERS'}</span>
+              <span className="text-xs font-black tabular-nums leading-none mt-0.5">{filteredUsers.length}</span>
+            </div>
+
+            {canCreate && (
+              <Button onClick={() => { setFormData({...formData, permissions: initPermissions()}); setIsAddDialogOpen(true); }} className="h-9 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 transition-all border-none text-[11px]">
+                <UserPlus className="w-4 h-4" />
+                {isRtl ? 'حساب جديد' : 'Provision User'}
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -305,9 +334,13 @@ export default function UsersPermissionsPage() {
                                   <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"><MoreVertical className="w-4 h-4 text-slate-400" /></Button>
                                </DropdownMenuTrigger>
                                <DropdownMenuContent align={isRtl ? 'start' : 'end'} className="w-56 rounded-xl shadow-xl dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-                                  <DropdownMenuItem onClick={() => handleEditClick(user)} className="gap-2 font-bold py-2 cursor-pointer text-xs dark:text-slate-200"><SettingsIcon className="w-3.5 h-3.5 text-emerald-600" /> {isRtl ? 'إدارة الصلاحيات' : 'Manage Access'}</DropdownMenuItem>
+                                  {canEdit && (
+                                    <DropdownMenuItem onClick={() => handleEditClick(user)} className="gap-2 font-bold py-2 cursor-pointer text-xs dark:text-slate-200"><SettingsIcon className="w-3.5 h-3.5 text-emerald-600" /> {isRtl ? 'إدارة الصلاحيات' : 'Manage Access'}</DropdownMenuItem>
+                                  )}
                                   <DropdownMenuSeparator className="dark:bg-slate-800" />
-                                  <DropdownMenuItem onClick={() => setDeletingUserId(user.id)} className="gap-2 font-bold py-2 text-rose-600 cursor-pointer text-xs focus:bg-rose-50"><Trash2 className="w-3.5 h-3.5" /> {isRtl ? 'حذف الحساب' : 'Revoke Access'}</DropdownMenuItem>
+                                  {canDelete && (
+                                    <DropdownMenuItem onClick={() => setDeletingUserId(user.id)} className="gap-2 font-bold py-2 text-rose-600 cursor-pointer text-xs focus:bg-rose-50"><Trash2 className="w-3.5 h-3.5" /> {isRtl ? 'حذف الحساب' : 'Revoke Access'}</DropdownMenuItem>
+                                  )}
                                </DropdownMenuContent>
                             </DropdownMenu>
                          </TableCell>
