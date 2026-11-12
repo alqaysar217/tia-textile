@@ -18,6 +18,7 @@ import { toast } from '@/hooks/use-toast';
 import { toPng } from 'html-to-image';
 import { ShieldCheck } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
+import { useProduction } from '../../ProductionContext';
 
 import { IssueHeader } from './components/IssueHeader';
 import { IssueTable } from './components/IssueTable';
@@ -30,6 +31,13 @@ export default function MaterialIssuePage() {
   const db = useFirestore();
   const searchParams = useSearchParams();
   const filterOrderId = searchParams.get('orderId');
+  const isRtl = lang === 'ar';
+
+  // استيراد الصلاحيات
+  const { permissions, isAdmin } = useProduction();
+  const canCreate = isAdmin || permissions.vouchers_issue?.create;
+  const canEdit = isAdmin || permissions.vouchers_issue?.edit;
+  const canDelete = isAdmin || permissions.vouchers_issue?.delete;
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingVoucherId, setEditingVoucherId] = useState<string | null>(null);
@@ -110,7 +118,6 @@ export default function MaterialIssuePage() {
     const product = allProducts?.find(p => p.id === order?.productId);
     if (!product) return [];
 
-    // Calculate available based on all previous receipts for this order minus previous transfers in MIVs
     const totalReceived = productionReceipts.filter(r => r.orderId === formData.orderId).reduce((sum, r) => sum + (r.qtyAccepted || 0), 0);
     const totalIssued = vouchers.filter(v => v.orderId === formData.orderId && v.id !== editingVoucherId).reduce((sum, v) => {
       const productItems = v.items?.filter((i: any) => i.itemType === 'product') || [];
@@ -131,12 +138,19 @@ export default function MaterialIssuePage() {
     e.preventDefault();
     if (!db || isSubmitting || formData.items.length === 0 || !formData.workerId) return;
 
+    // منع الحفظ بدون صلاحية
+    if (editingVoucherId && !canEdit) {
+      toast({ variant: "destructive", title: isRtl ? "غير مسموح بالتعديل" : "Access Denied" });
+      return;
+    }
+    if (!editingVoucherId && !canCreate) {
+      toast({ variant: "destructive", title: isRtl ? "غير مسموح بالإدراج" : "Access Denied" });
+      return;
+    }
+
     setIsSubmitting(true);
     const batch = writeBatch(db);
-    
-    // Financial Impact: Only materials count towards total amount
     const totalAmount = formData.items.filter(i => i.itemType === 'material').reduce((acc, i) => acc + (i.qty * (i.price || 0)), 0);
-    
     const worker = allWorkers?.find(w => w.id === formData.workerId);
     const voucherData = {
       ...formData,
@@ -172,13 +186,13 @@ export default function MaterialIssuePage() {
       });
 
       await batch.commit();
-      toast({ title: lang === 'ar' ? "تم الحفظ وتحديث المخزون" : "Success" });
+      toast({ title: isRtl ? "تم الحفظ وتحديث المخزون" : "Success" });
       resetDialog();
     } catch (err) { console.error(err); } finally { setIsSubmitting(false); }
   };
 
   const handleDeleteVoucher = async () => {
-    if (!db || !deletingVoucher) return;
+    if (!db || !deletingVoucher || !canDelete) return;
     setIsSubmitting(true);
     const batch = writeBatch(db);
     try {
@@ -190,7 +204,7 @@ export default function MaterialIssuePage() {
       });
       batch.update(doc(db, 'vouchers', deletingVoucher.id), { status: 'deleted', deletedAt: serverTimestamp() });
       await batch.commit();
-      toast({ title: lang === 'ar' ? "تم الإلغاء وإرجاع المخزون" : "Reversed" });
+      toast({ title: isRtl ? "تم الإلغاء وإرجاع المخزون" : "Reversed" });
     } finally { setIsSubmitting(false); setDeletingVoucher(null); }
   };
 
@@ -200,12 +214,7 @@ export default function MaterialIssuePage() {
     setIsDownloading(true);
     try {
       await new Promise(r => setTimeout(r, 800));
-      const dataUrl = await toPng(el, { 
-        backgroundColor: '#ffffff', 
-        pixelRatio: 2, 
-        cacheBust: true,
-        fontEmbedCSS: '' 
-      });
+      const dataUrl = await toPng(el, { backgroundColor: '#ffffff', pixelRatio: 2, cacheBust: true, fontEmbedCSS: '' });
       const link = document.createElement('a');
       link.download = `MIV-${printingVoucher.voucherNumber}.png`;
       link.href = dataUrl; link.click();
@@ -232,6 +241,7 @@ export default function MaterialIssuePage() {
         toggleSort={(f) => { setSortBy(f); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}
         sortBy={sortBy} sortOrder={sortOrder} activeOrders={activeOrders} activeDepartments={activeDepartments}
         setIsAddDialogOpen={setIsAddDialogOpen}
+        canCreate={canCreate}
       />
 
       <div className="flex-1 min-h-0 overflow-auto p-4 md:p-6 no-scrollbar">
@@ -239,8 +249,9 @@ export default function MaterialIssuePage() {
           loading={vouchersLoading} vouchers={filteredVouchers} allOrders={allOrders || []} 
           allWorkers={allWorkers || []} lang={lang} dir={dir}
           onView={(v) => setPrintingVoucher(v)}
-          onEdit={(v) => { setEditingVoucherId(v.id); setFormData({ ...v }); setIsAddDialogOpen(true); }}
+          onEdit={(v) => { if(!canEdit) return; setEditingVoucherId(v.id); setFormData({ ...v }); setIsAddDialogOpen(true); }}
           onDelete={(v) => setDeletingVoucher(v)}
+          canEdit={canEdit} canDelete={canDelete}
         />
       </div>
 

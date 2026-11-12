@@ -45,6 +45,7 @@ interface IssueHeaderProps {
   activeOrders: any[];
   activeDepartments: any[];
   setIsAddDialogOpen: (val: boolean) => void;
+  canCreate: boolean;
 }
 
 export function IssueHeader({
@@ -62,7 +63,8 @@ export function IssueHeader({
   sortOrder,
   activeOrders,
   activeDepartments,
-  setIsAddDialogOpen
+  setIsAddDialogOpen,
+  canCreate
 }: IssueHeaderProps) {
   const isRtl = lang === 'ar';
 
@@ -94,7 +96,7 @@ export function IssueHeader({
               placeholder={isRtl ? 'بحث...' : 'Search...'}
               className={cn(
                 dir === 'rtl' ? 'pr-10' : 'pl-10',
-                "h-9 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xs font-bold dark:text-slate-100"
+                "h-9 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold dark:text-slate-100"
               )}
             />
           </div>
@@ -157,10 +159,12 @@ export function IssueHeader({
             </DropdownMenu>
           </div>
 
-          <Button onClick={() => setIsAddDialogOpen(true)} className="h-9 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 transition-all border-none text-[10px]">
-            <Plus className="w-3.5 h-3.5" />
-            {isRtl ? 'سند جديد' : 'New Issue'}
-          </Button>
+          {canCreate && (
+            <Button onClick={() => setIsAddDialogOpen(true)} className="h-9 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 transition-all border-none text-[10px]">
+              <Plus className="w-3.5 h-3.5" />
+              {isRtl ? 'سند جديد' : 'New Issue'}
+            </Button>
+          )}
         </div>
       </div>
     </div>

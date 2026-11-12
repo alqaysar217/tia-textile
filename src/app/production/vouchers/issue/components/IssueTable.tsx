@@ -38,6 +38,8 @@ interface IssueTableProps {
   onView: (v: any) => void;
   onEdit: (v: any) => void;
   onDelete: (v: any) => void;
+  canEdit: boolean;
+  canDelete: boolean;
 }
 
 export function IssueTable({
@@ -49,7 +51,9 @@ export function IssueTable({
   dir,
   onView,
   onEdit,
-  onDelete
+  onDelete,
+  canEdit,
+  canDelete
 }: IssueTableProps) {
   const isRtl = lang === 'ar';
 
@@ -124,13 +128,19 @@ export function IssueTable({
                         <DropdownMenuItem onClick={() => onView(v)} className="gap-2 font-bold py-1.5 cursor-pointer text-xs dark:text-slate-200">
                           <Eye className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> {isRtl ? 'عرض السند' : 'View Voucher'}
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onEdit(v)} className="gap-2 font-bold py-1.5 cursor-pointer text-xs dark:text-slate-200">
-                          <Edit2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> {isRtl ? 'تعديل السند' : 'Edit Voucher'}
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator className="dark:bg-slate-800" />
-                        <DropdownMenuItem onClick={() => onDelete(v)} className="gap-2 font-bold py-1.5 text-rose-600 dark:text-rose-400 cursor-pointer text-xs">
-                          <Trash2 className="w-3.5 h-3.5" /> {isRtl ? 'حذف السند' : 'Delete Voucher'}
-                        </DropdownMenuItem>
+                        {canEdit && (
+                          <DropdownMenuItem onClick={() => onEdit(v)} className="gap-2 font-bold py-1.5 cursor-pointer text-xs dark:text-slate-200">
+                            <Edit2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> {isRtl ? 'تعديل السند' : 'Edit Voucher'}
+                          </DropdownMenuItem>
+                        )}
+                        {canDelete && (
+                          <>
+                            <DropdownMenuSeparator className="dark:bg-slate-800" />
+                            <DropdownMenuItem onClick={() => onDelete(v)} className="gap-2 font-bold py-1.5 text-rose-600 dark:text-rose-400 cursor-pointer text-xs">
+                              <Trash2 className="w-3.5 h-3.5" /> {isRtl ? 'حذف السند' : 'Delete Voucher'}
+                            </DropdownMenuItem>
+                          </>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
