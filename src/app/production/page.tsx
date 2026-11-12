@@ -41,8 +41,7 @@ import {
   YAxis, 
   Cell,
   PieChart,
-  Pie,
-  Legend
+  Pie
 } from 'recharts';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -183,9 +182,9 @@ export default function ProductionDashboard() {
         laborCost,
         overheadCost,
         data: [
-          { name: isRtl ? 'مواد' : 'Materials', value: materialCost, fill: '#f59e0b' }, // Amber
-          { name: isRtl ? 'أجور' : 'Wages', value: laborCost, fill: '#8b5cf6' }, // Strong Violet
-          { name: isRtl ? 'مصاريف' : 'Expenses', value: overheadCost, fill: '#ef4444' } // Vibrant Red
+          { name: isRtl ? 'مواد' : 'Materials', value: materialCost, fill: '#F59E0B' }, // Amber-500
+          { name: isRtl ? 'أجور' : 'Wages', value: laborCost, fill: '#8B5CF6' }, // Violet-500
+          { name: isRtl ? 'مصاريف' : 'Expenses', value: overheadCost, fill: '#EF4444' } // Red-500
         ].filter(d => d.value > 0)
       };
     });
@@ -321,7 +320,7 @@ export default function ProductionDashboard() {
         </div>
       </div>
 
-      {/* ROW 3: REAL-TIME COST ARCHITECTURE (Donut Structure - Fixed Legend) */}
+      {/* ROW 3: REAL-TIME COST ARCHITECTURE (Donut Structure) */}
       <div className="space-y-6">
         <div className="flex items-center gap-4">
           <div className="p-2 bg-amber-500 rounded-lg text-white"><PieChartIcon className="w-5 h-5" /></div>
@@ -329,70 +328,70 @@ export default function ProductionDashboard() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {orderCostBreakdown.map((order, idx) => (
-            <Card key={idx} className="p-6 border-none shadow-xl bg-white rounded-2xl space-y-6 flex flex-col h-[460px] hover:shadow-2xl transition-all">
-              <div className="flex flex-col gap-1 border-b border-slate-50 pb-4">
-                <div className="flex justify-between items-start">
-                  <Badge variant="outline" className="text-[10px] font-black text-emerald-600 border-emerald-100 tabular-nums bg-emerald-50">{order.orderNumber}</Badge>
-                  <div className={cn("p-1.5 rounded-lg text-white shadow-md", order.profit >= 0 ? "bg-emerald-500" : "bg-rose-500")}>
-                    {order.profit >= 0 ? <ArrowUpRight className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+            <Card key={idx} className="border-none shadow-xl bg-white rounded-[2rem] flex flex-col h-[520px] hover:shadow-2xl transition-all overflow-hidden">
+              {/* Card Body */}
+              <div className="p-8 flex-1 flex flex-col">
+                <div className="flex flex-col gap-1 border-b border-slate-50 pb-4 mb-6">
+                  <div className="flex justify-between items-start">
+                    <Badge variant="outline" className="text-[10px] font-black text-emerald-600 border-emerald-100 tabular-nums bg-emerald-50">{order.orderNumber}</Badge>
+                    <div className={cn("p-1.5 rounded-lg text-white shadow-md", order.profit >= 0 ? "bg-emerald-500" : "bg-rose-500")}>
+                      {order.profit >= 0 ? <ArrowUpRight className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+                    </div>
+                  </div>
+                  <h4 className="text-lg font-black text-slate-900 truncate mt-2">{order.title}</h4>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{order.productName}</p>
+                </div>
+                
+                {/* DONUT CHART AREA */}
+                <div className="flex-1 w-full flex flex-col items-center justify-center">
+                  <div className="h-[220px] w-full relative">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={order.data}
+                          innerRadius={65}
+                          outerRadius={95}
+                          paddingAngle={0}
+                          minAngle={15} // Ensure small slices are visible
+                          dataKey="value"
+                          animationDuration={1200}
+                          stroke="none"
+                        >
+                          {order.data.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.fill} />
+                          ))}
+                        </Pie>
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* VISUAL LEGEND (Directly below chart) */}
+                  <div className="grid grid-cols-3 gap-4 w-full mt-6">
+                     {order.data.map((item, i) => (
+                       <div key={i} className="flex flex-col items-center text-center gap-1">
+                          <div className="flex items-center gap-2">
+                             <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: item.fill }} />
+                             <span className="text-[11px] font-black text-slate-500 uppercase tracking-tighter">{item.name}</span>
+                          </div>
+                          <div className="flex flex-col leading-none">
+                             <span className="text-xs font-black text-slate-900 tabular-nums">{formatCurrency(item.value)}</span>
+                             <span className="text-[8px] font-bold text-slate-300 uppercase mt-1">YER</span>
+                          </div>
+                       </div>
+                     ))}
                   </div>
                 </div>
-                <h4 className="text-sm font-black text-slate-900 truncate mt-2">{order.title}</h4>
-                <p className="text-[10px] text-slate-400 font-bold uppercase">{order.productName}</p>
-              </div>
-              
-              <div className="flex-1 w-full flex flex-col items-center justify-center gap-6">
-                {/* DONUT CHART - CENTERED */}
-                <div className="h-[180px] w-full relative">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={order.data}
-                        innerRadius={55}
-                        outerRadius={80}
-                        paddingAngle={5}
-                        dataKey="value"
-                        animationDuration={1000}
-                        stroke="none"
-                      >
-                        {order.data.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.fill} />
-                        ))}
-                      </Pie>
-                      <Tooltip 
-                        contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '12px', color: '#fff' }}
-                        itemStyle={{ fontWeight: 900, fontSize: '11px' }}
-                        formatter={(value: any) => [formatCurrency(value) + ' YER', '']}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-
-                {/* VISUAL LEGEND - NOW BELOW THE CHART FOR BETTER VISIBILITY */}
-                <div className="grid grid-cols-3 gap-2 w-full pt-2 border-t border-slate-50">
-                   {order.data.map((item, i) => (
-                     <div key={i} className="flex flex-col items-center text-center gap-1.5 px-1">
-                        <div className="flex items-center gap-1.5">
-                           <div className="w-2.5 h-2.5 rounded-full ring-2 ring-white shadow-sm" style={{ backgroundColor: item.fill }} />
-                           <span className="text-[9px] font-black text-slate-500 uppercase tracking-tighter">{item.name}</span>
-                        </div>
-                        <div className="flex flex-col leading-none">
-                           <span className="text-[10px] font-black text-slate-800 tabular-nums">{formatCurrency(item.value)}</span>
-                           <span className="text-[7px] font-bold text-slate-300 uppercase mt-0.5">YER</span>
-                        </div>
-                     </div>
-                   ))}
-                </div>
               </div>
 
-              <div className="pt-4 border-t border-slate-100 flex justify-between items-center bg-slate-50/50 -mx-6 -mb-6 px-6 py-4 rounded-b-2xl">
-                <div className="flex flex-col">
-                  <span className="text-[9px] font-black text-slate-400 uppercase leading-none">TOTAL COST</span>
-                  <span className="text-sm font-black text-slate-900 tabular-nums mt-1">{formatCurrency(order.total)}</span>
+              {/* INTEGRATED FOOTER (Always inside card) */}
+              <div className="bg-slate-50/80 border-t border-slate-100 p-6 grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1">
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">TOTAL COST</span>
+                  <span className="text-base font-black text-slate-900 tabular-nums">{formatCurrency(order.total)}</span>
                 </div>
-                <div className="flex flex-col text-right">
-                  <span className="text-[9px] font-black text-slate-400 uppercase leading-none">EST. PROFIT</span>
-                  <span className={cn("text-base font-black tabular-nums mt-1", order.profit >= 0 ? "text-emerald-600" : "text-rose-600")}>
+                <div className="flex flex-col gap-1 text-right">
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">EST. PROFIT</span>
+                  <span className={cn("text-xl font-black tabular-nums", order.profit >= 0 ? "text-emerald-600" : "text-rose-600")}>
                     {formatCurrency(order.profit)}
                   </span>
                 </div>
