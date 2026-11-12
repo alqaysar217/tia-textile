@@ -12,7 +12,10 @@ import {
   Trophy,
   Search,
   BarChart3,
-  History
+  History,
+  TrendingUp,
+  AlertTriangle,
+  Receipt
 } from 'lucide-react';
 import { 
   Sheet, 
@@ -94,7 +97,11 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
     { label: isRtl ? 'التقرير المالي' : 'Financials', icon: <Wallet className="w-3.5 h-3.5" />, text: isRtl ? 'ما هو إجمالي الأجور المستحقة وإجمالي المصاريف التشغيلية المسجلة في السندات؟' : 'Total due wages and overhead expenses?' },
     { label: isRtl ? 'أفضل عامل' : 'Top Artisan', icon: <Trophy className="w-3.5 h-3.5" />, text: isRtl ? 'من هو العامل الأكثر إنتاجاً بناءً على إجمالي كميات الاستلام في السجلات؟' : 'Who is the top producing artisan based on receipts?' },
     { label: isRtl ? 'جرد المستودع' : 'Warehouse', icon: <Truck className="w-3.5 h-3.5" />, text: isRtl ? 'ما هي المنتجات الجاهزة المتوفرة في المستودع حالياً وكم كمياتها؟' : 'What finished goods are available in the warehouse?' },
-    { label: isRtl ? 'بحث في السندات' : 'Voucher Search', icon: <Search className="w-3.5 h-3.5" />, text: isRtl ? 'ابحث في السندات الأخيرة وأخبرني بتفاصيل أي سند يحتوي على صرف مادة محددة.' : 'Search recent vouchers for specific material details.' },
+    { label: isRtl ? 'تحليل التكاليف' : 'Cost Analysis', icon: <TrendingUp className="w-3.5 h-3.5" />, text: isRtl ? 'اعطني جدولاً بتكاليف المواد والأجور لكل أمر إنتاج نشط.' : 'Provide a table of material and wage costs per active order.' },
+    { label: isRtl ? 'بحث في السندات' : 'Voucher Search', icon: <Search className="w-3.5 h-3.5" />, text: isRtl ? 'ابحث في آخر 50 سنداً وأخبرني بتفاصيل أي سند يحتوي على صرف مادة محددة أو مبلغ كبير.' : 'Search last 50 vouchers for specific items or high amounts.' },
+    { label: isRtl ? 'أوامر متعثرة' : 'Delayed Batches', icon: <AlertTriangle className="w-3.5 h-3.5" />, text: isRtl ? 'هل هناك أوامر إنتاج نسبة إنجازها منخفضة جداً مقارنة بتاريخ بدئها؟' : 'Are there any production orders with very low progress?' },
+    { label: isRtl ? 'سجل العمال' : 'Workforce', icon: <Users2 className="w-3.5 h-3.5" />, text: isRtl ? 'اعطني قائمة بالمشرفين والعمال النشطين حالياً موزعين حسب الأقسام.' : 'List of supervisors and active workers by department.' },
+    { label: isRtl ? 'تفاصيل المرتجعات' : 'Returns Log', icon: <RefreshCcw className="w-3.5 h-3.5" />, text: isRtl ? 'اعطني جدولاً بكافة المواد الخام التي تم إرجاعها للمخزن مؤخراً.' : 'Show me a table of all recently returned raw materials.' },
   ];
 
   return (
@@ -162,7 +169,8 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
         </ScrollArea>
 
         <div className="p-6 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 shrink-0 transition-colors duration-300">
-           <div className="flex gap-2 overflow-x-auto no-scrollbar mb-4 pb-2">
+           {/* SCROLLABLE QUICK ACTIONS */}
+           <div className="flex gap-2 overflow-x-auto no-scrollbar mb-4 pb-2 scroll-smooth">
               {quickActions.map((action, i) => (
                 <Button 
                   key={i} 
