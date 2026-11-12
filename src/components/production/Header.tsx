@@ -3,17 +3,16 @@
 
 import React, { useState, useEffect } from 'react';
 import { 
-  Bell, 
-  Search, 
   User, 
   LogOut, 
   Calendar,
   Settings,
   Globe,
-  PanelLeft
+  PanelLeft,
+  Sparkles,
+  UserCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,6 +24,7 @@ import {
 import { useSidebar } from '@/components/ui/sidebar';
 import { useTranslation } from '@/components/LanguageProvider';
 import { useAuth } from '@/firebase';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 export function Header() {
   const [mounted, setMounted] = useState(false);
@@ -51,86 +51,96 @@ export function Header() {
     }
   };
 
+  const isRtl = lang === 'ar';
+
   return (
-    <header className="h-20 bg-white border-b border-gray-100 flex items-center justify-between px-6 md:px-10 z-20">
-      {/* Sidebar Toggle & Global Search Area */}
-      <div className="flex items-center gap-4 flex-1">
+    <header className="h-20 bg-white border-b border-gray-100 flex items-center justify-between px-6 md:px-10 z-20 shadow-sm">
+      {/* Sidebar Toggle Section */}
+      <div className="flex items-center gap-4">
         <Button 
           variant="ghost" 
           size="icon" 
           onClick={toggleSidebar}
-          className="text-gray-400 hover:text-primary rounded-xl"
+          className="text-gray-400 hover:text-emerald-600 rounded-xl hover:bg-emerald-50 transition-all"
         >
           <PanelLeft className="w-6 h-6" />
         </Button>
-
-        <div className="hidden md:flex flex-1 max-w-lg relative group">
-          <Search className={`absolute ${lang === 'ar' ? 'right-4' : 'left-4'} top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300 group-focus-within:text-primary transition-colors`} />
-          <Input 
-            placeholder={t.production.searchPlaceholder}
-            className={`${lang === 'ar' ? 'pr-12' : 'pl-12'} h-12 bg-gray-50/50 border-gray-100 focus:bg-white focus:ring-primary/5 focus:border-primary transition-all rounded-[1rem] text-sm font-medium`}
-          />
-        </div>
       </div>
 
       {/* Right Side Actions */}
-      <div className="flex items-center gap-3 md:gap-5">
+      <div className="flex items-center gap-4">
         {/* Professional Date Label */}
-        <div className="hidden xl:flex items-center gap-3 text-[11px] font-black text-gray-500 bg-gray-50 px-4 py-2 rounded-xl border border-gray-100">
-          <Calendar className="w-4 h-4 text-primary/40" />
-          <span suppressHydrationWarning className="tabular-nums">
+        <div className="hidden xl:flex items-center gap-3 text-[11px] font-black text-slate-500 bg-slate-50 px-4 py-2 rounded-xl border border-slate-100">
+          <Calendar className="w-4 h-4 text-emerald-600/40" />
+          <span suppressHydrationWarning className="tabular-nums uppercase tracking-wider">
             {mounted ? today : '...'}
           </span>
         </div>
 
-        <div className="flex items-center gap-1 bg-gray-50 p-1 rounded-xl border border-gray-100">
+        {/* System Tools Actions */}
+        <div className="flex items-center gap-1.5 bg-slate-50 p-1 rounded-xl border border-slate-100">
+          {/* AI ASSISTANT ICON */}
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="text-slate-400 hover:text-emerald-600 hover:bg-white rounded-lg h-9 w-9 transition-all"
+            title={lang === 'ar' ? 'مساعد الذكاء الاصطناعي' : 'AI Assistant'}
+          >
+            <Sparkles className="w-5 h-5" />
+          </Button>
+
+          {/* LANGUAGE TOGGLE */}
           <Button 
             variant="ghost" 
             size="icon" 
             onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')}
-            className="text-gray-400 hover:text-primary rounded-lg h-9 w-9"
+            className="text-slate-400 hover:text-emerald-600 hover:bg-white rounded-lg h-9 w-9 transition-all"
+            title={lang === 'ar' ? 'تغيير اللغة' : 'Change Language'}
           >
             <Globe className="w-5 h-5" />
           </Button>
-          <Button variant="ghost" size="icon" className="text-gray-400 hover:text-primary rounded-lg h-9 w-9 relative">
-            <Bell className="w-5 h-5" />
-            <span className={`absolute top-2.5 ${lang === 'ar' ? 'left-2.5' : 'right-2.5'} w-2 h-2 bg-red-500 rounded-full border-2 border-white shadow-sm`}></span>
-          </Button>
         </div>
+
+        {/* Divider */}
+        <div className="h-8 w-px bg-slate-100 mx-1" />
 
         {/* Premium User Profile Menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className={`flex items-center gap-3 p-1.5 ${lang === 'ar' ? 'md:ps-5 md:pe-2' : 'md:pe-5 md:ps-2'} hover:bg-gray-50 rounded-[1.25rem] border border-transparent hover:border-gray-100 transition-all`}>
-              <div className="hidden md:block text-right">
-                <p className="text-xs font-black text-gray-900 leading-none">{lang === 'ar' ? 'علي باحاج' : 'Ali Bahaj'}</p>
-                <p className="text-[10px] text-primary font-bold mt-1 uppercase tracking-widest opacity-60">
+            <Button variant="ghost" className={cn(
+              "flex items-center gap-3 p-1 hover:bg-slate-50 rounded-xl border border-transparent hover:border-slate-100 transition-all group",
+              isRtl ? "ps-4 pe-1" : "pe-4 ps-1"
+            )}>
+              <div className="hidden md:flex flex-col text-right">
+                <p className="text-xs font-black text-slate-900 leading-none group-hover:text-emerald-700 transition-colors">
+                  {lang === 'ar' ? 'علي باحاج' : 'Ali Bahaj'}
+                </p>
+                <p className="text-[9px] text-slate-400 font-bold mt-1.5 uppercase tracking-widest">
                   {lang === 'ar' ? 'المشرف العام' : 'General Manager'}
                 </p>
               </div>
-              <div className="w-10 h-10 rounded-xl bg-primary/5 flex items-center justify-center text-primary border border-primary/5 shadow-inner">
-                <User className="w-6 h-6" />
-              </div>
+              <Avatar className="h-10 w-10 rounded-lg border-2 border-white shadow-sm ring-1 ring-slate-100">
+                <AvatarImage src="https://picsum.photos/seed/manager/200/200" className="object-cover" />
+                <AvatarFallback className="bg-emerald-600 text-white font-black text-xs uppercase">
+                  AB
+                </AvatarFallback>
+              </Avatar>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align={lang === 'ar' ? 'end' : 'start'} className="w-64 rounded-2xl border-gray-100 shadow-2xl p-2 mt-2" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
-            <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-gray-400 p-3">{t.production.userProfile}</DropdownMenuLabel>
-            <DropdownMenuSeparator className="bg-gray-50" />
-            <DropdownMenuItem className="text-sm font-bold gap-4 focus:bg-primary/5 focus:text-primary cursor-pointer p-3 rounded-xl">
-              <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center"><User className="w-4 h-4" /></div>
-              {t.production.userProfile}
+          <DropdownMenuContent align={isRtl ? 'end' : 'start'} className="w-56 rounded-xl border-slate-100 shadow-2xl p-1.5 mt-2" dir={isRtl ? 'rtl' : 'ltr'}>
+            <DropdownMenuItem className="text-xs font-bold gap-3 focus:bg-emerald-50 focus:text-emerald-700 cursor-pointer p-2.5 rounded-lg">
+              <div className="w-7 h-7 rounded-md bg-emerald-50 flex items-center justify-center text-emerald-600"><User className="w-4 h-4" /></div>
+              {lang === 'ar' ? 'الملف الشخصي' : 'My Profile'}
             </DropdownMenuItem>
-            <DropdownMenuItem className="text-sm font-bold gap-4 focus:bg-primary/5 focus:text-primary cursor-pointer p-3 rounded-xl">
-              <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center"><Settings className="w-4 h-4" /></div>
-              {t.production.settings}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator className="bg-gray-50" />
+            
+            <DropdownMenuSeparator className="bg-slate-50 my-1.5" />
+            
             <DropdownMenuItem 
-              className="text-sm font-bold gap-4 text-red-500 focus:bg-red-50 focus:text-red-600 cursor-pointer p-3 rounded-xl"
+              className="text-xs font-bold gap-3 text-rose-600 focus:bg-rose-50 focus:text-rose-700 cursor-pointer p-2.5 rounded-lg"
               onClick={handleLogout}
             >
-              <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center"><LogOut className="w-4 h-4" /></div>
-              {t.production.logout}
+              <div className="w-7 h-7 rounded-md bg-rose-50 flex items-center justify-center text-rose-600"><LogOut className="w-4 h-4" /></div>
+              {lang === 'ar' ? 'تسجيل الخروج' : 'Sign Out'}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
