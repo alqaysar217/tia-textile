@@ -109,7 +109,7 @@ export function ReceiptFormDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[900px] rounded-lg p-0 overflow-hidden border-none shadow-2xl">
+      <DialogContent className="sm:max-w-[900px] rounded-lg p-0 overflow-hidden border-none shadow-2xl dark:bg-slate-900">
         <div className="premium-gradient p-6 text-white">
           <DialogHeader className={cn("text-right rtl:text-right ltr:text-left")}>
             <DialogTitle className="text-xl font-black flex items-center gap-3 text-white">
@@ -120,19 +120,19 @@ export function ReceiptFormDialog({
           </DialogHeader>
         </div>
 
-        <form onSubmit={onSubmit} className="p-6 space-y-6 bg-white max-h-[85vh] overflow-y-auto no-scrollbar">
+        <form onSubmit={onSubmit} className="p-6 space-y-6 bg-white dark:bg-slate-900 max-h-[85vh] overflow-y-auto no-scrollbar">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
-                <Calendar className="w-3 h-3 text-emerald-600" /> {isRtl ? 'تاريخ التسوية' : 'DATE'}
+            <div className="space-y-1.5 text-right">
+              <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-end">
+                {isRtl ? 'تاريخ التسوية' : 'DATE'} <Calendar className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
               </Label>
-              <Input type="date" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} className="h-11 font-bold bg-slate-50" required />
+              <Input type="date" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} className="h-11 font-bold bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 dark:text-slate-100 text-right" dir={dir} required />
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
-                <Workflow className="w-3 h-3 text-emerald-600" /> {isRtl ? 'أمر الإنتاج' : 'BATCH'}
+            <div className="space-y-1.5 text-right">
+              <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-end">
+                {isRtl ? 'أمر الإنتاج' : 'BATCH'} <Workflow className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
               </Label>
-              <select value={formData.orderId} onChange={(e) => setFormData({...formData, orderId: e.target.value, workerId: '', linkedMIVs: []})} className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none" required>
+              <select value={formData.orderId} onChange={(e) => setFormData({...formData, orderId: e.target.value, workerId: '', linkedMIVs: []})} className="w-full h-11 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-bold outline-none dark:text-slate-100 text-right" dir={dir} required>
                 <option value="">{isRtl ? '-- اختر أمر الإنتاج --' : '-- Select Batch --'}</option>
                 {allOrders?.map(o => (
                   <option key={o.id} value={o.id}>{o.orderNumber} - {o.title}</option>
@@ -142,20 +142,20 @@ export function ReceiptFormDialog({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
-                <Building2 className="w-3 h-3 text-emerald-600" /> {isRtl ? 'فلترة حسب القسم' : 'FILTER BY DEPT'}
+            <div className="space-y-1.5 text-right">
+              <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-end">
+                {isRtl ? 'فلترة حسب القسم' : 'FILTER BY DEPT'} <Building2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
               </Label>
-              <select value={selectedDeptId} onChange={(e) => { setSelectedDeptId(e.target.value); setFormData({...formData, workerId: '', linkedMIVs: []}); }} className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none">
+              <select value={selectedDeptId} onChange={(e) => { setSelectedDeptId(e.target.value); setFormData({...formData, workerId: '', linkedMIVs: []}); }} className="w-full h-11 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-bold outline-none dark:text-slate-100 text-right" dir={dir}>
                 <option value="">{isRtl ? 'جميع الأقسام' : 'All Departments'}</option>
                 {allDepartments?.filter(d => d.status === 'active').map(d => <option key={d.id} value={d.id}>{d.nameAr}</option>)}
               </select>
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
-                <UserCheck className="w-3 h-3 text-emerald-600" /> {isRtl ? 'الموظف (الذي عليه عهدة)' : 'PERSONNEL'}
+            <div className="space-y-1.5 text-right">
+              <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-end">
+                {isRtl ? 'الموظف (الذي عليه عهدة)' : 'PERSONNEL'} <UserCheck className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
               </Label>
-              <select value={formData.workerId} onChange={(e) => setFormData({...formData, workerId: e.target.value, linkedMIVs: []})} disabled={!formData.orderId} className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none disabled:opacity-50" required>
+              <select value={formData.workerId} onChange={(e) => setFormData({...formData, workerId: e.target.value, linkedMIVs: []})} disabled={!formData.orderId} className="w-full h-11 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-bold outline-none disabled:opacity-50 dark:text-slate-100 text-right" dir={dir} required>
                 <option value="">{isRtl ? '-- اختر الموظف --' : '-- Select Person --'}</option>
                 {relevantWorkers.map(w => <option key={w.id} value={w.id}>{w.fullName}</option>)}
               </select>
@@ -163,20 +163,20 @@ export function ReceiptFormDialog({
           </div>
 
           {formData.workerId && (
-            <div className="p-4 bg-amber-50/50 border border-amber-100 rounded-[1.5rem] space-y-4">
+            <div className="p-4 bg-amber-50/50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 rounded-[1.5rem] space-y-4">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="space-y-1">
-                  <h3 className="text-[10px] font-black text-amber-700 uppercase tracking-widest flex items-center gap-2">
+                  <h3 className="text-[10px] font-black text-amber-700 dark:text-amber-400 uppercase tracking-widest flex items-center gap-2">
                     <Hash className="w-3.5 h-3.5" /> {isRtl ? 'سندات العُهد المفتوحة' : 'Open Liabilities'}
                   </h3>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="relative">
-                    <Input value={mivSearch} onChange={(e) => setMivSearch(e.target.value)} placeholder={isRtl ? 'بحث بالسند...' : 'Search...'} className="h-8 w-40 bg-white/80 text-[10px] font-bold" />
+                    <Input value={mivSearch} onChange={(e) => setMivSearch(e.target.value)} placeholder={isRtl ? 'بحث بالسند...' : 'Search...'} className="h-8 w-40 bg-white/80 dark:bg-slate-900 text-[10px] font-bold border-amber-100 dark:border-slate-700 dark:text-slate-100 text-right" dir={dir} />
                   </div>
-                  <div className="flex items-center gap-2 bg-white px-3 py-1 rounded-lg border border-amber-200">
-                    <Checkbox id="finalSettlement" checked={formData.isFinalSettlement} onCheckedChange={(val) => setFormData({...formData, isFinalSettlement: !!val})} />
-                    <label htmlFor="finalSettlement" className="text-[10px] font-black text-slate-600">{isRtl ? 'إغلاق نهائي' : 'Final Closure'}</label>
+                  <div className="flex items-center gap-2 bg-white dark:bg-slate-800 px-3 py-1 rounded-lg border border-amber-200 dark:border-slate-700">
+                    <Checkbox id="finalSettlement" checked={formData.isFinalSettlement} onCheckedChange={(val) => setFormData({...formData, isFinalSettlement: !!val})} className="data-[state=checked]:bg-amber-600" />
+                    <label htmlFor="finalSettlement" className="text-[10px] font-black text-slate-600 dark:text-slate-400 cursor-pointer">{isRtl ? 'إغلاق نهائي' : 'Final Closure'}</label>
                   </div>
                 </div>
               </div>
@@ -191,10 +191,12 @@ export function ReceiptFormDialog({
                       }} 
                       className={cn(
                         "p-2 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-between", 
-                        formData.linkedMIVs.includes(m.id) ? "bg-emerald-600 border-emerald-700 text-white shadow-md" : "bg-white border-slate-100 hover:border-amber-200 text-slate-600"
+                        formData.linkedMIVs.includes(m.id) 
+                          ? "bg-emerald-600 border-emerald-700 text-white shadow-md" 
+                          : "bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 hover:border-amber-200 dark:hover:border-amber-900 text-slate-600 dark:text-slate-400"
                       )}
                     >
-                      <div className="flex flex-col">
+                      <div className="flex flex-col text-right">
                         <span className="text-[10px] font-black">{m.voucherNumber}</span>
                         <span className="text-[8px] font-bold opacity-60">{m.date}</span>
                       </div>
@@ -207,54 +209,55 @@ export function ReceiptFormDialog({
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
-            <div className="md:col-span-4 p-4 bg-slate-50 border border-slate-200 rounded-2xl text-center space-y-3">
-               <Label className="text-[10px] font-black text-slate-400 uppercase">{isRtl ? 'المنتج المستلم' : 'PRODUCED ITEM'}</Label>
-               <div className="w-20 h-20 mx-auto bg-white rounded-xl border overflow-hidden">
+            <div className="md:col-span-4 p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-center space-y-3">
+               <Label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase">{isRtl ? 'المنتج المستلم' : 'PRODUCED ITEM'}</Label>
+               <div className="w-20 h-20 mx-auto bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-700 overflow-hidden">
                   <img src={targetProduct?.image || 'https://placehold.co/100'} className="w-full h-full object-cover" />
                </div>
-               <p className="text-xs font-black text-slate-900">{targetProduct?.nameAr || '---'}</p>
+               <p className="text-xs font-black text-slate-900 dark:text-slate-100">{targetProduct?.nameAr || '---'}</p>
             </div>
             <div className="md:col-span-8 flex flex-col gap-4">
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-black text-emerald-700 uppercase">{isRtl ? 'الكمية المستلمة' : 'ACCEPTED QTY'}</Label>
-                  <Input type="number" step="any" value={formData.qtyAccepted || ''} onChange={(e) => setFormData({...formData, qtyAccepted: Number(e.target.value)})} className="h-14 font-black text-center text-2xl text-emerald-700 bg-emerald-50 border-emerald-200" required min="0.01" />
+                <div className="space-y-1.5 text-right">
+                  <Label className="text-[10px] font-black text-emerald-700 dark:text-emerald-400 uppercase">{isRtl ? 'الكمية المستلمة' : 'ACCEPTED QTY'}</Label>
+                  <Input type="number" step="any" value={formData.qtyAccepted || ''} onChange={(e) => setFormData({...formData, qtyAccepted: Number(e.target.value)})} className="h-14 font-black text-center text-2xl text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-900/30" dir="ltr" required min="0.01" />
                 </div>
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-black text-slate-400 uppercase">{isRtl ? 'ملاحظات الفحص' : 'QC NOTES'}</Label>
-                  <Input value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} className="h-14 bg-slate-50 text-xs font-bold" />
+                <div className="space-y-1.5 text-right">
+                  <Label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase">{isRtl ? 'ملاحظات الفحص' : 'QC NOTES'}</Label>
+                  <Input value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} className="h-14 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-xs font-bold dark:text-slate-100 text-right" dir={dir} />
                 </div>
               </div>
               
-              <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100 flex items-center justify-between">
+              <div className="p-4 bg-emerald-50 dark:bg-emerald-900/10 rounded-xl border border-emerald-100 dark:border-emerald-900/20 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-white rounded-lg text-emerald-600 shadow-sm"><Wallet className="w-5 h-5" /></div>
+                  <div className="p-2 bg-white dark:bg-slate-900 rounded-lg text-emerald-600 dark:text-emerald-400 shadow-sm"><Wallet className="w-5 h-5" /></div>
                   <div className="flex flex-col gap-1 text-right">
-                    <p className="text-[9px] font-black text-emerald-800 uppercase">{isRtl ? 'أجر القطعة' : 'WAGE/PCS'}</p>
-                    <Input type="number" step="any" value={formData.wageRate || ''} onChange={(e) => setFormData({...formData, wageRate: Number(e.target.value)})} className="h-8 w-24 text-xs font-black text-right" required />
+                    <p className="text-[9px] font-black text-emerald-800 dark:text-emerald-400 uppercase">{isRtl ? 'أجر القطعة' : 'WAGE/PCS'}</p>
+                    <Input type="number" step="any" value={formData.wageRate || ''} onChange={(e) => setFormData({...formData, wageRate: Number(e.target.value)})} className="h-8 w-24 text-xs font-black text-right dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100" dir="ltr" required />
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-[9px] font-black text-emerald-800 uppercase">{isRtl ? 'إجمالي المستحق' : 'SETTLEMENT'}</p>
-                  <p className="text-xl font-black text-emerald-700 tabular-nums">
-                    {(formData.qtyAccepted * formData.wageRate).toLocaleString('en-US')} <span className="text-[10px]">{formData.currency}</span>
+                  <p className="text-[9px] font-black text-emerald-800 dark:text-emerald-400 uppercase">{isRtl ? 'إجمالي المستحق' : 'SETTLEMENT'}</p>
+                  <p className="text-xl font-black text-emerald-700 dark:text-emerald-400 tabular-nums">
+                    {(formData.qtyAccepted * formData.wageRate).toLocaleString('en-US')} <span className="text-[10px] uppercase">{formData.currency}</span>
                   </p>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="p-4 bg-blue-50/30 border border-blue-100 rounded-[1.5rem] space-y-4">
-            <h3 className="text-[10px] font-black text-blue-700 uppercase flex items-center gap-2">
-              <RefreshCcw className="w-3.5 h-3.5" /> {isRtl ? 'استرجاع المواد المتبقية للمخزن' : 'RETURN RAW MATERIALS'}
+          <div className="p-4 bg-blue-50/30 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/20 rounded-[1.5rem] space-y-4">
+            <h3 className="text-[10px] font-black text-blue-700 dark:text-blue-400 uppercase flex items-center gap-2 justify-end">
+               {isRtl ? 'استرجاع المواد المتبقية للمخزن' : 'RETURN RAW MATERIALS'} <RefreshCcw className="w-3.5 h-3.5" />
             </h3>
             <div className="flex flex-col md:flex-row gap-3 items-end">
-              <div className="flex-1 text-right">
+              <div className="flex-1 text-right w-full">
                 <select 
                   disabled={formData.linkedMIVs.length === 0} 
-                  className="w-full h-10 px-3 bg-white border border-blue-200 rounded-md text-xs font-bold outline-none" 
+                  className="w-full h-10 px-3 bg-white dark:bg-slate-800 border border-blue-200 dark:border-slate-700 rounded-md text-xs font-bold outline-none dark:text-slate-100" 
                   value={currentItem.id} 
                   onChange={(e) => setCurrentItem({ ...currentItem, id: e.target.value })}
+                  dir={dir}
                 >
                   <option value="">{isRtl ? '-- اختر مادة للاسترجاع --' : '-- Select --'}</option>
                   {issuedMaterialsPool.map(m => (
@@ -263,29 +266,29 @@ export function ReceiptFormDialog({
                 </select>
               </div>
               <div className="w-32">
-                <Input type="number" step="any" value={currentItem.qty || ''} onChange={(e) => setCurrentItem({ ...currentItem, qty: Number(e.target.value) })} className="h-10 font-bold text-center" placeholder="0.00" />
+                <Input type="number" step="any" value={currentItem.qty || ''} onChange={(e) => setCurrentItem({ ...currentItem, qty: Number(e.target.value) })} className="h-10 font-bold text-center dark:bg-slate-800 dark:border-slate-700" placeholder="0.00" />
               </div>
-              <Button type="button" onClick={handleReturnItem} className="h-10 bg-blue-600 text-white font-black text-xs px-6 rounded-md">
+              <Button type="button" onClick={handleReturnItem} className="h-10 bg-blue-600 hover:bg-blue-700 text-white font-black text-xs px-6 rounded-md border-none transition-all">
                 {isRtl ? 'إدراج' : 'Insert'}
               </Button>
             </div>
             {formData.returnedItems.length > 0 && (
-              <div className="border border-blue-100 rounded-xl overflow-hidden bg-white">
+              <div className="border border-blue-100 dark:border-slate-700 rounded-xl overflow-hidden bg-white dark:bg-slate-900">
                 <Table className="text-right">
-                  <TableHeader className="bg-blue-50/50">
-                    <TableRow>
-                      <TableHead className="text-right text-[9px] font-black text-blue-500 uppercase">{isRtl ? 'المادة' : 'ITEM'}</TableHead>
-                      <TableHead className="text-center text-[9px] font-black text-blue-500 uppercase">QTY</TableHead>
+                  <TableHeader className="bg-blue-50/50 dark:bg-slate-800">
+                    <TableRow className="border-b dark:border-slate-700">
+                      <TableHead className={cn("px-4 py-2 text-[9px] font-black text-blue-500 dark:text-blue-400 uppercase", isRtl ? "text-right" : "text-left")}>{isRtl ? 'المادة' : 'ITEM'}</TableHead>
+                      <TableHead className="text-center text-[9px] font-black text-blue-500 dark:text-blue-400 uppercase">QTY</TableHead>
                       <TableHead className="w-10"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {formData.returnedItems.map((item: any, idx: number) => (
-                      <TableRow key={idx} className="border-b border-blue-50">
-                        <TableCell className="text-xs font-bold">{item.nameAr}</TableCell>
-                        <TableCell className="text-center font-black tabular-nums">{item.qty} {item.unit}</TableCell>
+                      <TableRow key={idx} className="border-b border-blue-50 dark:border-slate-800 hover:bg-blue-50/20 dark:hover:bg-slate-800/50 transition-colors">
+                        <TableCell className="text-xs font-bold dark:text-slate-100">{item.nameAr}</TableCell>
+                        <TableCell className="text-center font-black tabular-nums dark:text-slate-100">{item.qty} {item.unit}</TableCell>
                         <TableCell>
-                          <button type="button" onClick={() => setFormData({...formData, returnedItems: formData.returnedItems.filter((_: any, i: number) => i !== idx)})} className="text-rose-400">
+                          <button type="button" onClick={() => setFormData({...formData, returnedItems: formData.returnedItems.filter((_: any, i: number) => i !== idx)})} className="text-rose-400 hover:text-rose-600 transition-colors">
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </TableCell>
@@ -297,12 +300,12 @@ export function ReceiptFormDialog({
             )}
           </div>
 
-          <div className="flex gap-3 pt-4 border-t border-slate-100">
-            <Button type="submit" disabled={isSubmitting || !formData.workerId || formData.linkedMIVs.length === 0 || formData.qtyAccepted <= 0} className="flex-1 h-14 premium-gradient text-white rounded-xl font-black text-base shadow-xl">
+          <div className="flex gap-3 pt-6 border-t border-slate-100 dark:border-slate-800">
+            <Button type="submit" disabled={isSubmitting || !formData.workerId || formData.linkedMIVs.length === 0 || formData.qtyAccepted <= 0} className="flex-1 h-14 premium-gradient text-white rounded-xl font-black text-base shadow-xl border-none transition-all active:scale-95">
               {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin me-2" /> : <CheckCircle2 className="w-5 h-5 me-2" />}
               {isRtl ? (editingId ? 'تحديث السند والمخازن' : 'ترحيل التسوية وتحديث المخازن') : 'Post Settlement'}
             </Button>
-            <Button type="button" variant="outline" onClick={onClose} className="px-8 h-14 font-black text-slate-400 rounded-xl border-slate-200">{isRtl ? 'إلغاء' : 'Cancel'}</Button>
+            <Button type="button" variant="outline" onClick={onClose} className="px-8 h-14 font-black text-slate-400 dark:text-slate-500 rounded-xl border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800">{isRtl ? 'إلغاء' : 'Cancel'}</Button>
           </div>
         </form>
       </DialogContent>

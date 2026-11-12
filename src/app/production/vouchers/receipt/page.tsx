@@ -73,7 +73,7 @@ export default function ProductionReceiptPage() {
     returnedItems: [] as any[],
   });
 
-  // CRITICAL FIX: Sync currency with system settings when adding new receipt
+  // Sync currency with system settings
   useEffect(() => {
     if (!editingVoucherId && systemCurrency) {
       setFormData(prev => ({ ...prev, currency: systemCurrency }));
@@ -175,13 +175,11 @@ export default function ProductionReceiptPage() {
       const whRef = doc(db, 'finishedGoodsWarehouse', productId);
       const logRef = doc(collection(db, 'warehouseTransactions'));
 
-      // 1. Update Warehouse Stock
       batch.set(whRef, { 
         totalQty: increment(Number(transferringVoucher.qtyAccepted)),
         updatedAt: serverTimestamp()
       }, { merge: true });
 
-      // 2. Log Transaction for Reversal
       batch.set(logRef, {
         type: 'in',
         voucherId: transferringVoucher.id,
@@ -194,7 +192,6 @@ export default function ProductionReceiptPage() {
         status: 'posted'
       });
 
-      // 3. Mark Voucher as Transferred
       batch.update(doc(db, 'vouchers', transferringVoucher.id), { 
         isTransferred: true,
         warehouseTransactionId: logRef.id 
@@ -226,7 +223,7 @@ export default function ProductionReceiptPage() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#f8fafc] overflow-hidden" dir={dir}>
+    <div className="flex flex-col h-full bg-[#f8fafc] dark:bg-slate-950 overflow-hidden transition-colors duration-300" dir={dir}>
       <ReceiptHeader 
         lang={lang} dir={dir} search={search} setSearch={setSearch} batchFilter={batchFilter} setBatchFilter={setBatchFilter}
         sortBy={sortBy} setSortBy={setSortBy} sortOrder={sortOrder} setSortOrder={setSortOrder}
@@ -262,8 +259,8 @@ export default function ProductionReceiptPage() {
       <ReceiptDeleteDialog isOpen={!!deletingVoucher} onClose={() => setDeletingVoucher(null)} lang={lang} isSubmitting={isSubmitting} onDelete={handleDeleteRequest} />
 
       <AlertDialog open={!!transferringVoucher} onOpenChange={(open) => !open && setTransferringVoucher(null)}>
-        <AlertDialogContent className="max-w-[450px] rounded-[1.5rem] p-0 overflow-hidden border-none shadow-2xl">
-          <div className="bg-slate-900 p-8 text-center relative overflow-hidden">
+        <AlertDialogContent className="max-w-[450px] rounded-[1.5rem] p-0 overflow-hidden border-none shadow-2xl dark:bg-slate-900">
+          <div className="bg-slate-900 dark:bg-slate-950 p-8 text-center relative overflow-hidden">
              <div className="absolute top-0 right-0 p-4 opacity-5"><Truck className="w-32 h-32 text-white" /></div>
              <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-blue-500/20 shadow-inner">
                 <Truck className="w-8 h-8 text-blue-400" />
@@ -275,17 +272,17 @@ export default function ProductionReceiptPage() {
                   : `You are about to transfer (${transferringVoucher?.qtyAccepted}) items to the finished goods warehouse. Is this product fully completed and ready for sale?`}
              </AlertDialogDescription>
           </div>
-          <div className="bg-white p-6 flex gap-3">
-             <AlertDialogAction onClick={handleTransferToWarehouse} disabled={isSubmitting} className="flex-1 h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black shadow-lg">
+          <div className="bg-white dark:bg-slate-900 p-6 flex gap-3">
+             <AlertDialogAction onClick={handleTransferToWarehouse} disabled={isSubmitting} className="flex-1 h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black shadow-lg border-none">
                 {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : <Truck className="w-4 h-4 me-2" />}
                 {isRtl ? 'نعم، ترحيل الآن' : 'Yes, Transfer Now'}
              </AlertDialogAction>
-             <AlertDialogCancel className="flex-1 h-12 bg-slate-50 border-slate-200 text-slate-400 rounded-xl font-black">{isRtl ? 'تراجع' : 'Cancel'}</AlertDialogCancel>
+             <AlertDialogCancel className="flex-1 h-12 bg-slate-50 dark:bg-slate-800 border-none text-slate-400 dark:text-slate-500 rounded-xl font-black">{isRtl ? 'تراجع' : 'Cancel'}</AlertDialogCancel>
           </div>
         </AlertDialogContent>
       </AlertDialog>
 
-      <div className="flex-none p-2.5 bg-slate-900 text-white/50 flex items-center justify-center gap-3">
+      <div className="flex-none p-2.5 bg-slate-900 dark:bg-slate-900/80 text-white/50 flex items-center justify-center gap-3 border-t border-white/5 shadow-2xl">
         <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
         <p className="text-[10px] font-bold tracking-tight">{isRtl ? 'نظام الرقابة الميدانية: تصفية العهد المفتوحة وتوريد المنجز للمستودع النهائي.' : 'Production Control Active.'}</p>
       </div>
