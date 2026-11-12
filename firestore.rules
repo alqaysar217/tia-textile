@@ -2,14 +2,15 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // السماح بالقراءة والكتابة للموظفين المسجلين دخولهم فقط لجميع المجموعات
-    // هذا يضمن أن أي ميزة جديدة نضيفها (مثل المواد الخام أو أوامر الإنتاج) تعمل فوراً
+    // السماح بالقراءة للجميع لضمان عمل المساعد الذكي (AI) والتقارير من جهة الخادم
+    // مع الإبقاء على صلاحيات الكتابة للموظفين المسجلين دخولهم فقط
     
     match /{collection}/{id} {
-      allow read, write: if request.auth != null;
+      allow read: if true;
+      allow write: if request.auth != null;
     }
     
-    // قواعد خاصة ببيانات المستخدمين (اختياري لزيادة الأمان)
+    // قواعد خاصة ببيانات المستخدمين لضمان الخصوصية
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }

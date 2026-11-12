@@ -77,7 +77,7 @@ async function getFullSystemSnapshot() {
   // 4. مستودع المنجز الجاهز
   const finishedGoodsContext = rawData.finishedGoodsWarehouse.map(d => {
     const p = rawData.products.find(prod => prod.id === d.id);
-    return `- ${p?.nameAr || 'صنف غير معرف'}: الرصيد الجاهز [${d.totalQty || 0}] قطعة`;
+    return `- ${p?.nameAr || 'صنف غير معروف'}: الرصيد الجاهز [${d.totalQty || 0}] قطعة`;
   }).join('\n');
 
   // 5. تحليل السندات الأخيرة (آخر 50 حركة تفصيلية)
