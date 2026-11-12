@@ -19,6 +19,7 @@ import { toast } from '@/hooks/use-toast';
 import { toPng } from 'html-to-image';
 import { ShieldCheck, Truck, Loader2, AlertCircle } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
+import { useProduction } from '../../ProductionContext';
 
 import { ReceiptHeader } from './components/ReceiptHeader';
 import { ReceiptTable } from './components/ReceiptTable';
@@ -42,6 +43,12 @@ export default function ProductionReceiptPage() {
   const searchParams = useSearchParams();
   const isRtl = lang === 'ar';
 
+  // استيراد الصلاحيات من المحرك المركزي
+  const { permissions, isAdmin } = useProduction();
+  const canCreate = isAdmin || permissions.vouchers_receipt?.create;
+  const canEdit = isAdmin || permissions.vouchers_receipt?.edit;
+  const canDelete = isAdmin || permissions.vouchers_receipt?.delete;
+
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingVoucherId, setEditingVoucherId] = useState<string | null>(null);
   const [deletingVoucher, setDeletingVoucher] = useState<any | null>(null);
@@ -55,7 +62,7 @@ export default function ProductionReceiptPage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [batchFilter, setBatchFilter] = useState('all');
 
-  // Fetch Global Settings for Currency (Real-time listener)
+  // Fetch Global Settings for Currency
   const settingsRef = useMemo(() => !db ? null : doc(db, 'settings', 'global'), [db]);
   const { data: savedSettings } = useDoc<any>(settingsRef);
   const systemCurrency = savedSettings?.baseCurrency || 'YER';
@@ -114,9 +121,36 @@ export default function ProductionReceiptPage() {
     });
   }, [vouchers, allOrders, allWorkers, search, batchFilter, sortBy, sortOrder]);
 
+  const availableOrderProducts = useMemo(() => {
+    if (!formData.orderId || !productionReceipts || !allProducts) return [];
+    const order = allOrders?.find(o => o.id === formData.orderId);
+    const product = allProducts?.find(p => p.id === order?.productId);
+    if (!product) return [];
+
+    const totalReceived = (allVouchers || []).filter(r => r.orderId === formData.orderId && r.type === 'production_receipt' && r.status !== 'deleted').reduce((sum, r) => sum + (r.qtyAccepted || 0), 0);
+    const totalIssued = (allVouchers || []).filter(v => v.orderId === formData.orderId && v.type === 'material_issue' && v.status !== 'deleted' && v.id !== editingVoucherId).reduce((sum, v) => {
+      const productItems = v.items?.filter((i: any) => i.itemType === 'product') || [];
+      return sum + productItems.reduce((s: number, i: any) => s + i.qty, 0);
+    }, 0);
+
+    const left = Math.max(0, totalReceived - totalIssued);
+    return left > 0 ? [{ id: product.id, nameAr: product.nameAr, image: product.image, sku: product.sku, availableQty: left, unit: 'Pcs' }] : [];
+  }, [formData.orderId, allVouchers, allOrders, allProducts, editingVoucherId]);
+
   const handleSaveVoucher = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!db || isSubmitting || !formData.workerId || !formData.orderId || formData.linkedMIVs.length === 0 || formData.qtyAccepted <= 0) return;
+    
+    // منع الحفظ بدون صلاحية
+    if (editingVoucherId && !canEdit) {
+      toast({ variant: "destructive", title: isRtl ? "غير مسموح بالتعديل" : "Access Denied" });
+      return;
+    }
+    if (!editingVoucherId && !canCreate) {
+      toast({ variant: "destructive", title: isRtl ? "غير مسموح بالإنشاء" : "Access Denied" });
+      return;
+    }
+
     setIsSubmitting(true);
     const batch = writeBatch(db);
     const wageAmount = Number(formData.qtyAccepted) * Number(formData.wageRate);
@@ -164,6 +198,13 @@ export default function ProductionReceiptPage() {
 
   const handleTransferToWarehouse = async () => {
     if (!db || !transferringVoucher || isSubmitting) return;
+    
+    // فحص صلاحية التعديل لأن الترحيل يغير حالة السند
+    if (!canEdit) {
+      toast({ variant: "destructive", title: isRtl ? "غير مسموح بالترحيل" : "Permission Denied" });
+      return;
+    }
+
     setIsSubmitting(true);
     const batch = writeBatch(db);
     
@@ -209,7 +250,7 @@ export default function ProductionReceiptPage() {
   };
 
   const handleDeleteRequest = async () => {
-    if (!db || !deletingVoucher) return;
+    if (!db || !deletingVoucher || !canDelete) return;
     setIsSubmitting(true);
     const batch = writeBatch(db);
     try {
@@ -227,14 +268,19 @@ export default function ProductionReceiptPage() {
       <ReceiptHeader 
         lang={lang} dir={dir} search={search} setSearch={setSearch} batchFilter={batchFilter} setBatchFilter={setBatchFilter}
         sortBy={sortBy} setSortBy={setSortBy} sortOrder={sortOrder} setSortOrder={setSortOrder}
-        activeOrders={allOrders || []} onAdd={() => setIsAddDialogOpen(true)} onExport={() => {}}
+        activeOrders={allOrders || []} 
+        onAdd={() => setIsAddDialogOpen(true)} 
+        onExport={() => {}}
+        canCreate={canCreate}
       />
       <div className="flex-1 min-h-0 overflow-auto p-4 md:p-6 no-scrollbar">
         <ReceiptTable 
           loading={vouchersLoading} vouchers={filteredVouchers} allWorkers={allWorkers || []} allOrders={allOrders || []}
-          lang={lang} dir={dir} onPrint={(v) => setPrintingVoucher(v)} onEdit={(v) => { setEditingVoucherId(v.id); setFormData({ ...v }); setIsAddDialogOpen(true); }}
+          lang={lang} dir={dir} onPrint={(v) => setPrintingVoucher(v)} onEdit={(v) => { if(!canEdit) return; setEditingVoucherId(v.id); setFormData({ ...v }); setIsAddDialogOpen(true); }}
           onDelete={(v) => setDeletingVoucher(v)}
           onTransfer={(v) => setTransferringVoucher(v)}
+          canEdit={canEdit}
+          canDelete={canDelete}
         />
       </div>
 

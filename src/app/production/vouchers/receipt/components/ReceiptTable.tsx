@@ -38,10 +38,12 @@ interface ReceiptTableProps {
   onEdit: (v: any) => void;
   onDelete: (v: any) => void;
   onTransfer: (v: any) => void;
+  canEdit: boolean;
+  canDelete: boolean;
 }
 
 export function ReceiptTable({
-  loading, vouchers, allWorkers, allOrders, lang, dir, onPrint, onEdit, onDelete, onTransfer
+  loading, vouchers, allWorkers, allOrders, lang, dir, onPrint, onEdit, onDelete, onTransfer, canEdit, canDelete
 }: ReceiptTableProps) {
   const isRtl = lang === 'ar';
 
@@ -88,7 +90,7 @@ export function ReceiptTable({
                         <Button 
                           variant="ghost" 
                           size="icon" 
-                          disabled={v.isTransferred}
+                          disabled={v.isTransferred || !canEdit}
                           onClick={() => onTransfer(v)} 
                           className={cn(
                             "h-8 w-8 transition-colors rounded-lg",
@@ -109,13 +111,19 @@ export function ReceiptTable({
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"><MoreVertical className="w-4 h-4 text-slate-400 dark:text-slate-500" /></Button></DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-44 rounded-xl shadow-xl dark:bg-slate-900 dark:border-slate-800">
-                      <DropdownMenuItem onClick={() => onEdit(v)} disabled={v.isTransferred} className="gap-2 font-bold py-2 cursor-pointer text-xs dark:text-slate-200">
-                        <Edit2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> {isRtl ? 'تعديل السند' : 'Edit Voucher'}
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator className="dark:bg-slate-800" />
-                      <DropdownMenuItem onClick={() => onDelete(v)} disabled={v.isTransferred} className="gap-2 font-bold py-2 text-rose-600 dark:text-rose-400 cursor-pointer text-xs">
-                        <Trash2 className="w-3.5 h-3.5" /> {isRtl ? 'نقل للمهملات' : 'Move to Trash'}
-                      </DropdownMenuItem>
+                      {canEdit && (
+                        <DropdownMenuItem onClick={() => onEdit(v)} disabled={v.isTransferred} className="gap-2 font-bold py-2 cursor-pointer text-xs dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
+                          <Edit2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> {isRtl ? 'تعديل السند' : 'Edit Voucher'}
+                        </DropdownMenuItem>
+                      )}
+                      {canDelete && (
+                        <>
+                          <DropdownMenuSeparator className="dark:bg-slate-800" />
+                          <DropdownMenuItem onClick={() => onDelete(v)} disabled={v.isTransferred} className="gap-2 font-bold py-2 text-rose-600 dark:text-rose-400 cursor-pointer text-xs focus:bg-rose-50 dark:focus:bg-rose-900/20">
+                            <Trash2 className="w-3.5 h-3.5" /> {isRtl ? 'نقل للمهملات' : 'Move to Trash'}
+                          </DropdownMenuItem>
+                        </>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>

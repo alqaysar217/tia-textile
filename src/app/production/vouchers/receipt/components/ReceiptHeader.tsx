@@ -42,11 +42,12 @@ interface ReceiptHeaderProps {
   activeOrders: any[];
   onAdd: () => void;
   onExport: () => void;
+  canCreate: boolean;
 }
 
 export function ReceiptHeader({
   lang, dir, search, setSearch, batchFilter, setBatchFilter, 
-  sortBy, setSortBy, sortOrder, setSortOrder, activeOrders, onAdd, onExport
+  sortBy, setSortBy, sortOrder, setSortOrder, activeOrders, onAdd, onExport, canCreate
 }: ReceiptHeaderProps) {
   const isRtl = lang === 'ar';
 
@@ -77,7 +78,7 @@ export function ReceiptHeader({
               value={search} 
               onChange={(e) => setSearch(e.target.value)} 
               placeholder={isRtl ? 'بحث...' : 'Search...'} 
-              className={cn("h-10 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xs font-bold dark:text-slate-100", isRtl ? "pr-10" : "pl-10")} 
+              className={cn("h-10 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold dark:text-slate-100", isRtl ? "pr-10" : "pl-10")} 
             />
           </div>
 
@@ -123,9 +124,11 @@ export function ReceiptHeader({
             </DropdownMenu>
           </div>
 
-          <Button onClick={onAdd} className="h-10 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 transition-all border-none">
-            <Plus className="w-4 h-4" /> {isRtl ? 'استلام جديد' : 'New Receipt'}
-          </Button>
+          {canCreate && (
+            <Button onClick={onAdd} className="h-10 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 transition-all border-none">
+              <Plus className="w-4 h-4" /> {isRtl ? 'استلام جديد' : 'New Receipt'}
+            </Button>
+          )}
         </div>
       </div>
     </div>
