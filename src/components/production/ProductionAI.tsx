@@ -5,16 +5,14 @@ import {
   Send, 
   X, 
   Loader2, 
-  Sparkles,
-  BarChart3,
   Box,
   Wallet,
-  MessageSquare,
   History,
   Users2,
   Truck,
   Trophy,
   Search,
+  BarChart3,
   PieChart
 } from 'lucide-react';
 import { 
@@ -49,8 +47,8 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
   const isRtl = lang === 'ar';
 
   const welcomeMessage = isRtl 
-    ? "أهلاً بك يا مدير! أنا مستشارك التنفيذي. لقد قمتُ للتو بمسح كامل قاعدة البيانات؛ المخزون، أوامر الإنتاج، السندات، والعمال تحت تصرفك الآن. كيف يمكنني تحليل البيانات لك اليوم؟"
-    : "Welcome Manager! I am your executive consultant. I have scanned the entire database; inventory, orders, vouchers, and workforce are at your service. How can I analyze the data for you today?";
+    ? "<h3>مرحباً بك يا مدير!</h3><p>أنا مستشارك التنفيذي. لقد قمتُ للتو بمسح كامل قاعدة البيانات؛ المخزون، أوامر الإنتاج، السندات، والعمال تحت تصرفك الآن. كيف يمكنني تحليل البيانات لك اليوم؟</p>"
+    : "<h3>Welcome Manager!</h3><p>I am your executive consultant. I have scanned the entire database; inventory, orders, vouchers, and workforce are at your service. How can I analyze the data for you today?</p>";
 
   useEffect(() => {
     if (isOpen && messages.length === 0) {
@@ -84,7 +82,7 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
     } catch (error) {
       setMessages(prev => [...prev, { 
         role: 'assistant', 
-        content: isRtl ? "❌ عذراً، واجهت مشكلة في تحليل البيانات الحية حالياً." : "Data analysis error." 
+        content: "<p>❌ عذراً، واجهت مشكلة في تحليل البيانات الحية حالياً.</p>" 
       }]);
     } finally {
       setIsLoading(false);
@@ -92,12 +90,13 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
   };
 
   const quickActions = [
-    { label: isRtl ? 'المخزون والنواقص' : 'Stock Check', icon: <Box className="w-3 h-3" />, text: isRtl ? 'اعطني جدولاً بكافة المواد الخام المتوفرة وما هي المواد التي رصيدها منخفض حالياً؟' : 'Show me a table of all raw materials and identify low stock items.' },
-    { label: isRtl ? 'حالة أوامر الإنتاج' : 'Order Pipeline', icon: <BarChart3 className="w-3 h-3" />, text: isRtl ? 'لخص لي وضع أوامر الإنتاج النشطة، وكم الكمية المتبقية لكل أمر للوصول للمستهدف؟' : 'Summarize active production orders and the remaining quantity for each.' },
-    { label: isRtl ? 'أفضل عامل هذا الشهر' : 'Top Artisan', icon: <Trophy className="w-3 h-3" />, text: isRtl ? 'بناءً على سندات استلام الإنتاج، من هو العامل الأكثر إنتاجاً لهذا الشهر وكم عدد القطع المقبولة له؟' : 'Based on production receipts, who is the top producing artisan this month?' },
-    { label: isRtl ? 'جرد المنتجات الجاهزة' : 'Finished Goods', icon: <Truck className="w-3 h-3" />, text: isRtl ? 'ما هي المنتجات الجاهزة والمتوفرة في المستودع للبيع حالياً وكم كمياتها؟' : 'What finished goods are available in the warehouse and their quantities?' },
-    { label: isRtl ? 'تحليل التكاليف' : 'Cost Analysis', icon: <PieChart className="w-3 h-3" />, text: isRtl ? 'اعطني تقريراً مالياً عن إجمالي الأجور المصروفة وإجمالي التكاليف التشغيلية المسجلة.' : 'Show me a financial report of total wages paid and overhead costs recorded.' },
-    { label: isRtl ? 'البحث في السندات' : 'Voucher Finder', icon: <Search className="w-3 h-3" />, text: isRtl ? 'ابحث في السندات الأخيرة عن أي سند يحتوي على مادة "خيوط" أو "أصباغ" وأعطني تفاصيله.' : 'Search recent vouchers for items like "Yarn" or "Dye" and show details.' },
+    { label: isRtl ? 'المخزون والنواقص' : 'Stock Check', icon: <Box className="w-3.5 h-3.5" />, text: isRtl ? 'اعطني جدولاً بكافة المواد الخام المتوفرة وما هي المواد التي رصيدها منخفض حالياً؟' : 'Show me a table of all raw materials and identify low stock items.' },
+    { label: isRtl ? 'حالة الأوامر' : 'Order Status', icon: <BarChart3 className="w-3.5 h-3.5" />, text: isRtl ? 'لخص لي حالة كافة أوامر الإنتاج النشطة ونسبة المنجز النهائي منها.' : 'Summarize all active production orders and final yield.' },
+    { label: isRtl ? 'التقرير المالي' : 'Financials', icon: <Wallet className="w-3.5 h-3.5" />, text: isRtl ? 'ما هو إجمالي الأجور المستحقة وإجمالي المصاريف التشغيلية المسجلة في السندات؟' : 'Total due wages and overhead expenses?' },
+    { label: isRtl ? 'أفضل عامل' : 'Top Artisan', icon: <Trophy className="w-3.5 h-3.5" />, text: isRtl ? 'من هو العامل الأكثر إنتاجاً لهذا الشهر بناءً على كميات الاستلام؟' : 'Who is the top producing artisan this month?' },
+    { label: isRtl ? 'جرد المستودع' : 'Warehouse', icon: <Truck className="w-3.5 h-3.5" />, text: isRtl ? 'ما هي المنتجات الجاهزة المتوفرة في المستودع حالياً وكم كمياتها؟' : 'What finished goods are available in the warehouse?' },
+    { label: isRtl ? 'بحث في السندات' : 'Voucher Search', icon: <Search className="w-3.5 h-3.5" />, text: isRtl ? 'ابحث في السندات الأخيرة عن أي تفاصيل تتعلق بمادة معينة.' : 'Search recent vouchers for specific material details.' },
+    { label: isRtl ? 'سجل العمال' : 'Workforce', icon: <Users2 className="w-3.5 h-3.5" />, text: isRtl ? 'اعطني قائمة بالمشرفين والعمال النشطين حالياً.' : 'List of supervisors and active workers.' },
   ];
 
   return (
@@ -113,7 +112,7 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
 
            <SheetHeader className={cn("text-right relative z-10")}>
              <div className="flex items-center gap-4">
-               <div className="w-14 h-14 bg-white rounded-lg flex items-center justify-center border border-white/20 shadow-xl p-1 shrink-0">
+               <div className="w-14 h-14 bg-white rounded-lg flex items-center justify-center border border-white/20 shadow-xl p-1 shrink-0 overflow-hidden">
                  <img src="/images/logo.png" alt="Logo" className="w-full h-full object-contain" />
                </div>
                <div className="flex flex-col text-right">
@@ -137,13 +136,19 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
                   "flex flex-col max-w-[92%] animate-in fade-in slide-in-from-bottom-2 duration-500",
                   msg.role === 'assistant' ? "self-start items-start" : "self-end items-end"
                 )}>
-                  <div className={cn(
-                    "p-4 rounded-2xl text-xs md:text-sm leading-relaxed font-bold shadow-sm border whitespace-pre-wrap overflow-hidden text-right",
-                    msg.role === 'assistant' 
-                      ? "bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-800 rounded-tr-none" 
-                      : "bg-emerald-600 text-white border-emerald-700 rounded-tl-none text-left"
-                  )}>
-                    {msg.content}
+                  <div 
+                    className={cn(
+                      "p-4 rounded-2xl text-xs md:text-sm leading-relaxed font-bold shadow-sm border overflow-hidden",
+                      msg.role === 'assistant' 
+                        ? "bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-800 rounded-tr-none text-right" 
+                        : "bg-emerald-600 text-white border-emerald-700 rounded-tl-none text-left"
+                    )}
+                  >
+                    {msg.role === 'assistant' ? (
+                      <div className="prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: msg.content }} />
+                    ) : (
+                      msg.content
+                    )}
                   </div>
                 </div>
               ))}
