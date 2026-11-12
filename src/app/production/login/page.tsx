@@ -73,7 +73,7 @@ export default function LoginPage() {
     setError('');
     
     try {
-      // CRITICAL FIX: Trim email and password to avoid invisible character errors (auth/invalid-credential)
+      // CRITICAL FIX: Trim email and password to avoid invisible character or network request failed errors
       const cleanEmail = email.trim();
       const cleanPassword = password.trim();
 
@@ -111,6 +111,8 @@ export default function LoginPage() {
         setError(lang === 'ar' ? 'تم تعطيل هذا الحساب من قبل الإدارة' : 'This account has been disabled by management');
       } else if (err.code === 'auth/too-many-requests') {
         setError(lang === 'ar' ? 'تم حظر المحاولات مؤقتاً بسبب كثرة الأخطاء' : 'Temporary block due to too many failed attempts');
+      } else if (err.code === 'auth/network-request-failed') {
+        setError(lang === 'ar' ? 'خطأ في الاتصال بالخادم. يرجى التحقق من الإنترنت أو المحاولة لاحقاً.' : 'Network connection failed. Please check your internet or try again later.');
       } else {
         setError(lang === 'ar' ? 'حدث خطأ في نظام الدخول، يرجى المحاولة لاحقاً' : 'An error occurred in the authentication system');
       }
