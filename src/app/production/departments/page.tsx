@@ -74,12 +74,19 @@ import { FirestorePermissionError } from '@/firebase/errors';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useProduction } from '../ProductionContext';
 
 export default function DepartmentsPage() {
   const { lang, dir } = useTranslation();
   const db = useFirestore();
   const [search, setSearch] = useState('');
   const isRtl = lang === 'ar';
+
+  // استيراد الصلاحيات
+  const { permissions, isAdmin } = useProduction();
+  const canCreate = isAdmin || permissions.workers?.create;
+  const canEdit = isAdmin || permissions.workers?.edit;
+  const canDelete = isAdmin || permissions.workers?.delete;
   
   // Filtering & Sorting State
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
@@ -167,7 +174,17 @@ export default function DepartmentsPage() {
     e.preventDefault();
     if (!db || isSubmitting) return;
 
-    const isDuplicate = departments?.some(d => 
+    // فحص الصلاحية برمجياً
+    if (editingDeptId && !canEdit) {
+      toast({ variant: "destructive", title: isRtl ? "غير مسموح بالتعديل" : "Permission Denied" });
+      return;
+    }
+    if (!editingDeptId && !canCreate) {
+      toast({ variant: "destructive", title: isRtl ? "غير مسموح بالإضافة" : "Permission Denied" });
+      return;
+    }
+
+    const isDuplicate) = departments?.some(d => 
       d.code?.toLowerCase() === formData.code.toLowerCase() && 
       d.id !== editingDeptId && 
       d.status !== 'deleted'
@@ -220,14 +237,14 @@ export default function DepartmentsPage() {
   };
 
   const handleStatusToggle = (dept: any) => {
-    if (!db) return;
+    if (!db || !canEdit) return;
     const newStatus = dept.status === 'active' ? 'inactive' : 'active';
     const docRef = doc(db, 'departments', dept.id);
     updateDoc(docRef, { status: newStatus, updatedAt: serverTimestamp() });
   };
 
   const handleArchiveDepartment = () => {
-    if (!db || !deletingDeptId) return;
+    if (!db || !deletingDeptId || !canDelete) return;
     const targetId = deletingDeptId;
     setDeletingDeptId(null);
 
@@ -242,6 +259,7 @@ export default function DepartmentsPage() {
   };
 
   const handleEditClick = (dept: any) => {
+    if (!canEdit) return;
     setEditingDeptId(dept.id);
     setFormData({
       code: dept.code || '',
@@ -346,10 +364,12 @@ export default function DepartmentsPage() {
               </div>
             </div>
             
-            <Button onClick={() => setIsAddDialogOpen(true)} className="h-10 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 transition-all border-none">
-              <Plus className="w-4 h-4" />
-              {lang === 'ar' ? 'إضافة قسم' : 'New Dept'}
-            </Button>
+            {canCreate && (
+              <Button onClick={() => setIsAddDialogOpen(true)} className="h-10 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 transition-all border-none">
+                <Plus className="w-4 h-4" />
+                {lang === 'ar' ? 'إضافة قسم' : 'New Dept'}
+              </Button>
+            )}
           </div>
         </div>
 
@@ -503,17 +523,25 @@ export default function DepartmentsPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align={isRtl ? 'start' : 'end'} className="rounded-lg border-slate-200 dark:border-slate-800 dark:bg-slate-900 shadow-xl min-w-[180px]">
-                          <DropdownMenuItem onClick={() => handleEditClick(dept)} className="gap-3 font-bold text-xs cursor-pointer py-2.5 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
-                            <Edit2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'تعديل' : 'Edit'}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleStatusToggle(dept)} className="gap-3 font-bold text-xs cursor-pointer py-2.5 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
-                            {dept.status === 'active' ? <PowerOff className="w-3.5 h-3.5 text-amber-600" /> : <Power className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />}
-                            {dept.status === 'active' ? (lang === 'ar' ? 'تعطيل' : 'Deactivate') : (lang === 'ar' ? 'تفعيل' : 'Activate')}
-                          </DropdownMenuItem>
-                          <div className="h-px bg-slate-100 dark:bg-slate-800 my-1" />
-                          <DropdownMenuItem onClick={() => setDeletingDeptId(dept.id)} className="gap-3 font-bold text-xs cursor-pointer text-red-600 dark:text-rose-400 focus:text-red-700 dark:focus:bg-rose-900/20 py-2.5">
-                            <Trash2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'نقل للأرشيف' : 'Archive'}
-                          </DropdownMenuItem>
+                          {canEdit && (
+                            <>
+                              <DropdownMenuItem onClick={() => handleEditClick(dept)} className="gap-3 font-bold text-xs cursor-pointer py-2.5 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
+                                <Edit2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'تعديل' : 'Edit'}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleStatusToggle(dept)} className="gap-3 font-bold text-xs cursor-pointer py-2.5 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
+                                {dept.status === 'active' ? <PowerOff className="w-3.5 h-3.5 text-amber-600" /> : <Power className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />}
+                                {dept.status === 'active' ? (lang === 'ar' ? 'تعطيل' : 'Deactivate') : (lang === 'ar' ? 'تفعيل' : 'Activate')}
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                          {canDelete && (
+                            <>
+                              <div className="h-px bg-slate-100 dark:bg-slate-800 my-1" />
+                              <DropdownMenuItem onClick={() => setDeletingDeptId(dept.id)} className="gap-3 font-bold text-xs cursor-pointer text-red-600 dark:text-rose-400 focus:text-red-700 dark:focus:bg-rose-900/20 py-2.5">
+                                <Trash2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'نقل للأرشيف' : 'Archive'}
+                              </DropdownMenuItem>
+                            </>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>

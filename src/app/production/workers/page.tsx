@@ -83,6 +83,7 @@ import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useProduction } from '../ProductionContext';
 
 export default function WorkersPage() {
   const { lang, dir } = useTranslation();
@@ -90,7 +91,13 @@ export default function WorkersPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [search, setSearch] = useState('');
   
-  const isRtl = lang === 'ar'; // التعريف المفقود الذي سبب الخطأ
+  // استيراد محرك الصلاحيات
+  const { permissions, isAdmin } = useProduction();
+  const canCreate = isAdmin || permissions.workers?.create;
+  const canEdit = isAdmin || permissions.workers?.edit;
+  const canDelete = isAdmin || permissions.workers?.delete;
+
+  const isRtl = lang === 'ar';
 
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [deptFilter, setDeptFilter] = useState<string>('all');
@@ -217,6 +224,16 @@ export default function WorkersPage() {
   const handleSaveWorker = (e: React.FormEvent) => {
     e.preventDefault();
     if (!db || isSubmitting || isCompressing) return;
+    
+    // فحص الصلاحية برمجياً
+    if (editingWorkerId && !canEdit) {
+      toast({ variant: "destructive", title: isRtl ? "غير مسموح بالتعديل" : "Permission Denied" });
+      return;
+    }
+    if (!editingWorkerId && !canCreate) {
+      toast({ variant: "destructive", title: isRtl ? "غير مسموح بالإضافة" : "Permission Denied" });
+      return;
+    }
 
     const isDuplicateName = workers?.some(w => 
       w.fullName?.toLowerCase() === formData.fullName.toLowerCase() && 
@@ -271,13 +288,13 @@ export default function WorkersPage() {
   };
 
   const handleStatusToggle = (worker: any) => {
-    if (!db) return;
+    if (!db || !canEdit) return;
     const docRef = doc(db, 'workers', worker.id);
     updateDoc(docRef, { active: !worker.active, updatedAt: serverTimestamp() });
   };
 
   const handleArchiveWorker = () => {
-    if (!db || !deletingWorkerId) return;
+    if (!db || !deletingWorkerId || !canDelete) return;
     const targetId = deletingWorkerId;
     setDeletingWorkerId(null);
     setTimeout(() => {
@@ -288,6 +305,7 @@ export default function WorkersPage() {
   };
 
   const handleEditClick = (worker: any) => {
+    if (!canEdit) return;
     setEditingWorkerId(worker.id);
     setFormData({
       fullName: worker.fullName || '',
@@ -375,10 +393,12 @@ export default function WorkersPage() {
               </div>
             </div>
             
-            <Button onClick={() => setIsAddDialogOpen(true)} className="h-10 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 transition-all border-none">
-              <UserPlus className="w-4 h-4" />
-              {lang === 'ar' ? 'إضافة موظف' : 'Enroll Personnel'}
-            </Button>
+            {canCreate && (
+              <Button onClick={() => setIsAddDialogOpen(true)} className="h-10 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 transition-all border-none">
+                <UserPlus className="w-4 h-4" />
+                {lang === 'ar' ? 'إضافة موظف' : 'Enroll Personnel'}
+              </Button>
+            )}
           </div>
         </div>
 
@@ -524,13 +544,21 @@ export default function WorkersPage() {
                             <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"><MoreVertical className="w-4 h-4 text-slate-400 dark:text-slate-500" /></Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align={isRtl ? 'start' : 'end'} className="rounded-lg border-slate-200 dark:border-slate-800 dark:bg-slate-900 shadow-xl min-w-[180px]">
-                            <DropdownMenuItem onClick={() => handleEditClick(worker)} className="gap-3 font-bold text-xs py-2.5 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800"><Edit2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'تعديل الملف' : 'Update Info'}</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleStatusToggle(worker)} className="gap-3 font-bold text-xs py-2.5 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
-                              {worker.active ? <PowerOff className="w-3.5 h-3.5 text-amber-600" /> : <Power className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />}
-                              {worker.active ? (lang === 'ar' ? 'منح إجازة' : 'Activate') : (lang === 'ar' ? 'تفعيل' : 'Deactivate')}
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator className="dark:bg-slate-800" />
-                            <DropdownMenuItem onClick={() => setDeletingWorkerId(worker.id)} className="gap-3 font-bold text-xs text-red-600 dark:text-rose-400 py-2.5 focus:bg-rose-50 dark:focus:bg-rose-900/20"><Trash2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'نقل للأرشيف' : 'Archive'}</DropdownMenuItem>
+                            {canEdit && (
+                              <>
+                                <DropdownMenuItem onClick={() => handleEditClick(worker)} className="gap-3 font-bold text-xs py-2.5 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800"><Edit2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'تعديل الملف' : 'Update Info'}</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleStatusToggle(worker)} className="gap-3 font-bold text-xs py-2.5 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
+                                  {worker.active ? <PowerOff className="w-3.5 h-3.5 text-amber-600" /> : <Power className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />}
+                                  {worker.active ? (lang === 'ar' ? 'منح إجازة' : 'Activate') : (lang === 'ar' ? 'تفعيل' : 'Deactivate')}
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                            {canDelete && (
+                              <>
+                                <DropdownMenuSeparator className="dark:bg-slate-800" />
+                                <DropdownMenuItem onClick={() => setDeletingWorkerId(worker.id)} className="gap-3 font-bold text-xs text-red-600 dark:text-rose-400 py-2.5 focus:bg-rose-50 dark:focus:bg-rose-900/20"><Trash2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'نقل للأرشيف' : 'Archive'}</DropdownMenuItem>
+                              </>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
