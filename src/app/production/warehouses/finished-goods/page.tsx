@@ -22,7 +22,8 @@ import {
   Hash,
   Activity,
   Layers,
-  Tag
+  Tag,
+  ShieldCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -59,10 +60,16 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { useProduction } from '../../ProductionContext';
 
 export default function FinishedGoodsWarehousePage() {
   const { lang, dir } = useTranslation();
   const db = useFirestore();
+  
+  // استيراد الصلاحيات
+  const { permissions, isAdmin } = useProduction();
+  const canEdit = isAdmin || permissions.materials?.edit;
+
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState('inventory');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -165,6 +172,13 @@ export default function FinishedGoodsWarehousePage() {
 
   const handleReverseTransfer = async () => {
     if (!db || !reversingTx || isSubmitting) return;
+
+    // حماية الصلاحيات برمجياً لعكس الترحيل
+    if (!canEdit) {
+      toast({ variant: "destructive", title: isRtl ? "غير مسموح بإلغاء الترحيل" : "Permission Denied" });
+      return;
+    }
+
     setIsSubmitting(true);
     const batch = writeBatch(db);
 
@@ -352,7 +366,7 @@ export default function FinishedGoodsWarehousePage() {
                 <TableBody>
                    {activeTab === 'inventory' ? (
                      filteredInventory.map(p => (
-                       <TableRow key={p.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 transition-colors transition-all duration-300">
+                       <TableRow key={p.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 transition-all duration-300">
                           <TableCell className={cn("px-6 py-3", isRtl ? "text-right" : "text-left")}>
                              <div className="flex items-center gap-3">
                                 <Avatar className="h-10 w-10 rounded-lg border dark:border-slate-800 shadow-sm shrink-0 bg-slate-50 dark:bg-slate-800">
@@ -411,10 +425,10 @@ export default function FinishedGoodsWarehousePage() {
                             <TableCell className={cn("px-6 py-3", isRtl ? "text-right" : "text-left")}>
                                <Badge variant="outline" className={cn("text-[8px] font-black uppercase", isReversed ? "bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-900/30" : "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/30")}>
                                   {isReversed ? dictionary.reversedStatus : dictionary.postedStatus}
-                               </Badge>
+                                </Badge>
                             </TableCell>
                             <TableCell className="px-6 py-3">
-                               {!isReversed && (
+                               {!isReversed && canEdit && (
                                   <Button variant="ghost" size="sm" onClick={() => setReversingTx(tx)} className="h-8 px-3 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 font-black text-[9px] gap-2 transition-all">
                                      <RefreshCcw className="w-3 h-3" /> {dictionary.reverseBtn}
                                   </Button>
@@ -434,8 +448,8 @@ export default function FinishedGoodsWarehousePage() {
       </div>
 
       {/* SYSTEM NOTE */}
-      <div className="flex-none p-3 bg-slate-900 dark:bg-slate-900/90 text-white/40 dark:text-slate-500 flex items-center justify-center gap-4 border-t border-white/5 transition-colors duration-300">
-         <Info className="w-4 h-4 text-emerald-500" />
+      <div className="flex-none p-3 bg-slate-900 dark:bg-slate-900/90 text-white/40 dark:text-slate-500 flex items-center justify-center gap-4 border-t border-white/5 transition-colors duration-300 shadow-2xl">
+         <ShieldCheck className="w-4 h-4 text-emerald-500" />
          <p className="text-[10px] font-bold tracking-tight">{dictionary.auditNote}</p>
       </div>
 
@@ -449,7 +463,7 @@ export default function FinishedGoodsWarehousePage() {
               </div>
               <AlertDialogTitle className="text-white text-xl font-black">{isRtl ? 'إلغاء ترحيل المنجز' : 'Reverse Stock Entry'}</AlertDialogTitle>
               <AlertDialogDescription className="text-slate-400 font-bold mt-2 text-xs leading-relaxed text-center">
-                 {isRtl ? `سيتم سحب عدد (${reversingTx?.qty}) قطعة من رصيد المستودع الحالي. هل أنت متأكد؟` : `This will deduct (${reversingTx?.qty}) items from current stock. Confirm?`}
+                 {isRtl ? `سيتم سحب عدد (${reversingTx?.qty}) قطعة من رصيد المستودع الحالي وإعادة تفعيل السند في قسم الإنتاج. هل أنت متأكد؟` : `This will deduct (${reversingTx?.qty}) items from current stock and restore the production receipt. Confirm?`}
               </AlertDialogDescription>
            </div>
            <div className="bg-white dark:bg-slate-900 p-6 flex gap-3">
