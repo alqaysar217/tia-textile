@@ -67,7 +67,6 @@ export function Sidebar() {
       children: [
         { name: lang === 'ar' ? 'أوامر الإنتاج (WIP)' : 'Production Orders', href: '/production/orders', icon: <Workflow className="w-3.5 h-3.5" /> },
         { name: lang === 'ar' ? 'الأوامر المكتملة' : 'Completed Orders', href: '/production/orders/completed', icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
-        { name: lang === 'ar' ? 'متابعة الإنتاج المباشر' : 'Live Monitoring', href: '/production/monitoring', icon: <TrendingUp className="w-3.5 h-3.5" /> },
         { name: lang === 'ar' ? 'دليل المنتجات' : 'Products Catalog', href: '/production/products', icon: <ShoppingBag className="w-3.5 h-3.5" /> },
       ]
     },
