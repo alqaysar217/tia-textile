@@ -8,11 +8,11 @@ import { useTranslation } from '@/components/LanguageProvider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Lock, Mail, Globe, AlertCircle, LogIn, ShieldCheck, Timer, Loader2 } from 'lucide-react';
+import { Lock, Mail, Globe, AlertCircle, LogIn, Timer, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function LoginPage() {
-  const { lang, setLang, t, dir } = useTranslation();
+  const { lang, setLang, dir } = useTranslation();
   const router = useRouter();
   const auth = useAuth();
   
@@ -54,7 +54,7 @@ export default function LoginPage() {
     setError('');
     
     try {
-      // بروتوكول تنظيف البيانات لمنع أخطاء المسافات الزائدة
+      // CRITICAL FIX: Trim inputs to remove invisible spaces that cause invalid-credential
       const cleanEmail = email.trim().toLowerCase();
       const cleanPassword = password.trim();
 
@@ -80,11 +80,11 @@ export default function LoginPage() {
       localStorage.setItem('prod_login_attempts', JSON.stringify({ count: newCount, until: newUntil }));
 
       if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
-        setError(lang === 'ar' ? 'بيانات الدخول غير صحيحة. يرجى التأكد من عدم وجود مسافات زائدة.' : 'Invalid credentials. Please ensure there are no extra spaces.');
+        setError(lang === 'ar' ? 'خطأ في البريد الإلكتروني أو كلمة المرور. يرجى التأكد من عدم وجود مسافات زائدة.' : 'Invalid email or password. Please ensure there are no extra spaces.');
       } else if (err.code === 'auth/network-request-failed') {
-        setError(lang === 'ar' ? 'فشل الاتصال بالخادم. يرجى التحقق من الإنترنت.' : 'Network connection failed. Check your internet.');
+        setError(lang === 'ar' ? 'فشل الاتصال بالخادم. يرجى التحقق من جودة الإنترنت.' : 'Network connection failed. Check your internet.');
       } else {
-        setError(lang === 'ar' ? 'حدث خطأ في النظام، يرجى المحاولة لاحقاً.' : 'System error. Please try again later.');
+        setError(lang === 'ar' ? 'حدث خطأ غير متوقع. يرجى المحاولة لاحقاً.' : 'An unexpected error occurred. Please try again.');
       }
     } finally {
       setLoading(false);
@@ -135,12 +135,16 @@ export default function LoginPage() {
               )}
 
               <div className="space-y-2.5">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2 ps-1"><Mail className="w-3.5 h-3.5 text-primary/60" /> {lang === 'ar' ? 'البريد الإلكتروني' : 'Staff Email'}</Label>
+                <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2 ps-1">
+                  <Mail className="w-3.5 h-3.5 text-primary/60" /> {lang === 'ar' ? 'البريد الإلكتروني' : 'Staff Email'}
+                </Label>
                 <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@association.com" required disabled={timeLeft > 0 || loading} className="h-12 rounded-xl bg-gray-50/50 border-gray-100 font-bold text-sm" />
               </div>
 
               <div className="space-y-2.5">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2 ps-1"><Lock className="w-3.5 h-3.5 text-primary/60" /> {lang === 'ar' ? 'كلمة المرور' : 'Password'}</Label>
+                <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2 ps-1">
+                  <Lock className="w-3.5 h-3.5 text-primary/60" /> {lang === 'ar' ? 'كلمة المرور' : 'Password'}
+                </Label>
                 <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required disabled={timeLeft > 0 || loading} className="h-12 rounded-xl bg-gray-50/50 border-gray-100 font-bold text-sm" />
               </div>
 

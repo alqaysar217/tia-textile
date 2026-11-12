@@ -17,14 +17,12 @@ import {
   Check, 
   Save, 
   Loader2, 
-  Info,
   Key,
   Briefcase,
   UploadCloud,
   RefreshCcw,
   User as UserIcon,
   Users,
-  Image as ImageIcon,
   LayoutDashboard,
   Workflow,
   ShoppingBag,
@@ -246,10 +244,12 @@ export default function UsersPermissionsPage() {
     try {
       let uid = editingUserId;
       
+      // CRITICAL FIX: Trim inputs to avoid invalid-credential desync
       const cleanEmail = formData.email.trim().toLowerCase();
       const cleanPassword = formData.password.trim();
 
       if (!editingUserId) {
+        // PROVISION AUTH ACCOUNT (Primary session protection)
         const tempAppName = `temp-auth-${Date.now()}`;
         tempApp = initializeApp(firebaseConfig, tempAppName);
         const tempAuth = getAuth(tempApp);
@@ -272,7 +272,7 @@ export default function UsersPermissionsPage() {
       const userData = {
         fullName: formData.fullName.trim(),
         email: cleanEmail,
-        password: cleanPassword, 
+        password: cleanPassword, // Stored for admin reference only, Auth handles security
         photoUrl: formData.photoUrl,
         role: formData.role,
         active: formData.active,
@@ -299,6 +299,7 @@ export default function UsersPermissionsPage() {
   return (
     <div className="flex flex-col h-full bg-[#f8fafc] dark:bg-slate-950 overflow-hidden transition-colors duration-300" dir={dir}>
       
+      {/* ERP HUB - HEADER */}
       <div className="flex-none bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 z-30 px-6 py-4 shadow-sm">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div className="flex items-center gap-4">
@@ -335,6 +336,7 @@ export default function UsersPermissionsPage() {
         </div>
       </div>
 
+      {/* DATA GRID */}
       <div className="flex-1 min-h-0 overflow-auto p-4 md:p-6 no-scrollbar">
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col h-full">
            <div className="flex-1 overflow-auto no-scrollbar relative">
@@ -380,7 +382,7 @@ export default function UsersPermissionsPage() {
                                   <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"><MoreVertical className="w-4 h-4 text-slate-400" /></Button>
                                </DropdownMenuTrigger>
                                <DropdownMenuContent align={isRtl ? 'start' : 'end'} className="w-56 rounded-xl shadow-xl dark:bg-slate-900">
-                                  <DropdownMenuItem onClick={() => handleEditClick(user)} className="gap-2 font-bold py-2 cursor-pointer text-xs dark:text-slate-200"><Settings2 className="w-3.5 h-3.5 text-emerald-600" /> {isRtl ? 'تعديل الصلاحيات' : 'Edit Permissions'}</DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleEditClick(user)} className="gap-2 font-bold py-2 cursor-pointer text-xs dark:text-slate-200"><SettingsIcon className="w-3.5 h-3.5 text-emerald-600" /> {isRtl ? 'تعديل الصلاحيات' : 'Edit Permissions'}</DropdownMenuItem>
                                   <DropdownMenuSeparator className="dark:bg-slate-800" />
                                   <DropdownMenuItem onClick={() => setDeletingUserId(user.id)} className="gap-2 font-bold py-2 text-rose-600 cursor-pointer text-xs focus:bg-rose-50"><Trash2 className="w-3.5 h-3.5" /> {isRtl ? 'حذف الحساب' : 'Delete Account'}</DropdownMenuItem>
                                </DropdownMenuContent>
@@ -394,6 +396,7 @@ export default function UsersPermissionsPage() {
         </div>
       </div>
 
+      {/* PROVISIONING DIALOG */}
       <Dialog open={isAddDialogOpen} onOpenChange={(open) => !open && resetForm()}>
         <DialogContent className="sm:max-w-[950px] rounded-[1.5rem] p-0 overflow-hidden border-none shadow-2xl dark:bg-slate-900">
           <div className="premium-gradient p-6 text-white relative">
@@ -411,6 +414,7 @@ export default function UsersPermissionsPage() {
              <ScrollArea className="flex-1 p-6" dir={dir}>
                 <div className="space-y-10">
                    <div className="flex flex-col md:flex-row gap-8 items-start">
+                      {/* Left: Avatar Upload */}
                       <div className="w-full md:w-32 space-y-2 flex flex-col items-center shrink-0">
                          <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 block text-center">PROFILE PHOTO</Label>
                          <div onClick={() => !isCompressing && fileInputRef.current?.click()} className="w-32 h-32 rounded-2xl border-4 border-slate-100 dark:border-slate-800 shadow-md bg-slate-50 dark:bg-slate-800 flex items-center justify-center cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-700 transition-all overflow-hidden relative">
@@ -425,25 +429,32 @@ export default function UsersPermissionsPage() {
                          <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
                       </div>
 
+                      {/* Right: Info Fields */}
                       <div className="flex-1 space-y-6 w-full">
                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2 text-right">
-                               <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start"><UserIcon className="w-3 h-3 text-emerald-600" /> {isRtl ? 'الاسم الكامل' : 'FULL NAME'}</Label>
+                               <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start">
+                                 <UserIcon className="w-3 h-3 text-emerald-600" /> {isRtl ? 'الاسم الكامل' : 'FULL NAME'}
+                               </Label>
                                <Input value={formData.fullName} onChange={(e) => setFormData({...formData, fullName: e.target.value})} className="h-11 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 font-bold text-xs dark:text-slate-100" placeholder={isRtl ? "اسم المستخدم الحقيقي" : "Legal Full Name"} required />
                             </div>
                             <div className="space-y-2 text-right">
-                               <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start"><Mail className="w-3 h-3 text-emerald-600" /> {isRtl ? 'البريد الإلكتروني' : 'EMAIL / USERNAME'}</Label>
+                               <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start">
+                                 <Mail className="w-3 h-3 text-emerald-600" /> {isRtl ? 'البريد الإلكتروني (اسم المستخدم)' : 'EMAIL / USERNAME'}
+                               </Label>
                                <Input type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="h-11 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 font-bold text-xs dark:text-slate-100" placeholder="name@association.com" required />
                             </div>
                          </div>
 
                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2 text-right">
-                               <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start"><Key className="w-3 h-3 text-emerald-600" /> {isRtl ? 'كلمة المرور' : 'PASSWORD'}</Label>
+                               <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start">
+                                 <Key className="w-3 h-3 text-emerald-600" /> {isRtl ? 'كلمة المرور' : 'PASSWORD'}
+                               </Label>
                                {editingUserId ? (
                                  <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-900/30 rounded-lg flex items-center gap-2">
                                    <AlertCircle className="w-4 h-4 text-amber-600" />
-                                   <p className="text-[10px] font-bold text-amber-700 dark:text-amber-400">{isRtl ? 'يتم إدارة كلمات المرور عبر بريد استعادة الحساب للأمان.' : 'Passwords must be reset via recovery email for security.'}</p>
+                                   <p className="text-[10px] font-bold text-amber-700 dark:text-amber-400">{isRtl ? 'كلمة المرور مدارة أمنياً ولا يمكن تعديلها من هنا.' : 'Password managed by security rules.'}</p>
                                  </div>
                                ) : (
                                  <div className="relative">
@@ -453,7 +464,9 @@ export default function UsersPermissionsPage() {
                                )}
                             </div>
                             <div className="space-y-2 text-right">
-                               <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start"><Briefcase className="w-3 h-3 text-emerald-600" /> {isRtl ? 'الدور الوظيفي الأساسي' : 'ASSIGNED ROLE'}</Label>
+                               <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start">
+                                 <Briefcase className="w-3 h-3 text-emerald-600" /> {isRtl ? 'الدور الوظيفي الأساسي' : 'ASSIGNED ROLE'}
+                               </Label>
                                <select value={formData.role} onChange={(e) => setFormData({...formData, role: e.target.value})} className="w-full h-11 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-bold outline-none dark:text-slate-100" dir={dir}>
                                   <option value="staff">{isRtl ? 'موظف تشغيل' : 'Staff'}</option>
                                   <option value="manager">{isRtl ? 'مدير قسم' : 'Manager'}</option>
@@ -464,12 +477,17 @@ export default function UsersPermissionsPage() {
                       </div>
                    </div>
 
+                   {/* PERMISSIONS MATRIX */}
                    <div className="space-y-4">
-                      <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
-                         <h3 className="text-sm font-black text-slate-900 dark:text-slate-100 flex items-center gap-2"><Shield className="w-4 h-4 text-emerald-600" /> {isRtl ? 'شبكة صلاحيات الواجهات والعمليات' : 'Access Matrix'}</h3>
-                         <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900/20 px-3 py-1.5 rounded-lg border border-emerald-100 dark:border-emerald-800">
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-2">
+                         <div className="flex items-center gap-3">
+                            <Shield className="w-5 h-5 text-emerald-600" />
+                            <h3 className="text-sm font-black text-slate-900 dark:text-slate-100">{isRtl ? 'شبكة صلاحيات الواجهات والعمليات' : 'Access Matrix'}</h3>
+                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{isRtl ? 'تطبق التغييرات لحظياً عند حفظ البيانات' : 'Applied on save'}</p>
+                         </div>
+                         <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
                             <Checkbox id="selectAll" onCheckedChange={(val) => handleToggleAll(!!val)} className="data-[state=checked]:bg-slate-900" />
-                            <label htmlFor="selectAll" className="text-[9px] font-black text-emerald-700 dark:text-emerald-400 cursor-pointer uppercase">{isRtl ? 'تحديد الكل' : 'ALL ACCESS'}</label>
+                            <label htmlFor="selectAll" className="text-[9px] font-black text-slate-600 dark:text-slate-400 cursor-pointer uppercase">{isRtl ? 'تحديد كافة الصلاحيات' : 'FULL SYSTEM ACCESS'}</label>
                          </div>
                       </div>
 
@@ -477,11 +495,11 @@ export default function UsersPermissionsPage() {
                          <Table className="text-right border-separate border-spacing-0">
                             <TableHeader className="bg-slate-50 dark:bg-slate-800">
                                <TableRow>
-                                  <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", isRtl ? "text-right" : "text-left")}>INTERFACE / MODULE</TableHead>
+                                  <TableHead className={cn("px-6 py-3 font-black text-[10px] text-slate-500 uppercase", isRtl ? "text-right" : "text-left")}>{isRtl ? 'واجهة النظام' : 'INTERFACE / MODULE'}</TableHead>
                                   <TableHead className="w-24 text-center">
                                      <div className="flex flex-col items-center gap-1.5 py-1">
                                         <Checkbox onCheckedChange={(val) => handleToggleColumn('read', !!val)} className="data-[state=checked]:bg-blue-600" />
-                                        <span className="text-[9px] font-black text-blue-600 uppercase">{isRtl ? 'دخول' : 'READ'}</span>
+                                        <span className="text-[9px] font-black text-blue-600 uppercase">{isRtl ? 'دخول/قراءة' : 'READ'}</span>
                                      </div>
                                   </TableHead>
                                   <TableHead className="w-24 text-center">
@@ -512,20 +530,34 @@ export default function UsersPermissionsPage() {
                                     <TableRow key={module.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 border-b border-slate-50 dark:border-slate-800 transition-colors">
                                        <TableCell className={cn("px-6 py-3 font-bold text-xs dark:text-slate-200", isRtl ? "text-right" : "text-left")}>
                                           <div className="flex items-center gap-4">
-                                             <Checkbox checked={isRowFull} onCheckedChange={(val) => handleToggleRow(module.id, !!val)} className="data-[state=checked]:bg-slate-900" />
+                                             <Checkbox 
+                                               checked={isRowFull} 
+                                               onCheckedChange={(val) => handleToggleRow(module.id, !!val)} 
+                                               className="data-[state=checked]:bg-slate-900" 
+                                             />
                                              <div className="flex items-center gap-3">
-                                                <div className="p-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-400 transition-colors">{module.icon}</div>
+                                                <div className="p-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-400 transition-colors group-hover:bg-white dark:group-hover:bg-slate-900 group-hover:text-emerald-600">
+                                                   {module.icon}
+                                                </div>
                                                 <div className="flex flex-col">
                                                    <span className="font-black text-slate-800 dark:text-slate-100">{isRtl ? module.labelAr : module.labelEn}</span>
-                                                   <span className="text-[9px] text-slate-400 font-bold uppercase tabular-nums">{module.id}</span>
+                                                   <span className="text-[9px] text-slate-400 font-bold uppercase tabular-nums tracking-tighter">{module.id}</span>
                                                 </div>
                                              </div>
                                           </div>
                                        </TableCell>
-                                       <TableCell className="text-center"><Checkbox checked={perms.read} onCheckedChange={() => handleTogglePermission(module.id, 'read')} className="data-[state=checked]:bg-blue-600" /></TableCell>
-                                       <TableCell className="text-center"><Checkbox checked={perms.create} onCheckedChange={() => handleTogglePermission(module.id, 'create')} className="data-[state=checked]:bg-emerald-600" /></TableCell>
-                                       <TableCell className="text-center"><Checkbox checked={perms.edit} onCheckedChange={() => handleTogglePermission(module.id, 'edit')} className="data-[state=checked]:bg-amber-600" /></TableCell>
-                                       <TableCell className="text-center"><Checkbox checked={perms.delete} onCheckedChange={() => handleTogglePermission(module.id, 'delete')} className="data-[state=checked]:bg-rose-600" /></TableCell>
+                                       <TableCell className="text-center">
+                                          <Checkbox checked={perms.read} onCheckedChange={() => handleTogglePermission(module.id, 'read')} className="data-[state=checked]:bg-blue-600" />
+                                       </TableCell>
+                                       <TableCell className="text-center">
+                                          <Checkbox checked={perms.create} onCheckedChange={() => handleTogglePermission(module.id, 'create')} className="data-[state=checked]:bg-emerald-600" />
+                                       </TableCell>
+                                       <TableCell className="text-center">
+                                          <Checkbox checked={perms.edit} onCheckedChange={() => handleTogglePermission(module.id, 'edit')} className="data-[state=checked]:bg-amber-600" />
+                                       </TableCell>
+                                       <TableCell className="text-center">
+                                          <Checkbox checked={perms.delete} onCheckedChange={() => handleTogglePermission(module.id, 'delete')} className="data-[state=checked]:bg-rose-600" />
+                                       </TableCell>
                                     </TableRow>
                                   );
                                })}
@@ -541,7 +573,7 @@ export default function UsersPermissionsPage() {
                    {isSubmitting ? <Loader2 className="animate-spin me-2" /> : <ShieldCheck className="w-5 h-5 me-2" />}
                    {isRtl ? (editingUserId ? 'حفظ تعديلات الصلاحيات' : 'ترحيل الحساب وتفعيل الصلاحيات') : 'Commit Security Profile'}
                 </Button>
-                <Button type="button" variant="outline" onClick={resetForm} className="px-8 h-14 font-black text-slate-400 dark:text-slate-500 rounded-xl border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800">إلغاء</Button>
+                <Button type="button" variant="outline" onClick={resetForm} className="px-8 h-14 font-black text-slate-400 dark:text-slate-500 rounded-xl border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800 transition-all">إلغاء</Button>
              </div>
           </form>
         </DialogContent>
@@ -551,12 +583,16 @@ export default function UsersPermissionsPage() {
         <AlertDialogContent className="max-w-[400px] rounded-[1.5rem] p-0 overflow-hidden dark:bg-slate-900 border-none shadow-2xl">
            <div className="bg-rose-950 p-8 text-center relative overflow-hidden">
               <div className="absolute top-0 right-0 p-4 opacity-5"><ShieldAlert className="w-32 h-32 text-white" /></div>
-              <div className="w-16 h-16 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-rose-500/20 shadow-inner"><ShieldAlert className="w-8 h-8 text-rose-500" /></div>
-              <AlertDialogTitle className="text-white text-xl font-black">{isRtl ? 'حذف حساب مستخدم' : 'Revoke Account'}</AlertDialogTitle>
-              <AlertDialogDescription className="text-rose-200/50 font-bold mt-2 text-xs leading-relaxed">{isRtl ? 'هل أنت متأكد من سحب صلاحيات هذا المستخدم تماماً؟ لن يتمكن من تسجيل الدخول للنظام مرة أخرى.' : 'Are you sure?'}</AlertDialogDescription>
+              <div className="w-16 h-16 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-rose-500/20 shadow-inner">
+                <ShieldAlert className="w-8 h-8 text-rose-500" />
+              </div>
+              <AlertDialogTitle className="text-white text-xl font-black">{isRtl ? 'سحب صلاحيات المستخدم' : 'Revoke Account'}</AlertDialogTitle>
+              <AlertDialogDescription className="text-rose-200/50 font-bold mt-2 text-xs leading-relaxed text-center">
+                {isRtl ? 'هل أنت متأكد من سحب صلاحيات هذا المستخدم تماماً؟ لن يتمكن من تسجيل الدخول للنظام مرة أخرى.' : 'Are you sure? This user will no longer be able to log in.'}
+              </AlertDialogDescription>
            </div>
            <div className="bg-white dark:bg-slate-900 p-6 flex gap-3">
-              <AlertDialogAction onClick={async () => { if (!db || !deletingUserId) return; await updateDoc(doc(db, 'users', deletingUserId), { active: false, status: 'deleted', deletedAt: serverTimestamp() }); setDeletingUserId(null); toast({ title: isRtl ? "تم تعطيل الحساب" : "Access Revoked" }); }} className="flex-1 h-12 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-xl border-none">تأكيد الحذف</AlertDialogAction>
+              <AlertDialogAction onClick={async () => { if (!db || !deletingUserId) return; await updateDoc(doc(db, 'users', deletingUserId), { active: false, status: 'deleted', deletedAt: serverTimestamp() }); setDeletingUserId(null); toast({ title: isRtl ? "تم سحب الصلاحيات" : "Access Revoked" }); }} className="flex-1 h-12 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-xl border-none shadow-lg transition-all active:scale-95">تأكيد الحذف</AlertDialogAction>
               <AlertDialogCancel className="flex-1 h-12 bg-slate-50 dark:bg-slate-800 font-black rounded-xl text-slate-400 border-none">تراجع</AlertDialogCancel>
            </div>
         </AlertDialogContent>
