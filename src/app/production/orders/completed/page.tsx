@@ -11,18 +11,18 @@ import {
   Filter, 
   Calendar, 
   Hash, 
-  ShoppingBag,
-  Loader2,
-  ArrowUpRight,
-  TrendingUp,
-  Briefcase,
-  ShieldCheck
+  ShoppingBag, 
+  Loader2, 
+  ArrowUpRight, 
+  TrendingUp, 
+  Briefcase, 
+  ShieldCheck 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useTranslation } from '@/components/LanguageProvider';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, where, orderBy } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
 import { 
   Table, 
   TableBody, 
@@ -43,11 +43,11 @@ export default function CompletedOrdersPage() {
   const [search, setSearch] = useState('');
   const isRtl = lang === 'ar';
 
-  // Fetch Data
+  // FIX: Remove orderBy from query to avoid Firebase Index requirement.
+  // We will sort manually in the filteredOrders useMemo.
   const ordersQuery = useMemo(() => !db ? null : query(
     collection(db, 'productionOrders'), 
-    where('status', '==', 'completed'),
-    orderBy('completedAt', 'desc')
+    where('status', '==', 'completed')
   ), [db]);
 
   const productsQuery = useMemo(() => !db ? null : collection(db, 'products'), [db]);
@@ -59,14 +59,11 @@ export default function CompletedOrdersPage() {
   const { data: departments } = useCollection<any>(deptsQuery);
   const { data: allReceipts } = useCollection<any>(vouchersQuery);
 
-  const sortedDepts = useMemo(() => {
-    if (!departments) return [];
-    return [...departments].sort((a, b) => (a.code || '').localeCompare(b.code || ''));
-  }, [departments]);
-
   const filteredOrders = useMemo(() => {
     if (!orders) return [];
-    return orders.filter(o => {
+    
+    // 1. Search Filter
+    let list = orders.filter(o => {
       const product = products?.find(p => p.id === o.productId);
       const s = search.toLowerCase();
       return (
@@ -74,6 +71,13 @@ export default function CompletedOrdersPage() {
         o.title?.toLowerCase().includes(s) || 
         product?.nameAr?.includes(s)
       );
+    });
+
+    // 2. Manual Sort by completedAt DESC to avoid index error
+    return list.sort((a, b) => {
+      const timeA = a.completedAt?.seconds || 0;
+      const timeB = b.completedAt?.seconds || 0;
+      return timeB - timeA;
     });
   }, [orders, products, search]);
 
