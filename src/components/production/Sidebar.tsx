@@ -30,7 +30,9 @@ import {
   HandCoins,
   Receipt,
   PieChart,
-  CheckCircle2
+  CheckCircle2,
+  Settings2,
+  Users as UsersIcon
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -44,7 +46,7 @@ import { useSidebar } from '@/components/ui/sidebar';
 type NavItem = {
   name: string;
   icon: React.ReactNode;
-  children?: { name: string; href: string; icon?: React.ReactNode }[];
+  children?: { name: string; href: string; icon: React.ReactNode }[];
 };
 
 export function Sidebar() {
@@ -56,7 +58,7 @@ export function Sidebar() {
     {
       name: t.production.dashboard,
       icon: <LayoutDashboard className="w-5 h-5" />,
-      children: [{ name: t.production.dashboard, href: '/production' }]
+      children: [{ name: t.production.dashboard, href: '/production', icon: <LayoutDashboard className="w-3.5 h-3.5" /> }]
     },
     {
       name: t.production.production,
@@ -109,7 +111,7 @@ export function Sidebar() {
       icon: <Settings className="w-5 h-5" />,
       children: [
         { name: lang === 'ar' ? 'المستخدمين والصلاحيات' : 'Users & Permissions', href: '/production/users', icon: <UserCheck className="w-3.5 h-3.5" /> },
-        { name: t.production.settings, href: '/production/settings' },
+        { name: t.production.settings, href: '/production/settings', icon: <Settings2 className="w-3.5 h-3.5" /> },
         { name: t.production.trash, href: '/production/trash', icon: <Trash2 className="w-3.5 h-3.5" /> },
       ]
     },
@@ -140,49 +142,72 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 space-y-2 px-4 overflow-y-auto overflow-x-hidden no-scrollbar relative z-10">
-        {navigation.map((group) => (
-          <Collapsible key={group.name} defaultOpen={pathname.startsWith(group.children?.[0]?.href?.split('/')?.slice(0,3)?.join('/') || '---')}>
-            <CollapsibleTrigger disabled={isCollapsed} className={cn(
-              "flex items-center justify-between w-full p-3 rounded-xl hover:bg-white/10 hover:text-white transition-all group",
-              isCollapsed && "justify-center"
-            )}>
-              <div className="flex items-center gap-3">
-                <span className="text-emerald-100/40 group-hover:text-white transition-colors">{group.icon}</span>
-                {!isCollapsed && <span className="text-xs font-black animate-in fade-in duration-500">{group.name}</span>}
-              </div>
-              {!isCollapsed && <ChevronDown className="w-3 h-3 text-emerald-100/30 transition-transform duration-200" />}
-            </CollapsibleTrigger>
-            {!isCollapsed && (
-              <CollapsibleContent className="space-y-1 mt-1 pr-10 rtl:pr-10 ltr:pl-10">
-                {group.children?.map((item) => (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    className={cn(
-                      "flex items-center gap-3 p-2 rounded-lg text-[11px] font-bold transition-all relative",
-                      pathname === item.href 
-                        ? "text-white bg-white/10 shadow-inner" 
-                        : "text-emerald-100/40 hover:text-white hover:bg-white/5"
-                    )}
-                  >
-                    {pathname === item.href && (
-                      <span className={cn(
-                        "absolute top-1/2 -translate-y-1/2 w-1 h-4 bg-emerald-400 rounded-full",
-                        dir === 'rtl' ? "right-0" : "left-0"
-                      )} />
-                    )}
-                    {item.name}
-                  </Link>
-                ))}
-              </CollapsibleContent>
-            )}
-          </Collapsible>
-        ))}
+        {navigation.map((group) => {
+          const isGroupActive = group.children?.some(child => pathname === child.href);
+          
+          return (
+            <Collapsible 
+              key={group.name} 
+              defaultOpen={pathname.startsWith(group.children?.[0]?.href?.split('/')?.slice(0,3)?.join('/') || '---')}
+            >
+              <CollapsibleTrigger 
+                disabled={isCollapsed} 
+                className={cn(
+                  "flex items-center justify-between w-full p-3 rounded-xl transition-all group",
+                  isCollapsed ? "justify-center" : "hover:bg-white/10",
+                  isGroupActive && !isCollapsed && "bg-white/5 text-white"
+                )}
+              >
+                <div className="flex items-center gap-3">
+                  <span className={cn(
+                    "transition-colors",
+                    isGroupActive ? "text-emerald-400" : "text-emerald-100/40 group-hover:text-white"
+                  )}>{group.icon}</span>
+                  {!isCollapsed && <span className={cn("text-[11px] font-black uppercase tracking-wider animate-in fade-in duration-500", isGroupActive ? "text-white" : "text-emerald-100/60")}>{group.name}</span>}
+                </div>
+                {!isCollapsed && <ChevronDown className={cn("w-3 h-3 text-emerald-100/30 transition-transform duration-200", isGroupActive && "rotate-180 text-emerald-400")} />}
+              </CollapsibleTrigger>
+              {!isCollapsed && (
+                <CollapsibleContent className="space-y-1 mt-1 px-2">
+                  {group.children?.map((item) => {
+                    const isActive = pathname === item.href;
+                    return (
+                      <Link
+                        key={item.name}
+                        href={item.href}
+                        className={cn(
+                          "flex items-center gap-3 p-2.5 rounded-lg text-[10px] font-black uppercase tracking-tight transition-all relative group/item",
+                          isActive 
+                            ? "bg-gradient-to-r from-emerald-600 to-emerald-800 text-white shadow-lg shadow-emerald-950/20" 
+                            : "text-emerald-100/40 hover:text-white hover:bg-white/5"
+                        )}
+                      >
+                        <span className={cn(
+                          "shrink-0 transition-transform group-hover/item:scale-110",
+                          isActive ? "text-white" : "text-emerald-100/20 group-hover/item:text-emerald-400"
+                        )}>
+                          {item.icon}
+                        </span>
+                        <span className="truncate">{item.name}</span>
+                        {isActive && (
+                          <span className={cn(
+                            "absolute w-1 h-4 bg-white rounded-full",
+                            dir === 'rtl' ? "-right-1" : "-left-1"
+                          )} />
+                        )}
+                      </Link>
+                    );
+                  })}
+                </CollapsibleContent>
+              )}
+            </Collapsible>
+          );
+        })}
       </nav>
 
       <div className={cn("pt-6 mt-6 border-t border-white/10 pb-8 relative z-10 px-6")}>
-        <Link href="/" className="flex items-center justify-center gap-2 py-2 text-[10px] font-black text-white/60 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition-all border border-white/5">
-          <History className="w-3 h-3" />
+        <Link href="/" className="flex items-center justify-center gap-2 py-3 text-[10px] font-black text-white/60 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition-all border border-white/5 uppercase tracking-widest">
+          <History className="w-3.5 h-3.5" />
           {!isCollapsed && <span>{t.production.backToSite}</span>}
         </Link>
       </div>
