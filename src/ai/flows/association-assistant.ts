@@ -26,7 +26,7 @@ const AssistantOutputSchema = z.object({
 export type AssistantOutput = z.infer<typeof AssistantOutputSchema>;
 
 /**
- * دالة جلب البيانات الشاملة من كافة الجداول
+ * دالة جلب البيانات الشاملة من كافة الجداول ومعالجتها مسبقاً لسهولة الفهم من قبل الـ AI
  */
 async function getFullSystemSnapshot() {
   const collections = [
@@ -36,12 +36,12 @@ async function getFullSystemSnapshot() {
   
   const rawData: Record<string, any[]> = {};
   
-  // جلب البيانات من كل جدول على حدة لضمان عدم توقف النظام إذا فشل أحد الجداول
+  // جلب البيانات من كل جدول
   await Promise.all(collections.map(async (colName) => {
     try {
       let q;
       if (colName === 'vouchers') {
-        q = query(collection(db, colName), orderBy('date', 'desc'), limit(200));
+        q = query(collection(db, colName), orderBy('date', 'desc'), limit(300));
       } else {
         q = collection(db, colName);
       }
@@ -53,99 +53,116 @@ async function getFullSystemSnapshot() {
     }
   }));
 
-  // صياغة سياق معرفي فائق التفصيل للمساعد
-  
-  // 1. العمال والأقسام
+  // --- 1. معالجة بيانات العمال والأقسام ---
   const workersContext = rawData.workers.map(w => {
     const dept = rawData.departments.find(d => d.id === w.departmentId)?.nameAr || 'غير محدد';
     const sup = rawData.workers.find(s => s.id === w.supervisorId)?.fullName || 'لا يوجد';
-    return `- ${w.fullName} (${w.workerId}): القسم [${dept}] | الرتبة: [${w.isSupervisor ? 'مشرف' : 'حرفي'}] | المشرف: [${sup}] | نشط: [${w.active ? 'نعم' : 'لا'}]`;
+    return `- ${w.fullName} (${w.workerId}): القسم [${dept}] | الرتبة: [${w.isSupervisor ? 'مشرف' : 'حرفي'}] | المشرف المباشر: [${sup}] | نشط: [${w.active ? 'نعم' : 'لا'}]`;
   }).join('\n');
 
-  // 2. المخزون (المواد الخام)
+  // --- 2. معالجة المخزون (المواد الخام) ---
   const materialsContext = rawData.materials.map(m => {
-    return `- ${m.nameAr} (${m.code}): الرصيد الحالي [${m.currentQty} ${m.unit}] | حد الأمان: [${m.minQty}] | السعر: [${m.price} ${m.currency}]`;
+    const status = (m.currentQty || 0) <= (m.minQty || 0) ? '🔴 منخفض!' : '✅ جيد';
+    return `- ${m.nameAr} (${m.code}): الرصيد [${m.currentQty} ${m.unit}] | حد الأمان: [${m.minQty}] | السعر: [${m.price} ${m.currency || 'YER'}] | الحالة: ${status}`;
   }).join('\n');
 
-  // 3. أوامر الإنتاج (WIP)
-  const ordersContext = rawData.productionOrders.map(o => {
+  // --- 3. معالجة أوامر الإنتاج (WIP) ---
+  const ordersContext = rawData.productionOrders.filter(o => o.status !== 'deleted').map(o => {
     const p = rawData.products.find(prod => prod.id === o.productId)?.nameAr || 'غير معروف';
     const progress = Math.round(((o.completedQty || 0) / (o.targetQty || 1)) * 100);
-    return `- [${o.orderNumber}]: ${o.title} | المنتج: ${p} | المستهدف: ${o.targetQty} | المنجز: ${o.completedQty} | التقدم: ${progress}% | الحالة: ${o.status}`;
-  }).filter(o => !o.includes('deleted')).join('\n');
+    return `- [${o.orderNumber}]: ${o.title} | المنتج: ${p} | المستهدف: ${o.targetQty} | المنجز النهائي: ${o.completedQty} | التقدم: ${progress}% | الحالة: ${o.status}`;
+  }).join('\n');
 
-  // 4. مستودع المنجز الجاهز
+  // --- 4. جرد مستودع المنجز الجاهز ---
   const finishedGoodsContext = rawData.finishedGoodsWarehouse.map(d => {
     const p = rawData.products.find(prod => prod.id === d.id);
-    return `- ${p?.nameAr || 'صنف غير معروف'}: الرصيد الجاهز [${d.totalQty || 0}] قطعة`;
+    return `- ${p?.nameAr || 'صنف غير معروف'}: الرصيد الجاهز للبيع [${d.totalQty || 0}] قطعة`;
   }).join('\n');
 
-  // 5. تحليل السندات الأخيرة (آخر 50 حركة تفصيلية)
-  const vouchersContext = rawData.vouchers.slice(0, 50).map(v => {
+  // --- 5. تحليل إنتاجية العمال (تجميع من سندات الاستلام) ---
+  const workerStats: Record<string, number> = {};
+  rawData.vouchers.filter(v => v.type === 'production_receipt' && v.status !== 'deleted').forEach(v => {
+    if (v.workerId) {
+      workerStats[v.workerId] = (workerStats[v.workerId] || 0) + (v.qtyAccepted || 0);
+    }
+  });
+  const productivityContext = Object.entries(workerStats).map(([wid, qty]) => {
+    const w = rawData.workers.find(worker => worker.id === wid);
+    return `- ${w?.fullName || 'غير معروف'}: إجمالي المنجز المقبول [${qty}] قطعة`;
+  }).sort((a, b) => b.localeCompare(a)).join('\n');
+
+  // --- 6. تفاصيل السندات (آخر 100 حركة) ---
+  const vouchersContext = rawData.vouchers.slice(0, 100).map(v => {
     const worker = rawData.workers.find(w => w.id === v.workerId)?.fullName || v.recipient || '---';
     const items = v.items?.map((i: any) => `${i.nameAr}(${i.qty}${i.unit})`).join(', ') || 'لا توجد أصناف';
-    return `- سند [${v.voucherNumber}] نوع [${v.type}] تاريخ [${v.date}] بمبلغ/كمية [${v.totalAmount || v.qtyAccepted}] للعامل [${worker}] الأصناف المشمولة: [${items}]`;
+    const impact = v.type === 'production_receipt' ? `منجز:${v.qtyAccepted} قطعة` : `قيمة:${v.totalAmount || v.wageAmount} ريال`;
+    return `- سند [${v.voucherNumber}] | نوع: [${v.type}] | تاريخ: [${v.date}] | للطرف: [${worker}] | التأثير: [${impact}] | الأصناف المشمولة: [${items}]`;
   }).join('\n');
 
-  // 6. الملخص المالي العام
+  // --- 7. الملخص المالي العام ---
   const totalWages = rawData.vouchers.filter(v => v.type === 'production_receipt' && v.status !== 'deleted').reduce((sum, v) => sum + (v.wageAmount || 0), 0);
   const totalExpenses = rawData.vouchers.filter(v => v.type === 'overhead_cost' && v.status !== 'deleted').reduce((sum, v) => sum + (v.totalAmount || 0), 0);
 
   return `
-=== لقطة حية لقاعدة البيانات (Snapshot) ===
-[القوى العاملة]:
+=== البيانات الحية والنهائية للنظام (حقائق مطلقة) ===
+
+[1. القوى العاملة والأقسام]:
 ${workersContext || 'لا يوجد عمال مسجلين'}
 
-[المخازن - مواد خام]:
+[2. إنتاجية العمال (تراكمي)]:
+${productivityContext || 'لا توجد بيانات إنتاجية'}
+
+[3. المخازن - المواد الخام]:
 ${materialsContext || 'لا توجد مواد خام'}
 
-[المستودع - منتجات جاهزة للبيع]:
+[4. المستودع - منتجات جاهزة للبيع]:
 ${finishedGoodsContext || 'المستودع فارغ'}
 
-[أوامر الإنتاج والعمليات]:
+[5. أوامر الإنتاج والعمليات الجارية]:
 ${ordersContext || 'لا توجد أوامر نشطة'}
 
-[أحدث السندات المالية والمخزنية]:
+[6. سجل السندات التاريخي (التفاصيل العميقة)]:
 ${vouchersContext || 'لا توجد سندات مؤرشفة'}
 
-[الملخص المالي التراكمي]:
-- إجمالي الأجور المستحقة: ${totalWages} ريال
-- إجمالي المصاريف التشغيلية: ${totalExpenses} ريال
-==========================================`;
+[7. الملخص المالي التراكمي]:
+- إجمالي الأجور المستحقة (غير المصروفة): ${totalWages} ريال يمني
+- إجمالي المصاريف التشغيلية (كهرباء، نقل، إلخ): ${totalExpenses} ريال يمني
+=================================================`;
 }
 
 export async function askAssociationAssistant(input: AssistantInput): Promise<AssistantOutput> {
   try {
     const { message, history } = input;
     const apiKey = process.env.OPENROUTER_API_KEY;
-    if (!apiKey) return { answer: "<p>⚠️ عذراً يا مدير، محرك الذكاء الاصطناعي غير مهيأ (مفتاح الـ API مفقود).</p>" };
+    if (!apiKey) return { answer: "<h3>⚠️ تنبيه إداري</h3><p>محرك الذكاء الاصطناعي غير مهيأ. يرجى مراجعة إعدادات مفتاح الـ API.</p>" };
 
-    // جلب البيانات الحية قبل إرسال الطلب
+    // جلب لقطة البيانات الحية المحدثة
     const liveContext = await getFullSystemSnapshot();
 
-    const systemContent = `أنت "المستشار التنفيذي الذكي" والمساعد الأول لمدير مصانع نسيج المعاوز بجمعية الروضة.
-مهمتك: تحليل لقطة البيانات الحية المرفقة لك بدقة فائقة وتقديم تقارير تحليلية، إحصائية، ورقابية فورية.
+    const systemContent = `أنت "المستشار التنفيذي الذكي" ومدير البيانات الأول لجمعية الصناعات النسيجية بـ "الروضة - شبوة".
+مهمتك: تحليل البيانات الحية المرفقة لك بدقة متناهية وتقديم إجابات قاطعة، إحصائية، ورقابية فورية للمدير.
 
-البيانات الحية المتاحة بين يديك الآن (هذه هي الحقيقة المطلقة للنظام):
+البيانات التالية هي "الحقيقة المطلقة" للنظام الآن (لا تطلب بيانات أخرى):
 ${liveContext}
 
-قواعد صارمة للتعامل مع البيانات:
-1. ممنوع منعاً باتاً قول "لا يمكنني الوصول للبيانات" أو "أحتاج لمعلومات إضافية". البيانات موجودة في الفقرة السابقة بالكامل.
-2. إذا سألك المدير عن مادة في سند، ابحث في "أحدث السندات" وفي حقل "الأصناف المشمولة" وستجدها.
-3. عند تقديم تقارير، استخدم لغة HTML حصراً وجداول منسقة كالتالي:
-   - للجدول: <table style="width:100%; border-collapse: collapse; text-align: right; margin: 10px 0; font-size: 13px;">
-   - للخلايا: <th/td style="padding: 8px; border: 1px solid #ddd;">
-4. كن ذكياً في الاستنتاج: إذا كان رصيد مادة أقل من حد الأمان، نبه المدير فوراً. إذا كان هناك أمر إنتاج متعثر (نسبة إنجازه منخفضة وتاريخه قديم)، أشر إليه.
-5. لا تستخدم رموز Markdown نهائياً (#، *، **، إلخ).
-6. اجعل ردودك موجهة للمدير بلهجة احترافية، سريعة، وعملية.
+قواعد السلوك والرد (صارمة جداً):
+1. ممنوع منعاً باتاً الاعتذار عن عدم الوصول للبيانات أو قول "أحتاج لمزيد من المعلومات". البيانات أمامك بالكامل. ابحث في سجل السندات وتفاصيل الأصناف المشمولة وستجد كل شيء.
+2. التنسيق: استخدم لغة HTML حصراً. يُمنع استخدام Markdown نهائياً (لا تستخدم # أو * أو ** أو |).
+3. الجداول: أي بيانات مقارنة أو قوائم مخزنية يجب عرضها في جدول HTML منسق كالتالي:
+   <table style="width:100%; border-collapse: collapse; text-align: right; margin: 15px 0; font-family: sans-serif; font-size: 13px;">
+   <tr style="background: #f1f5f9;"><th style="padding: 10px; border: 1px solid #ddd;">...</th></tr>
+   <tr><td style="padding: 10px; border: 1px solid #ddd;">...</td></tr>
+   </table>
+4. الهوية: أنت لست بوت دردشة، أنت "لوحة تحكم ناطقة". ردودك يجب أن تكون موجهة للمدير بلهجة احترافية، سريعة، وعملية.
+5. الذكاء التحليلي: إذا سألك المدير عن مادة، ابحث في "سجل السندات" لتعرف من استلمها ومتى. إذا سألك عن أفضل عامل، قارن بين "إنتاجية العمال" المعطاة لك.
+6. الأرقام: اعرض المبالغ والكميات بوضوح وبصيغة الأرقام الإنجليزية (1,234) متبوعة بالوحدة.
 
-الهوية: أنت لست مجرد بوت، أنت "عقل النظام" الذي يرى كل حركة مخزنية ومالية.`;
+استخدم <h3> للعناوين و <p> للنصوص و <strong> للتمييز. ابدأ الإجابة بالمعلومات المطلوبة مباشرة.`;
 
     const apiMessages: any[] = [{ role: 'system', content: systemContent }];
 
-    // إرسال تاريخ المحادثة لضمان فهم السياق (الذاكرة المؤقتة)
     if (history && Array.isArray(history)) {
-      history.slice(-10).forEach(m => {
+      history.slice(-15).forEach(m => {
         const role = (m.role === 'user') ? 'user' : 'assistant';
         apiMessages.push({ role, content: m.content || m.text || "" });
       });
@@ -162,20 +179,23 @@ ${liveContext}
       body: JSON.stringify({
         model: 'google/gemma-2-27b-it',
         messages: apiMessages,
-        temperature: 0.1, // لضمان أقصى درجات الدقة والالتزام بالبيانات
-        max_tokens: 3000
+        temperature: 0.1, // دقة عالية جداً لمنع الهلوسة
+        max_tokens: 4000
       })
     });
 
-    if (!response.ok) return { answer: "<p>🌐 عذراً، هناك ضغط على محرك التحليل، يرجى المحاولة بعد لحظات.</p>" };
+    if (!response.ok) return { answer: "<h3>🌐 خطأ في الاتصال</h3><p>عذراً يا مدير، هناك ضغط على محرك التحليل السحابي. يرجى المحاولة مرة أخرى.</p>" };
 
     const data = await response.json();
     let answer = data.choices?.[0]?.message?.content || 'أعتذر، لم أستطع استخلاص النتائج حالياً.';
+    
+    // تنظيف أي وسوم تقنية قد تظهر بالخطأ
+    answer = answer.replace(/```html/g, '').replace(/```/g, '');
     
     return { answer };
 
   } catch (error: any) {
     console.error("Assistant Flow Error:", error);
-    return { answer: "<p>❌ حدث خطأ فني أثناء قراءة سجلات النظام الحية.</p>" };
+    return { answer: "<h3>❌ خطأ فني</h3><p>حدث فشل في قراءة السجلات الحية لقاعدة البيانات.</p>" };
   }
 }
