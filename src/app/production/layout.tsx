@@ -10,6 +10,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { doc } from 'firebase/firestore';
 import { AlertCircle, Lock, UserCog } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ProductionProvider } from './ProductionContext';
 
 export default function ProductionLayout({
   children,
@@ -163,16 +164,18 @@ export default function ProductionLayout({
 
   return (
     <SidebarProvider>
-      <div className={`h-screen w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col overflow-hidden ${lang === 'ar' ? 'arabic-font' : 'english-font'}`} dir={dir}>
-        <div className="flex flex-1 overflow-hidden h-full">
-          <aside className="z-30 h-full"><Sidebar /></aside>
-          <div className="flex-1 flex flex-col min-w-0 h-full relative border-r border-gray-100/50 dark:border-white/5 overflow-hidden">
-            <Header />
-            <main className="flex-1 overflow-hidden">{children}</main>
+      <ProductionProvider userProfile={userProfile} loading={profileLoading}>
+        <div className={`h-screen w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col overflow-hidden ${lang === 'ar' ? 'arabic-font' : 'english-font'}`} dir={dir}>
+          <div className="flex flex-1 overflow-hidden h-full">
+            <aside className="z-30 h-full"><Sidebar /></aside>
+            <div className="flex-1 flex flex-col min-w-0 h-full relative border-r border-gray-100/50 dark:border-white/5 overflow-hidden">
+              <Header />
+              <main className="flex-1 overflow-hidden">{children}</main>
+            </div>
           </div>
+          <style jsx global>{`.no-scrollbar::-webkit-scrollbar { display: none; } .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }`}</style>
         </div>
-        <style jsx global>{`.no-scrollbar::-webkit-scrollbar { display: none; } .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }`}</style>
-      </div>
+      </ProductionProvider>
     </SidebarProvider>
   );
 }
