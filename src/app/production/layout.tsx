@@ -21,9 +21,9 @@ export default function ProductionLayout({
   const pathname = usePathname();
   const [isAuthChecking, setIsAuthChecking] = useState(true);
   
-  // Track original language to restore when leaving production
-  const originalLangRef = useRef<any>(null);
+  // Track states for smart syncing
   const initialLoadRef = useRef(false);
+  const lastAppliedDbLangRef = useRef<string | null>(null);
 
   // Fetch Isolated Production Settings
   const settingsRef = useMemo(() => !db ? null : doc(db, 'settings', 'global'), [db]);
@@ -43,40 +43,32 @@ export default function ProductionLayout({
   // Apply Isolated Production Settings (Theme & Language)
   useEffect(() => {
     if (settings && !isAuthChecking && user) {
-      // 1. Theme Management (Only in Production)
+      // 1. Theme Management
       if (settings.themeMode === 'dark') {
         document.documentElement.classList.add('dark');
       } else {
         document.documentElement.classList.remove('dark');
       }
 
-      // 2. Language Management (Isolation logic)
-      // On first load of production, store the site's current lang and apply production preference
+      // 2. Language Management - Smart Sync
+      // Only apply DB language if it's the first load OR if the DB value itself changed
       if (!initialLoadRef.current) {
-        originalLangRef.current = lang; 
         if (settings.defaultLanguage && settings.defaultLanguage !== lang) {
           setLang(settings.defaultLanguage as any);
         }
+        lastAppliedDbLangRef.current = settings.defaultLanguage;
         initialLoadRef.current = true;
-      } else {
-        // If settings in DB change while we are in production, apply them immediately
-        if (settings.defaultLanguage && settings.defaultLanguage !== lang) {
-           setLang(settings.defaultLanguage as any);
-        }
+      } else if (settings.defaultLanguage !== lastAppliedDbLangRef.current) {
+        // This means the user saved a new preference in the settings page
+        setLang(settings.defaultLanguage as any);
+        lastAppliedDbLangRef.current = settings.defaultLanguage;
       }
     }
 
-    // Cleanup: Restore site defaults when leaving production
     return () => {
-      if (initialLoadRef.current) {
-        document.documentElement.classList.remove('dark');
-        // We revert the language back to what it was before entering production
-        if (originalLangRef.current && originalLangRef.current !== lang) {
-          // Note: This only works if we unmount the whole layout
-        }
-      }
+      // Cleanup when fully leaving production if needed
     };
-  }, [settings, isAuthChecking, user, setLang, lang]);
+  }, [settings, isAuthChecking, user, setLang]); // Removed 'lang' from dependencies to stop fighting manual toggles
 
   if (authLoading || isAuthChecking) {
     return (
