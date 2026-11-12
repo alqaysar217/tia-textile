@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -66,11 +65,16 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
 
     const userQuery = input.trim();
     setInput('');
-    setMessages(prev => [...prev, { role: 'user', content: userQuery }]);
+    const newMessages: Message[] = [...messages, { role: 'user', content: userQuery }];
+    setMessages(newMessages);
     setIsLoading(true);
 
     try {
-      const response = await askAssociationAssistant({ query: userQuery });
+      // إرسال الرسالة الحالية مع تاريخ المحادثة للسياق
+      const response = await askAssociationAssistant({ 
+        message: userQuery,
+        history: newMessages.slice(-6) // إرسال آخر 6 رسائل فقط للحفاظ على الأداء
+      });
       setMessages(prev => [...prev, { role: 'assistant', content: response.answer }]);
     } catch (error) {
       console.error('AI Assistant Error:', error);
@@ -105,7 +109,7 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
                  <SheetTitle className="text-xl font-black text-white">{isRtl ? 'مساعد الإنتاج الذكي' : 'Production AI'}</SheetTitle>
                  <div className="text-[10px] font-black text-emerald-200/60 uppercase tracking-widest mt-1 flex items-center gap-2">
                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                   Powered by Gemini AI • TIA System
+                   Powered by Gemma 2 • TIA System
                  </div>
                </div>
              </div>
@@ -125,7 +129,7 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
                 )}>
                   <div className={cn(
                     "flex items-center gap-2 mb-1.5",
-                    msg.role === 'assistant' ? "flex-row" : "flex-row-reverse"
+                    msg.role === 'assistant' ? "flex-row-reverse" : "flex-row"
                   )}>
                     <div className={cn(
                       "w-5 h-5 rounded-md flex items-center justify-center text-[10px]",
@@ -209,7 +213,7 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
               </Button>
            </form>
            <p className="text-[8px] font-bold text-slate-400 dark:text-slate-600 text-center mt-3 uppercase tracking-widest">
-             TIA AI Engine v1.0 • Answers based on official archive
+             TIA AI Engine v1.1 • Driven by Gemma 2
            </p>
         </div>
       </SheetContent>
