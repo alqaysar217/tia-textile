@@ -10,7 +10,8 @@ import {
   Box,
   Wallet,
   MessageSquare,
-  History
+  History,
+  Users2
 } from 'lucide-react';
 import { 
   Sheet, 
@@ -64,17 +65,15 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
     const userQuery = customText || input.trim();
     if (!userQuery || isLoading) return;
 
-    // إضافة رسالة المستخدم للواجهة فوراً
     const updatedMessages: Message[] = [...messages, { role: 'user', content: userQuery }];
     setMessages(updatedMessages);
     setInput('');
     setIsLoading(true);
 
     try {
-      // إرسال الرسالة مع التاريخ (Memory) للمحرّك
       const result = await askAssociationAssistant({ 
         message: userQuery,
-        history: messages // نرسل الرسائل السابقة لضمان الفهم السياقي
+        history: messages 
       });
       
       setMessages(prev => [...prev, { role: 'assistant', content: result.answer }]);
@@ -101,7 +100,6 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
         side={isRtl ? "left" : "right"} 
         className="w-full sm:max-w-[580px] p-0 border-none flex flex-col bg-white dark:bg-slate-950 shadow-2xl transition-colors duration-300"
       >
-        {/* HEADER */}
         <div className="premium-gradient p-6 text-white shrink-0 relative overflow-hidden">
            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 opacity-[0.05] pointer-events-none">
               <img src="/images/logo.png" alt="watermark" className="w-full h-full object-contain grayscale brightness-0 invert" />
@@ -126,7 +124,6 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
            </button>
         </div>
 
-        {/* MESSAGES AREA */}
         <ScrollArea dir={dir} className="flex-1 p-6 no-scrollbar bg-[#f8fafc] dark:bg-slate-950 transition-colors duration-300">
            <div className="space-y-6 flex flex-col">
               {messages.map((msg, idx) => (
@@ -135,9 +132,9 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
                   msg.role === 'assistant' ? "self-start items-start" : "self-end items-end"
                 )}>
                   <div className={cn(
-                    "p-4 rounded-2xl text-xs md:text-sm leading-relaxed font-bold shadow-sm border whitespace-pre-wrap overflow-hidden",
+                    "p-4 rounded-2xl text-xs md:text-sm leading-relaxed font-bold shadow-sm border whitespace-pre-wrap overflow-hidden text-right",
                     msg.role === 'assistant' 
-                      ? "bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-800 rounded-tr-none text-right" 
+                      ? "bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-800 rounded-tr-none" 
                       : "bg-emerald-600 text-white border-emerald-700 rounded-tl-none text-left"
                   )}>
                     {msg.content}
@@ -155,7 +152,6 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
            </div>
         </ScrollArea>
 
-        {/* QUICK ACTIONS & INPUT */}
         <div className="p-6 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 shrink-0 transition-colors duration-300">
            <div className="flex gap-2 overflow-x-auto no-scrollbar mb-4 pb-1">
               {quickActions.map((action, i) => (
