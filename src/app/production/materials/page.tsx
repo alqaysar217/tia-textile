@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useTranslation } from '@/components/LanguageProvider';
-import { useFirestore, useCollection } from '@/firebase';
+import { useFirestore, useCollection, useDoc } from '@/firebase';
 import { 
   collection, 
   addDoc, 
@@ -54,15 +54,10 @@ export default function MaterialsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCompressing, setIsCompressing] = useState(false);
 
-  // Fetch Global Settings for Currency
-  const [systemCurrency, setSystemCurrency] = useState('YER');
-  
-  useEffect(() => {
-    if (!db) return;
-    getDoc(doc(db, 'settings', 'global')).then(snap => {
-      if (snap.exists()) setSystemCurrency(snap.data().baseCurrency || 'YER');
-    });
-  }, [db]);
+  // Fetch Global Settings for Currency (Real-time listener)
+  const settingsRef = useMemo(() => !db ? null : doc(db, 'settings', 'global'), [db]);
+  const { data: savedSettings } = useDoc<any>(settingsRef);
+  const systemCurrency = savedSettings?.baseCurrency || 'YER';
 
   // Form State
   const [formData, setFormData] = useState({
@@ -70,6 +65,13 @@ export default function MaterialsPage() {
     currentQty: 0, minQty: 0, price: 0, currency: systemCurrency, 
     photoUrl: '', status: 'active'
   });
+
+  // CRITICAL FIX: Sync currency with system settings when adding new material
+  useEffect(() => {
+    if (!editingMatId && systemCurrency) {
+      setFormData(prev => ({ ...prev, currency: systemCurrency }));
+    }
+  }, [systemCurrency, editingMatId, isAddDialogOpen]);
 
   const [stockInForm, setStockInForm] = useState({ materialId: '', qty: 0 });
 
@@ -208,7 +210,7 @@ export default function MaterialsPage() {
       currentQty: Number(formData.currentQty),
       minQty: Number(formData.minQty),
       price: Number(formData.price),
-      currency: systemCurrency,
+      currency: formData.currency || systemCurrency,
       updatedAt: serverTimestamp(),
     };
     try {

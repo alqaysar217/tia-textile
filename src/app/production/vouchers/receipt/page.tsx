@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useTranslation } from '@/components/LanguageProvider';
-import { useFirestore, useCollection } from '@/firebase';
+import { useFirestore, useCollection, useDoc } from '@/firebase';
 import { 
   collection, 
   addDoc, 
@@ -55,13 +55,10 @@ export default function ProductionReceiptPage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [batchFilter, setBatchFilter] = useState('all');
 
-  const [systemCurrency, setSystemCurrency] = useState('YER');
-  useEffect(() => {
-    if (!db) return;
-    getDoc(doc(db, 'settings', 'global')).then(snap => {
-      if (snap.exists()) setSystemCurrency(snap.data().baseCurrency || 'YER');
-    });
-  }, [db]);
+  // Fetch Global Settings for Currency (Real-time listener)
+  const settingsRef = useMemo(() => !db ? null : doc(db, 'settings', 'global'), [db]);
+  const { data: savedSettings } = useDoc<any>(settingsRef);
+  const systemCurrency = savedSettings?.baseCurrency || 'YER';
 
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -75,6 +72,13 @@ export default function ProductionReceiptPage() {
     currency: systemCurrency,
     returnedItems: [] as any[],
   });
+
+  // CRITICAL FIX: Sync currency with system settings when adding new receipt
+  useEffect(() => {
+    if (!editingVoucherId && systemCurrency) {
+      setFormData(prev => ({ ...prev, currency: systemCurrency }));
+    }
+  }, [systemCurrency, editingVoucherId, isAddDialogOpen]);
 
   const ordersQuery = useMemo(() => !db ? null : collection(db, 'productionOrders'), [db]);
   const workersQuery = useMemo(() => !db ? null : collection(db, 'workers'), [db]);
