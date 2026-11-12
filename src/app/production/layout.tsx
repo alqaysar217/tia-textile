@@ -51,7 +51,6 @@ export default function ProductionLayout({
       }
 
       // 2. Language Management - Smart Sync
-      // Only apply DB language if it's the first load OR if the DB value itself changed
       if (!initialLoadRef.current) {
         if (settings.defaultLanguage && settings.defaultLanguage !== lang) {
           setLang(settings.defaultLanguage as any);
@@ -59,23 +58,23 @@ export default function ProductionLayout({
         lastAppliedDbLangRef.current = settings.defaultLanguage;
         initialLoadRef.current = true;
       } else if (settings.defaultLanguage !== lastAppliedDbLangRef.current) {
-        // This means the user saved a new preference in the settings page
         setLang(settings.defaultLanguage as any);
         lastAppliedDbLangRef.current = settings.defaultLanguage;
       }
     }
 
     return () => {
-      // Cleanup when fully leaving production if needed
+      // Cleanup when fully leaving production to reset theme for public site
+      document.documentElement.classList.remove('dark');
     };
-  }, [settings, isAuthChecking, user, setLang]); // Removed 'lang' from dependencies to stop fighting manual toggles
+  }, [settings, isAuthChecking, user, setLang]);
 
   if (authLoading || isAuthChecking) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F8F9FA]">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-16 h-16 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-          <p className="text-xs font-black text-primary uppercase tracking-[0.2em] animate-pulse">
+          <div className="w-16 h-16 border-4 border-emerald-600/20 border-t-emerald-600 rounded-full animate-spin" />
+          <p className="text-xs font-black text-emerald-600 uppercase tracking-[0.2em] animate-pulse">
             {lang === 'ar' ? 'جاري التحقق من الصلاحيات...' : 'Verifying Access...'}
           </p>
         </div>
@@ -95,7 +94,7 @@ export default function ProductionLayout({
   return (
     <SidebarProvider>
       <div 
-        className={`h-screen w-full bg-[#F8F9FA] dark:bg-[#0F172A] text-[#1A1C1E] dark:text-[#F8F9FA] flex flex-col overflow-hidden ${lang === 'ar' ? 'arabic-font' : 'english-font'}`} 
+        className={`h-screen w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col overflow-hidden ${lang === 'ar' ? 'arabic-font' : 'english-font'}`} 
         dir={dir}
       >
         <div className="flex flex-1 overflow-hidden h-full">
@@ -119,14 +118,6 @@ export default function ProductionLayout({
         <style jsx global>{`
           .no-scrollbar::-webkit-scrollbar { display: none; }
           .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-          
-          /* Dark Mode Overrides for standard cards in Production */
-          .dark .bg-white { background-color: #1E293B !important; }
-          .dark .text-slate-900 { color: #F8F9FA !important; }
-          .dark .text-slate-600 { color: #94A3B8 !important; }
-          .dark .border-slate-200 { border-color: #334155 !important; }
-          .dark .bg-slate-50 { background-color: #0F172A !important; }
-          .dark .bg-slate-100 { background-color: #334155 !important; }
         `}</style>
       </div>
     </SidebarProvider>

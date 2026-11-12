@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo } from 'react';
@@ -192,7 +191,7 @@ export default function ProductionDashboard() {
 
   if (loading) {
     return (
-      <div className="h-full flex items-center justify-center bg-[#F8F9FA]">
+      <div className="h-full flex items-center justify-center bg-slate-50 dark:bg-slate-950">
         <div className="flex flex-col items-center gap-4">
            <Loader2 className="w-12 h-12 animate-spin text-emerald-600" />
            <p className="text-[12px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Initializing Command Center...</p>
@@ -202,53 +201,53 @@ export default function ProductionDashboard() {
   }
 
   return (
-    <div className="h-full overflow-y-auto p-4 md:p-8 space-y-10 bg-[#F3F5F9] no-scrollbar">
+    <div className="h-full overflow-y-auto p-4 md:p-8 space-y-10 bg-slate-50 dark:bg-slate-950 transition-colors duration-300 no-scrollbar">
       
       {/* HEADER SECTION */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 pb-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 dark:border-slate-800 pb-6">
         <div className="space-y-1">
            <div className="flex items-center gap-3">
-              <div className="p-2 bg-slate-900 rounded-xl text-emerald-400 shadow-xl"><Sparkles className="w-6 h-6" /></div>
-              <h1 className="text-3xl font-black text-slate-900 tracking-tight">{t.production.dashboard}</h1>
+              <div className="p-2 bg-slate-900 dark:bg-emerald-900/20 rounded-xl text-emerald-400 shadow-xl"><Sparkles className="w-6 h-6" /></div>
+              <h1 className="text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight">{t.production.dashboard}</h1>
            </div>
-           <p className="text-sm text-slate-500 font-bold opacity-80 ps-12">
+           <p className="text-sm text-slate-500 dark:text-slate-400 font-bold opacity-80 ps-12">
              {isRtl ? 'الرقابة المباشرة على جودة الإنتاج وهيكل التكاليف.' : 'Real-time oversight of production quality and cost structure.'}
            </p>
         </div>
-        <div className="hidden md:flex items-center gap-3 bg-white p-2 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="hidden md:flex items-center gap-3 bg-white dark:bg-slate-900 p-2 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
            <ShieldCheck className="w-5 h-5 text-emerald-500" />
-           <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Secure ERP Session</span>
+           <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Secure ERP Session</span>
         </div>
       </div>
 
       {/* TOP STATS CARDS */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {stats?.map((stat, idx) => (
-          <Card key={idx} className="p-5 border-none shadow-xl bg-white relative overflow-hidden group hover:-translate-y-1 transition-all duration-300">
+          <Card key={idx} className="p-5 border-none shadow-xl bg-white dark:bg-slate-900 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300">
             <div className={cn("absolute top-0 right-0 w-24 h-24 bg-gradient-to-br opacity-5 rounded-full -mr-8 -mt-8 group-hover:scale-150 transition-transform", stat.gradient)} />
             <div className="flex items-center justify-between mb-4 relative z-10">
               <div className={cn("p-2.5 rounded-xl bg-gradient-to-br text-white shadow-lg", stat.gradient)}>{stat.icon}</div>
-              <Badge className="bg-slate-50 text-slate-400 font-black text-[9px] border-none px-2">{stat.change}</Badge>
+              <Badge className="bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500 font-black text-[9px] border-none px-2">{stat.change}</Badge>
             </div>
             <div className="text-right relative z-10">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{stat.title}</p>
-              <h3 className="text-2xl font-black text-slate-900 tabular-nums">{formatNum(stat.value)}</h3>
+              <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">{stat.title}</p>
+              <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100 tabular-nums">{formatNum(stat.value)}</h3>
             </div>
           </Card>
         ))}
       </div>
 
       {/* ROW 1: GROWTH CHART */}
-      <Card className="p-8 border-none shadow-2xl bg-white rounded-2xl relative overflow-hidden">
+      <Card className="p-8 border-none shadow-2xl bg-white dark:bg-slate-900 rounded-2xl relative overflow-hidden">
         <div className="flex items-center justify-between mb-10">
           <div className="space-y-1">
-            <h3 className="text-lg font-black text-slate-900 flex items-center gap-3">
+            <h3 className="text-lg font-black text-slate-900 dark:text-slate-100 flex items-center gap-3">
               <div className="w-2 h-8 bg-emerald-500 rounded-full" />
               {isRtl ? 'منحنى نمو الإنتاج الشهري' : 'Production Growth Pulse'}
             </h3>
-            <p className="text-[11px] text-slate-400 font-bold ps-5 uppercase tracking-widest">{isRtl ? 'إجمالي القطع الجاهزة النهائية' : 'Completed pieces stats'}</p>
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 font-bold ps-5 uppercase tracking-widest">{isRtl ? 'إجمالي القطع الجاهزة النهائية' : 'Completed pieces stats'}</p>
           </div>
-          <div className="p-3 bg-emerald-50 rounded-2xl text-emerald-600"><TrendingUp className="w-6 h-6" /></div>
+          <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl text-emerald-600 dark:text-emerald-400"><TrendingUp className="w-6 h-6" /></div>
         </div>
         <div className="h-[300px] w-full">
           <ResponsiveContainer width="100%" height="100%">
@@ -259,7 +258,7 @@ export default function ProductionDashboard() {
                   <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isRtl ? '#1e293b' : '#f1f5f9'} />
               <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 800, fill: '#64748b' }} />
               <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 800, fill: '#64748b' }} />
               <Tooltip 
@@ -277,26 +276,26 @@ export default function ProductionDashboard() {
       <div className="space-y-6">
         <div className="flex items-center gap-4">
           <div className="p-2 bg-violet-600 rounded-lg text-white"><UserCheck className="w-5 h-5" /></div>
-          <h3 className="text-xl font-black text-slate-800 uppercase tracking-widest">{isRtl ? 'تحليل إنتاجية الحرفيين حسب الدفعة' : 'Artisan Performance by Batch'}</h3>
+          <h3 className="text-xl font-black text-slate-800 dark:text-slate-200 uppercase tracking-widest">{isRtl ? 'تحليل إنتاجية الحرفيين حسب الدفعة' : 'Artisan Performance by Batch'}</h3>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {laborByOrder.map((orderData, idx) => (
-            <Card key={idx} className="p-6 border-none shadow-xl bg-white rounded-2xl flex flex-col h-[380px] hover:shadow-2xl transition-all">
-              <div className="flex items-center justify-between mb-6 border-b border-slate-50 pb-4">
+            <Card key={idx} className="p-6 border-none shadow-xl bg-white dark:bg-slate-900 rounded-2xl flex flex-col h-[380px] hover:shadow-2xl transition-all">
+              <div className="flex items-center justify-between mb-6 border-b border-slate-50 dark:border-slate-800 pb-4">
                 <div className="flex flex-col">
-                   <Badge variant="outline" className="text-[8px] font-black text-emerald-600 border-emerald-100 tabular-nums w-fit mb-1">{orderData.orderNumber}</Badge>
-                   <span className="text-sm font-black text-slate-900 truncate max-w-[180px]">{orderData.orderTitle}</span>
+                   <Badge variant="outline" className="text-[8px] font-black text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/30 tabular-nums w-fit mb-1">{orderData.orderNumber}</Badge>
+                   <span className="text-sm font-black text-slate-900 dark:text-slate-100 truncate max-w-[180px]">{orderData.orderTitle}</span>
                 </div>
                 <div className="text-right">
-                   <span className="text-[10px] font-black text-slate-400 block uppercase">OUTPUT</span>
-                   <span className="text-lg font-black text-slate-900 tabular-nums">{formatNum(orderData.workers.reduce((s:number, w:any) => s+w.qty, 0))}</span>
+                   <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 block uppercase">OUTPUT</span>
+                   <span className="text-lg font-black text-slate-900 dark:text-slate-100 tabular-nums">{formatNum(orderData.workers.reduce((s:number, w:any) => s+w.qty, 0))}</span>
                 </div>
               </div>
               <div className="flex-1 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={orderData.workers} layout="vertical" margin={{ left: -10, right: 40 }}>
                     <XAxis type="number" hide />
-                    <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 900, fill: '#475569' }} width={80} />
+                    <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 900, fill: '#64748b' }} width={80} />
                     <Tooltip 
                       cursor={{ fill: 'rgba(124, 58, 237, 0.05)' }} 
                       content={({ active, payload }) => active && payload ? (
@@ -324,22 +323,22 @@ export default function ProductionDashboard() {
       <div className="space-y-6">
         <div className="flex items-center gap-4">
           <div className="p-2 bg-amber-500 rounded-lg text-white"><PieChartIcon className="w-5 h-5" /></div>
-          <h3 className="text-xl font-black text-slate-800 uppercase tracking-widest">{isRtl ? 'تحليل هيكل التكاليف للأوامر النشطة' : 'Real-time Cost Architecture'}</h3>
+          <h3 className="text-xl font-black text-slate-800 dark:text-slate-200 uppercase tracking-widest">{isRtl ? 'تحليل هيكل التكاليف للأوامر النشطة' : 'Real-time Cost Architecture'}</h3>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {orderCostBreakdown.map((order, idx) => (
-            <Card key={idx} className="border-none shadow-xl bg-white rounded-[2rem] flex flex-col h-[520px] hover:shadow-2xl transition-all overflow-hidden">
+            <Card key={idx} className="border-none shadow-xl bg-white dark:bg-slate-900 rounded-[2rem] flex flex-col h-[520px] hover:shadow-2xl transition-all overflow-hidden">
               {/* Card Body */}
               <div className="p-8 flex-1 flex flex-col">
-                <div className="flex flex-col gap-1 border-b border-slate-50 pb-4 mb-6">
+                <div className="flex flex-col gap-1 border-b border-slate-50 dark:border-slate-800 pb-4 mb-6">
                   <div className="flex justify-between items-start">
-                    <Badge variant="outline" className="text-[10px] font-black text-emerald-600 border-emerald-100 tabular-nums bg-emerald-50">{order.orderNumber}</Badge>
+                    <Badge variant="outline" className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/30 tabular-nums bg-emerald-50 dark:bg-emerald-900/20">{order.orderNumber}</Badge>
                     <div className={cn("p-1.5 rounded-lg text-white shadow-md", order.profit >= 0 ? "bg-emerald-500" : "bg-rose-500")}>
                       {order.profit >= 0 ? <ArrowUpRight className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
                     </div>
                   </div>
-                  <h4 className="text-lg font-black text-slate-900 truncate mt-2">{order.title}</h4>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{order.productName}</p>
+                  <h4 className="text-lg font-black text-slate-900 dark:text-slate-100 truncate mt-2">{order.title}</h4>
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest">{order.productName}</p>
                 </div>
                 
                 {/* DONUT CHART AREA */}
@@ -371,11 +370,11 @@ export default function ProductionDashboard() {
                        <div key={i} className="flex flex-col items-center text-center gap-1">
                           <div className="flex items-center gap-2">
                              <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: item.fill }} />
-                             <span className="text-[11px] font-black text-slate-500 uppercase tracking-tighter">{item.name}</span>
+                             <span className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-tighter">{item.name}</span>
                           </div>
                           <div className="flex flex-col leading-none">
-                             <span className="text-xs font-black text-slate-900 tabular-nums">{formatCurrency(item.value)}</span>
-                             <span className="text-[8px] font-bold text-slate-300 uppercase mt-1">YER</span>
+                             <span className="text-xs font-black text-slate-900 dark:text-slate-100 tabular-nums">{formatCurrency(item.value)}</span>
+                             <span className="text-[8px] font-bold text-slate-300 dark:text-slate-500 uppercase mt-1">YER</span>
                           </div>
                        </div>
                      ))}
@@ -384,14 +383,14 @@ export default function ProductionDashboard() {
               </div>
 
               {/* INTEGRATED FOOTER (Always inside card) */}
-              <div className="bg-slate-50/80 border-t border-slate-100 p-6 grid grid-cols-2 gap-4">
+              <div className="bg-slate-50/80 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 p-6 grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1">
-                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">TOTAL COST</span>
-                  <span className="text-base font-black text-slate-900 tabular-nums">{formatCurrency(order.total)}</span>
+                  <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">TOTAL COST</span>
+                  <span className="text-base font-black text-slate-900 dark:text-slate-100 tabular-nums">{formatCurrency(order.total)}</span>
                 </div>
                 <div className="flex flex-col gap-1 text-right">
-                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">EST. PROFIT</span>
-                  <span className={cn("text-xl font-black tabular-nums", order.profit >= 0 ? "text-emerald-600" : "text-rose-600")}>
+                  <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">EST. PROFIT</span>
+                  <span className={cn("text-xl font-black tabular-nums", order.profit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
                     {formatCurrency(order.profit)}
                   </span>
                 </div>
@@ -402,7 +401,7 @@ export default function ProductionDashboard() {
       </div>
 
       {/* SYSTEM INTEGRITY NOTE */}
-      <div className="p-4 bg-slate-900 text-white/40 rounded-2xl flex items-center justify-between gap-6 border border-slate-800 shadow-2xl mt-10">
+      <div className="p-4 bg-slate-900 dark:bg-slate-900/50 text-white/40 rounded-2xl flex items-center justify-between gap-6 border border-slate-800 shadow-2xl mt-10">
         <div className="flex items-center gap-4">
           <div className="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-500 shadow-inner">
              <ShieldCheck className="w-6 h-6" />
@@ -419,7 +418,7 @@ export default function ProductionDashboard() {
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
               <span>TIA SYSTEM</span>
            </div>
-           <span className="text-[8px] font-bold text-slate-600 uppercase">Proprietary Cluster Control</span>
+           <span className="text-[8px] font-bold text-slate-600 dark:text-slate-500 uppercase">Proprietary Cluster Control</span>
         </div>
       </div>
 
