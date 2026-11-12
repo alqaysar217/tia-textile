@@ -8,7 +8,6 @@ import {
   Settings,
   Globe,
   PanelLeft,
-  Sparkles,
   UserCircle,
   Moon,
   Sun,
@@ -22,7 +21,8 @@ import {
   UploadCloud,
   RefreshCcw,
   ShieldCheck,
-  UserCheck
+  UserCheck,
+  Sparkles
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -155,7 +155,8 @@ export function Header() {
         if (w > h) { if (w > MAX_SIZE) { h *= MAX_SIZE / w; w = MAX_SIZE; } }
         else { if (h > MAX_SIZE) { w *= MAX_SIZE / h; h = MAX_SIZE; } }
         canvas.width = w; canvas.height = h;
-        canvas.getContext('2d')?.drawImage(img, 0, 0, w, h);
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, w, h);
         setProfileForm(prev => ({ ...prev, photoUrl: canvas.toDataURL('image/jpeg', 0.8) }));
         setIsCompressing(false);
       };
@@ -222,7 +223,6 @@ export function Header() {
   const displayRole = userProfile?.role || (authUser?.email === 'alqaysarpc219@gmail.com' ? 'admin' : 'staff');
   const displayPhoto = userProfile?.photoUrl || authUser?.photoURL || '';
 
-  // المساعد الذكي الآن متاح بناءً على موديول 'ai' المستقل
   const canAccessAI = isAdmin || permissions.ai?.read === true;
 
   return (
@@ -252,9 +252,9 @@ export function Header() {
               variant="ghost" 
               size="icon" 
               onClick={() => setIsAIOpen(true)}
-              className="text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-white dark:hover:bg-slate-800 rounded-lg h-9 w-9 transition-all"
+              className="text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-white dark:hover:bg-slate-800 rounded-lg h-9 w-9 transition-all group flex flex-col items-center justify-center"
             >
-              <Sparkles className="w-5 h-5" />
+              <span className="font-black text-[11px] tracking-tighter leading-none group-hover:scale-110 transition-transform">AI</span>
             </Button>
           )}
 

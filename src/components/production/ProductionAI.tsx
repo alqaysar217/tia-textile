@@ -50,8 +50,8 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
   const isRtl = lang === 'ar';
 
   const welcomeMessage = isRtl 
-    ? "<h3>مرحباً بك يا مدير!</h3><p>أنا مستشارك التنفيذي. لقد قمتُ للتو بمسح كامل قاعدة البيانات؛ المخزون، أوامر الإنتاج، السندات، والعمال تحت تصرفك الآن. كيف يمكنني تحليل البيانات لك اليوم؟</p>"
-    : "<h3>Welcome Manager!</h3><p>I am your executive consultant. I have scanned the entire database; inventory, orders, vouchers, and workforce are at your service. How can I analyze the data for you today?</p>";
+    ? "<h3>مرحباً بك يا مدير!</h3><p>أنا مستشارك التنفيذي (AI). لقد قمتُ للتو بمسح كامل قاعدة البيانات؛ المخزون، أوامر الإنتاج، السندات، والعمال تحت تصرفك الآن. كيف يمكنني تحليل البيانات لك اليوم؟</p>"
+    : "<h3>Welcome Manager!</h3><p>I am your executive consultant (AI). I have scanned the entire database; inventory, orders, vouchers, and workforce are at your service. How can I analyze the data for you today?</p>";
 
   useEffect(() => {
     if (isOpen && messages.length === 0) {
@@ -122,7 +122,10 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
                  <img src="/images/logo.png" alt="Logo" className="w-full h-full object-contain" />
                </div>
                <div className="flex flex-col text-right">
-                 <SheetTitle className="text-xl font-black text-white">{isRtl ? 'مساعد الإنتاج الذكي' : 'Production AI'}</SheetTitle>
+                 <SheetTitle className="text-xl font-black text-white flex items-center gap-2">
+                   <span className="bg-white/20 px-2 py-0.5 rounded text-xs font-black">AI</span>
+                   {isRtl ? 'مساعد الإنتاج الذكي' : 'Production Assistant'}
+                 </SheetTitle>
                  <div className="text-[10px] font-black text-emerald-200/60 uppercase tracking-widest mt-1 flex items-center gap-2">
                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                    {isRtl ? 'رؤية تنفيذية كاملة' : 'Full Executive Visibility'}

@@ -21,8 +21,7 @@ import {
   Calculator,
   PieChart,
   TrendingUp,
-  UserPlus,
-  Sparkles
+  UserPlus
 } from 'lucide-react';
 
 /**
@@ -64,5 +63,5 @@ export const SYSTEM_MODULES = [
   { id: 'users', labelAr: 'إدارة المستخدمين والصلاحيات', labelEn: 'Users & Permissions', icon: React.createElement(UserPlus, { className: "w-3.5 h-3.5" }) },
   { id: 'settings', labelAr: 'إعدادات النظام العامة', labelEn: 'General Settings', icon: React.createElement(Settings2, { className: "w-3.5 h-3.5" }) },
   { id: 'trash', labelAr: 'سلة المهملات والأرشفة', labelEn: 'Smart Trash', icon: React.createElement(Trash2, { className: "w-3.5 h-3.5" }) },
-  { id: 'ai', labelAr: 'المساعد الذكي (AI)', labelEn: 'AI Assistant', icon: React.createElement(Sparkles, { className: "w-3.5 h-3.5" }) },
+  { id: 'ai', labelAr: 'المساعد الذكي (AI)', labelEn: 'AI Assistant', icon: React.createElement('span', { className: "font-black text-[10px]" }, 'AI') },
 ];
