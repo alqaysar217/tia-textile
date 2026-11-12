@@ -1,3 +1,4 @@
+'use server';
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -92,7 +93,7 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
       >
         {/* PREMIUM AI HEADER */}
         <div className="premium-gradient p-6 text-white shrink-0 relative overflow-hidden">
-           {/* BRAND WATERMARK INSTEAD OF SPARKLES */}
+           {/* BRAND WATERMARK */}
            <div className="absolute top-0 right-0 p-4 opacity-5">
               <img src="/images/logo.png" alt="watermark" className="w-32 h-32 object-contain grayscale brightness-0 invert" />
            </div>
@@ -203,7 +204,11 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
                   isRtl ? "left-2" : "right-2"
                 )}
               >
-                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                {isLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Send className={cn("w-4 h-4", isRtl && "rotate-180")} />
+                )}
               </Button>
            </form>
            <p className="text-[8px] font-bold text-slate-400 dark:text-slate-600 text-center mt-3 uppercase tracking-widest">
