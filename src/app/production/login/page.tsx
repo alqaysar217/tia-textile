@@ -70,7 +70,8 @@ export default function LoginPage() {
     setError('');
     
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      // CRITICAL FIX: Trim email and password to avoid invisible character errors
+      await signInWithEmailAndPassword(auth, email.trim(), password.trim());
       
       // SUCCESS: Clear attempts
       setFailedAttempts(0);
@@ -79,25 +80,34 @@ export default function LoginPage() {
       
       router.push('/production');
     } catch (err: any) {
+      console.error("Login Error:", err.code);
+      
       // FAILURE: Increment attempts
       const newCount = failedAttempts + 1;
       setFailedAttempts(newCount);
       
       let newUntil = null;
       if (newCount >= 5) {
-        // 5th fail = 1 min, 6th = 2 min, 7th = 3 min...
         const minutes = newCount - 4;
         newUntil = Date.now() + (minutes * 60 * 1000);
         setLockoutUntil(newUntil);
       }
 
-      // Save to localStorage
       localStorage.setItem('prod_login_attempts', JSON.stringify({
         count: newCount,
         until: newUntil
       }));
 
-      setError(lang === 'ar' ? 'خطأ في البريد الإلكتروني أو كلمة المرور' : 'Invalid email or password');
+      // Specific Error Messages
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+        setError(lang === 'ar' ? 'خطأ في البريد الإلكتروني أو كلمة المرور. تأكد من عدم وجود مسافات زائدة.' : 'Invalid email or password. Please ensure there are no extra spaces.');
+      } else if (err.code === 'auth/user-disabled') {
+        setError(lang === 'ar' ? 'تم تعطيل هذا الحساب من قبل الإدارة' : 'This account has been disabled by management');
+      } else if (err.code === 'auth/too-many-requests') {
+        setError(lang === 'ar' ? 'تم حظر المحاولات مؤقتاً بسبب كثرة الأخطاء' : 'Temporary block due to too many failed attempts');
+      } else {
+        setError(lang === 'ar' ? 'حدث خطأ في نظام الدخول، يرجى المحاولة لاحقاً' : 'An error occurred in the authentication system');
+      }
     } finally {
       setLoading(false);
     }
@@ -279,4 +289,3 @@ export default function LoginPage() {
     </div>
   );
 }
-

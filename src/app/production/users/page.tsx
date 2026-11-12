@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useCallback, useRef } from 'react';
@@ -183,7 +184,7 @@ export default function UsersPermissionsPage() {
         const MAX_SIZE = 200;
         let width = img.width, height = img.height;
         if (width > height) { if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; } }
-        else { if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; } }
+        else { if (height > MAX_SIZE) { width *= MAX_SIZE / h; height = MAX_SIZE; } }
         canvas.width = width; canvas.height = height;
         const ctx = canvas.getContext('2d');
         ctx?.drawImage(img, 0, 0, width, height);
@@ -254,6 +255,10 @@ export default function UsersPermissionsPage() {
     let tempApp = null;
     try {
       let uid = editingUserId;
+      
+      // Clean inputs
+      const cleanEmail = formData.email.trim();
+      const cleanPassword = formData.password.trim();
 
       // 1. إذا كان مستخدم جديد، أنشئ له حساب في Firebase Auth أولاً
       if (!editingUserId) {
@@ -262,7 +267,7 @@ export default function UsersPermissionsPage() {
         const tempAuth = getAuth(tempApp);
         
         try {
-          const authResult = await createUserWithEmailAndPassword(tempAuth, formData.email, formData.password);
+          const authResult = await createUserWithEmailAndPassword(tempAuth, cleanEmail, cleanPassword);
           uid = authResult.user.uid;
         } catch (authErr: any) {
           if (authErr.code === 'auth/email-already-in-use') {
@@ -278,9 +283,9 @@ export default function UsersPermissionsPage() {
 
       // 2. احفظ البيانات والصلاحيات في Firestore باستخدام الـ UID كمعرف للمستند
       const userData = {
-        fullName: formData.fullName,
-        email: formData.email,
-        password: formData.password, // للمرجعية فقط في النموذج
+        fullName: formData.fullName.trim(),
+        email: cleanEmail,
+        password: cleanPassword, 
         photoUrl: formData.photoUrl,
         role: formData.role,
         active: formData.active,
@@ -296,7 +301,7 @@ export default function UsersPermissionsPage() {
       toast({ title: isRtl ? "تم تفعيل الحساب والصلاحيات بنجاح" : "Account Provisioned Successfully" });
       resetForm();
     } catch (err: any) {
-      console.error(err);
+      console.error("User Save Error:", err);
       toast({ variant: "destructive", title: isRtl ? "خطأ في معالجة الحساب" : "System Error" });
     } finally {
       if (tempApp) await deleteApp(tempApp);
