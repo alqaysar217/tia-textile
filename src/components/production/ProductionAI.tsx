@@ -90,18 +90,17 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
       >
         {/* PREMIUM AI HEADER */}
         <div className="premium-gradient p-6 text-white shrink-0 relative overflow-hidden">
-           {/* BRAND WATERMARK - LOGO INSTEAD OF SPARKLES */}
+           {/* BRAND WATERMARK */}
            <div className="absolute top-0 right-0 p-4 opacity-5">
               <img src="/images/logo.png" alt="watermark" className="w-40 h-40 object-contain grayscale brightness-0 invert" />
            </div>
 
            <SheetHeader className={cn("text-right rtl:text-right ltr:text-left relative z-10")}>
              <div className="flex items-center gap-3">
-               {/* SHARPER LOGO CONTAINER FOR THE BOT ICON */}
                <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center border border-white/20 shadow-xl p-1 shrink-0">
                  <img src="/images/logo.png" alt="Logo" className="w-full h-full object-contain" />
                </div>
-               <div>
+               <div className="flex flex-col text-right rtl:text-right ltr:text-left">
                  <SheetTitle className="text-xl font-black text-white">{isRtl ? 'مساعد الإنتاج الذكي' : 'Production AI'}</SheetTitle>
                  <div className="text-[10px] font-black text-emerald-200/60 uppercase tracking-widest mt-1 flex items-center gap-2">
                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -116,12 +115,12 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
         </div>
 
         {/* CHAT MESSAGES AREA */}
-        <ScrollArea className="flex-1 p-6 no-scrollbar bg-[#f8fafc] dark:bg-slate-950 transition-colors duration-300">
-           <div className="space-y-6">
+        <ScrollArea dir={dir} className="flex-1 p-6 no-scrollbar bg-[#f8fafc] dark:bg-slate-950 transition-colors duration-300">
+           <div className="space-y-6 flex flex-col">
               {messages.map((msg, idx) => (
                 <div key={idx} className={cn(
                   "flex flex-col max-w-[85%] animate-in fade-in slide-in-from-bottom-2 duration-500",
-                  msg.role === 'user' ? (isRtl ? "mr-auto items-start" : "ml-auto items-end") : (isRtl ? "ml-auto items-end" : "mr-auto items-start")
+                  msg.role === 'user' ? "self-start items-start" : "self-end items-end"
                 )}>
                   <div className={cn(
                     "flex items-center gap-2 mb-1.5",
@@ -141,15 +140,15 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
                   <div className={cn(
                     "p-4 rounded-2xl text-xs md:text-sm leading-relaxed font-bold shadow-sm border",
                     msg.role === 'user' 
-                      ? "bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-800 rounded-tr-none" 
-                      : "bg-emerald-50 dark:bg-emerald-900/10 text-emerald-900 dark:text-emerald-300 border-emerald-100 dark:border-emerald-900/30 rounded-tl-none"
+                      ? "bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-800 rounded-tr-none text-right" 
+                      : "bg-emerald-50 dark:bg-emerald-900/10 text-emerald-900 dark:text-emerald-300 border-emerald-100 dark:border-emerald-900/30 rounded-tl-none text-left"
                   )}>
                     {msg.content}
                   </div>
                 </div>
               ))}
               {isLoading && (
-                <div className={cn("flex flex-col items-end max-w-[85%] ml-auto animate-pulse")}>
+                <div className={cn("flex flex-col self-end items-end max-w-[85%] animate-pulse")}>
                    <div className="flex items-center gap-2 mb-1.5 flex-row-reverse">
                       <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">جاري التفكير...</span>
                       <div className="w-5 h-5 rounded-md bg-emerald-600 flex items-center justify-center text-white">
@@ -204,7 +203,7 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
                 {isLoading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
-                  <Send className={cn("w-4 h-4", isRtl && "rotate-[225deg]")} />
+                  <Send className={cn("w-4 h-4", isRtl && "rotate-[135deg]")} />
                 )}
               </Button>
            </form>
