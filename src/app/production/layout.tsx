@@ -8,7 +8,7 @@ import { SidebarProvider } from '@/components/ui/sidebar';
 import { useUser, useFirestore, useDoc } from '@/firebase';
 import { useRouter, usePathname } from 'next/navigation';
 import { doc } from 'firebase/firestore';
-import { AlertCircle, Lock } from 'lucide-react';
+import { AlertCircle, Lock, UserCog } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function ProductionLayout({
@@ -47,7 +47,15 @@ export default function ProductionLayout({
   // حماية الواجهات بناءً على صلاحيات القراءة
   const isAuthorized = useMemo(() => {
     if (pathname === '/production/login' || pathname === '/production') return true;
-    if (profileLoading || !userProfile) return true; // بانتظار التحميل
+    if (profileLoading) return true; // بانتظار التحميل
+    
+    // إذا لم يكن هناك ملف شخصي للمستخدم المسجل (مثل حالة المدير لأول مرة)
+    if (!userProfile) {
+        // إذا كان بريد المدير، نسمح له بدخول لوحة التحكم لإعداد ملفه
+        if (user?.email === 'alqaysarpc219@gmail.com') return true;
+        return false;
+    }
+
     if (userProfile.role === 'admin') return true;
 
     // تحديد الموديول بناءً على الرابط
@@ -73,7 +81,7 @@ export default function ProductionLayout({
     if (!activeModule) return true;
 
     return userProfile.permissions?.[activeModule]?.read === true;
-  }, [pathname, userProfile, profileLoading]);
+  }, [pathname, userProfile, profileLoading, user]);
 
   // تطبيق إعدادات الثيم واللغة المفضلة
   useEffect(() => {
@@ -114,20 +122,41 @@ export default function ProductionLayout({
   if (!isAuthorized && !profileLoading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-950 p-6 text-center" dir={dir}>
-        <div className="w-24 h-24 bg-rose-100 dark:bg-rose-900/20 rounded-full flex items-center justify-center text-rose-600 mb-6 border-4 border-white dark:border-slate-800 shadow-xl">
-           <Lock className="w-10 h-10" />
-        </div>
-        <h1 className="text-2xl font-black text-slate-900 dark:text-slate-100 mb-2">
-          {lang === 'ar' ? 'عذراً، لا تمتلك صلاحية الدخول' : 'Access Denied'}
-        </h1>
-        <p className="text-slate-500 dark:text-slate-400 font-bold max-w-md mb-8">
-          {lang === 'ar' 
-            ? 'تم تقييد وصولك لهذه الواجهة من قبل إدارة النظام. يرجى مراجعة المسؤول إذا كنت تعتقد أن هذا خطأ.' 
-            : 'You do not have permission to view this module. Please contact your administrator.'}
-        </p>
-        <Button onClick={() => router.push('/production')} className="premium-gradient px-8 h-12 rounded-xl font-black shadow-lg">
-          {lang === 'ar' ? 'العودة للرئيسية' : 'Back to Dashboard'}
-        </Button>
+        {!userProfile ? (
+          <>
+            <div className="w-24 h-24 bg-emerald-100 dark:bg-emerald-900/20 rounded-full flex items-center justify-center text-emerald-600 mb-6 border-4 border-white dark:border-slate-800 shadow-xl">
+               <UserCog className="w-10 h-10" />
+            </div>
+            <h1 className="text-2xl font-black text-slate-900 dark:text-slate-100 mb-2">
+              {lang === 'ar' ? 'يرجى إكمال إعداد حسابك' : 'Please Setup Your Profile'}
+            </h1>
+            <p className="text-slate-500 dark:text-slate-400 font-bold max-w-md mb-8">
+              {lang === 'ar' 
+                ? 'لقد سجلت الدخول بنجاح، ولكنك لا تملك ملفاً شخصياً في قاعدة البيانات بعد. يرجى الضغط على أيقونة المستخدم في الأعلى وتحديث بياناتك لتفعيل صلاحيات الوصول.' 
+                : 'Login successful, but no database profile found. Please click the user icon above and update your info to activate permissions.'}
+            </p>
+            <Button onClick={() => router.push('/production')} className="premium-gradient px-8 h-12 rounded-xl font-black shadow-lg">
+              {lang === 'ar' ? 'تحديث البيانات الآن' : 'Go to Dashboard'}
+            </Button>
+          </>
+        ) : (
+          <>
+            <div className="w-24 h-24 bg-rose-100 dark:bg-rose-900/20 rounded-full flex items-center justify-center text-rose-600 mb-6 border-4 border-white dark:border-slate-800 shadow-xl">
+               <Lock className="w-10 h-10" />
+            </div>
+            <h1 className="text-2xl font-black text-slate-900 dark:text-slate-100 mb-2">
+              {lang === 'ar' ? 'عذراً، لا تمتلك صلاحية الدخول' : 'Access Denied'}
+            </h1>
+            <p className="text-slate-500 dark:text-slate-400 font-bold max-w-md mb-8">
+              {lang === 'ar' 
+                ? 'تم تقييد وصولك لهذه الواجهة من قبل إدارة النظام. يرجى مراجعة المسؤول إذا كنت تعتقد أن هذا خطأ.' 
+                : 'You do not have permission to view this module. Please contact your administrator.'}
+            </p>
+            <Button onClick={() => router.push('/production')} className="premium-gradient px-8 h-12 rounded-xl font-black shadow-lg">
+              {lang === 'ar' ? 'العودة للرئيسية' : 'Back to Dashboard'}
+            </Button>
+          </>
+        )}
       </div>
     );
   }

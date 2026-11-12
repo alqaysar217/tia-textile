@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   User, 
   LogOut, 
@@ -16,7 +16,13 @@ import {
   Mail,
   BadgeCheck,
   Loader2,
-  X
+  X,
+  Edit2,
+  Save,
+  UploadCloud,
+  RefreshCcw,
+  ShieldCheck,
+  UserCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -33,38 +39,53 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useSidebar } from '@/components/ui/sidebar';
 import { useTranslation } from '@/components/LanguageProvider';
 import { useAuth, useFirestore, useDoc, useUser } from '@/firebase';
-import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, updateDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { ProductionAI } from './ProductionAI';
 import { useRouter } from 'next/navigation';
-import { Badge } from '@/components/ui/badge';
+import { toast } from '@/hooks/use-toast';
 
 export function Header() {
   const [mounted, setMounted] = useState(false);
   const [today, setToday] = useState('');
   const [isAIOpen, setIsAIOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isCompressing, setIsCompressing] = useState(false);
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
   const { toggleSidebar } = useSidebar();
-  const { lang, setLang, t } = useTranslation();
+  const { lang, setLang, dir } = useTranslation();
   const auth = useAuth();
   const db = useFirestore();
   const router = useRouter();
   const { user: authUser } = useUser();
 
-  // جلب بيانات المستخدم الفعلية من Firestore
+  // جلب بيانات المستخدم الحية
   const userDocRef = useMemo(() => 
     (!db || !authUser) ? null : doc(db, 'users', authUser.uid), 
     [db, authUser]
   );
   const { data: userProfile, loading: profileLoading } = useDoc<any>(userDocRef);
 
-  // جلب إعدادات الثيم
+  // إعدادات الثيم
   const settingsRef = useMemo(() => !db ? null : doc(db, 'settings', 'global'), [db]);
   const { data: settings } = useDoc<any>(settingsRef);
+
+  // بيانات النموذج عند التعديل
+  const [profileForm, setProfileForm] = useState({
+    fullName: '',
+    photoUrl: '',
+    role: 'staff'
+  });
 
   useEffect(() => {
     setMounted(true);
@@ -75,6 +96,23 @@ export function Header() {
       day: 'numeric' 
     }));
   }, [lang]);
+
+  // تحديث النموذج عند تحميل البيانات
+  useEffect(() => {
+    if (userProfile) {
+      setProfileForm({
+        fullName: userProfile.fullName || '',
+        photoUrl: userProfile.photoUrl || '',
+        role: userProfile.role || 'staff'
+      });
+    } else if (authUser) {
+      setProfileForm(prev => ({
+        ...prev,
+        fullName: authUser.displayName || '',
+        photoUrl: authUser.photoURL || ''
+      }));
+    }
+  }, [userProfile, authUser]);
 
   const handleLogout = async () => {
     try {
@@ -90,28 +128,93 @@ export function Header() {
     const isDark = document.documentElement.classList.contains('dark');
     const newTheme = isDark ? 'light' : 'dark';
     
-    if (newTheme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
+    if (newTheme === 'dark') document.documentElement.classList.add('dark');
+    else document.documentElement.classList.remove('dark');
 
     try {
       await updateDoc(doc(db, 'settings', 'global'), {
         themeMode: newTheme,
         updatedAt: serverTimestamp()
       });
+    } catch (err) {}
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsCompressing(true);
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_SIZE = 200;
+        let w = img.width, h = img.height;
+        if (w > h) { if (w > MAX_SIZE) { h *= MAX_SIZE / w; w = MAX_SIZE; } }
+        else { if (h > MAX_SIZE) { width *= MAX_SIZE / h; h = MAX_SIZE; } }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d')?.drawImage(img, 0, 0, w, h);
+        setProfileForm(prev => ({ ...prev, photoUrl: canvas.toDataURL('image/jpeg', 0.7) }));
+        setIsCompressing(false);
+      };
+    };
+  };
+
+  const handleSaveProfile = async () => {
+    if (!db || !authUser || isSaving) return;
+    setIsSaving(true);
+    try {
+      // إذا كان المستخدم أول مرة يسجل بياناته وهو المدير، نضمن له صلاحيات الأدمن
+      const isInitialAdmin = !userProfile && authUser.email === 'alqaysarpc219@gmail.com';
+      
+      const updatedData = {
+        ...profileForm,
+        email: authUser.email,
+        role: isInitialAdmin ? 'admin' : profileForm.role,
+        updatedAt: serverTimestamp(),
+      };
+
+      await setDoc(doc(db, 'users', authUser.uid), {
+        ...updatedData,
+        createdAt: userProfile?.createdAt || serverTimestamp(),
+        active: true,
+        // إذا كان أدمن جديد، نمنحه كل الصلاحيات افتراضياً
+        ...(isInitialAdmin && {
+          permissions: {
+            dashboard: { read: true, create: true, edit: true, delete: true },
+            orders: { read: true, create: true, edit: true, delete: true },
+            products: { read: true, create: true, edit: true, delete: true },
+            materials: { read: true, create: true, edit: true, delete: true },
+            vouchers_issue: { read: true, create: true, edit: true, delete: true },
+            vouchers_receipt: { read: true, create: true, edit: true, delete: true },
+            vouchers_return: { read: true, create: true, edit: true, delete: true },
+            wages: { read: true, create: true, edit: true, delete: true },
+            overhead: { read: true, create: true, edit: true, delete: true },
+            workers: { read: true, create: true, edit: true, delete: true },
+            reports: { read: true, create: true, edit: true, delete: true },
+            settings: { read: true, create: true, edit: true, delete: true },
+            trash: { read: true, create: true, edit: true, delete: true },
+          }
+        })
+      }, { merge: true });
+
+      toast({ title: lang === 'ar' ? "تم تحديث ملفك الشخصي" : "Profile Updated" });
+      setIsEditing(false);
     } catch (err) {
-      console.error('Failed to save theme preference:', err);
+      console.error(err);
+      toast({ variant: "destructive", title: "Error updating profile" });
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const isRtl = lang === 'ar';
   const isDarkMode = mounted && (settings?.themeMode === 'dark' || (typeof document !== 'undefined' && document.documentElement.classList.contains('dark')));
 
-  // بيانات عرض الهوية
   const displayName = userProfile?.fullName || authUser?.displayName || (isRtl ? 'مستخدم النظام' : 'System User');
-  const displayRole = userProfile?.role || 'staff';
+  const displayRole = userProfile?.role || (authUser?.email === 'alqaysarpc219@gmail.com' ? 'admin' : 'staff');
   const displayPhoto = userProfile?.photoUrl || authUser?.photoURL || '';
 
   return (
@@ -141,7 +244,6 @@ export function Header() {
             size="icon" 
             onClick={() => setIsAIOpen(true)}
             className="text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-white dark:hover:bg-slate-800 rounded-lg h-9 w-9 transition-all"
-            title={isRtl ? 'مساعد الذكاء الاصطناعي' : 'AI Assistant'}
           >
             <Sparkles className="w-5 h-5" />
           </Button>
@@ -151,7 +253,6 @@ export function Header() {
             size="icon" 
             onClick={handleThemeToggle}
             className="text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-white dark:hover:bg-slate-800 rounded-lg h-9 w-9 transition-all"
-            title={isRtl ? 'تبديل المظهر' : 'Toggle Theme'}
           >
             {isDarkMode ? <Sun className="w-5 h-5 text-amber-500" /> : <Moon className="w-5 h-5" />}
           </Button>
@@ -161,7 +262,6 @@ export function Header() {
             size="icon" 
             onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')}
             className="text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-white dark:hover:bg-slate-800 rounded-lg h-9 w-9 transition-all"
-            title={isRtl ? 'تغيير اللغة' : 'Change Language'}
           >
             <Globe className="w-5 h-5" />
           </Button>
@@ -196,7 +296,7 @@ export function Header() {
           <DropdownMenuContent align={isRtl ? 'end' : 'start'} className="w-56 rounded-xl border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl p-1.5 mt-2" dir={isRtl ? 'rtl' : 'ltr'}>
             <DropdownMenuItem 
               className="text-xs font-bold gap-3 focus:bg-emerald-50 dark:focus:bg-emerald-900/20 focus:text-emerald-700 dark:focus:text-emerald-400 cursor-pointer p-2.5 rounded-lg"
-              onClick={() => setIsProfileOpen(true)}
+              onClick={() => { setIsEditing(false); setIsProfileOpen(true); }}
             >
               <div className="w-7 h-7 rounded-md bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400"><User className="w-4 h-4" /></div>
               {isRtl ? 'الملف الشخصي' : 'My Profile'}
@@ -221,70 +321,112 @@ export function Header() {
            <DialogHeader className="sr-only">
               <DialogTitle>{isRtl ? 'الملف الشخصي للمستخدم' : 'User Profile'}</DialogTitle>
            </DialogHeader>
-           <div className="premium-gradient p-8 text-white relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-4 opacity-10"><Shield className="w-32 h-32 text-white" /></div>
-              <div className="relative z-10 flex flex-col items-center">
-                 <Avatar className="h-28 w-28 border-4 border-white/30 shadow-2xl mb-4 bg-white/10">
-                    <AvatarImage src={displayPhoto} className="object-cover" />
-                    <AvatarFallback className="bg-white text-emerald-900 font-black text-2xl">{displayName.charAt(0)}</AvatarFallback>
-                 </Avatar>
-                 <h3 className="text-2xl font-black tracking-tight">{displayName}</h3>
-                 <div className="flex items-center gap-2 mt-2 px-4 py-1 rounded-full bg-black/20 backdrop-blur-md border border-white/10">
-                    <BadgeCheck className="w-3.5 h-3.5 text-emerald-400" />
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-100">
-                      {displayRole === 'admin' ? (isRtl ? 'مدير نظام' : 'ADMIN') : 
-                       displayRole === 'manager' ? (isRtl ? 'مدير إنتاج' : 'MANAGER') : 
-                       (isRtl ? 'موظف تشغيل' : 'STAFF')}
-                    </span>
-                 </div>
-              </div>
-           </div>
            
-           <div className="p-8 space-y-6 bg-white dark:bg-slate-900">
-              <div className="grid gap-5">
-                 <div className="flex items-center gap-5 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
-                    <div className="w-12 h-12 rounded-xl bg-white dark:bg-slate-900 flex items-center justify-center text-emerald-600 shadow-sm shrink-0"><Mail className="w-5 h-5" /></div>
-                    <div className="flex-1 min-w-0 text-right rtl:text-right ltr:text-left">
-                       <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'البريد الإلكتروني' : 'EMAIL ADDRESS'}</p>
-                       <p className="text-sm font-bold text-slate-900 dark:text-slate-100 truncate tabular-nums">{authUser?.email || '---'}</p>
-                    </div>
-                 </div>
+           {isEditing ? (
+             /* EDIT MODE */
+             <div className="flex flex-col">
+               <div className="premium-gradient p-6 text-white text-right">
+                  <h3 className="text-xl font-black">{isRtl ? 'تحديث البيانات الشخصية' : 'Edit Profile'}</h3>
+                  <p className="text-[10px] font-bold opacity-60 uppercase mt-1">Synchronization with system credentials</p>
+               </div>
+               <div className="p-8 space-y-5 bg-white dark:bg-slate-900">
+                  <div className="flex flex-col items-center mb-4">
+                     <div onClick={() => !isCompressing && fileInputRef.current?.click()} className="relative w-24 h-24 rounded-2xl border-4 border-slate-100 dark:border-slate-800 shadow-md bg-slate-50 dark:bg-slate-800 flex items-center justify-center cursor-pointer group overflow-hidden">
+                        {profileForm.photoUrl ? <img src={profileForm.photoUrl} className="w-full h-full object-cover" /> : <UploadCloud className="w-8 h-8 text-slate-300" />}
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                           <RefreshCcw className="w-5 h-5 text-white" />
+                        </div>
+                     </div>
+                     <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
+                     <p className="text-[9px] font-black text-slate-400 uppercase mt-2">{isRtl ? 'تغيير الصورة' : 'Change Photo'}</p>
+                  </div>
 
-                 <div className="flex items-center gap-5 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
-                    <div className="w-12 h-12 rounded-xl bg-white dark:bg-slate-900 flex items-center justify-center text-emerald-600 shadow-sm shrink-0"><Shield className="w-5 h-5" /></div>
-                    <div className="flex-1 text-right rtl:text-right ltr:text-left">
-                       <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'نوع الحساب' : 'ACCOUNT TYPE'}</p>
-                       <p className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                          {displayRole === 'admin' ? (isRtl ? 'مدير كامل الصلاحيات' : 'Full Admin Access') : (isRtl ? 'صلاحيات محدودة' : 'Standard Access')}
-                       </p>
+                  <div className="space-y-4">
+                    <div className="space-y-1.5 text-right">
+                      <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2 justify-start"><UserCheck className="w-3 h-3 text-emerald-600" /> {isRtl ? 'الاسم الكامل' : 'FULL NAME'}</Label>
+                      <Input value={profileForm.fullName} onChange={(e) => setProfileForm({...profileForm, fullName: e.target.value})} className="h-11 font-bold text-xs bg-slate-50 dark:bg-slate-800 dark:text-white" required />
                     </div>
-                 </div>
+                    {displayRole !== 'admin' && (
+                      <div className="space-y-1.5 text-right opacity-50 pointer-events-none">
+                        <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2 justify-start"><ShieldCheck className="w-3 h-3" /> {isRtl ? 'الدور الوظيفي' : 'ROLE'}</Label>
+                        <Input value={displayRole} className="h-11 bg-slate-100 dark:bg-slate-800" disabled />
+                      </div>
+                    )}
+                  </div>
 
-                 <div className="flex items-center gap-5 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
-                    <div className="w-12 h-12 rounded-xl bg-white dark:bg-slate-900 flex items-center justify-center text-emerald-600 shadow-sm shrink-0"><BadgeCheck className="w-5 h-5" /></div>
-                    <div className="flex-1 text-right rtl:text-right ltr:text-left">
-                       <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'حالة النظام' : 'SECURITY STATUS'}</p>
-                       <div className="flex items-center gap-2 mt-0.5">
-                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                          <span className="text-xs font-black text-emerald-600">{isRtl ? 'جلسة مشفرة ومحمية' : 'Encrypted Session'}</span>
-                       </div>
-                    </div>
-                 </div>
-              </div>
+                  <div className="flex gap-3 pt-4">
+                    <Button onClick={handleSaveProfile} disabled={isSaving || isCompressing} className="flex-1 h-12 premium-gradient text-white font-black shadow-lg">
+                      {isSaving ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : <Save className="w-4 h-4 me-2" />}
+                      {isRtl ? 'حفظ التغييرات' : 'Save Changes'}
+                    </Button>
+                    <Button variant="outline" onClick={() => setIsEditing(false)} className="h-12 px-6 font-black text-slate-400">إلغاء</Button>
+                  </div>
+               </div>
+             </div>
+           ) : (
+             /* VIEW MODE */
+             <>
+               <div className="premium-gradient p-8 text-white relative overflow-hidden">
+                  <div className="absolute top-0 right-0 p-4 opacity-10"><Shield className="w-32 h-32 text-white" /></div>
+                  <div className="relative z-10 flex flex-col items-center">
+                     <Avatar className="h-28 w-28 border-4 border-white/30 shadow-2xl mb-4 bg-white/10">
+                        <AvatarImage src={displayPhoto} className="object-cover" />
+                        <AvatarFallback className="bg-white text-emerald-900 font-black text-2xl">{displayName.charAt(0)}</AvatarFallback>
+                     </Avatar>
+                     <div className="flex flex-col items-center">
+                        <h3 className="text-2xl font-black tracking-tight">{displayName}</h3>
+                        {!userProfile && authUser?.email === 'alqaysarpc219@gmail.com' && (
+                          <Badge variant="destructive" className="mt-2 text-[8px] animate-bounce">{isRtl ? 'يرجى إكمال ملفك لتفعيل الصلاحيات' : 'Complete profile to activate perms'}</Badge>
+                        )}
+                     </div>
+                     <div className="flex items-center gap-2 mt-3 px-4 py-1 rounded-full bg-black/20 backdrop-blur-md border border-white/10">
+                        <BadgeCheck className="w-3.5 h-3.5 text-emerald-400" />
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-100">
+                          {displayRole === 'admin' ? (isRtl ? 'مدير نظام' : 'ADMIN') : 
+                           displayRole === 'manager' ? (isRtl ? 'مدير إنتاج' : 'MANAGER') : 
+                           (isRtl ? 'موظف تشغيل' : 'STAFF')}
+                        </span>
+                     </div>
+                  </div>
+               </div>
+               
+               <div className="p-8 space-y-6 bg-white dark:bg-slate-900">
+                  <div className="grid gap-5">
+                     <div className="flex items-center gap-5 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                        <div className="w-12 h-12 rounded-xl bg-white dark:bg-slate-900 flex items-center justify-center text-emerald-600 shadow-sm shrink-0"><Mail className="w-5 h-5" /></div>
+                        <div className="flex-1 min-w-0 text-right rtl:text-right ltr:text-left">
+                           <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'البريد الإلكتروني' : 'EMAIL ADDRESS'}</p>
+                           <p className="text-sm font-bold text-slate-900 dark:text-slate-100 truncate tabular-nums">{authUser?.email || '---'}</p>
+                        </div>
+                     </div>
 
-              <div className="pt-4">
-                 <Button 
-                   onClick={() => setIsProfileOpen(false)} 
-                   className="w-full h-14 rounded-xl font-black text-sm premium-gradient text-white border-none shadow-xl shadow-emerald-900/10 active:scale-[0.98] transition-all"
-                 >
-                    {isRtl ? 'إغلاق نافذة المعلومات' : 'Close Profile View'}
-                 </Button>
-              </div>
-           </div>
+                     <div className="flex items-center gap-5 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                        <div className="w-12 h-12 rounded-xl bg-white dark:bg-slate-900 flex items-center justify-center text-emerald-600 shadow-sm shrink-0"><Shield className="w-5 h-5" /></div>
+                        <div className="flex-1 text-right rtl:text-right ltr:text-left">
+                           <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'نوع الحساب' : 'ACCOUNT TYPE'}</p>
+                           <p className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                              {displayRole === 'admin' ? (isRtl ? 'مدير كامل الصلاحيات' : 'Full Admin Access') : (isRtl ? 'صلاحيات محدودة' : 'Standard Access')}
+                           </p>
+                        </div>
+                     </div>
+                  </div>
+
+                  <div className="flex gap-3 pt-4">
+                     <Button 
+                       onClick={() => setIsEditing(true)} 
+                       className="flex-1 h-14 rounded-xl font-black text-sm premium-gradient text-white border-none shadow-xl gap-2 active:scale-[0.98] transition-all"
+                     >
+                        <Edit2 className="w-4 h-4" />
+                        {isRtl ? 'تحديث البيانات والصورة' : 'Update Profile'}
+                     </Button>
+                     <Button variant="ghost" onClick={() => setIsProfileOpen(false)} className="h-14 px-6 font-black text-slate-400 dark:text-slate-500 rounded-xl">{isRtl ? 'إغلاق' : 'Close'}</Button>
+                  </div>
+               </div>
+             </>
+           )}
         </DialogContent>
       </Dialog>
 
-      {/* PRODUCTION AI ASSISTANT DRAWER */}
       <ProductionAI isOpen={isAIOpen} onClose={() => setIsAIOpen(false)} />
     </header>
   );
