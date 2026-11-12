@@ -151,13 +151,13 @@ export function Header() {
       img.src = event.target?.result as string;
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        const MAX_SIZE = 200;
+        const MAX_SIZE = 400;
         let w = img.width, h = img.height;
         if (w > h) { if (w > MAX_SIZE) { h *= MAX_SIZE / w; w = MAX_SIZE; } }
-        else { if (h > MAX_SIZE) { w *= MAX_SIZE / h; w = MAX_SIZE; } }
+        else { if (h > MAX_SIZE) { w *= MAX_SIZE / h; h = MAX_SIZE; } }
         canvas.width = w; canvas.height = h;
         canvas.getContext('2d')?.drawImage(img, 0, 0, w, h);
-        setProfileForm(prev => ({ ...prev, photoUrl: canvas.toDataURL('image/jpeg', 0.7) }));
+        setProfileForm(prev => ({ ...prev, photoUrl: canvas.toDataURL('image/jpeg', 0.8) }));
         setIsCompressing(false);
       };
     };
@@ -286,7 +286,7 @@ export function Header() {
                    (isRtl ? 'موظف تشغيل' : 'Staff')}
                 </p>
               </div>
-              <Avatar className="h-10 w-10 rounded-lg border-2 border-white dark:border-slate-800 shadow-sm ring-1 ring-slate-100 dark:ring-slate-700">
+              <Avatar className="h-10 w-10 rounded-lg border-2 border-white dark:border-slate-800 shadow-sm ring-1 ring-slate-100 dark:ring-slate-700 overflow-hidden">
                 <AvatarImage src={displayPhoto} className="object-cover" />
                 <AvatarFallback className="bg-emerald-600 text-white font-black text-xs uppercase">
                   {displayName.charAt(0)}
@@ -333,7 +333,11 @@ export function Header() {
                <div className="p-8 space-y-5 bg-white dark:bg-slate-900">
                   <div className="flex flex-col items-center mb-4">
                      <div onClick={() => !isCompressing && fileInputRef.current?.click()} className="relative w-24 h-24 rounded-2xl border-4 border-slate-100 dark:border-slate-800 shadow-md bg-slate-50 dark:bg-slate-800 flex items-center justify-center cursor-pointer group overflow-hidden">
-                        {profileForm.photoUrl ? <img src={profileForm.photoUrl} className="w-full h-full object-cover" /> : <UploadCloud className="w-8 h-8 text-slate-300" />}
+                        {profileForm.photoUrl ? (
+                          <img src={profileForm.photoUrl} className="w-full h-full object-cover" alt="Profile" />
+                        ) : (
+                          <UploadCloud className="w-8 h-8 text-slate-300" />
+                        )}
                         <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                            <RefreshCcw className="w-5 h-5 text-white" />
                         </div>
@@ -370,7 +374,7 @@ export function Header() {
                <div className="premium-gradient p-8 text-white relative overflow-hidden">
                   <div className="absolute top-0 right-0 p-4 opacity-10"><Shield className="w-32 h-32 text-white" /></div>
                   <div className="relative z-10 flex flex-col items-center">
-                     <Avatar className="h-28 w-28 border-4 border-white/30 shadow-2xl mb-4 bg-white/10">
+                     <Avatar className="h-28 w-28 border-4 border-white/30 shadow-2xl mb-4 bg-white/10 overflow-hidden">
                         <AvatarImage src={displayPhoto} className="object-cover" />
                         <AvatarFallback className="bg-white text-emerald-900 font-black text-2xl">{displayName.charAt(0)}</AvatarFallback>
                      </Avatar>

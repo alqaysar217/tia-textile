@@ -204,7 +204,8 @@ export default function UsersPermissionsPage() {
         canvas.width = width; canvas.height = height;
         const ctx = canvas.getContext('2d');
         ctx?.drawImage(img, 0, 0, width, height);
-        setFormData(prev => ({ ...prev, photoUrl: canvas.toDataURL('image/jpeg', 0.7) }));
+        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+        setFormData(prev => ({ ...prev, photoUrl: compressedBase64 }));
         setIsCompressing(false);
       };
     };
@@ -383,7 +384,7 @@ export default function UsersPermissionsPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={isRtl ? 'بحث باسم المستخدم...' : 'Search users...'}
-                className={cn(dir === 'rtl' ? 'pr-9' : 'pl-9', "h-9 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xs font-bold dark:text-slate-100")}
+                className={cn(dir === 'rtl' ? 'pr-9' : 'pl-9', "h-9 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold dark:text-slate-100")}
               />
             </div>
 
@@ -448,7 +449,7 @@ export default function UsersPermissionsPage() {
                       <TableRow key={user.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 transition-colors">
                          <TableCell className="px-6 py-4">
                             <div className="flex items-center gap-3">
-                               <Avatar className="h-10 w-10 rounded-lg border-2 border-white dark:border-slate-800 shadow-sm">
+                               <Avatar className="h-10 w-10 rounded-lg border-2 border-white dark:border-slate-800 shadow-sm overflow-hidden">
                                   <AvatarImage src={user.photoUrl} className="object-cover" />
                                   <AvatarFallback className="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 font-black text-[10px]">{user.fullName?.charAt(0)}</AvatarFallback>
                                </Avatar>
@@ -506,8 +507,10 @@ export default function UsersPermissionsPage() {
                       {/* Left: Avatar Upload */}
                       <div className="w-full md:w-32 space-y-2 flex flex-col items-center shrink-0">
                          <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 block text-center">PROFILE PHOTO</Label>
-                         <div onClick={() => !isCompressing && fileInputRef.current?.click()} className="w-32 h-32 rounded-2xl border-4 border-slate-100 dark:border-slate-800 shadow-md bg-slate-50 dark:bg-slate-800 flex items-center justify-center cursor-pointer group hover:bg-slate-100 dark:hover:bg-slate-700 transition-all overflow-hidden relative">
-                           {formData.photoUrl ? <img src={formData.photoUrl} className="w-full h-full object-cover" alt="profile" /> : (
+                         <div onClick={() => !isCompressing && fileInputRef.current?.click()} className="w-32 h-32 rounded-2xl border-4 border-slate-100 dark:border-slate-800 shadow-md bg-slate-50 dark:bg-slate-800 flex items-center justify-center cursor-pointer group overflow-hidden relative transition-all">
+                           {formData.photoUrl ? (
+                             <img src={formData.photoUrl} className="w-full h-full object-cover" alt="profile" />
+                           ) : (
                              <div className="flex flex-col items-center gap-1 text-slate-300 dark:text-slate-600 group-hover:text-emerald-500">
                                {isCompressing ? <Loader2 className="w-6 h-6 animate-spin" /> : <UploadCloud className="w-7 h-7" />}
                                <span className="text-[9px] font-black uppercase tracking-widest">{isRtl ? 'رفع صورة' : 'Upload'}</span>
