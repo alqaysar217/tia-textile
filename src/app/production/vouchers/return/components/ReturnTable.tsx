@@ -23,10 +23,11 @@ interface ReturnTableProps {
   dir: string;
   onVerify: (v: any) => void;
   onPrint: (v: any) => void;
+  canVerify: boolean;
 }
 
 export function ReturnTable({
-  list, allWorkers, allOrders, activeTab, lang, dir, onVerify, onPrint
+  list, allWorkers, allOrders, activeTab, lang, dir, onVerify, onPrint, canVerify
 }: ReturnTableProps) {
   const isRtl = lang === 'ar';
 
@@ -69,13 +70,15 @@ export function ReturnTable({
                 </TableCell>
                 <TableCell className="px-6 py-3 text-center">
                   {activeTab === 'pending' ? (
-                    <Button 
-                      onClick={() => onVerify(v)} 
-                      size="sm" 
-                      className="h-8 px-4 bg-amber-600 hover:bg-amber-700 dark:bg-amber-900/40 dark:hover:bg-amber-900/60 dark:text-amber-400 text-[10px] font-black text-white rounded-lg border-none shadow-sm transition-all"
-                    >
-                      {isRtl ? 'توثيق المرتجع' : 'VERIFY'}
-                    </Button>
+                    canVerify && (
+                      <Button 
+                        onClick={() => onVerify(v)} 
+                        size="sm" 
+                        className="h-8 px-4 bg-amber-600 hover:bg-amber-700 dark:bg-amber-900/40 dark:hover:bg-amber-900/60 dark:text-amber-400 text-[10px] font-black text-white rounded-lg border-none shadow-sm transition-all"
+                      >
+                        {isRtl ? 'توثيق المرتجع' : 'VERIFY'}
+                      </Button>
+                    )
                   ) : (
                     <Button 
                       variant="ghost" 

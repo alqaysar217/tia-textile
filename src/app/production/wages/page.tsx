@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
@@ -91,11 +90,18 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toPng } from 'html-to-image';
 import { VoucherTemplate } from '@/components/production/VoucherTemplate';
+import { useProduction } from '../ProductionContext';
 
 export default function PayrollManagementPage() {
   const { lang, dir } = useTranslation();
   const db = useFirestore();
   const isRtl = lang === 'ar';
+
+  // استيراد الصلاحيات من المحرك المركزي
+  const { permissions, isAdmin } = useProduction();
+  const canCreate = isAdmin || permissions.wages?.create;
+  const canEdit = isAdmin || permissions.wages?.edit;
+  const canDelete = isAdmin || permissions.wages?.delete;
 
   const [isPayDialogOpen, setIsPayDialogOpen] = useState(false);
   const [editingVoucherId, setEditingVoucherId] = useState<string | null>(null);
@@ -252,6 +258,7 @@ export default function PayrollManagementPage() {
   }, [systemCurrency]);
 
   const handleEditVoucher = (p: any) => {
+    if(!canEdit) return;
     setEditingVoucherId(p.id);
     setFormData({
       date: p.date,
@@ -270,6 +277,17 @@ export default function PayrollManagementPage() {
        toast({ variant: "destructive", title: isRtl ? "بيانات ناقصة" : "Missing Data" });
        return;
     }
+
+    // منع الحفظ بدون صلاحية
+    if (editingVoucherId && !canEdit) {
+      toast({ variant: "destructive", title: isRtl ? "غير مسموح بالتعديل" : "Access Denied" });
+      return;
+    }
+    if (!editingVoucherId && !canCreate) {
+      toast({ variant: "destructive", title: isRtl ? "غير مسموح بالصرف" : "Access Denied" });
+      return;
+    }
+
     setIsSubmitting(true);
     const batch = writeBatch(db);
     
@@ -324,7 +342,7 @@ export default function PayrollManagementPage() {
   };
 
   const handleDeletePayment = async () => {
-    if (!db || !deletingVoucher || isSubmitting) return;
+    if (!db || !deletingVoucher || isSubmitting || !canDelete) return;
     setIsSubmitting(true);
     const batch = writeBatch(db);
     try {
@@ -443,15 +461,17 @@ export default function PayrollManagementPage() {
               <h1 className="text-xl font-black text-slate-900 dark:text-slate-100 leading-tight">{isRtl ? 'إدارة ذمم ومدفوعات العمال' : 'Personnel Payroll Management'}</h1>
             </div>
           </div>
-          <Button onClick={() => setIsPayDialogOpen(true)} className="h-10 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 transition-all border-none">
-            <Plus className="w-4 h-4" /> {isRtl ? 'سند صرف أجر جديد' : 'New Payment'}
-          </Button>
+          {canCreate && (
+            <Button onClick={() => setIsPayDialogOpen(true)} className="h-10 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 transition-all border-none">
+              <Plus className="w-4 h-4" /> {isRtl ? 'سند صرف أجر جديد' : 'New Payment'}
+            </Button>
+          )}
         </div>
 
         <div className="mt-4 flex flex-col md:flex-row items-center gap-3 bg-slate-50 dark:bg-slate-800/50 p-2 rounded-xl border border-slate-200 dark:border-slate-700">
           <div className="relative flex-1 w-full">
             <Search className={cn("absolute top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500", isRtl ? "right-3" : "left-3")} />
-            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={isRtl ? 'بحث سريع...' : 'Quick search...'} className={cn("h-10 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xs font-bold dark:text-slate-100", isRtl ? "pr-10" : "pl-10")} />
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={isRtl ? 'بحث سريع...' : 'Quick search...'} className={cn("h-10 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold dark:text-slate-100", isRtl ? "pr-10" : "pl-10")} />
           </div>
           <div className="flex items-center gap-2 w-full md:w-auto">
              <div className="flex items-center gap-2 px-3 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 h-10">
@@ -525,9 +545,11 @@ export default function PayrollManagementPage() {
                               </Badge>
                             </TableCell>
                             <TableCell className="px-6 py-3 text-center">
-                              <Button onClick={() => { setFormData(prev => ({...prev, workerId: w.id, currency: w.displayCurrency})); setIsPayDialogOpen(true); }} variant="outline" className="h-10 px-6 rounded-lg text-[10px] font-black uppercase text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/30 hover:bg-emerald-600 hover:text-white dark:hover:bg-emerald-600 transition-all gap-2 shadow-sm">
-                                <Wallet className="w-3.5 h-3.5" />{isRtl ? 'صرف الآن' : 'Disburse'}
-                              </Button>
+                              {canCreate && (
+                                <Button onClick={() => { setFormData(prev => ({...prev, workerId: w.id, currency: w.displayCurrency})); setIsPayDialogOpen(true); }} variant="outline" className="h-10 px-6 rounded-lg text-[10px] font-black uppercase text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/30 hover:bg-emerald-600 hover:text-white dark:hover:bg-emerald-600 transition-all gap-2 shadow-sm">
+                                  <Wallet className="w-3.5 h-3.5" />{isRtl ? 'صرف الآن' : 'Disburse'}
+                                </Button>
+                              )}
                             </TableCell>
                           </TableRow>
                         ))}
@@ -575,9 +597,15 @@ export default function PayrollManagementPage() {
                                     <DropdownMenu>
                                       <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"><MoreVertical className="w-4 h-4 text-slate-400 dark:text-slate-500" /></Button></DropdownMenuTrigger>
                                       <DropdownMenuContent align={isRtl ? "end" : "start"} className="w-44 rounded-xl shadow-xl dark:bg-slate-900 dark:border-slate-800">
-                                        <DropdownMenuItem onClick={() => handleEditVoucher(p)} className="gap-2 font-bold py-2 cursor-pointer text-xs dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800"><Edit2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> {isRtl ? 'تعديل السند' : 'Edit Voucher'}</DropdownMenuItem>
-                                        <DropdownMenuSeparator className="dark:bg-slate-800" />
-                                        <DropdownMenuItem onClick={() => setDeletingVoucher(p)} className="gap-2 font-bold py-2 text-rose-600 dark:text-rose-400 cursor-pointer text-xs focus:bg-rose-50 dark:focus:bg-rose-900/20"><Trash2 className="w-3.5 h-3.5" /> {isRtl ? 'إلغاء السند' : 'Reverse Voucher'}</DropdownMenuItem>
+                                        {canEdit && (
+                                          <DropdownMenuItem onClick={() => handleEditVoucher(p)} className="gap-2 font-bold py-2 cursor-pointer text-xs dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800"><Edit2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> {isRtl ? 'تعديل السند' : 'Edit Voucher'}</DropdownMenuItem>
+                                        )}
+                                        {canDelete && (
+                                          <>
+                                            <DropdownMenuSeparator className="dark:bg-slate-800" />
+                                            <DropdownMenuItem onClick={() => setDeletingVoucher(p)} className="gap-2 font-bold py-2 text-rose-600 dark:text-rose-400 cursor-pointer text-xs focus:bg-rose-50 dark:focus:bg-rose-900/20"><Trash2 className="w-3.5 h-3.5" /> {isRtl ? 'إلغاء السند' : 'Reverse Voucher'}</DropdownMenuItem>
+                                          </>
+                                        )}
                                       </DropdownMenuContent>
                                     </DropdownMenu>
                                  </div>
@@ -615,7 +643,7 @@ export default function PayrollManagementPage() {
               </div>
               <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
                 <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 block">DATE</Label>
-                <Input type="date" value={formData.date} onChange={(e) => setFormData(prev => ({...prev, date: e.target.value}))} className="h-11 font-bold bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 dark:text-slate-100 tabular-nums" required />
+                <Input type="date" value={formData.date} onChange={(e) => setFormData(prev => ({...prev, date: e.target.value}))} className="h-11 font-bold bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 dark:text-slate-100 tabular-nums" required />
               </div>
             </div>
             
@@ -625,7 +653,7 @@ export default function PayrollManagementPage() {
                 <select 
                   value={formData.currency} 
                   disabled
-                  className="h-9 px-3 bg-white dark:bg-slate-800 border border-emerald-200 dark:border-slate-700 rounded-lg text-[10px] font-black shadow-sm outline-none dark:text-slate-100 disabled:opacity-70 disabled:cursor-not-allowed"
+                  className="h-9 px-3 bg-white dark:bg-slate-900 border border-emerald-200 dark:border-slate-700 rounded-lg text-[10px] font-black shadow-sm outline-none dark:text-slate-100 disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                   <option value="YER">YER - ريال يمني</option>
                   <option value="SAR">SAR - ريال سعودي</option>
@@ -669,7 +697,7 @@ export default function PayrollManagementPage() {
             
             <div className="flex gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
               <Button type="submit" disabled={isSubmitting || formData.amount <= 0 || formData.linkedReceipts.length === 0} className="flex-1 h-14 premium-gradient text-white rounded-lg font-black text-base shadow-xl border-none">
-                {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin me-2" /> : <Save className="w-5 h-5 me-2" />}
+                {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin me-2" /> : <Save className="w-5 h-4 me-2" />}
                 {isRtl ? (editingVoucherId ? 'حفظ التعديلات' : 'تأكيد الترحيل المالي') : 'Confirm & Post Payment'}
               </Button>
               <Button type="button" variant="outline" onClick={resetDialog} className="px-8 h-14 font-black text-slate-400 dark:text-slate-500 rounded-lg border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800">Cancel</Button>
@@ -700,7 +728,7 @@ export default function PayrollManagementPage() {
             </div>
           </ScrollArea>
           <DialogFooter className="p-6 bg-slate-50 border-t border-slate-100 flex flex-row gap-3 justify-end">
-             <Button onClick={handleDownloadImage} disabled={isDownloading} className="premium-gradient font-black h-12 px-10 rounded-xl shadow-xl hover:opacity-90 active:scale-95 transition-all gap-2 border-none">
+             <Button onClick={handleDownloadImage} disabled={isDownloading} className="premium-gradient font-black gap-2 h-12 px-10 rounded-xl shadow-xl hover:opacity-90 active:scale-95 transition-all gap-2 border-none">
                 {isDownloading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
                 {isRtl ? 'تحميل كصورة PNG' : 'Download PNG'}
              </Button>

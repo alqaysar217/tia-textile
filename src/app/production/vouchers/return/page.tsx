@@ -16,6 +16,7 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { toPng } from 'html-to-image';
 import { Info, ShieldCheck } from 'lucide-react';
+import { useProduction } from '../../ProductionContext';
 
 import { ReturnHeader } from './components/ReturnHeader';
 import { ReturnTable } from './components/ReturnTable';
@@ -26,6 +27,11 @@ export default function MaterialReturnPage() {
   const { lang, dir } = useTranslation();
   const db = useFirestore();
   const isRtl = lang === 'ar';
+
+  // استيراد الصلاحيات من المحرك المركزي
+  const { permissions, isAdmin } = useProduction();
+  const canCreate = isAdmin || permissions.vouchers_return?.create;
+  const canVerify = canCreate; // التوثيق في هذه الواجهة هو عملية إنشاء سند المرتجع
 
   const [activeTab, setActiveTab] = useState<'pending' | 'verified'>('pending');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -86,6 +92,13 @@ export default function MaterialReturnPage() {
   const handleSaveVoucher = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!db || isSubmitting || formData.items.length === 0 || !formData.workerId) return;
+
+    // حماية برمجية للصلاحيات
+    if (!canVerify) {
+      toast({ variant: "destructive", title: isRtl ? "غير مسموح بالتوثيق" : "Access Denied" });
+      return;
+    }
+
     setIsSubmitting(true);
     const batch = writeBatch(db);
     try {
@@ -138,8 +151,10 @@ export default function MaterialReturnPage() {
         </div>
         <ReturnTable 
           list={activeTab === 'pending' ? pendingReturns : verifiedReturns} allWorkers={allWorkers || []} allOrders={allOrders || []}
-          activeTab={activeTab} lang={lang} dir={dir} onVerify={(v) => { setFormData({ date: new Date().toISOString().split('T')[0], orderId: v.orderId, workerId: v.workerId, linkedReceiptId: v.id, notes: isRtl ? `توثيق آلي للمرتجع من سند رقم ${v.voucherNumber}` : `Auto-verify ${v.voucherNumber}`, items: [...v.returnedItems] }); setIsAddDialogOpen(true); }}
+          activeTab={activeTab} lang={lang} dir={dir} 
+          onVerify={(v) => { if(!canVerify) return; setFormData({ date: new Date().toISOString().split('T')[0], orderId: v.orderId, workerId: v.workerId, linkedReceiptId: v.id, notes: isRtl ? `توثيق آلي للمرتجع من سند رقم ${v.voucherNumber}` : `Auto-verify ${v.voucherNumber}`, items: [...v.returnedItems] }); setIsAddDialogOpen(true); }}
           onPrint={(v) => setPrintingVoucher(v)}
+          canVerify={canVerify}
         />
       </div>
 
