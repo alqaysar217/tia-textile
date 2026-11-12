@@ -197,14 +197,14 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
                 type="submit" 
                 disabled={!input.trim() || isLoading}
                 className={cn(
-                  "absolute top-1/2 -translate-y-1/2 w-10 h-10 rounded-xl premium-gradient text-white border-none shadow-lg transition-all active:scale-90",
+                  "absolute top-1/2 -translate-y-1/2 w-10 h-10 rounded-full premium-gradient text-white border-none shadow-lg transition-all active:scale-90",
                   isRtl ? "left-2" : "right-2"
                 )}
               >
                 {isLoading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
-                  <Send className={cn("w-4 h-4", isRtl && "rotate-180")} />
+                  <Send className={cn("w-4 h-4", isRtl && "rotate-[225deg]")} />
                 )}
               </Button>
            </form>
