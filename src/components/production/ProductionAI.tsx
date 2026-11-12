@@ -92,11 +92,16 @@ export function ProductionAI({ isOpen, onClose }: ProductionAIProps) {
       >
         {/* PREMIUM AI HEADER */}
         <div className="premium-gradient p-6 text-white shrink-0 relative overflow-hidden">
-           <div className="absolute top-0 right-0 p-4 opacity-10 animate-pulse"><Sparkles className="w-24 h-24" /></div>
+           {/* BRAND WATERMARK INSTEAD OF SPARKLES */}
+           <div className="absolute top-0 right-0 p-4 opacity-5">
+              <img src="/images/logo.png" alt="watermark" className="w-32 h-32 object-contain grayscale brightness-0 invert" />
+           </div>
+
            <SheetHeader className={cn("text-right rtl:text-right ltr:text-left relative z-10")}>
              <div className="flex items-center gap-3">
-               <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center border border-white/20 shadow-xl backdrop-blur-md">
-                 <Bot className="w-7 h-7 text-emerald-300" />
+               {/* SHARPER LOGO CONTAINER */}
+               <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center border border-white/20 shadow-xl p-1 shrink-0">
+                 <img src="/images/logo.png" alt="Logo" className="w-full h-full object-contain" />
                </div>
                <div>
                  <SheetTitle className="text-xl font-black text-white">{isRtl ? 'مساعد الإنتاج الذكي' : 'Production AI'}</SheetTitle>
