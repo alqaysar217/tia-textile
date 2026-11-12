@@ -133,58 +133,74 @@ export default function TrashPage() {
     }
   };
 
+  const isRtl = lang === 'ar';
+
   return (
-    <div className="flex flex-col h-full bg-[#F8F9FA] overflow-hidden">
-      <div className="flex-none bg-white border-b border-slate-200 z-30 px-6 py-4 shadow-sm">
+    <div className="flex flex-col h-full bg-[#f8fafc] dark:bg-slate-950 overflow-hidden transition-colors duration-300">
+      
+      {/* HEADER SECTION */}
+      <div className="flex-none bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 z-30 px-6 py-4 shadow-sm">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div className="flex items-center gap-4">
-            <div className="p-2.5 bg-amber-600 rounded-lg text-white shadow-lg shadow-amber-900/20"><Trash2 className="w-5 h-5" /></div>
+            <div className="p-2.5 bg-amber-600 rounded-lg text-white shadow-lg shadow-amber-900/20">
+              <Trash2 className="w-5 h-5" />
+            </div>
             <div>
-              <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+              <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                 <span>{lang === 'ar' ? 'الإدارة' : 'Management'}</span>
-                <ChevronRight className={`w-3 h-3 ${dir === 'rtl' ? 'rotate-180' : ''}`} />
-                <span className="text-slate-600">{lang === 'ar' ? 'سلة المهملات' : 'Smart Trash'}</span>
+                <ChevronRight className={cn("w-3 h-3", isRtl ? "rotate-180" : "")} />
+                <span className="text-slate-600 dark:text-slate-400">{lang === 'ar' ? 'سلة المهملات' : 'Smart Trash'}</span>
               </div>
-              <h1 className="text-xl font-black text-slate-900 leading-tight">
+              <h1 className="text-xl font-black text-slate-900 dark:text-slate-100 leading-tight">
                 {lang === 'ar' ? 'الأرشيف الذكي الموحد' : 'Unified Smart Archive'}
               </h1>
             </div>
           </div>
-          <div className="bg-slate-50 px-4 py-2 rounded-lg border border-slate-100 text-center">
-            <p className="text-[10px] font-bold text-slate-400 uppercase">{lang === 'ar' ? 'إجمالي المحذوفات' : 'TOTAL TRASH'}</p>
-            <p className="text-lg font-black text-amber-600 tabular-nums">{(allArchivedItems.length).toLocaleString('en-US')}</p>
+          <div className="bg-slate-50 dark:bg-slate-800/50 px-4 py-2 rounded-lg border border-slate-100 dark:border-slate-800 text-center">
+            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">{lang === 'ar' ? 'إجمالي المحذوفات' : 'TOTAL TRASH'}</p>
+            <p className="text-lg font-black text-amber-600 dark:text-amber-500 tabular-nums">{(allArchivedItems.length).toLocaleString('en-US')}</p>
           </div>
         </div>
-        <div className="mt-4 flex items-center gap-2 bg-slate-50 p-1.5 rounded-lg border border-slate-200">
+        
+        {/* SEARCH BAR */}
+        <div className="mt-4 flex items-center gap-2 bg-slate-50 dark:bg-slate-800/50 p-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
           <div className="relative flex-1">
-            <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400`} />
-            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={lang === 'ar' ? 'بحث في الأرشيف...' : 'Search archive...'} className={`${dir === 'rtl' ? 'pr-10' : 'pl-10'} h-9 bg-white border-slate-200 text-xs font-bold`} />
+            <Search className={cn("absolute top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500", isRtl ? "right-3" : "left-3")} />
+            <Input 
+              value={search} 
+              onChange={(e) => setSearch(e.target.value)} 
+              placeholder={lang === 'ar' ? 'بحث في الأرشيف...' : 'Search archive...'} 
+              className={cn(
+                "h-9 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xs font-bold focus:ring-emerald-500/10 focus:border-emerald-500 dark:text-slate-100",
+                isRtl ? 'pr-10 pl-4' : 'pl-10 pr-4'
+              )} 
+            />
           </div>
         </div>
       </div>
 
       <div className="flex-1 min-h-0 flex flex-col p-4">
-        <div className="flex-1 bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden flex flex-col">
+        <div className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg shadow-sm overflow-hidden flex flex-col transition-colors duration-300">
           <div className="flex-1 overflow-auto no-scrollbar relative">
-            <Table className="text-right">
-              <TableHeader className="sticky top-0 z-20 bg-slate-100/95 backdrop-blur-sm shadow-sm">
-                <TableRow>
-                  <TableHead className="px-6 py-3 font-bold text-[11px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'العنصر' : 'ITEM'}</TableHead>
-                  <TableHead className="px-6 py-3 font-bold text-[11px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'النوع' : 'TYPE'}</TableHead>
-                  <TableHead className="px-6 py-3 font-bold text-[11px] text-slate-500 uppercase text-right">{lang === 'ar' ? 'تاريخ الحذف' : 'DELETED AT'}</TableHead>
-                  <TableHead className="w-[200px]"></TableHead>
+            <Table className={cn("text-right border-separate border-spacing-0 w-full", !isRtl && "text-left")}>
+              <TableHeader className="sticky top-0 z-20 bg-slate-100/95 dark:bg-slate-800/95 backdrop-blur-sm shadow-sm">
+                <TableRow className="border-b dark:border-slate-700">
+                  <TableHead className={cn("px-6 py-3 font-bold text-[11px] text-slate-500 dark:text-slate-400 uppercase", isRtl ? "text-right" : "text-left")}>{lang === 'ar' ? 'العنصر' : 'ITEM'}</TableHead>
+                  <TableHead className={cn("px-6 py-3 font-bold text-[11px] text-slate-500 dark:text-slate-400 uppercase", isRtl ? "text-right" : "text-left")}>{lang === 'ar' ? 'النوع' : 'TYPE'}</TableHead>
+                  <TableHead className={cn("px-6 py-3 font-bold text-[11px] text-slate-500 dark:text-slate-400 uppercase", isRtl ? "text-right" : "text-left")}>{lang === 'ar' ? 'تاريخ الحذف' : 'DELETED AT'}</TableHead>
+                  <TableHead className="w-[200px] border-b dark:border-slate-700"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow><TableCell colSpan={4} className="text-center py-20 font-bold text-slate-400 animate-pulse">جاري الفحص...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={4} className="text-center py-20 font-bold text-slate-400 dark:text-slate-600 animate-pulse">جاري الفحص...</TableCell></TableRow>
                 ) : filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={4} className="text-center py-20 font-bold text-slate-300">السلة فارغة</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={4} className="text-center py-20 font-bold text-slate-300 dark:text-slate-800">السلة فارغة</TableCell></TableRow>
                 ) : filtered.map((item) => (
-                  <TableRow key={item.id} className="group hover:bg-slate-50/50 border-b border-slate-100">
+                  <TableRow key={item.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 transition-colors">
                     <TableCell className="px-6 py-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-slate-100 rounded flex items-center justify-center text-slate-400">
+                        <div className="w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded flex items-center justify-center text-slate-400 dark:text-slate-600">
                           {item.type === 'department' ? <Factory className="w-4 h-4" /> : 
                            item.type === 'worker' ? <User className="w-4 h-4" /> : 
                            item.type === 'material' ? <Box className="w-4 h-4" /> : 
@@ -193,13 +209,13 @@ export default function TrashPage() {
                            <ShoppingBag className="w-4 h-4" />}
                         </div>
                         <div className="flex flex-col">
-                          <span className="font-black text-slate-900 text-xs">{item.nameAr || item.fullName || item.title || item.voucherNumber || 'سجل بدون عنوان'}</span>
-                          <span className="text-[10px] text-slate-400 font-bold uppercase tabular-nums">{item.code || item.workerId || item.sku || item.orderNumber || item.voucherNumber}</span>
+                          <span className="font-black text-slate-900 dark:text-slate-100 text-xs">{item.nameAr || item.fullName || item.title || item.voucherNumber || 'سجل بدون عنوان'}</span>
+                          <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tabular-nums">{item.code || item.workerId || item.sku || item.orderNumber || item.voucherNumber}</span>
                         </div>
                       </div>
                     </TableCell>
                     <TableCell className="px-6 py-3">
-                      <span className="inline-block px-2 py-0.5 bg-slate-100 text-slate-500 rounded text-[9px] font-black uppercase">
+                      <span className="inline-block px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded text-[9px] font-black uppercase">
                         {item.type === 'voucher' ? (lang === 'ar' ? 'سند' : 'Voucher') : 
                          item.type === 'department' ? (lang === 'ar' ? 'قسم' : 'Dept') : 
                          item.type === 'worker' ? (lang === 'ar' ? 'عامل' : 'Worker') : 
@@ -208,15 +224,15 @@ export default function TrashPage() {
                          (lang === 'ar' ? 'منتج' : 'Product')}
                       </span>
                     </TableCell>
-                    <TableCell className="px-6 py-3 text-slate-500 text-[11px] font-bold tabular-nums">
+                    <TableCell className="px-6 py-3 text-slate-500 dark:text-slate-400 text-[11px] font-bold tabular-nums">
                       {item.deletedAt?.toDate?.().toLocaleDateString('en-US') || '---'}
                     </TableCell>
                     <TableCell className="px-6 py-3">
                       <div className="flex justify-end gap-2">
-                        <Button onClick={() => { setSelectedItem(item); setActionType('restore'); }} variant="outline" className="h-8 px-3 rounded text-[10px] font-black gap-1.5 text-emerald-700">
+                        <Button onClick={() => { setSelectedItem(item); setActionType('restore'); }} variant="outline" className="h-8 px-3 rounded text-[10px] font-black gap-1.5 text-emerald-700 dark:text-emerald-400 border-slate-200 dark:border-slate-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/20">
                           <RotateCcw className="w-3 h-3" /> {lang === 'ar' ? 'استعادة' : 'Restore'}
                         </Button>
-                        <Button onClick={() => { setSelectedItem(item); setActionType('purge'); }} variant="outline" className="h-8 px-3 rounded text-[10px] font-black gap-1.5 text-rose-600">
+                        <Button onClick={() => { setSelectedItem(item); setActionType('purge'); }} variant="outline" className="h-8 px-3 rounded text-[10px] font-black gap-1.5 text-rose-600 dark:text-rose-400 border-slate-200 dark:border-slate-700 hover:bg-rose-50 dark:hover:bg-rose-900/20">
                           <Trash2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'حذف نهائي' : 'Purge'}
                         </Button>
                       </div>
@@ -227,28 +243,41 @@ export default function TrashPage() {
             </Table>
           </div>
         </div>
+
+        {/* SYSTEM FOOTER */}
+        <div className="mt-4 flex-none bg-slate-900 dark:bg-slate-900/80 rounded-lg p-3 text-white flex items-center gap-4 border border-slate-800 shadow-inner transition-colors duration-300">
+          <div className="w-8 h-8 bg-amber-500/20 rounded flex items-center justify-center text-amber-400 shrink-0"><Info className="w-4 h-4" /></div>
+          <div className="flex-1 text-right">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 leading-none mb-1">
+              {lang === 'ar' ? 'بروتوكول تصفية الأرشيف' : 'Archive Purge Protocol'}
+            </p>
+            <p className="text-[10px] text-slate-300 dark:text-slate-400 font-bold opacity-80 leading-relaxed">
+              {lang === 'ar' ? 'يتم الاحتفاظ بالعناصر المحذوفة لمدة 30 يوماً قبل الحذف التلقائي النهائي لضمان عدم فقدان البيانات الهامة.' : 'Deleted items are kept for 30 days before automatic final deletion to ensure data safety.'}
+            </p>
+          </div>
+        </div>
       </div>
 
       <AlertDialog open={!!actionType} onOpenChange={() => !isSubmitting && setActionType(null)}>
-        <AlertDialogContent className="max-w-[400px] rounded-lg p-0 overflow-hidden border-none shadow-2xl">
-          <div className={cn("p-8 text-center", actionType === 'restore' ? "premium-gradient" : "bg-rose-950")}>
-            <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-white/20">
+        <AlertDialogContent className="max-w-[400px] rounded-lg p-0 overflow-hidden border-none shadow-2xl dark:bg-slate-900 transition-colors duration-300">
+          <div className={cn("p-8 text-center relative overflow-hidden", actionType === 'restore' ? "premium-gradient" : "bg-rose-950")}>
+            <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-white/20 relative z-10">
               {actionType === 'restore' ? <RotateCcw className="w-8 h-8 text-white" /> : <Skull className="w-8 h-8 text-rose-500" />}
             </div>
-            <AlertDialogTitle className="text-white text-xl font-black">
+            <AlertDialogTitle className="text-white text-xl font-black relative z-10">
               {actionType === 'restore' ? (lang === 'ar' ? 'تأكيد الاستعادة' : 'Confirm Restore') : (lang === 'ar' ? 'حذف نهائي' : 'Permanent Purge')}
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-white/60 font-bold mt-2 text-xs leading-relaxed">
+            <AlertDialogDescription className="text-white/60 font-bold mt-2 text-xs leading-relaxed relative z-10">
               {actionType === 'restore' 
                 ? (lang === 'ar' ? 'سيتم إعادة هذا السجل وتفعيل تأثيره المالي والمخزني فوراً.' : 'Item will be restored and its fiscal impact re-applied.') 
                 : (lang === 'ar' ? 'تحذير: سيتم مسح هذا السجل تماماً من النظام ولا يمكن التراجع عن هذا الإجراء.' : 'Warning: This action cannot be undone. Data will be purged forever.')}
             </AlertDialogDescription>
           </div>
-          <div className="bg-white p-6 flex gap-3">
-            <AlertDialogAction onClick={handleAction} disabled={isSubmitting} className={cn("flex-1 h-11 font-black text-white border-none", actionType === 'restore' ? "premium-gradient" : "bg-rose-600")}>
+          <div className="bg-white dark:bg-slate-900 p-6 flex gap-3">
+            <AlertDialogAction onClick={handleAction} disabled={isSubmitting} className={cn("flex-1 h-11 font-black text-white border-none transition-all active:scale-95 shadow-lg", actionType === 'restore' ? "premium-gradient" : "bg-rose-600 hover:bg-rose-700")}>
               {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : (lang === 'ar' ? 'تأكيد' : 'Confirm')}
             </AlertDialogAction>
-            <AlertDialogCancel disabled={isSubmitting} className="flex-1 h-11 font-black bg-slate-50 border-slate-200 text-slate-400">
+            <AlertDialogCancel disabled={isSubmitting} className="flex-1 h-11 font-black bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all">
               {lang === 'ar' ? 'إلغاء' : 'Cancel'}
             </AlertDialogCancel>
           </div>
