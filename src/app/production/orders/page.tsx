@@ -222,22 +222,22 @@ export default function ProductionOrdersPage() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#f8fafc] overflow-hidden" dir={dir}>
+    <div className="flex flex-col h-full bg-[#f8fafc] dark:bg-slate-950 overflow-hidden transition-colors duration-300" dir={dir}>
       
       {/* ERP HUB - HEADER */}
-      <div className="flex-none bg-white border-b border-slate-200 z-30 px-6 py-4 shadow-sm">
+      <div className="flex-none bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 z-30 px-6 py-4 shadow-sm">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div className="flex items-center gap-4">
-            <div className="p-2.5 bg-slate-900 rounded-lg text-white shadow-lg">
+            <div className="p-2.5 bg-slate-900 dark:bg-emerald-900/20 rounded-lg text-white shadow-lg">
               <Workflow className="w-5 h-5 text-emerald-400" />
             </div>
             <div>
-              <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+              <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                 <span>{lang === 'ar' ? 'وحدة العمليات' : 'Operations'}</span>
-                <ChevronRight className={`w-3 h-3 ${dir === 'rtl' ? 'rotate-180' : ''}`} />
-                <span className="text-emerald-600">{lang === 'ar' ? 'أوامر الإنتاج النشطة' : 'Active Work Orders'}</span>
+                <ChevronRight className={cn("w-3 h-3", dir === 'rtl' ? "rotate-180" : "")} />
+                <span className="text-emerald-600 dark:text-emerald-400">{lang === 'ar' ? 'أوامر الإنتاج النشطة' : 'Active Work Orders'}</span>
               </div>
-              <h1 className="text-xl font-black text-slate-900 leading-tight">
+              <h1 className="text-xl font-black text-slate-900 dark:text-slate-100 leading-tight">
                 {lang === 'ar' ? 'إدارة ومتابعة طلبات الإنتاج' : 'Work Order Management'}
               </h1>
             </div>
@@ -245,12 +245,15 @@ export default function ProductionOrdersPage() {
 
           <div className="flex items-center gap-3">
             <div className="relative">
-              <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400`} />
+              <Search className={cn("absolute top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500", dir === 'rtl' ? "right-3" : "left-3")} />
               <Input 
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={lang === 'ar' ? 'بحث سريع...' : 'Quick search...'}
-                className={`${dir === 'rtl' ? 'pr-10' : 'pl-10'} h-10 w-64 bg-slate-50 border-slate-200 text-xs font-bold`}
+                className={cn(
+                  dir === 'rtl' ? 'pr-10' : 'pl-10',
+                  "h-10 w-64 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-xs font-bold dark:text-slate-100"
+                )}
               />
             </div>
             <Button onClick={() => setIsAddDialogOpen(true)} className="h-10 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 transition-all border-none">
@@ -266,13 +269,13 @@ export default function ProductionOrdersPage() {
         {ordersLoading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-4">
             <Loader2 className="w-10 h-10 animate-spin text-emerald-600" />
-            <p className="text-slate-400 font-bold">{lang === 'ar' ? 'جاري سحب الأوامر...' : 'Fetching orders...'}</p>
+            <p className="text-slate-400 dark:text-slate-500 font-bold">{lang === 'ar' ? 'جاري سحب الأوامر...' : 'Fetching orders...'}</p>
           </div>
         ) : filteredOrders.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-300">
-            <Boxes className="w-16 h-16 text-slate-200 mx-auto mb-4" />
-            <h3 className="text-lg font-black text-slate-400">{lang === 'ar' ? 'لا توجد أوامر نشطة حالياً' : 'No active orders'}</h3>
-            <p className="text-[10px] font-bold text-slate-400 mt-2 uppercase tracking-widest">{lang === 'ar' ? 'قم بإنشاء أمر جديد لبدء العمل' : 'Create a new order to start processing'}</p>
+          <div className="text-center py-20 bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-300 dark:border-slate-800">
+            <Boxes className="w-16 h-16 text-slate-200 dark:text-slate-800 mx-auto mb-4" />
+            <h3 className="text-lg font-black text-slate-400 dark:text-slate-600">{lang === 'ar' ? 'لا توجد أوامر نشطة حالياً' : 'No active orders'}</h3>
+            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mt-2 uppercase tracking-widest">{lang === 'ar' ? 'قم بإنشاء أمر جديد لبدء العمل' : 'Create a new order to start processing'}</p>
           </div>
         ) : filteredOrders.map((order) => {
           const product = products?.find(p => p.id === order.productId);
@@ -292,80 +295,80 @@ export default function ProductionOrdersPage() {
             <div 
               key={order.id} 
               onClick={() => router.push(`/production/orders/${order.id}`)}
-              className="bg-white rounded-xl border border-slate-200 shadow-sm hover:border-emerald-500/30 hover:shadow-md transition-all duration-300 overflow-hidden group cursor-pointer"
+              className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm hover:border-emerald-500/30 dark:hover:border-emerald-500/30 hover:shadow-md transition-all duration-300 overflow-hidden group cursor-pointer"
             >
               <div className="flex flex-row items-center h-16 px-4 gap-4">
-                <div className="w-32 flex flex-col justify-center border-l border-slate-100 h-full">
-                  <span className="text-[10px] font-black text-emerald-700 tabular-nums uppercase leading-none">{order.orderNumber}</span>
-                  <span className="text-[9px] font-bold text-slate-400 tabular-nums mt-1">{order.startDate}</span>
+                <div className="w-32 flex flex-col justify-center border-l border-slate-100 dark:border-slate-800 h-full">
+                  <span className="text-[10px] font-black text-emerald-700 dark:text-emerald-400 tabular-nums uppercase leading-none">{order.orderNumber}</span>
+                  <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 tabular-nums mt-1">{order.startDate}</span>
                 </div>
 
                 <div className="flex-1 flex flex-col justify-center min-w-0">
-                  <h3 className="text-xs font-black text-slate-900 group-hover:text-emerald-700 transition-colors truncate">{order.title}</h3>
+                  <h3 className="text-xs font-black text-slate-900 dark:text-slate-100 group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors truncate">{order.title}</h3>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <Tag className="w-2.5 h-2.5 text-slate-400" />
-                    <span className="text-[10px] font-bold text-slate-500 truncate">{product?.nameAr || '---'}</span>
+                    <Tag className="w-2.5 h-2.5 text-slate-400 dark:text-slate-600" />
+                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 truncate">{product?.nameAr || '---'}</span>
                   </div>
                 </div>
 
-                <div className="w-48 flex flex-col justify-center gap-1.5 px-4 border-x border-slate-100 h-full">
+                <div className="w-48 flex flex-col justify-center gap-1.5 px-4 border-x border-slate-100 dark:border-slate-800 h-full">
                   <div className="flex justify-between items-center text-[10px] font-black">
-                    <span className="text-slate-400 uppercase tracking-tighter">{lang === 'ar' ? 'الإنجاز النهائي' : 'READY PROGRESS'}</span>
-                    <span className="text-emerald-600 tabular-nums">{progress}%</span>
+                    <span className="text-slate-400 dark:text-slate-500 uppercase tracking-tighter">{lang === 'ar' ? 'الإنجاز النهائي' : 'READY PROGRESS'}</span>
+                    <span className="text-emerald-600 dark:text-emerald-400 tabular-nums">{progress}%</span>
                   </div>
-                  <Progress value={progress} className="h-1.5 bg-slate-100" />
+                  <Progress value={progress} className="h-1.5 bg-slate-100 dark:bg-slate-800" />
                 </div>
 
                 {/* TARGET & READY STATS */}
                 <div className="flex items-center gap-8 px-4">
                   <div className="text-center">
-                    <p className="text-[8px] font-black text-slate-400 uppercase leading-none">{lang === 'ar' ? 'المستهدف' : 'TARGET'}</p>
-                    <p className="text-xs font-black text-slate-700 tabular-nums mt-1">{order.targetQty}</p>
+                    <p className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase leading-none">{lang === 'ar' ? 'المستهدف' : 'TARGET'}</p>
+                    <p className="text-xs font-black text-slate-700 dark:text-slate-300 tabular-nums mt-1">{order.targetQty}</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-[8px] font-black text-emerald-600 uppercase leading-none">{lang === 'ar' ? 'منجز نهائي' : 'READY'}</p>
-                    <p className="text-xs font-black text-emerald-700 tabular-nums mt-1">{finalCompletedQty}</p>
+                    <p className="text-[8px] font-black text-emerald-600 dark:text-emerald-400 uppercase leading-none">{lang === 'ar' ? 'منجز نهائي' : 'READY'}</p>
+                    <p className="text-xs font-black text-emerald-700 dark:text-emerald-400 tabular-nums mt-1">{finalCompletedQty}</p>
                   </div>
                 </div>
 
                 {/* STATUS TEXT LABEL */}
-                <div className="hidden md:flex items-center gap-2 border-r border-slate-100 px-4 h-full">
+                <div className="hidden md:flex items-center gap-2 border-r border-slate-100 dark:border-slate-800 px-4 h-full">
                   <div className={cn(
                     "w-2 h-2 rounded-full",
                     progress >= 100 ? "bg-emerald-500" : "bg-amber-500 animate-pulse"
                   )} />
-                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-tight">
+                  <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-tight">
                     {progress >= 100 
                       ? (lang === 'ar' ? 'مكتمل' : 'COMPLETED') 
                       : (lang === 'ar' ? 'قيد الإنتاج' : 'IN PROGRESS')}
                   </span>
                 </div>
 
-                <div className="flex items-center gap-2 border-r border-slate-100 h-full px-2">
+                <div className="flex items-center gap-2 border-r border-slate-100 dark:border-slate-800 h-full px-2">
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all" onClick={(e) => { e.stopPropagation(); router.push(`/production/orders/${order.id}`); }}><Eye className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-slate-400 dark:text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all" onClick={(e) => { e.stopPropagation(); router.push(`/production/orders/${order.id}`); }}><Eye className="w-4 h-4" /></Button>
                       </TooltipTrigger>
-                      <TooltipContent><p className="text-[10px] font-bold">{lang === 'ar' ? 'عرض السجل الفني' : 'View Ledger'}</p></TooltipContent>
+                      <TooltipContent className="dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700"><p className="text-[10px] font-bold">{lang === 'ar' ? 'عرض السجل الفني' : 'View Ledger'}</p></TooltipContent>
                     </Tooltip>
                     
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-slate-100" onClick={(e) => e.stopPropagation()}><MoreVertical className="w-4 h-4 text-slate-400" /></Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800" onClick={(e) => e.stopPropagation()}><MoreVertical className="w-4 h-4 text-slate-400 dark:text-slate-500" /></Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-56 rounded-xl shadow-xl">
-                        <DropdownMenuItem onClick={(e) => handleEditClick(order, e)} className="gap-2 font-bold py-2 cursor-pointer text-xs"><Edit2 className="w-3.5 h-3.5 text-emerald-600" /> {lang === 'ar' ? 'تعديل بيانات الدفعة' : 'Edit Specs'}</DropdownMenuItem>
+                      <DropdownMenuContent align="end" className="w-56 rounded-xl shadow-xl dark:bg-slate-900 dark:border-slate-800">
+                        <DropdownMenuItem onClick={(e) => handleEditClick(order, e)} className="gap-2 font-bold py-2 cursor-pointer text-xs dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800"><Edit2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'تعديل بيانات الدفعة' : 'Edit Specs'}</DropdownMenuItem>
                         
-                        <DropdownMenuSeparator />
+                        <DropdownMenuSeparator className="dark:bg-slate-800" />
                         
-                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setCompletingOrder(order); }} className="gap-2 font-bold py-2 text-emerald-600 cursor-pointer text-xs">
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setCompletingOrder(order); }} className="gap-2 font-bold py-2 text-emerald-600 dark:text-emerald-400 cursor-pointer text-xs focus:bg-emerald-50 dark:focus:bg-emerald-900/20">
                           <CheckCircle2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'إتمام وإغلاق الطلب' : 'Complete & Close Order'}
                         </DropdownMenuItem>
                         
-                        <DropdownMenuSeparator />
+                        <DropdownMenuSeparator className="dark:bg-slate-800" />
                         
-                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setDeletingOrder(order); }} className="gap-2 font-bold py-2 text-rose-600 cursor-pointer text-xs"><Trash2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'نقل للأرشيف' : 'Archive Order'}</DropdownMenuItem>
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setDeletingOrder(order); }} className="gap-2 font-bold py-2 text-rose-600 dark:text-rose-400 cursor-pointer text-xs focus:bg-rose-50 dark:focus:bg-rose-900/20"><Trash2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'نقل للأرشيف' : 'Archive Order'}</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TooltipProvider>
@@ -378,7 +381,7 @@ export default function ProductionOrdersPage() {
 
       {/* NEW/EDIT ORDER DIALOG */}
       <Dialog open={isAddDialogOpen} onOpenChange={(open) => !open && resetForm()}>
-        <DialogContent className="sm:max-w-[500px] rounded-lg p-0 overflow-hidden border-none shadow-2xl">
+        <DialogContent className="sm:max-w-[500px] rounded-lg p-0 overflow-hidden border-none shadow-2xl dark:bg-slate-900">
           <div className="premium-gradient p-6 text-white">
             <DialogHeader className="text-right rtl:text-right ltr:text-left">
               <DialogTitle className="text-xl font-black flex items-center gap-3">
@@ -388,37 +391,37 @@ export default function ProductionOrdersPage() {
             </DialogHeader>
           </div>
 
-          <form onSubmit={handleSaveOrder} className="p-6 space-y-4 bg-white">
+          <form onSubmit={handleSaveOrder} className="p-6 space-y-4 bg-white dark:bg-slate-900">
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2"><Type className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'عنوان الطلب المميز' : 'BATCH TITLE'}</Label>
-              <Input value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} className="h-11 rounded-lg bg-slate-50 font-bold" required />
+              <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2"><Type className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'عنوان الطلب المميز' : 'BATCH TITLE'}</Label>
+              <Input value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} className="h-11 rounded-lg bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 font-bold dark:text-slate-100" required />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2"><ShoppingBag className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'نوع المعوز المستهدف' : 'PRODUCT'}</Label>
-              <select value={formData.productId} onChange={(e) => setFormData({...formData, productId: e.target.value})} className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold outline-none" required>
+              <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2"><ShoppingBag className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'نوع المعوز المستهدف' : 'PRODUCT'}</Label>
+              <select value={formData.productId} onChange={(e) => setFormData({...formData, productId: e.target.value})} className="w-full h-11 px-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold outline-none dark:text-slate-100" required>
                 <option value="">-- Select --</option>
                 {products?.map(p => <option key={p.id} value={p.id}>{p.nameAr}</option>)}
               </select>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-slate-400">{lang === 'ar' ? 'الكمية المستهدفة' : 'TARGET QTY'}</Label>
-                <Input type="number" value={formData.targetQty} onChange={(e) => setFormData({...formData, targetQty: Number(e.target.value)})} className="h-11 font-bold tabular-nums" required />
+                <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500">{lang === 'ar' ? 'الكمية المستهدفة' : 'TARGET QTY'}</Label>
+                <Input type="number" value={formData.targetQty} onChange={(e) => setFormData({...formData, targetQty: Number(e.target.value)})} className="h-11 font-bold tabular-nums bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 dark:text-slate-100" required />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-slate-400">{lang === 'ar' ? 'الأولوية' : 'PRIORITY'}</Label>
-                <select value={formData.priority} onChange={(e) => setFormData({...formData, priority: e.target.value})} className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold">
+                <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500">{lang === 'ar' ? 'الأولوية' : 'PRIORITY'}</Label>
+                <select value={formData.priority} onChange={(e) => setFormData({...formData, priority: e.target.value})} className="w-full h-11 px-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold dark:text-slate-100">
                   <option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option>
                 </select>
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase text-slate-400">{lang === 'ar' ? 'ملاحظات إضافية' : 'NOTES'}</Label>
-              <Textarea value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} className="min-h-[80px] bg-slate-50 resize-none text-xs font-medium" />
+              <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500">{lang === 'ar' ? 'ملاحظات إضافية' : 'NOTES'}</Label>
+              <Textarea value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} className="min-h-[80px] bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 resize-none text-xs font-medium dark:text-slate-300" />
             </div>
-            <div className="flex gap-3 pt-4 border-t border-slate-100">
+            <div className="flex gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
               <Button type="submit" disabled={isSubmitting} className="flex-1 h-12 premium-gradient text-white font-black">{isSubmitting ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : <Save className="w-4 h-4 me-2" />}{lang === 'ar' ? 'حفظ البيانات' : 'Commit'}</Button>
-              <Button type="button" variant="outline" onClick={resetForm} className="px-6 h-12 font-black text-slate-400">{lang === 'ar' ? 'إلغاء' : 'Cancel'}</Button>
+              <Button type="button" variant="outline" onClick={resetForm} className="px-6 h-12 font-black text-slate-400 dark:text-slate-500 dark:border-slate-700"> {lang === 'ar' ? 'إلغاء' : 'Cancel'}</Button>
             </div>
           </form>
         </DialogContent>
@@ -426,7 +429,7 @@ export default function ProductionOrdersPage() {
 
       {/* COMPLETE ORDER CONFIRMATION */}
       <AlertDialog open={!!completingOrder} onOpenChange={() => setCompletingOrder(null)}>
-        <AlertDialogContent className="rounded-[1.5rem] p-0 overflow-hidden border-none shadow-2xl">
+        <AlertDialogContent className="rounded-[1.5rem] p-0 overflow-hidden border-none shadow-2xl dark:bg-slate-900">
            <div className="bg-emerald-950 p-8 text-center relative overflow-hidden">
               <div className="absolute top-0 right-0 p-4 opacity-5"><CheckCircle2 className="w-32 h-32 text-white" /></div>
               <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-500/20 shadow-inner">
@@ -439,19 +442,19 @@ export default function ProductionOrdersPage() {
                    : `You are about to close order (${completingOrder?.orderNumber}). It will be marked as fully completed and hidden from the active list.`}
               </AlertDialogDescription>
            </div>
-           <div className="bg-white p-6 flex gap-3">
-              <AlertDialogAction onClick={handleCompleteOrder} disabled={isSubmitting} className="flex-1 h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-lg">
+           <div className="bg-white dark:bg-slate-900 p-6 flex gap-3">
+              <AlertDialogAction onClick={handleCompleteOrder} disabled={isSubmitting} className="flex-1 h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-lg border-none">
                 {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : <CheckCircle2 className="w-4 h-4 me-2" />}
                 {lang === 'ar' ? 'نعم، إتمام الإغلاق' : 'Yes, Complete Order'}
               </AlertDialogAction>
-              <AlertDialogCancel className="flex-1 h-12 bg-slate-50 font-black rounded-xl text-slate-400">تراجع</AlertDialogCancel>
+              <AlertDialogCancel className="flex-1 h-12 bg-slate-50 dark:bg-slate-800 font-black rounded-xl text-slate-400 dark:text-slate-500 border-none">تراجع</AlertDialogCancel>
            </div>
         </AlertDialogContent>
       </AlertDialog>
 
       {/* ARCHIVE DIALOG */}
       <AlertDialog open={!!deletingOrder} onOpenChange={() => setDeletingOrder(null)}>
-        <AlertDialogContent className="rounded-[1.5rem] p-0 overflow-hidden">
+        <AlertDialogContent className="rounded-[1.5rem] p-0 overflow-hidden dark:bg-slate-900">
            <div className="bg-slate-950 p-6 text-center">
               <div className="w-16 h-16 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-rose-500/20"><Trash2 className="w-8 h-8 text-rose-500" /></div>
               <AlertDialogTitle className="text-white text-xl font-black">{lang === 'ar' ? 'أرشفة أمر الإنتاج' : 'Confirm Archive'}</AlertDialogTitle>
@@ -459,9 +462,9 @@ export default function ProductionOrdersPage() {
                 {lang === 'ar' ? 'سيتم نقل هذا الطلب للأرشيف (سلة المهملات). لن يتم حذفه نهائياً إلا بطلب منك.' : 'This order will be moved to the smart trash archive.'}
               </AlertDialogDescription>
            </div>
-           <div className="bg-white p-6 flex gap-3">
-              <AlertDialogAction onClick={handleDeleteOrder} className="flex-1 h-11 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-xl">أرشفة</AlertDialogAction>
-              <AlertDialogCancel className="flex-1 h-11 bg-slate-50 font-black rounded-xl">تراجع</AlertDialogCancel>
+           <div className="bg-white dark:bg-slate-900 p-6 flex gap-3">
+              <AlertDialogAction onClick={handleDeleteOrder} className="flex-1 h-11 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-xl border-none">أرشفة</AlertDialogAction>
+              <AlertDialogCancel className="flex-1 h-11 bg-slate-50 dark:bg-slate-800 font-black rounded-xl text-slate-400 dark:text-slate-500 border-none">تراجع</AlertDialogCancel>
            </div>
         </AlertDialogContent>
       </AlertDialog>
