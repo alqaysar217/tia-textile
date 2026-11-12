@@ -244,12 +244,11 @@ export default function UsersPermissionsPage() {
     try {
       let uid = editingUserId;
       
-      // CRITICAL FIX: Trim inputs to avoid invalid-credential desync
+      // DATA CLEANING: Trim all text fields to avoid auth mismatch
       const cleanEmail = formData.email.trim().toLowerCase();
       const cleanPassword = formData.password.trim();
 
       if (!editingUserId) {
-        // PROVISION AUTH ACCOUNT (Primary session protection)
         const tempAppName = `temp-auth-${Date.now()}`;
         tempApp = initializeApp(firebaseConfig, tempAppName);
         const tempAuth = getAuth(tempApp);
@@ -272,7 +271,7 @@ export default function UsersPermissionsPage() {
       const userData = {
         fullName: formData.fullName.trim(),
         email: cleanEmail,
-        password: cleanPassword, // Stored for admin reference only, Auth handles security
+        password: cleanPassword, 
         photoUrl: formData.photoUrl,
         role: formData.role,
         active: formData.active,

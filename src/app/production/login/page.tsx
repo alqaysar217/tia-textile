@@ -48,16 +48,16 @@ export default function LoginPage() {
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    // CLEANING: Trim inputs to avoid invalid-credential from accidental spaces
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPassword = password.trim();
+
     if (!auth || (lockoutUntil && Date.now() < lockoutUntil)) return;
 
     setLoading(true);
     setError('');
     
     try {
-      // CRITICAL FIX: Trim inputs to remove invisible spaces that cause invalid-credential
-      const cleanEmail = email.trim().toLowerCase();
-      const cleanPassword = password.trim();
-
       if (!cleanEmail || !cleanPassword) {
         throw { code: 'auth/invalid-credential' };
       }
