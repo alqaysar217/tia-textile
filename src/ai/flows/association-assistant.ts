@@ -1,21 +1,15 @@
 'use server';
 /**
  * @fileOverview مساعد الإنتاج الذكي لجمعية الصناعات النسيجية.
- * تم تحسين الاستقرار ومعالجة أخطاء Next.js Server Actions لضمان استجابة سريعة وموثوقة.
+ * تم تحويل المحرك لاستخدام OpenRouter مع نموذج google/gemma-2-27b-it لضمان الاستقرار والمجانية.
  */
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
-// زيادة مهلة التنفيذ لـ Next.js Server Action لضمان عدم حدوث Timeout
-export const maxDuration = 60;
-
 const AssistantInputSchema = z.object({
-  message: z.string().describe('رسالة المستخدم الحالية'),
-  history: z.array(z.object({
-    role: z.enum(['user', 'assistant']),
-    content: z.string()
-  })).optional().describe('تاريخ المحادثة السابقة'),
+  message: z.string().describe('رسالة المستخدم'),
+  history: z.array(z.any()).optional().describe('تاريخ المحادثة'),
 });
 export type AssistantInput = z.infer<typeof AssistantInputSchema>;
 
@@ -25,32 +19,31 @@ const AssistantOutputSchema = z.object({
 export type AssistantOutput = z.infer<typeof AssistantOutputSchema>;
 
 /**
- * وظيفة الخادم الرئيسية لمعالجة طلبات المساعد الذكي.
+ * الوظيفة الرئيسية لمعالجة طلبات المساعد الذكي باستخدام OpenRouter.
  */
 export async function askAssociationAssistant(input: AssistantInput): Promise<AssistantOutput> {
   try {
-    // التحقق من وجود مفتاح API في البيئة
-    const apiKey = process.env.OPENROUTER_API_KEY;
-    if (!apiKey) {
-      return { answer: "⚠️ عذراً، مفتاح API (OpenRouter) غير مهيأ في إعدادات الخادم. يرجى التواصل مع الإدارة." };
-    }
-
     const { message, history } = input;
+    const apiKey = process.env.OPENROUTER_API_KEY;
+
+    if (!apiKey) {
+      return { answer: "⚠️ عذراً، مفتاح API (OpenRouter) غير مهيأ في إعدادات الخادم." };
+    }
 
     const systemContent = `أنت "مساعد الإنتاج الذكي" لجمعية الصناعات النسيجية بالروضة، محافظة شبوة.
 هويتك: مساعد مهني، ودود، وخبير في تراث المعاوز ونظام الإنتاج الخاص بالجمعية.
-
-المعلومات الأساسية للجمعية:
-- التأسيس: 1973م.
-- المقر: الروضة، شبوة. الفروع: عتق الرئيسي، شبوة مول.
-- النظام: الإنتاج بالمراحل (Process Costing) والأجر بالقطعة.
-- المنتجات: (ملكي، حليسي، بيضاني، سلاطيني، شبواني).
 
 قواعد الرد الذكي:
 1. القوائم: استخدم الترقيم (1. 2. 3.) بوضوح.
 2. الجداول: إذا طُلب منك مقارنات أو قوائم طويلة، استخدم جداول Markdown.
 3. الهوية: شجع دائماً على الحفاظ على الجودة والهوية التراثية.
-4. التوجيه: للمسائل المالية الدقيقة، وجه المستخدم للتقارير في النظام.
+4. الروابط: أي رابط يجب أن يوضع في تنسيق: رابط: [الرابط].
+
+معلومات الجمعية الأساسية:
+- التأسيس: 1973م.
+- المقر: الروضة، شبوة. الفروع: عتق الرئيسي، شبوة مول.
+- النظام: الإنتاج بالمراحل (Process Costing) والأجر بالقطعة.
+- المنتجات: (ملكي، حليسي، بيضاني، سلاطيني، شبواني).
 
 قواعد الرد:
 - أجب باللغة العربية الفصحى المبسطة بلهجة محترمة.
@@ -60,25 +53,23 @@ export async function askAssociationAssistant(input: AssistantInput): Promise<As
       { role: 'system', content: systemContent }
     ];
 
-    // إضافة تاريخ المحادثة للسياق (آخر 6 رسائل لضمان الأداء)
+    // تنسيق التاريخ كما في الكود المرفق لضمان الاستقرار
     if (history && Array.isArray(history)) {
       history.slice(-6).forEach(m => {
-        if (m.role && m.content) {
-          apiMessages.push({
-            role: m.role,
-            content: m.content
-          });
-        }
+        const role = (m.role === 'user') ? 'user' : 'assistant';
+        let textContent = "";
+        if (typeof m.content === 'string') textContent = m.content;
+        else if (Array.isArray(m.content)) textContent = m.content[0]?.text || "";
+        else textContent = m.text || "";
+
+        if (textContent) apiMessages.push({ role, content: textContent });
       });
     }
 
     // إضافة الرسالة الحالية
     apiMessages.push({ role: 'user', content: message });
 
-    // الاتصال بـ OpenRouter مع وقت انتظار محدد
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 55000); // 55 ثانية مهلة داخلية
-
+    // الاتصال بـ OpenRouter
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -92,30 +83,22 @@ export async function askAssociationAssistant(input: AssistantInput): Promise<As
         messages: apiMessages,
         temperature: 0.3,
         max_tokens: 1500
-      }),
-      signal: controller.signal
+      })
     });
 
-    clearTimeout(timeoutId);
-
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error("OpenRouter API Error:", errorData);
-      return { answer: "🌐 عذراً، واجهت مشكلة في الاتصال بالعقل الاصطناعي حالياً. يرجى إعادة المحاولة." };
+      return { answer: "🌐 عذراً، واجهت مشكلة في الاتصال بالعقل الاصطناعي حالياً." };
     }
 
     const data = await response.json();
     const replyText = data.choices?.[0]?.message?.content;
     
     return { 
-      answer: replyText || 'أعتذر، لم أتمكن من صياغة رد حالياً. هل يمكنني مساعدتك في شيء آخر؟' 
+      answer: replyText || 'أعتذر، لم أتمكن من صياغة رد حالياً.' 
     };
 
   } catch (error: any) {
-    console.error("askAssociationAssistant Global Error:", error);
-    if (error.name === 'AbortError') {
-      return { answer: "⏳ استغرق الطلب وقتاً أطول من المعتاد. يرجى المحاولة مرة أخرى." };
-    }
+    console.error("askAssociationAssistant Error:", error);
     return { 
       answer: "❌ حدث خطأ غير متوقع في النظام الذكي. يرجى المحاولة لاحقاً." 
     };
