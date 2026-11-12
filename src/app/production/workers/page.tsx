@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useCallback, useRef } from 'react';
@@ -82,6 +83,7 @@ import { FirestorePermissionError } from '@/firebase/errors';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 export default function WorkersPage() {
   const { lang, dir } = useTranslation();
@@ -338,37 +340,37 @@ export default function WorkersPage() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#f1f5f9] overflow-hidden">
+    <div className="flex flex-col h-full bg-[#f1f5f9] dark:bg-slate-950 overflow-hidden transition-colors duration-300">
       
       {/* HEADER SECTION */}
-      <div className="flex-none bg-white border-b border-slate-200 z-30 px-6 py-4">
+      <div className="flex-none bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 z-30 px-6 py-4 shadow-sm">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div className="flex items-center gap-4">
             <div className="p-2.5 premium-gradient rounded-lg text-white shadow-lg shadow-emerald-900/20">
               <Users className="w-5 h-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+              <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                 <span>{lang === 'ar' ? 'الموارد البشرية' : 'HR'}</span>
                 <ChevronRight className={`w-3 h-3 ${dir === 'rtl' ? 'rotate-180' : ''}`} />
-                <span className="text-slate-600">{lang === 'ar' ? 'سجل الحرفيين' : 'Workforce'}</span>
+                <span className="text-slate-600 dark:text-slate-400">{lang === 'ar' ? 'سجل الحرفيين' : 'Workforce'}</span>
               </div>
-              <h1 className="text-xl font-black text-slate-900 leading-tight">
+              <h1 className="text-xl font-black text-slate-900 dark:text-slate-100 leading-tight">
                 {lang === 'ar' ? 'قاعدة بيانات القوى العاملة' : 'Personnel Master Data'}
               </h1>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="flex gap-2 bg-slate-50 p-1 rounded-lg border border-slate-100">
+            <div className="flex gap-2 bg-slate-50 dark:bg-slate-800/50 p-1 rounded-lg border border-slate-100 dark:border-slate-800">
               <div className="px-3 py-1 text-center">
-                <p className="text-[9px] font-bold text-slate-400 uppercase">{lang === 'ar' ? 'مشرفين' : 'Sups'}</p>
-                <p className="text-sm font-black text-emerald-600 tabular-nums">{workersLoading ? '..' : stats.supervisors}</p>
+                <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">{lang === 'ar' ? 'مشرفين' : 'Sups'}</p>
+                <p className="text-sm font-black text-emerald-600 dark:text-emerald-400 tabular-nums">{workersLoading ? '..' : stats.supervisors}</p>
               </div>
-              <div className="w-px h-6 bg-slate-200 self-center" />
+              <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 self-center" />
               <div className="px-3 py-1 text-center">
-                <p className="text-[9px] font-bold text-slate-400 uppercase">{lang === 'ar' ? 'عمال' : 'Workers'}</p>
-                <p className="text-sm font-black text-slate-700 tabular-nums">{workersLoading ? '..' : stats.active - stats.supervisors}</p>
+                <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">{lang === 'ar' ? 'عمال' : 'Workers'}</p>
+                <p className="text-sm font-black text-slate-700 dark:text-slate-300 tabular-nums">{workersLoading ? '..' : stats.active - stats.supervisors}</p>
               </div>
             </div>
             
@@ -380,53 +382,58 @@ export default function WorkersPage() {
         </div>
 
         {/* SEARCH BAR */}
-        <div className="mt-4 flex items-center gap-2 bg-slate-50 p-1.5 rounded-lg border border-slate-200">
+        <div className="mt-4 flex items-center gap-2 bg-slate-50 dark:bg-slate-800/50 p-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
           <div className="relative flex-1">
-            <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400`} />
+            <Search className={cn("absolute top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500", dir === 'rtl' ? "right-3" : "left-3")} />
             <input 
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={lang === 'ar' ? 'بحث باسم الموظف أو المعرف...' : 'Search by name or ID...'}
-              className={`w-full ${dir === 'rtl' ? 'pr-10 pl-4' : 'pl-10 pr-4'} h-9 bg-white border border-slate-200 rounded-md text-xs font-bold focus:ring-emerald-500/10 focus:border-emerald-500 outline-none`}
+              className={cn(
+                "w-full h-9 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-bold focus:ring-emerald-500/10 focus:border-emerald-500 outline-none dark:text-slate-100",
+                dir === 'rtl' ? 'pr-10 pl-4' : 'pl-10 pr-4'
+              )}
             />
           </div>
           
           <div className="flex items-center gap-1.5 px-1.5">
-            <Button onClick={handleExportCSV} variant="ghost" className="h-9 px-4 rounded-md text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent hover:border-slate-200">
-              <FileDown className="w-3.5 h-3.5 text-emerald-600" />
+            <Button onClick={handleExportCSV} variant="ghost" className="h-9 px-4 rounded-md text-xs font-bold gap-2 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition-colors">
+              <FileDown className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
               {lang === 'ar' ? 'تصدير' : 'Export'}
             </Button>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-9 px-4 rounded-md text-xs font-bold gap-2 text-slate-600 hover:bg-white border border-transparent hover:border-slate-200">
+                <Button variant="ghost" className="h-9 px-4 rounded-md text-xs font-bold gap-2 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition-colors">
                   <Filter className="w-3.5 h-3.5" />
                   {lang === 'ar' ? 'تصفية' : 'Filter'}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="w-64 rounded-lg shadow-xl">
-                <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'الرتبة الوظيفية' : 'RANK'}</DropdownMenuLabel>
-                <DropdownMenuItem onClick={() => setRoleFilter('all')} className="flex items-center justify-between text-xs font-bold cursor-pointer">
+              <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="w-64 rounded-lg shadow-xl dark:bg-slate-900 dark:border-slate-800">
+                <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest">{lang === 'ar' ? 'الرتبة الوظيفية' : 'RANK'}</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => setRoleFilter('all')} className="flex items-center justify-between text-xs font-bold cursor-pointer dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
                   {lang === 'ar' ? 'الكل' : 'All Roles'}
-                  {roleFilter === 'all' && <Check className="w-3 h-3 text-emerald-600" />}
+                  {roleFilter === 'all' && <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />}
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setRoleFilter('supervisors')} className="flex items-center justify-between text-xs font-bold cursor-pointer">
+                <DropdownMenuItem onClick={() => setRoleFilter('supervisors')} className="flex items-center justify-between text-xs font-bold cursor-pointer dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
                   {lang === 'ar' ? 'المشرفين فقط' : 'Supervisors Only'}
-                  {roleFilter === 'supervisors' && <Check className="w-3 h-3 text-emerald-600" />}
+                  {roleFilter === 'supervisors' && <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />}
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setRoleFilter('workers')} className="flex items-center justify-between text-xs font-bold cursor-pointer">
+                <DropdownMenuItem onClick={() => setRoleFilter('workers')} className="flex items-center justify-between text-xs font-bold cursor-pointer dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
                   {lang === 'ar' ? 'العمال فقط' : 'Workers Only'}
-                  {roleFilter === 'workers' && <Check className="w-3 h-3 text-emerald-600" />}
+                  {roleFilter === 'workers' && <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />}
                 </DropdownMenuItem>
                 
-                <DropdownMenuSeparator />
-                <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{lang === 'ar' ? 'حسب القسم' : 'UNIT'}</DropdownMenuLabel>
-                {departments?.map(d => (
-                  <DropdownMenuItem key={d.id} onClick={() => setDeptFilter(d.id)} className="flex items-center justify-between text-xs font-bold cursor-pointer">
-                    {lang === 'ar' ? d.nameAr : d.nameEn}
-                    {deptFilter === d.id && <Check className="w-3 h-3 text-emerald-600" />}
-                  </DropdownMenuItem>
-                ))}
+                <DropdownMenuSeparator className="dark:bg-slate-800" />
+                <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest">{lang === 'ar' ? 'حسب القسم' : 'UNIT'}</DropdownMenuLabel>
+                <ScrollArea className="h-40">
+                  {departments?.map(d => (
+                    <DropdownMenuItem key={d.id} onClick={() => setDeptFilter(d.id)} className="flex items-center justify-between text-xs font-bold cursor-pointer dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
+                      {lang === 'ar' ? d.nameAr : d.nameEn}
+                      {deptFilter === d.id && <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />}
+                    </DropdownMenuItem>
+                  ))}
+                </ScrollArea>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -435,94 +442,94 @@ export default function WorkersPage() {
 
       {/* DATA GRID SECTION */}
       <div className="flex-1 min-h-0 flex flex-col p-4">
-        <div className="flex-1 bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden flex flex-col">
+        <div className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg shadow-sm overflow-hidden flex flex-col transition-colors duration-300">
           <div className="flex-1 overflow-auto relative no-scrollbar">
             <Table className="text-right border-separate border-spacing-0">
-              <TableHeader className="sticky top-0 z-20 bg-slate-100/95 backdrop-blur-sm shadow-sm">
-                <TableRow className="border-b border-slate-200">
-                  <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 px-6 text-right whitespace-nowrap bg-inherit">
-                    <button onClick={() => toggleSort('fullName')} className="flex items-center gap-2 hover:text-emerald-700 transition-colors uppercase">
+              <TableHeader className="sticky top-0 z-20 bg-slate-100/95 dark:bg-slate-800/95 backdrop-blur-sm shadow-sm">
+                <TableRow className="border-b border-slate-200 dark:border-slate-700">
+                  <TableHead className={cn("h-10 font-bold text-[11px] uppercase text-slate-500 dark:text-slate-400 px-6 text-right whitespace-nowrap bg-inherit")}>
+                    <button onClick={() => toggleSort('fullName')} className="flex items-center gap-2 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors uppercase">
                       {lang === 'ar' ? 'الموظف' : 'PERSONNEL'}
                       {sortBy === 'fullName' ? (sortOrder === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-30" />}
                     </button>
                   </TableHead>
-                  <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 px-6 text-right whitespace-nowrap bg-inherit">{lang === 'ar' ? 'الرتبة' : 'RANK'}</TableHead>
-                  <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 px-6 text-right whitespace-nowrap bg-inherit">{lang === 'ar' ? 'القسم' : 'UNIT'}</TableHead>
-                  <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 px-6 text-right whitespace-nowrap bg-inherit">{lang === 'ar' ? 'المشرف المسؤول' : 'SUPERVISOR'}</TableHead>
-                  <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 px-6 text-center whitespace-nowrap bg-inherit">{lang === 'ar' ? 'الحالة' : 'STATUS'}</TableHead>
-                  <TableHead className="h-10 w-[60px] sticky right-0 bg-inherit shadow-[-2px_0_5px_rgba(0,0,0,0.05)]"></TableHead>
+                  <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 dark:text-slate-400 px-6 text-right whitespace-nowrap bg-inherit">{lang === 'ar' ? 'الرتبة' : 'RANK'}</TableHead>
+                  <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 dark:text-slate-400 px-6 text-right whitespace-nowrap bg-inherit">{lang === 'ar' ? 'القسم' : 'UNIT'}</TableHead>
+                  <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 dark:text-slate-400 px-6 text-right whitespace-nowrap bg-inherit">{lang === 'ar' ? 'المشرف المسؤول' : 'SUPERVISOR'}</TableHead>
+                  <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 dark:text-slate-400 px-6 text-center whitespace-nowrap bg-inherit">{lang === 'ar' ? 'الحالة' : 'STATUS'}</TableHead>
+                  <TableHead className="h-10 w-[60px] sticky right-0 bg-inherit shadow-[-2px_0_5px_rgba(0,0,0,0.05)] dark:shadow-none"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {workersLoading ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-20 font-bold text-slate-400 animate-pulse">جاري التحميل...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={6} className="text-center py-20 font-bold text-slate-400 dark:text-slate-600 animate-pulse">جاري التحميل...</TableCell></TableRow>
                 ) : filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-20 font-bold text-slate-300">لا توجد سجلات</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={6} className="text-center py-20 font-bold text-slate-300 dark:text-slate-800">لا توجد سجلات</TableCell></TableRow>
                 ) : filtered.map((worker) => {
                   const dept = departments?.find(d => d.id === worker.departmentId);
                   const supervisor = supervisors.find(s => s.id === worker.supervisorId);
                   return (
-                    <TableRow key={worker.id} className="group hover:bg-slate-50/50 border-b border-slate-100">
+                    <TableRow key={worker.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 transition-colors">
                       <TableCell className="px-6 py-3">
                         <div className="flex items-center gap-3">
-                          <Avatar className={cn("h-9 w-9 rounded-lg border-2", worker.isSupervisor ? "border-emerald-200" : "border-slate-100")}>
+                          <Avatar className={cn("h-9 w-9 rounded-lg border-2", worker.isSupervisor ? "border-emerald-200 dark:border-emerald-900/50" : "border-slate-100 dark:border-slate-800")}>
                             <AvatarImage src={worker.photoUrl || undefined} alt={worker.fullName} className="object-cover" />
-                            <AvatarFallback className={cn("text-[10px] font-black uppercase", worker.isSupervisor ? "bg-emerald-600 text-white" : "bg-slate-100 text-slate-500")}>
+                            <AvatarFallback className={cn("text-[10px] font-black uppercase", worker.isSupervisor ? "bg-emerald-600 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400")}>
                               {worker.fullName?.charAt(0)}
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex flex-col">
-                            <span className="font-black text-slate-900 text-xs">{worker.fullName}</span>
-                            <span className="text-[10px] text-emerald-700 font-bold tabular-nums tracking-widest uppercase">{worker.workerId}</span>
+                            <span className="font-black text-slate-900 dark:text-slate-100 text-xs">{worker.fullName}</span>
+                            <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold tabular-nums tracking-widest uppercase">{worker.workerId}</span>
                           </div>
                         </div>
                       </TableCell>
                       <TableCell className="px-6 py-3">
                         {worker.isSupervisor ? (
-                          <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded text-[9px] font-black uppercase">
+                          <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30 rounded text-[9px] font-black uppercase">
                             <ShieldCheck className="w-2.5 h-2.5" /> {lang === 'ar' ? 'مشرف قسم' : 'Supervisor'}
                           </div>
                         ) : (
-                          <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-slate-50 text-slate-500 border border-slate-100 rounded text-[9px] font-black uppercase">
+                          <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-100 dark:border-slate-700 rounded text-[9px] font-black uppercase">
                             <UserIcon className="w-2.5 h-2.5" /> {lang === 'ar' ? 'حرفي / عامل' : 'Worker'}
                           </div>
                         )}
                       </TableCell>
                       <TableCell className="px-6 py-3">
-                        <span className="font-bold text-slate-600 text-xs">{dept ? (lang === 'ar' ? dept.nameAr : dept.nameEn) : '---'}</span>
+                        <span className="font-bold text-slate-600 dark:text-slate-400 text-xs">{dept ? (lang === 'ar' ? dept.nameAr : dept.nameEn) : '---'}</span>
                       </TableCell>
                       <TableCell className="px-6 py-3">
                         {worker.isSupervisor ? (
-                          <span className="text-[9px] font-bold text-slate-300 italic uppercase">---</span>
+                          <span className="text-[9px] font-bold text-slate-300 dark:text-slate-700 italic uppercase">---</span>
                         ) : supervisor ? (
-                          <div className="flex items-center gap-2 text-slate-700 font-bold text-xs">
-                            <UserCheck className="w-3 h-3 text-emerald-500" /> {supervisor.fullName}
+                          <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300 font-bold text-xs">
+                            <UserCheck className="w-3 h-3 text-emerald-500 dark:text-emerald-400" /> {supervisor.fullName}
                           </div>
                         ) : (
-                          <span className="text-[9px] font-bold text-rose-300 italic">{lang === 'ar' ? 'لم يعين مشرف' : 'No Supervisor'}</span>
+                          <span className="text-[9px] font-bold text-rose-300 dark:text-rose-900 italic">{lang === 'ar' ? 'لم يعين مشرف' : 'No Supervisor'}</span>
                         )}
                       </TableCell>
                       <TableCell className="px-6 py-3 text-center">
-                        <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[9px] font-black uppercase ${
-                          worker.active ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-amber-50 text-amber-700 border border-amber-100'
+                        <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[9px] font-black uppercase border ${
+                          worker.active ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/30' : 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border-amber-100 dark:border-amber-900/30'
                         }`}>
                           <div className={`w-1.5 h-1.5 rounded-full ${worker.active ? 'bg-emerald-600' : 'bg-amber-600'}`} />
                           {worker.active ? (lang === 'ar' ? 'نشط' : 'Active') : (lang === 'ar' ? 'مجاز' : 'Inactive')}
                         </div>
                       </TableCell>
-                      <TableCell className="px-6 py-3 sticky right-0 bg-white group-hover:bg-slate-50/50 shadow-[-10px_0_10px_-5px_rgba(0,0,0,0.05)] border-l border-slate-100">
+                      <TableCell className="px-6 py-3 sticky right-0 bg-white dark:bg-slate-900 group-hover:bg-slate-50/50 dark:group-hover:bg-slate-800/50 shadow-[-10px_0_10px_-5px_rgba(0,0,0,0.05)] dark:shadow-none border-l dark:border-slate-800">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-slate-200"><MoreVertical className="w-4 h-4 text-slate-400" /></Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"><MoreVertical className="w-4 h-4 text-slate-400 dark:text-slate-500" /></Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="rounded-lg border-slate-200 shadow-xl min-w-[180px]">
-                            <DropdownMenuItem onClick={() => handleEditClick(worker)} className="gap-3 font-bold text-xs py-2.5"><Edit2 className="w-3.5 h-3.5 text-emerald-600" /> {lang === 'ar' ? 'تعديل الملف' : 'Update Info'}</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleStatusToggle(worker)} className="gap-3 font-bold text-xs py-2.5">
-                              {worker.active ? <PowerOff className="w-3.5 h-3.5 text-amber-600" /> : <Power className="w-3.5 h-3.5 text-emerald-600" />}
+                          <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="rounded-lg border-slate-200 dark:border-slate-800 dark:bg-slate-900 shadow-xl min-w-[180px]">
+                            <DropdownMenuItem onClick={() => handleEditClick(worker)} className="gap-3 font-bold text-xs py-2.5 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800"><Edit2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'تعديل الملف' : 'Update Info'}</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleStatusToggle(worker)} className="gap-3 font-bold text-xs py-2.5 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
+                              {worker.active ? <PowerOff className="w-3.5 h-3.5 text-amber-600" /> : <Power className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />}
                               {worker.active ? (lang === 'ar' ? 'منح إجازة' : 'Activate') : (lang === 'ar' ? 'تفعيل' : 'Deactivate')}
                             </DropdownMenuItem>
-                            <div className="h-px bg-slate-100 my-1" />
-                            <DropdownMenuItem onClick={() => setDeletingWorkerId(worker.id)} className="gap-3 font-bold text-xs text-red-600 py-2.5"><Trash2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'نقل للأرشيف' : 'Archive'}</DropdownMenuItem>
+                            <DropdownMenuSeparator className="dark:bg-slate-800" />
+                            <DropdownMenuItem onClick={() => setDeletingWorkerId(worker.id)} className="gap-3 font-bold text-xs text-red-600 dark:text-rose-400 py-2.5 focus:bg-rose-50 dark:focus:bg-rose-900/20"><Trash2 className="w-3.5 h-3.5" /> {lang === 'ar' ? 'نقل للأرشيف' : 'Archive'}</DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -533,13 +540,26 @@ export default function WorkersPage() {
             </Table>
           </div>
         </div>
+
+        {/* SYSTEM FOOTER */}
+        <div className="mt-4 flex-none bg-slate-900 dark:bg-slate-900/80 rounded-lg p-3 text-white flex items-center gap-4 border border-slate-800 shadow-inner transition-colors duration-300">
+          <div className="w-8 h-8 bg-emerald-500/20 rounded flex items-center justify-center text-emerald-400 shrink-0"><Info className="w-4 h-4" /></div>
+          <div className="flex-1 text-right">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 leading-none mb-1">
+              {lang === 'ar' ? 'بروتوكول حماية البيانات الوظيفية' : 'Personnel Data Security'}
+            </p>
+            <p className="text-[10px] text-slate-300 dark:text-slate-400 font-bold opacity-80 leading-relaxed">
+              {lang === 'ar' ? 'كافة البيانات الوظيفية وسجلات المشرفين محمية ومشفرة. التغييرات في القسم أو المشرف تؤثر فوراً على صلاحيات الاستلام والصرف الميداني.' : 'All personnel data is encrypted. Changes in department or supervisor affect field permissions immediately.'}
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* ADD/EDIT DIALOG SECTION */}
       <Dialog open={isAddDialogOpen} onOpenChange={(open) => !open && resetForm()}>
-        <DialogContent className="sm:max-w-[550px] rounded-lg border-slate-200 shadow-2xl p-0 overflow-hidden">
+        <DialogContent className="sm:max-w-[550px] rounded-lg border-none shadow-2xl p-0 overflow-hidden dark:bg-slate-900 transition-colors duration-300">
           <div className="premium-gradient p-6 text-white relative">
-            <DialogHeader className="text-right rtl:text-right ltr:text-left">
+            <DialogHeader className={cn("text-right rtl:text-right ltr:text-left")}>
               <DialogTitle className="text-xl font-black flex items-center gap-3 text-white">
                 <UserPlus className="w-5 h-5 text-emerald-300" />
                 {editingWorkerId ? (lang === 'ar' ? 'تعديل سجل الموظف' : 'Update Record') : (lang === 'ar' ? 'تسجيل جديد في قاعدة البيانات' : 'New Enrollment')}
@@ -550,15 +570,15 @@ export default function WorkersPage() {
             </DialogHeader>
           </div>
 
-          <form onSubmit={handleSaveWorker} className="p-6 space-y-5 bg-white">
+          <form onSubmit={handleSaveWorker} className="p-6 space-y-5 bg-white dark:bg-slate-900 transition-colors duration-300">
             
             {/* PROFILE SECTION */}
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
               <div className="md:col-span-4 flex flex-col items-center gap-3 pt-2">
                 <div onClick={() => !isCompressing && fileInputRef.current?.click()} className="relative group cursor-pointer">
-                  <Avatar className="h-24 w-24 rounded-2xl border-4 border-slate-100 shadow-md bg-slate-50 overflow-hidden">
+                  <Avatar className="h-24 w-24 rounded-2xl border-4 border-slate-100 dark:border-slate-800 shadow-md bg-slate-50 dark:bg-slate-800 overflow-hidden transition-all">
                     <AvatarImage src={formData.photoUrl || undefined} className="object-cover" />
-                    <AvatarFallback className="bg-slate-50 text-slate-300">
+                    <AvatarFallback className="bg-slate-50 dark:bg-slate-800 text-slate-300 dark:text-slate-600">
                       {isCompressing ? <Loader2 className="w-8 h-8 animate-spin text-emerald-500" /> : <UserIcon className="w-10 h-10" />}
                     </AvatarFallback>
                   </Avatar>
@@ -567,35 +587,35 @@ export default function WorkersPage() {
                   </div>
                 </div>
                 <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
-                <Label className="text-[9px] font-black uppercase text-slate-400">صورة الموظف</Label>
+                <Label className="text-[9px] font-black uppercase text-slate-400 dark:text-slate-500">صورة الموظف</Label>
               </div>
 
               <div className="md:col-span-8 space-y-4">
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
-                    <UserIcon className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'الاسم الكامل' : 'FULL NAME'}
+                <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
+                  <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start">
+                    <UserIcon className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'الاسم الكامل' : 'FULL NAME'}
                   </Label>
-                  <Input value={formData.fullName} onChange={(e) => setFormData({...formData, fullName: e.target.value})} className="h-10 font-bold text-xs bg-slate-50 border-slate-200" required />
+                  <Input value={formData.fullName} onChange={(e) => setFormData({...formData, fullName: e.target.value})} className="h-10 font-bold text-xs bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 dark:text-slate-100" required />
                 </div>
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
-                    <Phone className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'رقم الهاتف' : 'PHONE NUMBER'}
+                <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
+                  <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start">
+                    <Phone className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'رقم الهاتف' : 'PHONE NUMBER'}
                   </Label>
-                  <Input value={formData.phoneNumber} onChange={(e) => setFormData({...formData, phoneNumber: e.target.value})} placeholder="7XXXXXXXX" className="h-10 font-bold text-xs bg-slate-50 tabular-nums border-slate-200" />
+                  <Input value={formData.phoneNumber} onChange={(e) => setFormData({...formData, phoneNumber: e.target.value})} placeholder="7XXXXXXXX" className="h-10 font-bold text-xs bg-slate-50 dark:bg-slate-800 tabular-nums border-slate-200 dark:border-slate-700 dark:text-slate-100" />
                 </div>
               </div>
             </div>
 
             {/* SUPERVISOR TOGGLE SECTION */}
-            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-4">
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 space-y-4 transition-colors">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className={cn("p-2 rounded-lg transition-colors", formData.isSupervisor ? "bg-emerald-600 text-white shadow-lg shadow-emerald-900/20" : "bg-white text-slate-300 border border-slate-200")}>
+                  <div className={cn("p-2 rounded-lg transition-colors", formData.isSupervisor ? "bg-emerald-600 text-white shadow-lg shadow-emerald-900/20" : "bg-white dark:bg-slate-900 text-slate-300 dark:text-slate-700 border border-slate-200 dark:border-slate-700")}>
                     <ShieldCheck className="w-5 h-5" />
                   </div>
-                  <div>
-                    <p className="text-[11px] font-black text-slate-800">{lang === 'ar' ? 'تعيين هذا الموظف كمشرف' : 'Promote to Supervisor'}</p>
-                    <p className="text-[9px] text-slate-400 font-bold">{lang === 'ar' ? 'المشرف هو المسؤول عن مجموعة من العمال' : 'Supervisors manage groups and inventory'}</p>
+                  <div className="text-right">
+                    <p className="text-[11px] font-black text-slate-800 dark:text-slate-200">{lang === 'ar' ? 'تعيين هذا الموظف كمشرف' : 'Promote to Supervisor'}</p>
+                    <p className="text-[9px] text-slate-400 dark:text-slate-500 font-bold">{lang === 'ar' ? 'المشرف هو المسؤول عن مجموعة من العمال' : 'Supervisors manage groups and inventory'}</p>
                   </div>
                 </div>
                 <Checkbox 
@@ -606,14 +626,15 @@ export default function WorkersPage() {
               </div>
 
               {!formData.isSupervisor && (
-                <div className="space-y-1.5 pt-2 border-t border-slate-200">
-                  <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
-                    <UserCheck className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'المشرف المباشر المسؤول عن العامل' : 'ASSIGN DIRECT SUPERVISOR'}
+                <div className="space-y-1.5 pt-2 border-t border-slate-200 dark:border-slate-700">
+                  <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start">
+                    <UserCheck className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'المشرف المباشر المسؤول عن العامل' : 'ASSIGN DIRECT SUPERVISOR'}
                   </Label>
                   <select 
                     value={formData.supervisorId} 
                     onChange={(e) => setFormData({...formData, supervisorId: e.target.value})} 
-                    className="w-full h-11 px-3 bg-white border border-slate-200 rounded-md text-xs font-bold focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    className="w-full h-11 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-bold outline-none dark:text-slate-100 focus:ring-1 focus:ring-emerald-500 transition-colors"
+                    dir={dir}
                   >
                     <option value="">{lang === 'ar' ? '-- بدون مشرف حالياً --' : '-- No Supervisor Assigned --'}</option>
                     {supervisors.filter(s => s.id !== editingWorkerId).map(s => (
@@ -626,46 +647,46 @@ export default function WorkersPage() {
 
             {/* ORGANIZATION SECTION */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
-                  <Building2 className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'القسم / المسار' : 'DEPARTMENT'}
+              <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
+                <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start">
+                  <Building2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'القسم / المسار' : 'DEPARTMENT'}
                 </Label>
-                <select value={formData.departmentId} onChange={(e) => setFormData({...formData, departmentId: e.target.value})} className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none" required>
+                <select value={formData.departmentId} onChange={(e) => setFormData({...formData, departmentId: e.target.value})} className="w-full h-10 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-bold outline-none dark:text-slate-100 transition-colors" dir={dir} required>
                   <option value="">-- اختر القسم --</option>
                   {departments?.map(d => <option key={d.id} value={d.id}>{lang === 'ar' ? d.nameAr : d.nameEn}</option>)}
                 </select>
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
-                  <Calendar className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'تاريخ الانضمام' : 'JOIN DATE'}
+              <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
+                <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start">
+                  <Calendar className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'تاريخ الانضمام' : 'JOIN DATE'}
                 </Label>
-                <Input type="date" value={formData.joinDate} onChange={(e) => setFormData({...formData, joinDate: e.target.value})} className="h-10 font-bold text-xs bg-slate-50 tabular-nums border-slate-200" required />
+                <Input type="date" value={formData.joinDate} onChange={(e) => setFormData({...formData, joinDate: e.target.value})} className="h-10 font-bold text-xs bg-slate-50 dark:bg-slate-800 tabular-nums border-slate-200 dark:border-slate-700 dark:text-slate-100" required />
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2">
-                <Activity className="w-3 h-3 text-emerald-600" /> {lang === 'ar' ? 'حالة الموظف' : 'EMPLOYMENT STATUS'}
+            <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
+              <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start">
+                <Activity className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'حالة الموظف' : 'EMPLOYMENT STATUS'}
               </Label>
-              <select value={formData.active ? 'true' : 'false'} onChange={(e) => setFormData({...formData, active: e.target.value === 'true'})} className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold outline-none">
+              <select value={formData.active ? 'true' : 'false'} onChange={(e) => setFormData({...formData, active: e.target.value === 'true'})} className="w-full h-10 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-bold outline-none dark:text-slate-100 transition-colors" dir={dir}>
                 <option value="true">{lang === 'ar' ? 'نشط على رأس العمل' : 'Active / Working'}</option>
                 <option value="false">{lang === 'ar' ? 'في إجازة / متوقف' : 'Inactive / On Leave'}</option>
               </select>
             </div>
 
             {validationError && (
-              <div className="p-3 bg-red-50 border border-red-100 rounded-md flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-red-600" />
-                <p className="text-[10px] font-black text-red-600">{validationError}</p>
+              <div className="p-3 bg-red-50 dark:bg-rose-950/20 border border-red-100 dark:border-rose-900/30 rounded-md flex items-center gap-2 transition-colors">
+                <AlertCircle className="w-4 h-4 text-red-600 dark:text-rose-400" />
+                <p className="text-[10px] font-black text-red-600 dark:text-rose-400">{validationError}</p>
               </div>
             )}
 
-            <div className="flex gap-3 pt-2">
-              <Button type="submit" disabled={isSubmitting || isCompressing} className="flex-1 h-11 premium-gradient text-white rounded-md font-black text-sm shadow-md border-none">
+            <div className="flex gap-3 pt-2 border-t dark:border-slate-800">
+              <Button type="submit" disabled={isSubmitting || isCompressing} className="flex-1 h-11 premium-gradient text-white rounded-md font-black text-sm shadow-md border-none transition-all active:scale-95">
                 {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : <Save className="w-4 h-4 me-2" />}
                 {lang === 'ar' ? (isSubmitting ? 'جاري الحفظ...' : 'حفظ البيانات') : 'Commit Record'}
               </Button>
-              <Button type="button" variant="outline" onClick={resetForm} className="px-6 h-11 font-black text-slate-400 rounded-md border-slate-200">
+              <Button type="button" variant="outline" onClick={resetForm} className="px-6 h-11 font-black text-slate-400 dark:text-slate-500 rounded-md border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
                 {lang === 'ar' ? 'إلغاء' : 'Cancel'}
               </Button>
             </div>
@@ -675,8 +696,9 @@ export default function WorkersPage() {
 
       {/* ARCHIVE DIALOG */}
       <AlertDialog open={!!deletingWorkerId} onOpenChange={(open) => !open && setDeletingWorkerId(null)}>
-        <AlertDialogContent className="max-w-[400px] rounded-lg border-none shadow-2xl p-0 overflow-hidden">
-          <div className="bg-slate-950 p-8 text-center">
+        <AlertDialogContent className="max-w-[400px] rounded-lg border-none shadow-2xl p-0 overflow-hidden dark:bg-slate-900 transition-colors duration-300">
+          <div className="bg-slate-950 p-8 text-center relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-4 opacity-5"><Users2 className="w-32 h-32 text-white" /></div>
             <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20 shadow-inner">
               <History className="w-8 h-8 text-red-500" />
             </div>
@@ -687,11 +709,11 @@ export default function WorkersPage() {
                 : 'Personnel will be moved to archive. Historical data remains intact.'}
             </AlertDialogDescription>
           </div>
-          <div className="bg-white p-6 flex gap-3">
-            <AlertDialogAction onClick={handleArchiveWorker} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-md font-black">
+          <div className="bg-white dark:bg-slate-900 p-6 flex gap-3 transition-colors">
+            <AlertDialogAction onClick={handleArchiveWorker} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-md font-black border-none shadow-lg transition-all active:scale-95">
               {lang === 'ar' ? 'تأكيد الأرشفة' : 'Confirm'}
             </AlertDialogAction>
-            <AlertDialogCancel onClick={() => setDeletingWorkerId(null)} className="flex-1 h-11 bg-slate-50 border-slate-200 text-slate-400 rounded-md font-black">
+            <AlertDialogCancel onClick={() => setDeletingWorkerId(null)} className="flex-1 h-11 bg-slate-50 dark:bg-slate-800 border-none text-slate-400 dark:text-slate-500 rounded-md font-black hover:bg-slate-100 dark:hover:bg-slate-700 transition-all">
               {lang === 'ar' ? 'تراجع' : 'Cancel'}
             </AlertDialogCancel>
           </div>
