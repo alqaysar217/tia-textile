@@ -27,7 +27,6 @@ export default function ProductionLayout({
   const initialLoadRef = useRef(false);
   const lastAppliedDbLangRef = useRef<string | null>(null);
 
-  // جلب إعدادات النظام وبيانات صلاحيات المستخدم
   const settingsRef = useMemo(() => !db ? null : doc(db, 'settings', 'global'), [db]);
   const userProfileRef = useMemo(() => (!db || !user) ? null : doc(db, 'users', user.uid), [db, user]);
   
@@ -45,46 +44,51 @@ export default function ProductionLayout({
     }
   }, [user, authLoading, pathname, router]);
 
-  // حماية الواجهات بناءً على صلاحيات القراءة
+  // حماية الواجهات بناءً على مصفوفة الموديولات التفصيلية
   const isAuthorized = useMemo(() => {
     if (pathname === '/production/login' || pathname === '/production') return true;
-    if (profileLoading) return true; // بانتظار التحميل
+    if (profileLoading) return true;
     
-    // إذا لم يكن هناك ملف شخصي للمستخدم المسجل (مثل حالة المدير لأول مرة)
     if (!userProfile) {
-        // إذا كان بريد المدير، نسمح له بدخول لوحة التحكم لإعداد ملفه
         if (user?.email === 'alqaysarpc219@gmail.com') return true;
         return false;
     }
 
     if (userProfile.role === 'admin') return true;
 
-    // تحديد الموديول بناءً على الرابط
+    // خريطة المسارات للموديولات المستقلة (21 موديولاً)
     const moduleMap: Record<string, string> = {
+      '/production/orders/completed': 'orders_completed',
       '/production/orders': 'orders',
       '/production/products': 'products',
       '/production/materials': 'materials',
-      '/production/warehouses': 'materials',
+      '/production/warehouses/finished-goods': 'warehouse_finished',
       '/production/vouchers/issue': 'vouchers_issue',
       '/production/vouchers/receipt': 'vouchers_receipt',
       '/production/vouchers/return': 'vouchers_return',
       '/production/wages': 'wages',
       '/production/vouchers/costs': 'overhead',
       '/production/workers': 'workers',
-      '/production/departments': 'workers',
-      '/production/reports': 'reports',
-      '/production/users': 'settings',
+      '/production/departments': 'departments',
+      '/production/reports/productivity': 'report_productivity',
+      '/production/reports/costs': 'report_costs',
+      '/production/reports/materials': 'report_consumption',
+      '/production/reports/financial': 'report_financial',
+      '/production/users': 'users',
       '/production/settings': 'settings',
       '/production/trash': 'trash'
     };
 
-    const activeModule = Object.entries(moduleMap).find(([path]) => pathname.startsWith(path))?.[1];
+    // البحث عن الموديول المناسب بناءً على طول المسار (الأكثر دقة أولاً)
+    const activeModule = Object.entries(moduleMap)
+      .sort((a, b) => b[0].length - a[0].length)
+      .find(([path]) => pathname.startsWith(path))?.[1];
+
     if (!activeModule) return true;
 
     return userProfile.permissions?.[activeModule]?.read === true;
   }, [pathname, userProfile, profileLoading, user]);
 
-  // تطبيق إعدادات الثيم واللغة المفضلة
   useEffect(() => {
     if (settings && !isAuthChecking && user) {
       if (settings.themeMode === 'dark') document.documentElement.classList.add('dark');
@@ -119,7 +123,6 @@ export default function ProductionLayout({
     return <div className={lang === 'ar' ? 'arabic-font' : 'english-font'} dir={dir}>{children}</div>;
   }
 
-  // عرض صفحة "ممنوع الدخول" إذا لم تكن هناك صلاحية
   if (!isAuthorized && !profileLoading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-950 p-6 text-center" dir={dir}>

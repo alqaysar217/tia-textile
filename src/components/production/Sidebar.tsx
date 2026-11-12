@@ -31,6 +31,7 @@ import {
   PieChart,
   CheckCircle2,
   Settings2,
+  UserPlus
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -57,7 +58,6 @@ export function Sidebar() {
   const { user } = useUser();
   const db = useFirestore();
 
-  // جلب صلاحيات المستخدم الحالي من Firestore
   const userDocRef = useMemo(() => (!db || !user) ? null : doc(db, 'users', user.uid), [db, user]);
   const { data: userProfile } = useDoc<any>(userDocRef);
 
@@ -76,7 +76,7 @@ export function Sidebar() {
       icon: <Factory className="w-5 h-5" />,
       children: [
         { id: 'orders', name: lang === 'ar' ? 'أوامر الإنتاج (WIP)' : 'Production Orders', href: '/production/orders', icon: <Workflow className="w-3.5 h-3.5" /> },
-        { id: 'orders', name: lang === 'ar' ? 'الأوامر المكتملة' : 'Completed Orders', href: '/production/orders/completed', icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
+        { id: 'orders_completed', name: lang === 'ar' ? 'الأوامر المكتملة' : 'Completed Orders', href: '/production/orders/completed', icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
         { id: 'products', name: lang === 'ar' ? 'دليل المنتجات' : 'Products Catalog', href: '/production/products', icon: <ShoppingBag className="w-3.5 h-3.5" /> },
       ]
     },
@@ -98,7 +98,7 @@ export function Sidebar() {
       icon: <Box className="w-5 h-5" />,
       children: [
         { id: 'materials', name: t.production.rawMaterials, href: '/production/materials', icon: <Layers className="w-3.5 h-3.5" /> },
-        { id: 'materials', name: lang === 'ar' ? 'مستودع المنجز الجاهز' : 'Finished Goods Wh', href: '/production/warehouses/finished-goods', icon: <PackageCheck className="w-3.5 h-3.5" /> },
+        { id: 'warehouse_finished', name: lang === 'ar' ? 'مستودع المنجز الجاهز' : 'Finished Goods Wh', href: '/production/warehouses/finished-goods', icon: <PackageCheck className="w-3.5 h-3.5" /> },
       ]
     },
     {
@@ -107,7 +107,7 @@ export function Sidebar() {
       icon: <Users className="w-5 h-5" />,
       children: [
         { id: 'workers', name: t.production.workersList, href: '/production/workers', icon: <Users2 className="w-3.5 h-3.5" /> },
-        { id: 'workers', name: t.production.departments, href: '/production/departments', icon: <ShieldCheck className="w-3.5 h-3.5" /> },
+        { id: 'departments', name: t.production.departments, href: '/production/departments', icon: <ShieldCheck className="w-3.5 h-3.5" /> },
       ]
     },
     {
@@ -115,10 +115,10 @@ export function Sidebar() {
       name: lang === 'ar' ? 'التقارير والتحليل' : 'Reports & Analytics',
       icon: <FileBarChart className="w-5 h-5" />,
       children: [
-        { id: 'reports', name: lang === 'ar' ? 'إنتاجية وأجور العمال' : 'Worker Performance', href: '/production/reports/productivity', icon: <UserCheck className="w-3.5 h-3.5" /> },
-        { id: 'reports', name: lang === 'ar' ? 'تحليل تكاليف الأوامر' : 'Order Cost Analysis', href: '/production/reports/costs', icon: <Calculator className="w-3.5 h-3.5" /> },
-        { id: 'reports', name: lang === 'ar' ? 'استهلاك المواد الخام' : 'Material Consumption', href: '/production/reports/materials', icon: <PieChart className="w-3.5 h-3.5" /> },
-        { id: 'reports', name: lang === 'ar' ? 'الملخص المالي والنمو' : 'Financial Summary', href: '/production/reports/financial', icon: <TrendingUp className="w-3.5 h-3.5" /> },
+        { id: 'report_productivity', name: lang === 'ar' ? 'إنتاجية وأجور العمال' : 'Worker Performance', href: '/production/reports/productivity', icon: <UserCheck className="w-3.5 h-3.5" /> },
+        { id: 'report_costs', name: lang === 'ar' ? 'تحليل تكاليف الأوامر' : 'Order Cost Analysis', href: '/production/reports/costs', icon: <Calculator className="w-3.5 h-3.5" /> },
+        { id: 'report_consumption', name: lang === 'ar' ? 'استهلاك المواد الخام' : 'Material Consumption', href: '/production/reports/materials', icon: <PieChart className="w-3.5 h-3.5" /> },
+        { id: 'report_financial', name: lang === 'ar' ? 'الملخص المالي والنمو' : 'Financial Summary', href: '/production/reports/financial', icon: <TrendingUp className="w-3.5 h-3.5" /> },
       ]
     },
     {
@@ -126,16 +126,15 @@ export function Sidebar() {
       name: t.production.management,
       icon: <Settings className="w-5 h-5" />,
       children: [
-        { id: 'settings', name: lang === 'ar' ? 'المستخدمين والصلاحيات' : 'Users & Permissions', href: '/production/users', icon: <UserCheck className="w-3.5 h-3.5" /> },
+        { id: 'users', name: lang === 'ar' ? 'المستخدمين والصلاحيات' : 'Users & Permissions', href: '/production/users', icon: <UserPlus className="w-3.5 h-3.5" /> },
         { id: 'settings', name: t.production.settings, href: '/production/settings', icon: <Settings2 className="w-3.5 h-3.5" /> },
         { id: 'trash', name: t.production.trash, href: '/production/trash', icon: <Trash2 className="w-3.5 h-3.5" /> },
       ]
     },
   ];
 
-  // فلترة القائمة الجانبية بناءً على صلاحيات القراءة
   const filteredNavigation = useMemo(() => {
-    if (userProfile?.role === 'admin') return navigation; // الأدمن يرى كل شيء
+    if (userProfile?.role === 'admin') return navigation;
 
     return navigation.map(group => {
       if (!group.children) return group;
@@ -175,12 +174,12 @@ export function Sidebar() {
 
       <nav className="flex-1 space-y-2 px-4 overflow-y-auto overflow-x-hidden no-scrollbar relative z-10">
         {filteredNavigation.map((group) => {
-          const isGroupActive = group.children?.some(child => pathname === child.href);
+          const isGroupActive = group.children?.some(child => pathname.startsWith(child.href));
           
           return (
             <Collapsible 
               key={group.name} 
-              defaultOpen={pathname.startsWith(group.children?.[0]?.href?.split('/')?.slice(0,3)?.join('/') || '---')}
+              defaultOpen={isGroupActive}
             >
               <CollapsibleTrigger 
                 disabled={isCollapsed} 

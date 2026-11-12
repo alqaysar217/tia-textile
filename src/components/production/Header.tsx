@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -72,21 +71,17 @@ export function Header() {
   const router = useRouter();
   const { user: authUser } = useUser();
 
-  // استيراد الصلاحيات من المحرك المركزي
   const { permissions, isAdmin } = useProduction();
 
-  // جلب بيانات المستخدم الحية
   const userDocRef = useMemo(() => 
     (!db || !authUser) ? null : doc(db, 'users', authUser.uid), 
     [db, authUser]
   );
   const { data: userProfile } = useDoc<any>(userDocRef);
 
-  // إعدادات الثيم
   const settingsRef = useMemo(() => !db ? null : doc(db, 'settings', 'global'), [db]);
   const { data: settings } = useDoc<any>(settingsRef);
 
-  // بيانات النموذج عند التعديل
   const [profileForm, setProfileForm] = useState({
     fullName: '',
     photoUrl: '',
@@ -103,7 +98,6 @@ export function Header() {
     }));
   }, [lang]);
 
-  // تحديث النموذج عند تحميل البيانات
   useEffect(() => {
     if (userProfile) {
       setProfileForm({
@@ -189,17 +183,25 @@ export function Header() {
           permissions: {
             dashboard: { read: true, create: true, edit: true, delete: true },
             orders: { read: true, create: true, edit: true, delete: true },
+            orders_completed: { read: true, create: true, edit: true, delete: true },
             products: { read: true, create: true, edit: true, delete: true },
             materials: { read: true, create: true, edit: true, delete: true },
+            warehouse_finished: { read: true, create: true, edit: true, delete: true },
             vouchers_issue: { read: true, create: true, edit: true, delete: true },
             vouchers_receipt: { read: true, create: true, edit: true, delete: true },
             vouchers_return: { read: true, create: true, edit: true, delete: true },
             wages: { read: true, create: true, edit: true, delete: true },
             overhead: { read: true, create: true, edit: true, delete: true },
             workers: { read: true, create: true, edit: true, delete: true },
-            reports: { read: true, create: true, edit: true, delete: true },
+            departments: { read: true, create: true, edit: true, delete: true },
+            report_productivity: { read: true, create: true, edit: true, delete: true },
+            report_costs: { read: true, create: true, edit: true, delete: true },
+            report_consumption: { read: true, create: true, edit: true, delete: true },
+            report_financial: { read: true, create: true, edit: true, delete: true },
+            users: { read: true, create: true, edit: true, delete: true },
             settings: { read: true, create: true, edit: true, delete: true },
             trash: { read: true, create: true, edit: true, delete: true },
+            ai: { read: true, create: true, edit: true, delete: true },
           }
         })
       }, { merge: true });
@@ -220,8 +222,8 @@ export function Header() {
   const displayRole = userProfile?.role || (authUser?.email === 'alqaysarpc219@gmail.com' ? 'admin' : 'staff');
   const displayPhoto = userProfile?.photoUrl || authUser?.photoURL || '';
 
-  // السماح للمدير أو من يملك صلاحية التقارير فقط بالوصول للمساعد الذكي
-  const canAccessAI = isAdmin || permissions.reports?.read;
+  // المساعد الذكي الآن متاح بناءً على موديول 'ai' المستقل
+  const canAccessAI = isAdmin || permissions.ai?.read === true;
 
   return (
     <header className="h-20 bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between px-6 md:px-10 z-20 shadow-sm transition-colors duration-300">
@@ -323,7 +325,6 @@ export function Header() {
         </DropdownMenu>
       </div>
 
-      {/* PROFILE DIALOG */}
       <Dialog open={isProfileOpen} onOpenChange={setIsProfileOpen}>
         <DialogContent className="sm:max-w-[450px] p-0 overflow-hidden border-none rounded-[1.5rem] shadow-2xl dark:bg-slate-900">
            <DialogHeader className="sr-only">
