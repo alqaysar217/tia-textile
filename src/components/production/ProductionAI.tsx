@@ -15,7 +15,8 @@ import {
   History,
   TrendingUp,
   AlertTriangle,
-  Receipt
+  Receipt,
+  RefreshCcw
 } from 'lucide-react';
 import { 
   Sheet, 
