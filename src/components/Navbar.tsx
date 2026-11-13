@@ -6,7 +6,23 @@ import Link from 'next/link';
 import { useTranslation } from './LanguageProvider';
 import { useCart } from './CartProvider';
 import { Button } from '@/components/ui/button';
-import { ShoppingCart, Menu, Globe, Phone, Home, Package, Info, Image, MessageSquare, Tag, HelpCircle, LayoutDashboard, LogIn } from 'lucide-react';
+import { 
+  ShoppingCart, 
+  Menu, 
+  Globe, 
+  Phone, 
+  Home, 
+  Package, 
+  Info, 
+  Image as ImageIcon, 
+  MessageSquare, 
+  Tag, 
+  HelpCircle, 
+  LayoutDashboard, 
+  LogIn,
+  MapPin,
+  Star
+} from 'lucide-react';
 import {
   Sheet,
   SheetContent,
@@ -24,18 +40,20 @@ export function Navbar() {
     { name: t.nav.home, href: '/', icon: <Home className="h-4 w-4" /> },
     { name: t.nav.products, href: '/products', icon: <Package className="h-4 w-4" /> },
     { name: t.nav.about, href: '/about', icon: <Info className="h-4 w-4" /> },
-    { name: t.nav.gallery, href: '/gallery', icon: <Image className="h-4 w-4" /> },
+    { name: t.nav.gallery, href: '/gallery', icon: <ImageIcon className="h-4 w-4" /> },
     { name: t.nav.offers, href: '/offers', icon: <Tag className="h-4 w-4" /> },
     { name: t.nav.contact, href: '/contact', icon: <MessageSquare className="h-4 w-4" /> },
     { name: t.nav.faq, href: '/faq', icon: <HelpCircle className="h-4 w-4" /> },
   ];
 
-  // Specific list for mobile menu as requested by user
   const mobileNavLinks = [
     { name: t.nav.home, href: '/', icon: <Home className="h-5 w-5" /> },
     { name: t.nav.products, href: '/products', icon: <Package className="h-5 w-5" /> },
+    { name: t.nav.branches, href: '/branches', icon: <MapPin className="h-5 w-5" /> },
     { name: t.nav.about, href: '/about', icon: <Info className="h-5 w-5" /> },
-    { name: t.nav.gallery, href: '/gallery', icon: <Image className="h-5 w-5" /> },
+    { name: t.nav.gallery, href: '/gallery', icon: <ImageIcon className="h-5 w-5" /> },
+    { name: t.testimonials.title, href: '/testimonials', icon: <Star className="h-5 w-5" /> },
+    { name: t.nav.faq, href: '/faq', icon: <HelpCircle className="h-5 w-5" /> },
     { name: t.nav.contact, href: '/contact', icon: <MessageSquare className="h-5 w-5" /> },
   ];
 
@@ -78,7 +96,7 @@ export function Navbar() {
 
         {/* Actions Menu */}
         <div className="flex items-center gap-2">
-          {/* ERP Entry Point - Discreet and Integrated */}
+          {/* ERP Entry Point */}
           <Link href="/production" className="hidden xl:flex items-center gap-2 text-[10px] font-black text-muted-foreground hover:text-primary transition-colors border-r border-border/50 pe-4 me-2">
             <LayoutDashboard className="w-3 h-3" />
             {lang === 'ar' ? 'دخول نظام إدارة الإنتاج' : 'Production Management'}
@@ -118,13 +136,13 @@ export function Navbar() {
                 <Menu className="h-6 w-6" />
               </Button>
             </SheetTrigger>
-            <SheetContent side={dir === 'rtl' ? 'right' : 'left'} className="w-[320px] border-none rounded-l-3xl rtl:rounded-l-none rtl:rounded-r-3xl flex flex-col p-0 overflow-hidden">
-              <SheetHeader className="p-6 border-b border-border/50 bg-muted/20 text-right">
+            <SheetContent side={dir === 'rtl' ? 'left' : 'right'} className="w-[320px] border-none rounded-r-3xl rtl:rounded-r-none rtl:rounded-l-3xl flex flex-col p-0 overflow-hidden">
+              <SheetHeader className="p-6 border-b border-border/50 bg-muted/20 text-left">
                 <SheetTitle className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-xl overflow-hidden bg-white shadow-sm p-0 flex items-center justify-center border border-primary/5">
                     <img src="/images/logo.png" alt="Logo" className="w-full h-full object-cover rounded-xl" />
                   </div>
-                  <div className="text-right">
+                  <div className="text-left">
                     <h1 className="text-xs font-black leading-tight text-primary uppercase tracking-tighter">
                       {lang === 'ar' ? 'جمعية الصناعات النسيجية' : 'Textile Cooperative'}
                     </h1>
@@ -147,24 +165,20 @@ export function Navbar() {
                       {link.name}
                     </Link>
                   ))}
-                  
-                  <div className="h-px bg-border/50 my-4 mx-2" />
-                  
-                  <Link 
-                    href="/production" 
-                    className="flex items-center gap-4 text-sm font-black p-4 rounded-2xl bg-secondary/5 text-secondary border border-secondary/10 hover:bg-secondary/20 transition-all active:scale-95"
-                  >
-                    <LogIn className="w-5 h-5" />
-                    {lang === 'ar' ? 'تسجيل الدخول لنظام الإنتاج' : 'Production Login'}
-                  </Link>
                 </div>
               </ScrollArea>
 
-              <div className="p-6 border-t border-border/50 bg-background">
-                <Button className="w-full gap-3 h-14 rounded-2xl text-base font-black shadow-lg shadow-primary/20" asChild>
+              <div className="p-6 border-t border-border/50 bg-background flex gap-3">
+                <Button variant="outline" className="flex-1 gap-2 h-12 rounded-xl text-[10px] font-black" asChild>
+                  <Link href="/production">
+                    <LogIn className="w-4 h-4" />
+                    {lang === 'ar' ? 'نظام الإنتاج' : 'ERP Login'}
+                  </Link>
+                </Button>
+                <Button className="flex-1 gap-2 h-12 rounded-xl text-[10px] font-black shadow-lg shadow-primary/20" asChild>
                   <a href="https://wa.me/967771687041" target="_blank" rel="noopener noreferrer">
-                    <Phone className="h-5 w-5" />
-                    {t.nav.orderWhatsApp}
+                    <Phone className="h-4 w-4" />
+                    {lang === 'ar' ? 'اطلب واتساب' : 'WhatsApp'}
                   </a>
                 </Button>
               </div>
