@@ -113,7 +113,7 @@ export default function Home() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-20 items-center">
             <div className="relative aspect-video md:aspect-[4/3] w-full max-w-xl mx-auto overflow-hidden rounded-[2rem] shadow-2xl border-4 border-white/10 group">
               <img 
-                src="https://picsum.photos/seed/association/800/600" 
+                src="/images/history-1.png" 
                 alt="Association Heritage" 
                 className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
               />
