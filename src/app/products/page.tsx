@@ -62,7 +62,7 @@ function ProductsList() {
 
   const filteredProducts = useMemo(() => {
     const list = firestoreProducts?.length > 0 ? firestoreProducts : [];
-    return list.filter(p => {
+    const result = list.filter(p => {
       if (p.status === 'deleted') return false;
       
       const name = (p.nameAr || '').toLowerCase();
@@ -75,6 +75,14 @@ function ProductsList() {
       const matchesCategory = selectedCategory === 'all' || productCategory === selectedCategory;
       
       return matchesSearch && matchesCategory;
+    });
+
+    // الترتيب الذكي: أولاً حسب رقم الترتيب (تصاعدي)، ثم حسب الأحدث
+    return result.sort((a, b) => {
+      const orderA = Number(a.displayOrder || 9999);
+      const orderB = Number(b.displayOrder || 9999);
+      if (orderA !== orderB) return orderA - orderB;
+      return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
     });
   }, [search, category, firestoreProducts]);
 

@@ -31,9 +31,15 @@ export default function Home() {
 
   const { data: firestoreProducts, loading } = useCollection<any>(productsQuery);
 
-  // استخدام البيانات المجلوبة أو مصفوفة فارغة في حالة التحميل
+  // استخدام البيانات المجلوبة مع الترتيب الذكي
   const featuredProducts = useMemo(() => {
-    return firestoreProducts || [];
+    if (!firestoreProducts) return [];
+    return [...firestoreProducts].sort((a, b) => {
+      const orderA = Number(a.displayOrder || 9999);
+      const orderB = Number(b.displayOrder || 9999);
+      if (orderA !== orderB) return orderA - orderB;
+      return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
+    });
   }, [firestoreProducts]);
 
   return (

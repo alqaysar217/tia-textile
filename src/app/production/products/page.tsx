@@ -31,7 +31,9 @@ import {
   Image as ImageIcon,
   X,
   PlusCircle,
-  Coins
+  Coins,
+  ArrowUpRight,
+  Sparkles
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -95,7 +97,7 @@ export default function ProductsManagementPage() {
 
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<'sku' | 'nameAr' | 'price'>('sku');
+  const [sortBy, setSortBy] = useState<'sku' | 'nameAr' | 'price' | 'displayOrder'>('displayOrder');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -120,6 +122,7 @@ export default function ProductsManagementPage() {
     currency: systemCurrency,
     status: 'available',
     image: '',
+    displayOrder: 1,
     gallery: [] as string[]
   });
 
@@ -173,7 +176,7 @@ export default function ProductsManagementPage() {
       let valA = a[sortBy] ?? '';
       let valB = b[sortBy] ?? '';
 
-      if (sortBy === 'price') {
+      if (sortBy === 'price' || sortBy === 'displayOrder') {
         const numA = Number(valA);
         const numB = Number(valB);
         return sortOrder === 'asc' ? numA - numB : numB - numA;
@@ -183,6 +186,28 @@ export default function ProductsManagementPage() {
       return sortOrder === 'asc' ? comparison : -comparison;
     });
   }, [products, search, categoryFilter, statusFilter, sortBy, sortOrder]);
+
+  // دالة ذكية لاكتشاف تكرار رقم الترتيب
+  const orderConflict = useMemo(() => {
+    if (!formData.displayOrder || !products) return null;
+    const conflict = products.find(p => 
+      p.id !== editingProdId && 
+      p.status !== 'deleted' && 
+      Number(p.displayOrder) === Number(formData.displayOrder)
+    );
+    return conflict ? conflict.nameAr : null;
+  }, [formData.displayOrder, products, editingProdId]);
+
+  // دالة ذكية لاقتراح الرقم التالي المتاح
+  const suggestNextOrder = () => {
+    if (!products || products.length === 0) {
+      setFormData(prev => ({ ...prev, displayOrder: 1 }));
+      return;
+    }
+    const activeProducts = products.filter(p => p.status !== 'deleted');
+    const maxOrder = activeProducts.reduce((max, p) => Math.max(max, Number(p.displayOrder || 0)), 0);
+    setFormData(prev => ({ ...prev, displayOrder: maxOrder + 1 }));
+  };
 
   const resetForm = useCallback(() => {
     setIsAddDialogOpen(false);
@@ -200,9 +225,10 @@ export default function ProductsManagementPage() {
       currency: systemCurrency,
       status: 'available',
       image: '',
+      displayOrder: (products?.filter(p => p.status !== 'deleted').length || 0) + 1,
       gallery: []
     });
-  }, [systemCurrency]);
+  }, [systemCurrency, products]);
 
   const compressImage = (file: File, maxSize: number = 400): Promise<string> => {
     return new Promise((resolve) => {
@@ -279,6 +305,7 @@ export default function ProductsManagementPage() {
       ...formData,
       sku: generatedSku,
       price: Number(formData.price),
+      displayOrder: Number(formData.displayOrder),
       currency: formData.currency, 
       updatedAt: serverTimestamp(),
     };
@@ -326,12 +353,13 @@ export default function ProductsManagementPage() {
       currency: prod.currency || systemCurrency,
       status: prod.status || 'available',
       image: prod.image || '',
+      displayOrder: prod.displayOrder || 1,
       gallery: prod.gallery || []
     });
     setIsAddDialogOpen(true);
   };
 
-  const toggleSort = (key: 'sku' | 'nameAr' | 'price') => {
+  const toggleSort = (key: 'sku' | 'nameAr' | 'price' | 'displayOrder') => {
     if (sortBy === key) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     } else {
@@ -341,13 +369,13 @@ export default function ProductsManagementPage() {
   };
 
   const handleExportCSV = () => {
-    const headers = ['SKU', 'Name (AR)', 'Category', 'Price', 'Currency', 'Status'];
+    const headers = ['Order', 'SKU', 'Name (AR)', 'Category', 'Price', 'Status'];
     const rows = filtered.map(p => [
+      p.displayOrder,
       p.sku,
       p.nameAr,
       p.category,
       p.price.toLocaleString('en-US'),
-      p.currency || 'YER',
       p.status
     ]);
 
@@ -396,7 +424,7 @@ export default function ProductsManagementPage() {
             </div>
             
             {canCreate && (
-              <Button onClick={() => setIsAddDialogOpen(true)} className="h-10 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 transition-all border-none">
+              <Button onClick={() => { resetForm(); setIsAddDialogOpen(true); }} className="h-10 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 transition-all border-none">
                 <Plus className="w-4 h-4" />
                 {lang === 'ar' ? 'إضافة منتج' : 'Add Product'}
               </Button>
@@ -434,6 +462,10 @@ export default function ProductsManagementPage() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="w-64 rounded-lg border-slate-200 dark:border-slate-800 dark:bg-slate-900 shadow-xl">
                 <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest">{lang === 'ar' ? 'ترتيب حسب' : 'SORT BY'}</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => toggleSort('displayOrder')} className="flex items-center justify-between text-xs font-bold cursor-pointer dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
+                  {lang === 'ar' ? 'ترتيب الظهور' : 'Rank'}
+                  {sortBy === 'displayOrder' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />)}
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => toggleSort('sku')} className="flex items-center justify-between text-xs font-bold cursor-pointer dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
                   {lang === 'ar' ? 'كود المنتج' : 'SKU'}
                   {sortBy === 'sku' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />)}
@@ -464,6 +496,7 @@ export default function ProductsManagementPage() {
             <Table className={cn("text-right border-separate border-spacing-0 w-full", !isRtl && "text-left")}>
               <TableHeader className="sticky top-0 z-20 bg-slate-100/95 dark:bg-slate-800/95 backdrop-blur-sm shadow-sm">
                 <TableRow className="border-b dark:border-slate-700">
+                  <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase w-16", isRtl ? "text-right" : "text-left")}>#</TableHead>
                   <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase", isRtl ? "text-right" : "text-left")}>{lang === 'ar' ? 'المنتج' : 'PRODUCT'}</TableHead>
                   <TableHead className={cn("px-6 py-4 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase", isRtl ? "text-right" : "text-left")}>{lang === 'ar' ? 'الفئة' : 'CATEGORY'}</TableHead>
                   <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase text-center">{lang === 'ar' ? 'سعر البيع' : 'UNIT PRICE'}</TableHead>
@@ -473,11 +506,14 @@ export default function ProductsManagementPage() {
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow><TableCell colSpan={5} className="text-center py-20 font-bold text-slate-400 dark:text-slate-600 animate-pulse">جاري جلب الكتالوج...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={6} className="text-center py-20 font-bold text-slate-400 dark:text-slate-600 animate-pulse">جاري جلب الكتالوج...</TableCell></TableRow>
                 ) : filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={5} className="text-center py-20 font-bold text-slate-300 dark:text-slate-700">لا توجد منتجات مسجلة</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={6} className="text-center py-20 font-bold text-slate-300 dark:text-slate-700">لا توجد منتجات مسجلة</TableCell></TableRow>
                 ) : filtered.map((prod) => (
                   <TableRow key={prod.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 transition-colors">
+                    <TableCell className="px-6 py-3 font-black text-slate-400 dark:text-slate-600 tabular-nums text-xs">
+                      {prod.displayOrder || '---'}
+                    </TableCell>
                     <TableCell className="px-6 py-3">
                       <div className="flex items-center gap-3">
                         <Avatar className="h-10 w-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 overflow-hidden">
@@ -546,10 +582,10 @@ export default function ProductsManagementPage() {
           <div className="w-8 h-8 bg-emerald-500/20 rounded flex items-center justify-center text-emerald-400 shrink-0"><Info className="w-4 h-4" /></div>
           <div className="flex-1 text-right">
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 leading-none mb-1">
-              {lang === 'ar' ? 'بروتوكول جودة البيانات' : 'Catalog Quality Protocol'}
+              {lang === 'ar' ? 'بروتوكول جودة البيانات والترتيب' : 'Catalog Sorting Protocol'}
             </p>
             <p className="text-[10px] text-slate-300 dark:text-slate-400 font-bold opacity-80 leading-relaxed">
-              {lang === 'ar' ? 'تعديل بيانات المنتج ينعكس فوراً على المتجر الإلكتروني العام للجمهور. الحذف يتم عبر نقل السجل للأرشيف لضمان إمكانية استرجاعه.' : 'Modifying product data reflects instantly on the public online store.'}
+              {lang === 'ar' ? 'يتم ترتيب المنتجات في الموقع العام بناءً على حقل ترتيب الظهور. الأرقام الأقل تظهر أولاً لضمان إبراز الأصناف الفاخرة.' : 'Public store sorting relies on the Display Order field. Lower values appear first.'}
             </p>
           </div>
         </div>
@@ -673,13 +709,47 @@ export default function ProductsManagementPage() {
               </div>
             </div>
 
-            <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
-              <Label className={cn("text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start")}>
-                <Activity className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'حالة التوفر' : 'AVAILABILITY'}
-              </Label>
-              <select value={formData.status} onChange={(e) => setFormData({...formData, status: e.target.value})} className="w-full h-10 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-bold outline-none dark:text-slate-100">
-                {statuses.map(s => <option key={s.value} value={s.value}>{lang === 'ar' ? s.labelAr : s.labelEn}</option>)}
-              </select>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
+                <Label className={cn("text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start")}>
+                  <Activity className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'حالة التوفر' : 'AVAILABILITY'}
+                </Label>
+                <select value={formData.status} onChange={(e) => setFormData({...formData, status: e.target.value})} className="w-full h-10 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-bold outline-none dark:text-slate-100">
+                  {statuses.map(s => <option key={s.value} value={s.value}>{lang === 'ar' ? s.labelAr : s.labelEn}</option>)}
+                </select>
+              </div>
+
+              {/* حقل الترتيب الذكي الجديد */}
+              <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
+                <div className="flex items-center justify-between">
+                  <Label className={cn("text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start")}>
+                    <ArrowUpRight className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'رقم الترتيب في الموقع' : 'DISPLAY ORDER'}
+                  </Label>
+                  <button type="button" onClick={suggestNextOrder} className="text-[8px] font-black text-emerald-600 underline flex items-center gap-1 hover:text-emerald-700">
+                    <Sparkles className="w-2.5 h-2.5" /> {isRtl ? 'اقتراح متاح' : 'Suggest'}
+                  </button>
+                </div>
+                <div className="relative">
+                  <Input 
+                    type="number" 
+                    value={formData.displayOrder} 
+                    onChange={(e) => setFormData({...formData, displayOrder: Number(e.target.value)})} 
+                    className={cn(
+                      "h-10 font-black text-sm tabular-nums dark:bg-slate-800 dark:text-slate-100 transition-all",
+                      orderConflict ? "border-amber-500 ring-2 ring-amber-500/10" : "border-slate-200 dark:border-slate-700"
+                    )} 
+                    min="1"
+                  />
+                  {orderConflict && (
+                    <div className="absolute top-1/2 -translate-y-1/2 left-3 flex items-center gap-1.5 animate-in fade-in slide-in-from-left-2">
+                       <Badge variant="outline" className="bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 text-[8px] font-black py-0 px-1">
+                         {isRtl ? `مستخدم: ${orderConflict}` : `Occupied by: ${orderConflict}`}
+                       </Badge>
+                       <AlertCircle className="w-3.5 h-3.5 text-amber-500" />
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
 
             <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
