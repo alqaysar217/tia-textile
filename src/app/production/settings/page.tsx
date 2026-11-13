@@ -17,7 +17,6 @@ import {
   RefreshCcw,
   Cloud,
   Download,
-  ShieldAlert,
   HardDriveDownload,
   Lock
 } from 'lucide-react';
@@ -147,7 +146,7 @@ export default function GeneralSettingsPage() {
       // تحويل البيانات لملف JSON وتحميله محلياً
       const dataStr = JSON.stringify(masterBackup, null, 2);
       const dataBlob = new Blob([dataStr], { type: 'application/json' });
-      const url = URL.createObjectURL(dataBlob);
+      const url = URL.createObjectURL(blob);
       
       const link = document.createElement('a');
       link.href = url;
@@ -381,23 +380,6 @@ export default function GeneralSettingsPage() {
                 </div>
               </SettingRow>
             </Card>
-          </div>
-
-          {/* DANGER ZONE */}
-          <div className="pt-8">
-             <div className="p-5 bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-6">
-                <div className="flex items-start gap-4">
-                   <div className="p-3 bg-white dark:bg-slate-900 rounded-xl shadow-sm"><ShieldAlert className="w-6 h-6 text-rose-600" /></div>
-                   <div className="space-y-1 text-right rtl:text-right ltr:text-left">
-                      <h4 className="text-sm font-black text-rose-900 dark:text-rose-100">{lang === 'ar' ? 'منطقة حماية السجلات المجمعة' : 'Data Integrity Zone'}</h4>
-                      <p className="text-[10px] font-bold text-rose-700 dark:text-rose-400 leading-relaxed">
-                        {lang === 'ar' 
-                          ? 'في حال فقدان الوصول لقاعدة البيانات، يمكنك دائماً استخدام ملف النسخ الاحتياطي المحمل يدوياً لإعادة بناء النظام بالكامل. يُنصح بتحميل نسخة جديدة كل نهاية أسبوع.' 
-                          : 'In case of cloud outage, use your local backup file to restore operations. We recommend downloading a fresh copy every weekend.'}
-                      </p>
-                   </div>
-                </div>
-             </div>
           </div>
 
         </div>
