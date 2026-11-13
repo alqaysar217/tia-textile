@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo } from 'react';
@@ -21,28 +20,28 @@ export function BranchesSection() {
       nameAr: 'فرع عتق',
       addressAr: 'عتق - النصب - الشارع العام - امام بن روام للمواد الغذائية',
       phoneNumber: '77246479',
-      photoUrl: 'https://picsum.photos/seed/branch-1/600/400'
+      photoUrl: '/images/branches-1.jpg'
     },
     {
       id: 'static-2',
       nameAr: 'فرع الروضة',
       addressAr: 'الروضة - الشارع العام - بجانب باعلي للصرافه',
       phoneNumber: '777295911',
-      photoUrl: 'https://picsum.photos/seed/branch-2/600/400'
+      photoUrl: '/images/branches-2.jpg'
     },
     {
       id: 'static-3',
       nameAr: 'فرع المكلا',
       addressAr: 'المكلا - الشرج - الشارع الاول - بجانب مستوصف المدينة',
       phoneNumber: '777488522',
-      photoUrl: 'https://picsum.photos/seed/branch-3/600/400'
+      photoUrl: '/images/branches-3.jpg'
     },
     {
       id: 'static-4',
       nameAr: 'فرع سيئون',
       addressAr: 'سيئون - جولة باحارثة - ممقابل مدرسة الشهيد الزبيدي',
       phoneNumber: '774027755',
-      photoUrl: 'https://picsum.photos/seed/branch-4/600/400'
+      photoUrl: '/images/branches-4.jpg'
     }
   ];
 
@@ -78,7 +77,7 @@ export function BranchesSection() {
             <MapPin className="h-3 w-3" />
             {isRtl ? 'تجمعنا بكم فروعنا' : 'OUR LOCATIONS'}
           </div>
-          <h2 className="text-3xl md:text-5xl font-black text-foreground">
+          <h2 className="text-2xl md:text-5xl font-black text-foreground">
             {isRtl ? 'فروعنا ومعارضنا' : 'Our Branches'}
           </h2>
           <div className="w-20 h-1.5 bg-secondary rounded-full mx-auto" />

@@ -31,6 +31,30 @@
       "imageHint": "traditional weaving"
     },
     {
+      "id": "branch-1",
+      "description": "Main Ataq Branch Showroom",
+      "imageUrl": "/images/branches-1.jpg",
+      "imageHint": "store exterior"
+    },
+    {
+      "id": "branch-2",
+      "description": "Al-Rawdah Branch Showroom",
+      "imageUrl": "/images/branches-2.jpg",
+      "imageHint": "store interior"
+    },
+    {
+      "id": "branch-3",
+      "description": "Al-Mukalla Branch Showroom",
+      "imageUrl": "/images/branches-3.jpg",
+      "imageHint": "commercial center"
+    },
+    {
+      "id": "branch-4",
+      "description": "Seiyun Branch Showroom",
+      "imageUrl": "/images/branches-4.jpg",
+      "imageHint": "traditional storefront"
+    },
+    {
       "id": "maawiz-1",
       "description": "Traditional Yemeni Maawiz",
       "imageUrl": "https://picsum.photos/seed/maawiz1/600/800",
