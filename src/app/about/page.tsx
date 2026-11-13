@@ -70,18 +70,18 @@ export default function AboutPage() {
             <div className="grid grid-cols-2 gap-3 md:gap-4 relative z-10">
               <div className="space-y-3 md:space-y-4 pt-6 md:pt-12">
                 <div className="aspect-[3/4] rounded-2xl md:rounded-3xl overflow-hidden shadow-xl border border-white/20">
-                  <img src="https://picsum.photos/seed/hist1/600/800" alt="History 1" className="w-full h-full object-cover" data-ai-hint="artisan hands" />
+                  <img src="/images/history-1.png" alt="History 1" className="w-full h-full object-cover" data-ai-hint="artisan hands" />
                 </div>
                 <div className="aspect-square rounded-2xl md:rounded-3xl overflow-hidden shadow-xl border border-white/20">
-                  <img src="https://picsum.photos/seed/hist3/600/600" alt="History 3" className="w-full h-full object-cover" data-ai-hint="textile detail" />
+                  <img src="/images/history-3.png" alt="History 3" className="w-full h-full object-cover" data-ai-hint="textile detail" />
                 </div>
               </div>
               <div className="space-y-3 md:space-y-4">
                 <div className="aspect-square rounded-2xl md:rounded-3xl overflow-hidden shadow-xl border border-white/20">
-                  <img src="https://picsum.photos/seed/hist4/600/600" alt="History 4" className="w-full h-full object-cover" data-ai-hint="traditional weaving" />
+                  <img src="/images/history-4.png" alt="History 4" className="w-full h-full object-cover" data-ai-hint="traditional weaving" />
                 </div>
                 <div className="aspect-[3/4] rounded-2xl md:rounded-3xl overflow-hidden shadow-xl border border-white/20">
-                  <img src="https://picsum.photos/seed/hist2/600/800" alt="History 2" className="w-full h-full object-cover" data-ai-hint="yemeni heritage" />
+                  <img src="/images/history-2.png" alt="History 2" className="w-full h-full object-cover" data-ai-hint="yemeni heritage" />
                 </div>
               </div>
             </div>
@@ -116,7 +116,7 @@ export default function AboutPage() {
                 <h3 className="text-sm md:text-xl font-black mb-2 md:mb-3 group-hover:text-primary transition-colors line-clamp-1">
                   {lang === 'ar' ? item.titleAr : item.titleEn}
                 </h3>
-                <p className="text-muted-foreground text-[10px] md:text-sm leading-relaxed font-medium line-clamp-3 md:line-clamp-none">
+                <p className="text-muted-foreground text-[10px] md:sm leading-relaxed font-medium line-clamp-3 md:line-clamp-none">
                   {lang === 'ar' ? item.descAr : item.descEn}
                 </p>
               </div>

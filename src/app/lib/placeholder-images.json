@@ -1,4 +1,3 @@
-
 {
   "placeholderImages": [
     {
@@ -6,6 +5,30 @@
       "description": "Master artisan weaving traditional Maawiz in Al-Rawdah - AI Generated Heritage Image",
       "imageUrl": "/images/hero.png",
       "imageHint": "yemeni weaver workshop"
+    },
+    {
+      "id": "history-1",
+      "description": "Historical photo of the association foundation",
+      "imageUrl": "/images/history-1.png",
+      "imageHint": "artisan hands"
+    },
+    {
+      "id": "history-2",
+      "description": "Yemeni textile heritage detail",
+      "imageUrl": "/images/history-2.png",
+      "imageHint": "yemeni heritage"
+    },
+    {
+      "id": "history-3",
+      "description": "Close up of traditional Maawiz weave",
+      "imageUrl": "/images/history-3.png",
+      "imageHint": "textile detail"
+    },
+    {
+      "id": "history-4",
+      "description": "Traditional weaving looms in Al-Rawdah",
+      "imageUrl": "/images/history-4.png",
+      "imageHint": "traditional weaving"
     },
     {
       "id": "maawiz-1",
