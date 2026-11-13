@@ -18,24 +18,25 @@ export function CategoriesSection() {
   ];
 
   return (
-    <section className="py-12 md:py-20 bg-background">
+    <section className="py-12 md:py-24 bg-background">
       <div className="container mx-auto px-4">
-        <div className="flex flex-col md:flex-row justify-between items-end gap-4 mb-10 md:mb-12">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-2 py-0.5 rounded-full bg-primary/5 text-primary text-[8px] font-black uppercase tracking-[0.15em]">
-              <Tag className="h-2.5 w-2.5" />
-              {lang === 'ar' ? 'تشكيلتنا المتنوعة' : 'Our Diverse Collection'}
-            </div>
-            <h2 className="text-2xl md:text-4xl font-black">
-              {lang === 'ar' ? 'أقسام المعاوز' : 'Maawiz Categories'}
-            </h2>
-            <p className="text-muted-foreground text-sm md:text-lg max-w-lg">
-              {lang === 'ar' 
-                ? 'تصفح مجموعتنا من المعاوز اليمنية المصنفة حسب النوع والعراقة.' 
-                : 'Browse our collection of Yemeni Maawiz categorized by type and heritage.'}
-            </p>
+        {/* رأس القسم الموحد والمحاذى للمنتصف */}
+        <div className="flex flex-col items-center text-center max-w-3xl mx-auto mb-12 md:mb-20 space-y-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest border border-primary/10">
+            <Tag className="h-3 w-3" />
+            {lang === 'ar' ? 'تشكيلتنا المتنوعة' : 'OUR DIVERSE COLLECTION'}
           </div>
-          <Link href="/products" className="flex items-center gap-2 text-primary text-sm md:text-lg font-black hover:underline group">
+          <h2 className="text-2xl md:text-5xl font-black text-foreground">
+            {lang === 'ar' ? 'أقسام المعاوز' : 'Maawiz Categories'}
+          </h2>
+          <div className="w-20 h-1.5 bg-secondary rounded-full mx-auto" />
+          <p className="text-muted-foreground text-sm md:text-lg font-medium max-w-2xl">
+            {lang === 'ar' 
+              ? 'تصفح مجموعتنا من المعاوز اليمنية المصنفة حسب النوع والعراقة التي تميز كل منطقة.' 
+              : 'Browse our collection of Yemeni Maawiz categorized by type and heritage that distinguishes each region.'}
+          </p>
+          
+          <Link href="/products" className="flex items-center gap-2 text-primary text-sm md:text-lg font-black hover:underline group mt-2">
             {lang === 'ar' ? 'مشاهدة كل المعاوز' : 'View All Maawiz'}
             {dir === 'rtl' ? <ArrowLeft className="h-4 w-4 md:h-5 md:w-5 transition-transform group-hover:-translate-x-1" /> : <ArrowRight className="h-4 w-4 md:h-5 md:w-5 transition-transform group-hover:translate-x-1" />}
           </Link>
