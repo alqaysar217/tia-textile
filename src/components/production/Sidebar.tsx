@@ -133,14 +133,6 @@ export function Sidebar() {
         { id: 'trash', name: t.production.trash, href: '/production/trash', icon: <Trash2 className="w-3.5 h-3.5" /> },
       ]
     },
-    {
-      id: 'ai_module',
-      name: lang === 'ar' ? 'المساعد الذكي' : 'AI Assistant',
-      icon: <span className="font-black text-[10px]">AI</span>,
-      children: [
-        { id: 'ai', name: lang === 'ar' ? 'مستشار البيانات (AI)' : 'Data Advisor (AI)', href: '#', icon: <span className="font-black text-[10px]">AI</span> },
-      ]
-    },
   ];
 
   const filteredNavigation = useMemo(() => {
