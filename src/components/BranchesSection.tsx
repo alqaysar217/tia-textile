@@ -14,7 +14,7 @@ export function BranchesSection() {
   const db = useFirestore();
   const isRtl = lang === 'ar';
 
-  // جلب الفروع النشطة فقط من قاعدة البيانات - حد أقصى 4 للعرض في الرئيسية
+  // جلب الفروع النشطة فقط من قاعدة البيانات
   const branchesQuery = useMemo(() => {
     if (!db) return null;
     return query(
@@ -26,10 +26,20 @@ export function BranchesSection() {
 
   const { data: branches, loading } = useCollection<any>(branchesQuery);
 
+  // ترتيب الفروع: ما تم إضافته أولاً يظهر أولاً (حسب تاريخ الإنشاء تصاعدياً)
+  const sortedBranches = useMemo(() => {
+    if (!branches) return [];
+    return [...branches].sort((a, b) => {
+      const timeA = a.createdAt?.seconds || 0;
+      const timeB = b.createdAt?.seconds || 0;
+      return timeA - timeB;
+    });
+  }, [branches]);
+
   return (
     <section className="py-12 md:py-24 bg-background overflow-hidden border-t border-border/50">
       <div className="container mx-auto px-4">
-        {/* Header - Now Centered */}
+        {/* Header - Centered */}
         <div className="flex flex-col items-center text-center max-w-3xl mx-auto mb-12 md:mb-20 space-y-4">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest border border-primary/10">
             <MapPin className="h-3 w-3" />
@@ -59,13 +69,13 @@ export function BranchesSection() {
             [...Array(4)].map((_, i) => (
               <div key={i} className="aspect-[4/5] bg-muted animate-pulse rounded-2xl" />
             ))
-          ) : branches.length === 0 ? (
+          ) : sortedBranches.length === 0 ? (
             <div className="col-span-full py-16 text-center text-muted-foreground font-bold border-2 border-dashed border-border/50 rounded-2xl bg-muted/5">
               <Building2 className="w-12 h-12 mx-auto mb-4 opacity-10" />
               {isRtl ? 'جاري تحديث قائمة الفروع من الإدارة...' : 'Updating branch list...'}
             </div>
           ) : (
-            branches.map((branch) => (
+            sortedBranches.map((branch) => (
               <div key={branch.id} className="group bg-background rounded-2xl border border-border/50 shadow-sm hover:shadow-xl transition-all duration-500 overflow-hidden flex flex-col h-full">
                 {/* Branch Image */}
                 <div className="aspect-[4/3] overflow-hidden bg-muted relative">
@@ -84,22 +94,26 @@ export function BranchesSection() {
                 </div>
 
                 {/* Branch Content */}
-                <div className="p-4 md:p-6 flex flex-col flex-1 space-y-3 text-right">
-                  <h3 className="font-black text-xs md:text-xl text-foreground line-clamp-1 group-hover:text-primary transition-colors">
+                <div className="p-4 md:p-6 flex flex-col flex-1 space-y-4 text-right">
+                  {/* Name with Icon */}
+                  <h3 className="font-black text-xs md:text-lg text-foreground line-clamp-1 group-hover:text-primary transition-colors flex items-center gap-2 justify-start">
+                    <Building2 className="h-4 w-4 text-emerald-600 shrink-0" />
                     {branch.nameAr}
                   </h3>
                   
-                  <div className="space-y-2 flex-1">
-                    <div className="flex items-start gap-2 text-muted-foreground justify-start rtl:flex-row-reverse">
-                      <MapPin className="h-3 w-3 md:h-4 md:w-4 text-primary shrink-0 mt-0.5" />
+                  {/* Address with Icon */}
+                  <div className="flex-1">
+                    <div className="flex items-start gap-2 text-muted-foreground justify-start">
+                      <MapPin className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
                       <p className="text-[10px] md:text-sm font-medium line-clamp-2 leading-relaxed text-right">
                         {branch.addressAr}
                       </p>
                     </div>
                   </div>
 
-                  <div className="pt-3 border-t border-border/50 flex items-center gap-2 justify-start rtl:flex-row-reverse">
-                    <Phone className="h-3 w-3 md:h-4 md:w-4 text-emerald-600 shrink-0" />
+                  {/* Phone with Icon */}
+                  <div className="pt-3 border-t border-border/50 flex items-center gap-2 justify-start">
+                    <Phone className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
                     <span className="text-[10px] md:text-base font-black tabular-nums text-foreground tracking-tighter">
                       {branch.phoneNumber}
                     </span>
