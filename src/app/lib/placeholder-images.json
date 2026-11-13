@@ -1,0 +1,23 @@
+
+{
+  "placeholderImages": [
+    {
+      "id": "hero-textile",
+      "description": "Master artisan weaving traditional Maawiz in Al-Rawdah",
+      "imageUrl": "https://picsum.photos/seed/shabwa-weaving/1920/1080",
+      "imageHint": "yemeni weaver workshop"
+    },
+    {
+      "id": "maawiz-1",
+      "description": "Traditional Yemeni Maawiz",
+      "imageUrl": "https://picsum.photos/seed/maawiz1/600/800",
+      "imageHint": "traditional garment"
+    },
+    {
+      "id": "weaving",
+      "description": "Handmade Weaving Process",
+      "imageUrl": "https://picsum.photos/seed/weaving/800/600",
+      "imageHint": "weaving hands"
+    }
+  ]
+}
