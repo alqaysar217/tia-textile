@@ -15,7 +15,6 @@ import {
   Home, 
   Package, 
   Info, 
-  Image as ImageIcon, 
   MessageSquare, 
   HelpCircle, 
   LayoutDashboard, 
@@ -43,7 +42,6 @@ export function Navbar() {
     { name: t.nav.products, href: '/products', icon: <Package className="h-4 w-4" /> },
     { name: t.nav.branches, href: '/branches', icon: <MapPin className="h-4 w-4" /> },
     { name: t.nav.about, href: '/about', icon: <Info className="h-4 w-4" /> },
-    { name: t.nav.gallery, href: '/gallery', icon: <ImageIcon className="h-4 w-4" /> },
     { name: t.nav.contact, href: '/contact', icon: <MessageSquare className="h-4 w-4" /> },
   ];
 
