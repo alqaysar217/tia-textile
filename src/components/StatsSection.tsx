@@ -1,8 +1,9 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from './LanguageProvider';
-import { Users, History, Scissors, Heart } from 'lucide-react';
+import { Users, History, Scissors, Heart, BarChart3 } from 'lucide-react';
 
 export function StatsSection() {
   const { lang } = useTranslation();
@@ -40,21 +41,46 @@ export function StatsSection() {
   ];
 
   return (
-    <section className="py-6 md:py-10 bg-muted/20">
+    <section className="py-12 md:py-20 bg-muted/20">
       <div className="container mx-auto px-4">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4">
+        {/* Section Header */}
+        <div className="flex flex-col items-center text-center max-w-2xl mx-auto mb-10 md:mb-16 space-y-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest border border-primary/10">
+            <BarChart3 className="h-3 w-3" />
+            {lang === 'ar' ? 'إنجازاتنا بالأرقام' : 'OUR ACHIEVEMENTS'}
+          </div>
+          <h2 className="text-2xl md:text-4xl font-black text-foreground">
+            {lang === 'ar' ? 'الجمعية في أرقام' : 'The Association in Figures'}
+          </h2>
+          <div className="w-16 h-1 bg-secondary rounded-full" />
+          <p className="text-muted-foreground text-xs md:text-base font-medium">
+            {lang === 'ar' 
+              ? 'نفتخر بمسيرتنا التعاونية الحافلة بالعطاء والتي امتدت لأكثر من نصف قرن في خدمة حرفة النسيج والجمعية.' 
+              : 'We are proud of our cooperative journey full of giving that has spanned over half a century in serving the weaving craft.'}
+          </p>
+        </div>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-8">
           {stats.map((stat, idx) => (
-            <div key={idx} className="group text-center space-y-1 md:space-y-2 p-2.5 md:p-4 bg-background rounded-2xl shadow-sm border border-border/50 hover:border-primary/50 hover:shadow-lg transition-all duration-500">
-              <div className="flex justify-center transform group-hover:scale-105 transition-transform duration-300">
-                <div className="p-1.5 md:p-2 rounded-xl bg-primary/10 text-primary">
+            <div key={idx} className="group text-center space-y-2 md:space-y-4 p-6 md:p-10 bg-background rounded-[2rem] shadow-sm border border-border/50 hover:border-primary/50 hover:shadow-xl transition-all duration-500 relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-4 opacity-[0.03] group-hover:scale-110 transition-transform duration-500">
+                <BarChart3 className="w-24 h-24" />
+              </div>
+              
+              <div className="flex justify-center relative z-10">
+                <div className="p-3 md:p-4 rounded-2xl bg-primary/5 text-primary group-hover:bg-primary group-hover:text-white transition-all duration-500 shadow-inner">
                   {stat.icon}
                 </div>
               </div>
-              <div className="text-base md:text-lg font-black text-foreground tabular-nums">
-                {stat.value}
-              </div>
-              <div className="text-[8px] md:text-[10px] text-muted-foreground font-semibold uppercase tracking-wider line-clamp-1">
-                {lang === 'ar' ? stat.labelAr : stat.labelEn}
+              
+              <div className="space-y-1 relative z-10">
+                <div className="text-2xl md:text-4xl font-black text-foreground tabular-nums tracking-tighter">
+                  {stat.value}
+                </div>
+                <div className="text-[10px] md:text-xs font-black text-muted-foreground uppercase tracking-widest group-hover:text-primary transition-colors">
+                  {lang === 'ar' ? stat.labelAr : stat.labelEn}
+                </div>
               </div>
             </div>
           ))}
