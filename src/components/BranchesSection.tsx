@@ -3,7 +3,7 @@
 import React, { useMemo } from 'react';
 import { useTranslation } from './LanguageProvider';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, where, limit, orderBy } from 'firebase/firestore';
+import { collection, query, where, limit } from 'firebase/firestore';
 import { MapPin, Phone, ArrowRight, ArrowLeft, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -14,18 +14,29 @@ export function BranchesSection() {
   const db = useFirestore();
   const isRtl = lang === 'ar';
 
-  // جلب الفروع النشطة مرتبة حسب تاريخ الإضافة (الأقدم أولاً)
+  // جلب الفروع النشطة (بدون ترتيب مباشر لتجنب خطأ الـ Index)
   const branchesQuery = useMemo(() => {
     if (!db) return null;
     return query(
       collection(db, 'branches'),
       where('status', '==', 'active'),
-      orderBy('createdAt', 'asc'), // أول فرع أضيف يظهر أولاً
-      limit(4)
+      limit(10) // نجلب عدداً كافياً لنرتبهم يدوياً
     );
   }, [db]);
 
-  const { data: branches, loading } = useCollection<any>(branchesQuery);
+  const { data: rawBranches, loading } = useCollection<any>(branchesQuery);
+
+  // الترتيب اليدوي لضمان ظهور أول فرع أضيف أولاً
+  const sortedBranches = useMemo(() => {
+    if (!rawBranches) return [];
+    return [...rawBranches]
+      .sort((a, b) => {
+        const timeA = a.createdAt?.seconds || 0;
+        const timeB = b.createdAt?.seconds || 0;
+        return timeA - timeB;
+      })
+      .slice(0, 4); // نأخذ أول 4 فروع فقط بعد الترتيب
+  }, [rawBranches]);
 
   return (
     <section className="py-12 md:py-24 bg-background overflow-hidden border-t border-border/50">
@@ -60,13 +71,13 @@ export function BranchesSection() {
             [...Array(4)].map((_, i) => (
               <div key={i} className="aspect-[4/5] bg-muted animate-pulse rounded-2xl" />
             ))
-          ) : !branches || branches.length === 0 ? (
+          ) : !sortedBranches || sortedBranches.length === 0 ? (
             <div className="col-span-full py-16 text-center text-muted-foreground font-bold border-2 border-dashed border-border/50 rounded-2xl bg-muted/5">
               <Building2 className="w-12 h-12 mx-auto mb-4 opacity-10" />
               {isRtl ? 'جاري تحديث قائمة الفروع من الإدارة...' : 'Updating branch list...'}
             </div>
           ) : (
-            branches.map((branch) => (
+            sortedBranches.map((branch) => (
               <div key={branch.id} className="group bg-background rounded-2xl border border-border/50 shadow-sm hover:shadow-xl transition-all duration-500 overflow-hidden flex flex-col h-full">
                 {/* Branch Image */}
                 <div className="aspect-[4/3] overflow-hidden bg-muted relative">
@@ -96,7 +107,7 @@ export function BranchesSection() {
                   <div className="flex-1">
                     <div className="flex items-start gap-2 text-muted-foreground justify-start">
                       <MapPin className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
-                      <p className="text-[10px] md:text-sm font-medium line-clamp-2 leading-relaxed text-right">
+                      <p className="text-[10px] md:sm font-medium line-clamp-2 leading-relaxed text-right">
                         {branch.addressAr}
                       </p>
                     </div>

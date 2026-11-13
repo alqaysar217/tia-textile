@@ -23,24 +23,33 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, where, orderBy } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
 
 export default function ContactPage() {
   const { lang, t, dir } = useTranslation();
   const db = useFirestore();
   const isRtl = lang === 'ar';
 
-  // جلب الفروع من قاعدة البيانات لضمان المزامنة الكاملة
+  // جلب الفروع النشطة
   const branchesQuery = useMemo(() => {
     if (!db) return null;
     return query(
       collection(db, 'branches'),
-      where('status', '==', 'active'),
-      orderBy('createdAt', 'asc')
+      where('status', '==', 'active')
     );
   }, [db]);
 
-  const { data: dbBranches, loading } = useCollection<any>(branchesQuery);
+  const { data: rawBranches, loading } = useCollection<any>(branchesQuery);
+
+  // الترتيب يدوياً لتجنب خطأ الـ Index في Firestore
+  const dbBranches = useMemo(() => {
+    if (!rawBranches) return [];
+    return [...rawBranches].sort((a, b) => {
+      const timeA = a.createdAt?.seconds || 0;
+      const timeB = b.createdAt?.seconds || 0;
+      return timeA - timeB;
+    });
+  }, [rawBranches]);
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden flex flex-col">
@@ -121,7 +130,7 @@ export default function ContactPage() {
                 {loading ? (
                   <div className="p-10 text-center animate-pulse text-slate-400 font-bold">{isRtl ? 'جاري جلب الفروع...' : 'Loading branches...'}</div>
                 ) : dbBranches && dbBranches.length > 0 ? (
-                  dbBranches.map((branch: any, idx: number) => (
+                  dbBranches.map((branch: any) => (
                     <div key={branch.id} className="bg-muted/30 border border-border/50 rounded-[2rem] p-6 flex gap-5 group hover:bg-background hover:shadow-xl transition-all duration-300" dir="rtl">
                       <div className="w-14 h-14 rounded-2xl bg-primary/5 flex items-center justify-center text-primary shrink-0 group-hover:bg-primary group-hover:text-white transition-all shadow-sm">
                         <Building2 className="w-7 h-7" />
