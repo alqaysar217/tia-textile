@@ -14,12 +14,12 @@ import {
   UploadCloud, 
   RefreshCcw, 
   Phone, 
-  Globe, 
-  LayoutGrid, 
   ImageIcon,
   History,
-  Info,
-  ShieldCheck
+  ShieldCheck,
+  Languages,
+  Building2,
+  PhoneCall
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -56,7 +56,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
@@ -84,9 +84,7 @@ export default function BranchesManagementPage() {
 
   const [formData, setFormData] = useState({
     nameAr: '',
-    nameEn: '',
     addressAr: '',
-    addressEn: '',
     phoneNumber: '',
     photoUrl: '',
     status: 'active'
@@ -100,7 +98,7 @@ export default function BranchesManagementPage() {
     let list = branches.filter(b => b.status !== 'deleted');
     if (search) {
       const s = search.toLowerCase();
-      list = list.filter(b => b.nameAr?.includes(s) || b.nameEn?.toLowerCase().includes(s) || b.addressAr?.includes(s));
+      list = list.filter(b => b.nameAr?.includes(s) || b.addressAr?.includes(s));
     }
     return list.sort((a, b) => (a.nameAr || '').localeCompare(b.nameAr || ''));
   }, [branches, search]);
@@ -132,8 +130,8 @@ export default function BranchesManagementPage() {
     e.preventDefault();
     if (!db || isSubmitting || isCompressing) return;
 
-    if (editingId && !canEdit) { toast({ variant: "destructive", title: "Access Denied" }); return; }
-    if (!editingId && !canCreate) { toast({ variant: "destructive", title: "Access Denied" }); return; }
+    if (editingId && !canEdit) { toast({ variant: "destructive", title: isRtl ? "غير مسموح بالتعديل" : "Access Denied" }); return; }
+    if (!editingId && !canCreate) { toast({ variant: "destructive", title: isRtl ? "غير مسموح بالإضافة" : "Access Denied" }); return; }
 
     setIsSubmitting(true);
     try {
@@ -154,7 +152,7 @@ export default function BranchesManagementPage() {
   const resetForm = () => {
     setIsAddDialogOpen(false);
     setEditingId(null);
-    setFormData({ nameAr: '', nameEn: '', addressAr: '', addressEn: '', phoneNumber: '', photoUrl: '', status: 'active' });
+    setFormData({ nameAr: '', addressAr: '', phoneNumber: '', photoUrl: '', status: 'active' });
   };
 
   return (
@@ -181,7 +179,7 @@ export default function BranchesManagementPage() {
           
           {canCreate && (
             <Button onClick={() => setIsAddDialogOpen(true)} className="h-10 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 border-none">
-              <Plus className="w-4 h-4" /> {isRtl ? 'فرع جديد' : 'New Branch'}
+              <Plus className="w-4 h-4" /> {isRtl ? 'إضافة فرع جديد' : 'New Branch'}
             </Button>
           )}
         </div>
@@ -215,7 +213,7 @@ export default function BranchesManagementPage() {
                   )}
                   <div className="absolute top-3 right-3 flex gap-2">
                     {canEdit && (
-                      <Button variant="secondary" size="icon" onClick={() => { setEditingId(branch.id); setFormData({ ...branch }); setIsAddDialogOpen(true); }} className="h-8 w-8 bg-white/90 dark:bg-slate-900/90 shadow-lg rounded-lg"><Edit2 className="w-3.5 h-3.5" /></Button>
+                      <Button variant="secondary" size="icon" onClick={() => { setEditingId(branch.id); setFormData({ ...branch }); setIsAddDialogOpen(true); }} className="h-8 w-8 bg-white/90 dark:bg-slate-900/90 shadow-lg rounded-lg"><Edit2 className="w-3.5 h-3.5 text-emerald-600" /></Button>
                     )}
                     {canDelete && (
                       <Button variant="destructive" size="icon" onClick={() => setDeletingId(branch.id)} className="h-8 w-8 shadow-lg rounded-lg"><Trash2 className="w-3.5 h-3.5" /></Button>
@@ -224,18 +222,21 @@ export default function BranchesManagementPage() {
                </div>
                <div className="p-5 space-y-4">
                   <div className="space-y-1">
-                     <h3 className="font-black text-slate-900 dark:text-slate-100 text-base">{isRtl ? branch.nameAr : branch.nameEn}</h3>
-                     <div className="flex items-center gap-2 text-slate-400 dark:text-slate-500 font-bold text-[10px] uppercase">
-                        <MapPin className="w-3 h-3 text-emerald-500" />
-                        <span>{isRtl ? branch.addressAr : branch.addressEn}</span>
+                     <h3 className="font-black text-slate-900 dark:text-slate-100 text-base flex items-center gap-2">
+                        <Building2 className="w-4 h-4 text-emerald-600" />
+                        {branch.nameAr}
+                     </h3>
+                     <div className="flex items-start gap-2 text-slate-400 dark:text-slate-500 font-bold text-[10px] uppercase">
+                        <MapPin className="w-3 h-3 text-emerald-500 mt-0.5" />
+                        <span className="flex-1">{branch.addressAr}</span>
                      </div>
                   </div>
                   <div className="flex items-center justify-between pt-4 border-t border-slate-50 dark:border-slate-800">
                      <div className="flex items-center gap-2">
-                        <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400"><Phone className="w-3.5 h-3.5" /></div>
+                        <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400"><PhoneCall className="w-3.5 h-3.5" /></div>
                         <span className="text-xs font-black tabular-nums dark:text-slate-200">{branch.phoneNumber}</span>
                      </div>
-                     <Badge variant="outline" className="bg-slate-50 dark:bg-slate-800 text-[9px] font-black uppercase text-slate-400 dark:text-slate-500 border-none">Active Site</Badge>
+                     <Badge variant="outline" className="bg-emerald-50/50 dark:bg-emerald-900/20 text-[9px] font-black uppercase text-emerald-600 border-none">فرع نشط</Badge>
                   </div>
                </div>
             </div>
@@ -247,8 +248,8 @@ export default function BranchesManagementPage() {
       <Dialog open={isAddDialogOpen} onOpenChange={(open) => !open && resetForm()}>
         <DialogContent className="sm:max-w-[500px] rounded-[1.5rem] p-0 overflow-hidden border-none shadow-2xl dark:bg-slate-900">
           <div className="premium-gradient p-6 text-white text-right">
-            <DialogHeader className="text-right">
-              <DialogTitle className="text-xl font-black flex items-center gap-3 justify-end">
+            <DialogHeader className={cn("text-right", !isRtl && "text-left")}>
+              <DialogTitle className="text-xl font-black flex items-center gap-3 justify-start">
                 <MapPin className="w-5 h-5 text-emerald-300" />
                 {editingId ? 'تعديل بيانات الفرع' : 'تسجيل فرع جديد'}
               </DialogTitle>
@@ -257,7 +258,7 @@ export default function BranchesManagementPage() {
 
           <form onSubmit={handleSave} className="p-6 space-y-5 bg-white dark:bg-slate-900">
              <div className="flex flex-col items-center gap-3">
-                <div onClick={() => !isCompressing && fileInputRef.current?.click()} className="w-32 h-32 rounded-2xl border-4 border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 flex items-center justify-center cursor-pointer group relative overflow-hidden transition-all shadow-md">
+                <div onClick={() => !isCompressing && fileInputRef.current?.click()} className="w-32 h-32 rounded-2xl border-4 border-slate-100 dark:border-slate-800 shadow-md bg-slate-50 dark:bg-slate-800 flex items-center justify-center cursor-pointer group relative overflow-hidden transition-all">
                    {formData.photoUrl ? (
                      <img src={formData.photoUrl} className="w-full h-full object-cover" />
                    ) : (
@@ -271,27 +272,34 @@ export default function BranchesManagementPage() {
 
              <div className="grid grid-cols-1 gap-4">
                 <div className="space-y-1.5 text-right">
-                   <Label className="text-[10px] font-black text-slate-400">اسم الفرع (عربي)</Label>
-                   <Input value={formData.nameAr} onChange={(e) => setFormData({...formData, nameAr: e.target.value})} className="h-11 font-bold text-xs dark:bg-slate-800 dark:text-white" required />
+                   <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2 justify-start">
+                     <Languages className="w-3.5 h-3.5 text-emerald-600" />
+                     اسم الفرع (باللغة العربية)
+                   </Label>
+                   <Input value={formData.nameAr} onChange={(e) => setFormData({...formData, nameAr: e.target.value})} className="h-11 font-bold text-xs dark:bg-slate-800 dark:text-white" dir="rtl" placeholder="مثال: معرض عتق الرئيسي" required />
                 </div>
+                
                 <div className="space-y-1.5 text-right">
-                   <Label className="text-[10px] font-black text-slate-400">اسم الفرع (إنجليزي)</Label>
-                   <Input value={formData.nameEn} onChange={(e) => setFormData({...formData, nameEn: e.target.value})} className="h-11 font-bold text-xs dark:bg-slate-800 dark:text-white" required />
+                   <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2 justify-start">
+                     <MapPin className="w-3.5 h-3.5 text-emerald-600" />
+                     العنوان التفصيلي
+                   </Label>
+                   <Input value={formData.addressAr} onChange={(e) => setFormData({...formData, addressAr: e.target.value})} className="h-11 font-bold text-xs dark:bg-slate-800 dark:text-white" dir="rtl" placeholder="مثال: مدينة عتق - الشارع العام" required />
                 </div>
+
                 <div className="space-y-1.5 text-right">
-                   <Label className="text-[10px] font-black text-slate-400">العنوان التفصيلي</Label>
-                   <Input value={formData.addressAr} onChange={(e) => setFormData({...formData, addressAr: e.target.value})} className="h-11 font-bold text-xs dark:bg-slate-800 dark:text-white" required />
-                </div>
-                <div className="space-y-1.5 text-right">
-                   <Label className="text-[10px] font-black text-slate-400">رقم هاتف الفرع</Label>
-                   <Input value={formData.phoneNumber} onChange={(e) => setFormData({...formData, phoneNumber: e.target.value})} className="h-11 font-bold text-xs tabular-nums dark:bg-slate-800 dark:text-white" required />
+                   <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2 justify-start">
+                     <Phone className="w-3.5 h-3.5 text-emerald-600" />
+                     رقم هاتف الفرع / واتساب
+                   </Label>
+                   <Input value={formData.phoneNumber} onChange={(e) => setFormData({...formData, phoneNumber: e.target.value})} className="h-11 font-bold text-xs tabular-nums dark:bg-slate-800 dark:text-white" dir="ltr" placeholder="7XXXXXXXX" required />
                 </div>
              </div>
 
              <div className="flex gap-3 pt-4 border-t dark:border-slate-800">
                 <Button type="submit" disabled={isSubmitting || isCompressing} className="flex-1 h-12 premium-gradient text-white font-black rounded-xl shadow-lg transition-all active:scale-95">
                   {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : <Save className="w-4 h-4 me-2" />}
-                  {isRtl ? 'حفظ البيانات' : 'Save Changes'}
+                  {isRtl ? 'حفظ بيانات الفرع' : 'Save Changes'}
                 </Button>
                 <Button type="button" variant="outline" onClick={resetForm} className="px-6 h-12 font-black text-slate-400 dark:text-slate-500 rounded-xl">إلغاء</Button>
              </div>
@@ -323,7 +331,7 @@ export default function BranchesManagementPage() {
          <ShieldCheck className="w-4 h-4 text-emerald-500" />
          <p className="text-[10px] font-bold tracking-tight">
            {isRtl 
-             ? 'بروتوكول إدارة الفروع: تعديل بيانات الفرع ينعكس فوراً على خريطة المواقع في الموقع الإلكتروني العام للجمعية.' 
+             ? 'بروتوكول إدارة الفروع: أي تعديل على بيانات الفروع ينعكس فوراً على خريطة المواقع في الموقع الإلكتروني العام.' 
              : 'Location Management Protocol: Branch updates are instantly pushed to the public site map.'}
          </p>
       </div>
