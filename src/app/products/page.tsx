@@ -17,6 +17,54 @@ import { useCollection, useFirestore } from '@/firebase';
 import { collection } from 'firebase/firestore';
 import { useSearchParams } from 'next/navigation';
 
+// المنتجات الافتراضية المطلوبة لضمان عدم خلو الصفحة
+const DEFAULT_PRODUCTS = [
+  {
+    id: 'default-1',
+    nameAr: 'حليسي معتكل',
+    nameEn: 'Halisi Moatakal',
+    price: 35000,
+    category: 'حليسي',
+    sku: 'PROD-9184',
+    status: 'available',
+    descriptionAr: 'يتميز بألوانه الزاهية المتناسقة مع إدخال خيوط القصب الذهبية في الأطراف والحواشي.',
+    image: '/images/project-1.png'
+  },
+  {
+    id: 'default-2',
+    nameAr: 'بيضاني درجة اولى',
+    nameEn: 'Baidani First Class',
+    price: 45000,
+    category: 'بيضاني',
+    sku: 'PROD-9039',
+    status: 'available',
+    descriptionAr: 'يشتهر بنقشة "الكسر" التقليدية على الحواف بألوان زرقاء وبحرية متداخلة.',
+    image: '/images/project-2.png'
+  },
+  {
+    id: 'default-3',
+    nameAr: 'حديدي درجة اولى',
+    nameEn: 'Hadeedi First Class',
+    price: 55000,
+    category: 'حديدي',
+    sku: 'PROD-7277',
+    status: 'available',
+    descriptionAr: 'منسوج بالكامل يدوياً في وصاب، معروف بمتانة خيوطه وجودته العالية للاستخدام اليومي.',
+    image: '/images/project-3.png'
+  },
+  {
+    id: 'default-4',
+    nameAr: 'شحري فاخر',
+    nameEn: 'Shihri Luxury',
+    price: 27000,
+    category: 'شحري',
+    sku: 'PROD-6835',
+    status: 'available',
+    descriptionAr: 'يتميز بنقشته الهادئة على الحواف، خفيف الوزن ويناسب الأجواء المعتدلة والحارة.',
+    image: '/images/project-4.png'
+  }
+];
+
 /**
  * مكون عرض القائمة المنفصل لدعم الـ Suspense وقراءة الـ Params
  */
@@ -36,11 +84,10 @@ function ProductsList() {
     "الصنعاني", "السادة", "الشموخ", "أخرى"
   ];
 
-  // مزامنة الفلتر مع الرابط (مثلاً عند القدوم من الصفحة الرئيسية)
+  // مزامنة الفلتر مع الرابط
   useEffect(() => {
     const categoryParam = searchParams.get('category');
     if (categoryParam) {
-      // تنظيف النص وتجربة المطابقة المباشرة أو الجزئية
       const decodedParam = decodeURIComponent(categoryParam);
       const cleanParam = decodedParam.replace('المعوز ', '').trim();
       
@@ -61,14 +108,17 @@ function ProductsList() {
   const { data: firestoreProducts, loading } = useCollection<any>(productsQuery);
 
   const filteredProducts = useMemo(() => {
-    const list = firestoreProducts?.length > 0 ? firestoreProducts : [];
-    const result = list.filter(p => {
+    // استخدام البيانات المجلوبة أو الافتراضية (Fallback)
+    const baseList = (firestoreProducts && firestoreProducts.length > 0) 
+      ? firestoreProducts 
+      : DEFAULT_PRODUCTS;
+
+    const result = baseList.filter(p => {
       if (p.status === 'deleted') return false;
       
       const name = (p.nameAr || '').toLowerCase();
       const matchesSearch = name.includes(search.toLowerCase());
       
-      // منطق فلترة التصنيف المحسن لضمان المطابقة الدقيقة
       const productCategory = p.category ? String(p.category).trim() : '';
       const selectedCategory = category ? String(category).trim() : 'all';
       
@@ -170,13 +220,17 @@ function ProductsList() {
             <SlidersHorizontal className="h-3 w-3" />
             {lang === 'ar' ? `النتائج: ${filteredProducts.length}` : `${filteredProducts.length} Results`}
           </div>
+          {loading && (
+             <div className="flex items-center gap-2 text-[9px] font-black text-primary/40 uppercase tracking-widest animate-pulse">
+               <RefreshCcw className="h-3 w-3 animate-spin" />
+               {lang === 'ar' ? 'جاري التحديث من السحابة...' : 'Updating Catalog...'}
+             </div>
+          )}
         </div>
 
         {/* Products Grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-8">
-          {loading ? (
-             <div className="col-span-full py-20 text-center font-bold text-muted-foreground animate-pulse">جاري تحميل الكتالوج...</div>
-          ) : filteredProducts.map((product) => (
+          {filteredProducts.map((product) => (
             <ProductCard key={product.id} product={product} />
           ))}
         </div>
@@ -204,6 +258,8 @@ function ProductsList() {
     </div>
   );
 }
+
+import { RefreshCcw } from 'lucide-react';
 
 /**
  * الصفحة الرئيسية للمنتجات مغلفة بـ Suspense لضمان عمل useSearchParams بشكل صحيح
