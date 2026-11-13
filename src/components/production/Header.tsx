@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -225,7 +224,6 @@ export function Header() {
   const displayRole = userProfile?.role || (authUser?.email === 'alqaysarpc219@gmail.com' ? 'admin' : 'staff');
   const displayPhoto = userProfile?.photoUrl || authUser?.photoURL || '';
 
-  // التعديل الجوهري: ربط صلاحية الدخول بحالة التفعيل في الإعدادات العامة
   const canAccessAI = (isAdmin || permissions.ai?.read === true) && settings?.aiEnabled === true;
 
   return (
@@ -283,21 +281,6 @@ export function Header() {
         <div className="h-8 w-px bg-slate-100 dark:bg-slate-800 mx-1" />
 
         <div className="flex items-center gap-4">
-          <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
-             <div className="relative">
-                <Database className={cn("w-4 h-4", settings?.autoBackup ? "text-emerald-500" : "text-slate-300")} />
-                {settings?.autoBackup && (
-                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full animate-ping" />
-                )}
-             </div>
-             <div className="flex flex-col">
-                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">{isRtl ? 'حالة السحابة' : 'SYNC STATUS'}</span>
-                <span className={cn("text-[9px] font-bold mt-1", settings?.autoBackup ? "text-emerald-600" : "text-slate-400")}>
-                  {settings?.autoBackup ? (isRtl ? 'مؤمن سحابياً' : 'Cloud Protected') : (isRtl ? 'غير مفعل' : 'Sync Disabled')}
-                </span>
-             </div>
-          </div>
-
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className={cn(
