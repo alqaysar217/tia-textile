@@ -16,12 +16,16 @@ import {
   Info,
   Languages,
   RefreshCcw,
-  CloudCheck
+  CloudCheck,
+  Download,
+  ShieldAlert,
+  HardDriveDownload,
+  Lock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from '@/components/LanguageProvider';
 import { useFirestore, useDoc } from '@/firebase';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, getDocs, collection } from 'firebase/firestore';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
 import { Card } from '@/components/ui/card';
@@ -40,14 +44,12 @@ export default function GeneralSettingsPage() {
   const { lang, dir, setLang } = useTranslation();
   const db = useFirestore();
   
-  // استيراد الصلاحيات من المحرك المركزي للمرحلة السادسة
   const { permissions, isAdmin } = useProduction();
   const canEdit = isAdmin || permissions.settings?.edit;
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   
-  // Settings Reference in Firestore
   const settingsRef = useMemo(() => !db ? null : doc(db, 'settings', 'global'), [db]);
   const { data: savedSettings, loading } = useDoc<any>(settingsRef);
 
@@ -59,7 +61,6 @@ export default function GeneralSettingsPage() {
     autoBackup: true
   });
 
-  // Sync saved settings to form
   useEffect(() => {
     if (savedSettings) {
       setFormData({
@@ -75,7 +76,6 @@ export default function GeneralSettingsPage() {
   const handleSaveSettings = async () => {
     if (!db || isSubmitting) return;
 
-    // حماية تنفيذية برمجية
     if (!canEdit) {
       toast({ variant: "destructive", title: lang === 'ar' ? "غير مسموح بتعديل الإعدادات" : "Permission Denied" });
       return;
@@ -88,12 +88,10 @@ export default function GeneralSettingsPage() {
         updatedAt: serverTimestamp()
       }, { merge: true });
       
-      // APPLY IMMEDIATELY: Trigger the language change in the current session
       if (formData.defaultLanguage !== lang) {
         setLang(formData.defaultLanguage as any);
       }
 
-      // APPLY IMMEDIATELY: Trigger theme change
       if (formData.themeMode === 'dark') {
         document.documentElement.classList.add('dark');
       } else {
@@ -112,21 +110,63 @@ export default function GeneralSettingsPage() {
     }
   };
 
-  const handleManualBackup = () => {
-    if (isSyncing) return;
+  /**
+   * دالة النسخ الاحتياطي المحلي الحقيقي (Universal Data Export)
+   * تقوم بجلب كافة البيانات من قاعدة البيانات السحابية وتحميلها كملف في جهاز الموظف
+   */
+  const handleManualBackup = async () => {
+    if (isSyncing || !db) return;
     setIsSyncing(true);
+    
     toast({
-      title: lang === 'ar' ? "بدء النسخ الاحتياطي" : "Starting Cloud Sync",
-      description: lang === 'ar' ? "جاري أرشفة سجلات السندات والعمال والمخزون..." : "Archiving vouchers, workers, and inventory records..."
+      title: lang === 'ar' ? "بدء استخراج النسخة الاحتياطية" : "Generating Master Backup",
+      description: lang === 'ar' ? "يتم الآن تجميع سجلات الجمعية في ملف واحد مؤمن..." : "Collecting all association records into a secured file..."
     });
 
-    setTimeout(() => {
-      setIsSyncing(false);
+    try {
+      const collectionsToExport = [
+        'productionOrders', 'materials', 'workers', 'vouchers', 
+        'products', 'departments', 'finishedGoodsWarehouse', 'users'
+      ];
+
+      const masterBackup: any = {
+        association: "جمعية الصناعات النسيجية - الروضة",
+        exportTimestamp: new Date().toISOString(),
+        systemVersion: "2.5.0",
+        data: {}
+      };
+
+      // جلب البيانات من كافة الجداول
+      await Promise.all(collectionsToExport.map(async (colName) => {
+        const snap = await getDocs(collection(db, colName));
+        masterBackup.data[colName] = snap.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+      }));
+
+      // تحويل البيانات لملف JSON وتحميله محلياً
+      const dataStr = JSON.stringify(masterBackup, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(dataBlob);
+      
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `TIA_MASTER_BACKUP_${new Date().toISOString().split('T')[0]}.json`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
       toast({
-        title: lang === 'ar' ? "اكتملت المزامنة" : "Sync Completed",
-        description: lang === 'ar' ? "تم تأمين السجلات في السحابة بنجاح." : "Records secured in the cloud successfully."
+        title: lang === 'ar' ? "اكتمل النسخ المحلي" : "Local Backup Ready",
+        description: lang === 'ar' ? "تم تحميل " + masterBackup.data.vouchers.length + " سند في ملفك الخاص." : "Saved " + masterBackup.data.vouchers.length + " vouchers to your disk."
       });
-    }, 2500);
+    } catch (err) {
+      console.error("Backup Error:", err);
+      toast({ variant: "destructive", title: "Export Failed" });
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   if (loading) {
@@ -187,8 +227,44 @@ export default function GeneralSettingsPage() {
              </p>
           </div>
 
-          {/* SECTION 1: REGIONAL & LOCALIZATION */}
+          {/* NEW SECTION: DATA GOVERNANCE (The Explanation) */}
           <div className="space-y-3">
+             <div className="flex items-center gap-2 px-1 mb-2">
+                <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <h3 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-widest">
+                  {lang === 'ar' ? 'سيادة البيانات والأمان' : 'Data Sovereignty & Security'}
+                </h3>
+             </div>
+             <Card className="p-6 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-xl">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                   <div className="space-y-4">
+                      <div className="flex items-center gap-3">
+                         <div className="p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg text-emerald-600"><CloudCheck className="w-5 h-5" /></div>
+                         <h4 className="text-sm font-black text-slate-800 dark:text-slate-100">{lang === 'ar' ? 'أين بياناتي الآن؟' : 'Where is my data?'}</h4>
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 font-bold leading-relaxed">
+                        {lang === 'ar' 
+                          ? 'بياناتك محفوظة حالياً في سحابة جوجل (Firestore) في مراكز بيانات مؤمنة عالمياً. هي مشفرة ولا يمكن لأحد الوصول إليها إلا بصلاحياتك.' 
+                          : 'Your data is stored in Google Cloud (Firestore) in secured data centers. It is encrypted and accessible only with your credentials.'}
+                      </p>
+                   </div>
+                   <div className="space-y-4">
+                      <div className="flex items-center gap-3">
+                         <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-600"><HardDriveDownload className="w-5 h-5" /></div>
+                         <h4 className="text-sm font-black text-slate-800 dark:text-slate-100">{lang === 'ar' ? 'كيف أحميها محلياً؟' : 'How to protect it locally?'}</h4>
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 font-bold leading-relaxed">
+                        {lang === 'ar' 
+                          ? 'نحن نؤمن لك "حق الملكية". يمكنك في أي وقت تحميل ملف يحتوي على كافة سجلات الجمعية (السندات، العمال، المخزون) والاحتفاظ به في فلاش ميموري أو جهازك الخاص لضمان العمل في حال توقف السحابة.' 
+                          : 'We guarantee your ownership. You can download a file containing all records (vouchers, staff, stock) and keep it in your local storage to ensure business continuity if cloud services fail.'}
+                      </p>
+                   </div>
+                </div>
+             </Card>
+          </div>
+
+          {/* SECTION 1: REGIONAL & LOCALIZATION */}
+          <div className="space-y-3 pt-4">
             <div className="flex items-center gap-2 px-1 mb-2">
               <Globe className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <h3 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-widest">
@@ -232,7 +308,7 @@ export default function GeneralSettingsPage() {
           </div>
 
           {/* SECTION 2: INTERFACE & EXPERIENCE */}
-          <div className="space-y-3">
+          <div className="space-y-3 pt-4">
             <div className="flex items-center gap-2 px-1 mb-2">
               <Monitor className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <h3 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-widest">
@@ -259,7 +335,7 @@ export default function GeneralSettingsPage() {
           </div>
 
           {/* SECTION 3: INTELLIGENCE & ADVANCED FEATURES */}
-          <div className="space-y-3">
+          <div className="space-y-3 pt-4">
             <div className="flex items-center gap-2 px-1 mb-2">
               <Cpu className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <h3 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-widest">
@@ -282,22 +358,21 @@ export default function GeneralSettingsPage() {
 
               <SettingRow 
                 icon={<Database className="w-4 h-4 text-slate-400 dark:text-slate-500" />}
-                title={lang === 'ar' ? 'النسخ الاحتياطي السحابي' : 'Auto Cloud Backup'}
-                description={lang === 'ar' ? 'مزامنة وحماية البيانات بشكل تلقائي ودوري' : 'Automated synchronization and data protection'}
+                title={lang === 'ar' ? 'النسخ الاحتياطي والمزامنة' : 'Cloud Sync & Local Backup'}
+                description={lang === 'ar' ? 'تأمين السجلات سحابياً وإتاحة التحميل المحلي للبيانات' : 'Automated cloud sync and offline data ownership'}
               >
                 <div className="flex items-center gap-3">
-                  {formData.autoBackup && (
-                    <Button 
-                      onClick={handleManualBackup} 
-                      disabled={isSyncing}
-                      variant="outline" 
-                      size="sm" 
-                      className="h-8 px-3 rounded-lg text-[9px] font-black uppercase border-emerald-100 dark:border-slate-700 hover:bg-emerald-50 dark:hover:bg-slate-800 text-emerald-600 transition-all gap-1.5"
-                    >
-                      {isSyncing ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCcw className="w-3 h-3" />}
-                      {lang === 'ar' ? 'مزامنة يدوية' : 'Sync Now'}
-                    </Button>
-                  )}
+                  <Button 
+                    onClick={handleManualBackup} 
+                    disabled={isSyncing}
+                    variant="outline" 
+                    size="sm" 
+                    className="h-9 px-4 rounded-lg text-[10px] font-black uppercase border-emerald-100 dark:border-slate-700 hover:bg-emerald-50 dark:hover:bg-slate-800 text-emerald-600 transition-all gap-2 shadow-sm"
+                  >
+                    {isSyncing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                    {lang === 'ar' ? 'تحميل نسخة احتياطية (محلي)' : 'Download Backup'}
+                  </Button>
+                  
                   <Switch 
                     disabled={!canEdit}
                     checked={formData.autoBackup} 
@@ -309,6 +384,23 @@ export default function GeneralSettingsPage() {
             </Card>
           </div>
 
+          {/* DANGER ZONE: DATA PURGE PROTECTION */}
+          <div className="pt-8">
+             <div className="p-5 bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="flex items-start gap-4">
+                   <div className="p-3 bg-white dark:bg-slate-900 rounded-xl shadow-sm"><ShieldAlert className="w-6 h-6 text-rose-600" /></div>
+                   <div className="space-y-1 text-right rtl:text-right ltr:text-left">
+                      <h4 className="text-sm font-black text-rose-900 dark:text-rose-100">{lang === 'ar' ? 'منطقة حماية السجلات المجمعة' : 'Data Integrity Zone'}</h4>
+                      <p className="text-[10px] font-bold text-rose-700 dark:text-rose-400 leading-relaxed">
+                        {lang === 'ar' 
+                          ? 'في حال فقدان الوصول لقاعدة البيانات، يمكنك دائماً استخدام ملف النسخ الاحتياطي المحمل يدوياً لإعادة بناء النظام بالكامل. يُنصح بتحميل نسخة جديدة كل نهاية أسبوع.' 
+                          : 'In case of cloud outage, use your local backup file to restore operations. We recommend downloading a fresh copy every weekend.'}
+                      </p>
+                   </div>
+                </div>
+             </div>
+          </div>
+
         </div>
       </div>
 
@@ -316,7 +408,7 @@ export default function GeneralSettingsPage() {
       <div className="flex-none p-3 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex items-center justify-center gap-3 transition-colors duration-300">
         <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
         <p className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.4em]">
-          Production Control System • Isolated Environment Configuration
+          TIA Data Governance Protocol • Sovereign Records Management
         </p>
       </div>
 
@@ -324,9 +416,6 @@ export default function GeneralSettingsPage() {
   );
 }
 
-/**
- * A reusable component for a single setting row in the ERP style.
- */
 function SettingRow({ icon, title, description, children }: { icon: React.ReactNode, title: string, description: string, children: React.ReactNode }) {
   return (
     <div className="p-5 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
