@@ -17,13 +17,15 @@ import {
   MessageCircle,
   Map as MapIcon,
   Layout,
-  Building2
+  Building2,
+  Globe
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
+import { cn } from '@/lib/utils';
 
 export default function ContactPage() {
   const { lang, t, dir } = useTranslation();
@@ -53,42 +55,52 @@ export default function ContactPage() {
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden flex flex-col">
-      {/* Decorative Blur Background */}
-      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px] -z-10 -mr-64 -mt-64" />
+      {/* الخلفية الزخرفية الموحدة */}
+      <div className="absolute inset-0 opacity-[0.03] pointer-events-none textile-pattern" />
+      <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-primary/5 rounded-full blur-[120px] -z-10 -mr-64 -mt-64" />
       <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-secondary/5 rounded-full blur-[120px] -z-10 -ml-64 -mb-64" />
 
-      <div className="container mx-auto px-4 py-12 md:py-20 flex-grow max-w-7xl">
-        {/* Header */}
-        <div className="mb-12 md:mb-16 text-center lg:text-right rtl:lg:text-right ltr:lg:text-left">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest mb-4">
-            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-            {lang === 'ar' ? 'نحن هنا لخدمتك' : 'GET IN TOUCH'}
+      {/* رأس الصفحة بتصميم مطابق للواجهات الأخرى */}
+      <div className="py-12 md:py-20 bg-primary relative text-primary-foreground overflow-hidden">
+        <div className="absolute inset-0 opacity-10" 
+          style={{ 
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='104' viewBox='0 0 60 104' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M60 104l-30-17.321L0 104V69.359L30 52l30 17.359V104zm0-69.359L30 17.321 0 34.641V0l30 17.321L60 0v34.641z' fill='%23ffffff' fill-opacity='1' fill-rule='evenodd'/%3E%3C/svg%3E")`,
+            backgroundSize: '80px 138px'
+          }} 
+        />
+        
+        <div className="container mx-auto px-4 relative z-10 text-center space-y-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-white text-[10px] font-black uppercase tracking-widest border border-white/10 mx-auto">
+            <MessageCircle className="h-3 w-3" />
+            {isRtl ? 'نحن هنا لخدمتكم' : 'WE ARE HERE TO HELP'}
           </div>
-          <h1 className="text-3xl md:text-5xl font-black text-foreground mb-4">
+          <h1 className="text-3xl md:text-6xl font-black leading-tight drop-shadow-2xl">
             {t.contact.title}
           </h1>
-          <p className="text-sm md:text-base text-muted-foreground font-medium max-w-2xl">
+          <p className="text-sm md:text-lg opacity-80 max-w-2xl mx-auto font-medium leading-relaxed">
             {t.contact.subtitle}
           </p>
         </div>
+      </div>
 
+      <div className="container mx-auto px-4 py-12 md:py-24 flex-grow max-w-7xl relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch mb-12 md:mb-20">
-          {/* Info Panel */}
+          {/* لوحة المعلومات */}
           <div className="lg:col-span-5 space-y-6">
-            <div className="bg-primary text-primary-foreground rounded-[2rem] p-8 shadow-xl shadow-primary/20 relative overflow-hidden group">
+            <div className="bg-primary text-primary-foreground rounded-[2rem] p-8 shadow-xl shadow-primary/20 relative overflow-hidden group h-fit">
               <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform duration-500">
                 <MessageCircle className="w-32 h-32" />
               </div>
               
               <div className="relative z-10 space-y-8">
-                <h2 className="text-2xl font-black">{lang === 'ar' ? 'معلومات التواصل المباشر' : 'Direct Contact Info'}</h2>
+                <h2 className="text-2xl font-black">{isRtl ? 'معلومات التواصل المباشر' : 'Direct Contact Info'}</h2>
                 
                 <div className="space-y-6">
                   <a href="tel:0777263091" className="flex items-center gap-5 group/item">
                     <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center group-hover/item:bg-white group-hover/item:text-primary transition-all shadow-inner">
                       <PhoneCall className="w-6 h-6" />
                     </div>
-                    <div>
+                    <div className={cn(isRtl ? "text-right" : "text-left")}>
                       <p className="text-[10px] font-black opacity-60 uppercase tracking-widest">{t.contact.phone}</p>
                       <p className="text-xl font-black tabular-nums" dir="ltr">0777 263 091</p>
                     </div>
@@ -98,7 +110,7 @@ export default function ContactPage() {
                     <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center group-hover/item:bg-white group-hover/item:text-primary transition-all shadow-inner">
                       <Mail className="w-6 h-6" />
                     </div>
-                    <div>
+                    <div className={cn(isRtl ? "text-right" : "text-left")}>
                       <p className="text-[10px] font-black opacity-60 uppercase tracking-widest">{t.contact.email}</p>
                       <p className="text-base font-black truncate">nseeg202020@gmail.com</p>
                     </div>
@@ -119,11 +131,11 @@ export default function ContactPage() {
               </div>
             </div>
 
-            {/* Branches List - Linked by ID for auto-scroll */}
+            {/* قائمة الفروع السريعة */}
             <div className="space-y-4" id="branches-list">
-              <h3 className="text-xl font-black flex items-center gap-3 text-foreground/80 px-2">
+              <h3 className="text-xl font-black flex items-center gap-3 text-foreground/80 px-2 justify-start">
                 <div className="w-2 h-2 rounded-full bg-primary" />
-                {lang === 'ar' ? 'فروعنا ومراكزنا' : 'Our Branches'}
+                {isRtl ? 'فروعنا ومراكزنا' : 'Our Branches'}
               </h3>
               
               <div className="grid grid-cols-1 gap-4">
@@ -131,11 +143,11 @@ export default function ContactPage() {
                   <div className="p-10 text-center animate-pulse text-slate-400 font-bold">{isRtl ? 'جاري جلب الفروع...' : 'Loading branches...'}</div>
                 ) : dbBranches && dbBranches.length > 0 ? (
                   dbBranches.map((branch: any) => (
-                    <div key={branch.id} className="bg-muted/30 border border-border/50 rounded-[2rem] p-6 flex gap-5 group hover:bg-background hover:shadow-xl transition-all duration-300" dir="rtl">
+                    <div key={branch.id} className="bg-card border border-border/50 rounded-[2rem] p-6 flex gap-5 group hover:bg-background hover:shadow-xl transition-all duration-300" dir={isRtl ? "rtl" : "ltr"}>
                       <div className="w-14 h-14 rounded-2xl bg-primary/5 flex items-center justify-center text-primary shrink-0 group-hover:bg-primary group-hover:text-white transition-all shadow-sm">
                         <Building2 className="w-7 h-7" />
                       </div>
-                      <div className="space-y-1 justify-center flex flex-col text-right">
+                      <div className={cn("space-y-1 justify-center flex flex-col", isRtl ? "text-right" : "text-left")}>
                         <h4 className="font-black text-sm md:text-base leading-tight">{branch.nameAr}</h4>
                         <p className="text-xs text-muted-foreground font-medium leading-relaxed">
                           {branch.addressAr}
@@ -157,33 +169,33 @@ export default function ContactPage() {
             </div>
           </div>
 
-          {/* Form Panel */}
+          {/* نموذج المراسلة */}
           <div className="lg:col-span-7">
             <div className="bg-card border border-border/50 rounded-[2.5rem] p-8 md:p-12 shadow-2xl shadow-primary/5 h-full relative overflow-hidden">
               <div className="absolute top-0 left-0 w-32 h-32 textile-pattern opacity-[0.05]" />
               
               <div className="max-w-xl mx-auto space-y-10 relative z-10">
-                <div className="space-y-2">
-                  <h2 className="text-3xl font-black text-foreground">{lang === 'ar' ? 'أرسل لنا رسالة سريعة' : 'Send a Fast Message'}</h2>
-                  <p className="text-sm font-medium text-muted-foreground">{lang === 'ar' ? 'سنقوم بالرد عليك خلال أقل من 24 ساعة.' : 'We will respond in less than 24 hours.'}</p>
+                <div className={cn("space-y-2", isRtl ? "text-right" : "text-left")}>
+                  <h2 className="text-3xl font-black text-foreground">{isRtl ? 'أرسل لنا رسالة سريعة' : 'Send a Fast Message'}</h2>
+                  <p className="text-sm font-medium text-muted-foreground">{isRtl ? 'سنقوم بالرد عليك خلال أقل من 24 ساعة.' : 'We will respond in less than 24 hours.'}</p>
                 </div>
 
                 <div className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-3">
-                      <label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2 ps-1">
+                      <label className={cn("text-[11px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2 ps-1", isRtl ? "justify-start" : "justify-start")}>
                         <User className="w-4 h-4 text-primary" />
-                        {lang === 'ar' ? 'الاسم الكامل' : 'Full Name'}
+                        {isRtl ? 'الاسم الكامل' : 'Full Name'}
                       </label>
                       <Input 
                         className="h-14 rounded-2xl bg-muted/20 border-transparent focus:bg-background focus:ring-primary focus:border-primary transition-all px-5 text-base"
-                        placeholder={lang === 'ar' ? 'اكتب اسمك هنا' : 'Enter your name'}
+                        placeholder={isRtl ? 'اكتب اسمك هنا' : 'Enter your name'}
                       />
                     </div>
                     <div className="space-y-3">
-                      <label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2 ps-1">
+                      <label className={cn("text-[11px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2 ps-1", isRtl ? "justify-start" : "justify-start")}>
                         <PhoneCall className="w-4 h-4 text-primary" />
-                        {lang === 'ar' ? 'رقم الجوال' : 'Phone Number'}
+                        {isRtl ? 'رقم الجوال' : 'Phone Number'}
                       </label>
                       <Input 
                         className="h-14 rounded-2xl bg-muted/20 border-transparent focus:bg-background focus:ring-primary focus:border-primary transition-all px-5 text-base"
@@ -193,31 +205,31 @@ export default function ContactPage() {
                   </div>
 
                   <div className="space-y-3">
-                    <label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2 ps-1">
+                    <label className={cn("text-[11px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2 ps-1", isRtl ? "justify-start" : "justify-start")}>
                       <Layout className="w-4 h-4 text-primary" />
-                      {lang === 'ar' ? 'الموضوع' : 'Subject'}
+                      {isRtl ? 'الموضوع' : 'Subject'}
                     </label>
                     <Input 
                       className="h-14 rounded-2xl bg-muted/20 border-transparent focus:bg-background focus:ring-primary focus:border-primary transition-all px-5 text-base"
-                      placeholder={lang === 'ar' ? 'بماذا يمكننا مساعدتك؟' : 'How can we help?'}
+                      placeholder={isRtl ? 'بماذا يمكننا مساعدتك؟' : 'How can we help?'}
                     />
                   </div>
 
                   <div className="space-y-3">
-                    <label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2 ps-1">
+                    <label className={cn("text-[11px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2 ps-1", isRtl ? "justify-start" : "justify-start")}>
                       <MessageSquare className="w-4 h-4 text-primary" />
-                      {lang === 'ar' ? 'محتوى الرسالة' : 'Your Message'}
+                      {isRtl ? 'محتوى الرسالة' : 'Your Message'}
                     </label>
                     <Textarea 
                       rows={5}
                       className="rounded-2xl bg-muted/20 border-transparent focus:bg-background focus:ring-primary focus:border-primary transition-all px-5 py-4 resize-none text-base"
-                      placeholder={lang === 'ar' ? 'اكتب تفاصيل استفسارك هنا...' : 'Write your details here...'}
+                      placeholder={isRtl ? 'اكتب تفاصيل استفسارك هنا...' : 'Write your details here...'}
                     />
                   </div>
 
                   <Button className="w-full h-16 rounded-[1.25rem] text-lg font-black shadow-xl shadow-primary/20 hover:translate-y-[-2px] active:translate-y-0 transition-all gap-3 bg-primary hover:bg-primary/90">
                     <Send className="w-6 h-6" />
-                    {lang === 'ar' ? 'إرسال الرسالة الآن' : 'Send Message Now'}
+                    {isRtl ? 'إرسال الرسالة الآن' : 'Send Message Now'}
                   </Button>
                 </div>
               </div>
@@ -225,17 +237,17 @@ export default function ContactPage() {
           </div>
         </div>
 
-        {/* Map Section */}
+        {/* قسم الخريطة */}
         <div className="space-y-8">
-          <h3 className="text-2xl md:text-3xl font-black flex items-center gap-4 text-foreground px-2">
+          <h3 className="text-2xl md:text-3xl font-black flex items-center gap-4 text-foreground px-2 justify-start">
             <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-sm">
               <MapIcon className="w-6 h-6" />
             </div>
-            {lang === 'ar' ? 'خريطة مواقعنا بدقة' : 'Our Precise Map Locations'}
+            {isRtl ? 'خريطة مواقعنا بدقة' : 'Our Precise Map Locations'}
           </h3>
           
           <div className="relative w-full h-[450px] md:h-[650px] rounded-[3rem] overflow-hidden border border-border/50 shadow-2xl group">
-            {/* Main Showroom Location (Ataq) */}
+            {/* الموقع الرئيسي */}
             <iframe 
               src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d15456.985652514336!2d46.82025185!3d14.5245846!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x161c360938b8d96f%3A0x8e83b0f5b128704!2sAtaq!5e0!3m2!1sen!2sye!4v1715600000000!5m2!1sen!2sye" 
               width="100%" 
@@ -247,16 +259,19 @@ export default function ContactPage() {
               className="grayscale-[0.1] contrast-[1.05] group-hover:grayscale-0 transition-all duration-700"
             ></iframe>
             
-            {/* Map Overlay Card */}
-            <div className="absolute bottom-6 left-6 right-6 md:left-auto md:w-[420px] bg-background/95 backdrop-blur-xl p-8 rounded-[2.5rem] border border-white/20 shadow-2xl pointer-events-none md:pointer-events-auto">
+            {/* بطاقة معلومات الخريطة */}
+            <div className={cn(
+              "absolute bottom-6 left-6 right-6 md:w-[420px] bg-background/95 backdrop-blur-xl p-8 rounded-[2.5rem] border border-white/20 shadow-2xl pointer-events-none md:pointer-events-auto",
+              isRtl ? "md:right-6 md:left-auto" : "md:left-6 md:right-auto"
+            )}>
               <div className="space-y-6">
-                <div className="space-y-2">
-                  <h4 className="text-xl font-black text-primary flex items-center gap-2">
+                <div className={cn("space-y-2", isRtl ? "text-right" : "text-left")}>
+                  <h4 className="text-xl font-black text-primary flex items-center gap-2 justify-start">
                     <MapPin className="w-5 h-5" />
-                    {lang === 'ar' ? 'فرع عتق الرئيسي' : 'Main Ataq Branch'}
+                    {isRtl ? 'فرع عتق الرئيسي' : 'Main Ataq Branch'}
                   </h4>
                   <p className="text-sm text-muted-foreground leading-relaxed font-medium">
-                    {lang === 'ar' 
+                    {isRtl 
                       ? 'يقع معرضنا الرئيسي في مدينة عتق، الشارع العام، بجانب مسجد الرحمن وأمام بن رازم للمواد الغذائية. كما نرحب بكم في فرعنا داخل شبوة مول.' 
                       : 'Our main showroom is located in Ataq City, Main St, next to Al-Rahman Mosque, opposite Bin Razem Foodstuffs. We also welcome you at our Shabwa Mall branch.'}
                   </p>
@@ -265,12 +280,12 @@ export default function ContactPage() {
                 <div className="grid grid-cols-2 gap-3 pt-2">
                   <Button size="sm" variant="ghost" className="rounded-xl text-[10px] md:text-xs font-black uppercase tracking-widest text-primary hover:bg-primary/5 pointer-events-auto h-12 border border-primary/10" asChild>
                     <a href="https://maps.google.com/?q=Al-Rawdah,Shabwah,Yemen" target="_blank" rel="noopener">
-                      {lang === 'ar' ? 'الروضة' : 'Al-Rawdah'}
+                      {isRtl ? 'الروضة' : 'Al-Rawdah'}
                     </a>
                   </Button>
                   <Button size="sm" variant="ghost" className="rounded-xl text-[10px] md:text-xs font-black uppercase tracking-widest text-primary hover:bg-primary/5 pointer-events-auto h-12 border border-primary/10" asChild>
                     <a href="https://maps.google.com/?q=Shabwah+Mall,Ataq,Yemen" target="_blank" rel="noopener">
-                      {lang === 'ar' ? 'شبوة مول' : 'Shabwa Mall'}
+                      {isRtl ? 'شبوة مول' : 'Shabwa Mall'}
                     </a>
                   </Button>
                 </div>
