@@ -9,8 +9,8 @@ export function Hero() {
   const { t, lang } = useTranslation();
 
   return (
-    <section className="relative min-h-screen md:min-h-[90vh] flex items-center overflow-hidden bg-[#022c22]">
-      {/* Background Image Layer using the newly generated heritage image */}
+    <section className="relative min-h-screen flex items-center overflow-hidden bg-[#022c22]">
+      {/* Background Image Layer */}
       <div 
         className="absolute inset-0 bg-cover bg-center z-0 scale-105 animate-in fade-in zoom-in duration-1000"
         style={{ 
@@ -25,8 +25,9 @@ export function Hero() {
 
       <div className="container mx-auto px-4 relative z-20">
         <div className="max-w-3xl space-y-6 md:space-y-10 text-center lg:text-right rtl:lg:text-right ltr:lg:text-left">
-          <div className="inline-flex items-center gap-3 px-4 py-1.5 rounded-full bg-primary/20 text-emerald-400 text-[10px] md:text-xs font-black uppercase tracking-[0.3em] border border-emerald-500/30 backdrop-blur-md w-fit animate-in slide-in-from-top duration-700 mx-auto lg:mx-0">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+          {/* Unique Heritage Badge - Sharp one side, curved other side */}
+          <div className="inline-flex items-center gap-3 px-4 py-1.5 rounded-e-xl rounded-s-none bg-primary/20 text-emerald-400 text-[10px] md:text-xs font-black uppercase tracking-[0.3em] border-y border-e border-emerald-500/30 border-s-4 border-s-emerald-500 backdrop-blur-md w-fit animate-in slide-in-from-top duration-700 mx-auto lg:mx-0">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
             {lang === 'ar' ? 'تراث الروضة - شبوة' : 'AL-RAWDAH HERITAGE'}
           </div>
           
@@ -42,7 +43,7 @@ export function Hero() {
           </p>
           
           <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-6 animate-in slide-in-from-bottom duration-700 delay-500">
-            <Button size="lg" className="h-14 md:h-16 w-full sm:w-auto px-10 md:px-12 text-base md:text-lg font-black rounded-xl shadow-2xl shadow-emerald-900/40 hover:scale-105 transition-all bg-primary hover:bg-emerald-700 border-none" asChild>
+            <Button size="lg" className="h-14 md:h-16 w-full sm:w-auto px-10 md:px-12 text-base md:text-lg font-black rounded-xl shadow-2xl shadow-emerald-900/40 hover:scale-[1.02] transition-all bg-primary hover:bg-emerald-700 border-none" asChild>
               <Link href="/products">{t.hero.ctaPrimary}</Link>
             </Button>
             <Button size="lg" variant="outline" className="h-14 md:h-16 w-full sm:w-auto px-10 md:px-12 text-base md:text-lg font-black rounded-xl bg-white/5 backdrop-blur-xl border-white/20 text-white hover:bg-white/10 hover:border-white/40 transition-all" asChild>
