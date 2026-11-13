@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from '@/components/LanguageProvider';
 import { 
   Mail, 
@@ -16,40 +16,31 @@ import {
   ExternalLink,
   MessageCircle,
   Map as MapIcon,
-  Layout
+  Layout,
+  Building2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { useFirestore, useCollection } from '@/firebase';
+import { collection, query, where, orderBy } from 'firebase/firestore';
 
 export default function ContactPage() {
-  const { lang, t } = useTranslation();
+  const { lang, t, dir } = useTranslation();
+  const db = useFirestore();
+  const isRtl = lang === 'ar';
 
-  const branches = [
-    {
-      nameAr: 'فرع عتق الرئيسي (الشارع العام)',
-      nameEn: 'Main Ataq Branch (Main St)',
-      locationAr: 'عتق، الشارع العام، بجانب مسجد الرحمن، أمام بن رازم للمواد الغذائية',
-      locationEn: 'Ataq, Main St, Next to Al-Rahman Mosque, opposite Bin Razem Foodstuffs',
-      phones: ['777263091', '785043425'],
-      type: 'branch'
-    },
-    {
-      nameAr: 'فرع شبوة مول',
-      nameEn: 'Shabwa Mall Branch',
-      locationAr: 'مدينة عتق، شبوة مول، الدور الأرضي',
-      locationEn: 'Ataq City, Shabwa Mall, Ground Floor',
-      phones: ['783715551'],
-      type: 'branch'
-    },
-    {
-      nameAr: 'المقر الرئيسي ووحدة الإنتاج (الروضة)',
-      nameEn: 'Main HQ & Production Unit (Al-Rawdah)',
-      locationAr: 'مديرية الروضة، محافظة شبوة، اليمن',
-      locationEn: 'Al-Rawdah, Shabwa, Yemen',
-      type: 'hq'
-    }
-  ];
+  // جلب الفروع من قاعدة البيانات لضمان المزامنة الكاملة
+  const branchesQuery = useMemo(() => {
+    if (!db) return null;
+    return query(
+      collection(db, 'branches'),
+      where('status', '==', 'active'),
+      orderBy('createdAt', 'asc')
+    );
+  }, [db]);
+
+  const { data: dbBranches, loading } = useCollection<any>(branchesQuery);
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden flex flex-col">
@@ -119,36 +110,40 @@ export default function ContactPage() {
               </div>
             </div>
 
-            {/* Branches List */}
-            <div className="space-y-4">
+            {/* Branches List - Linked by ID for auto-scroll */}
+            <div className="space-y-4" id="branches-list">
               <h3 className="text-xl font-black flex items-center gap-3 text-foreground/80 px-2">
                 <div className="w-2 h-2 rounded-full bg-primary" />
                 {lang === 'ar' ? 'فروعنا ومراكزنا' : 'Our Branches'}
               </h3>
               
               <div className="grid grid-cols-1 gap-4">
-                {branches.map((branch, idx) => (
-                  <div key={idx} className="bg-muted/30 border border-border/50 rounded-[2rem] p-6 flex gap-5 group hover:bg-background hover:shadow-xl transition-all duration-300">
-                    <div className="w-14 h-14 rounded-2xl bg-primary/5 flex items-center justify-center text-primary shrink-0 group-hover:bg-primary group-hover:text-white transition-all shadow-sm">
-                      {branch.type === 'hq' ? <Clock className="w-7 h-7" /> : <ExternalLink className="w-7 h-7" />}
-                    </div>
-                    <div className="space-y-1 justify-center flex flex-col">
-                      <h4 className="font-black text-sm md:text-base leading-tight">{lang === 'ar' ? branch.nameAr : branch.nameEn}</h4>
-                      <p className="text-xs text-muted-foreground font-medium leading-relaxed">
-                        {lang === 'ar' ? branch.locationAr : branch.locationEn}
-                      </p>
-                      {branch.phones && (
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          {branch.phones.map((p, i) => (
-                            <span key={i} className="text-[10px] font-black bg-primary/10 text-primary px-3 py-1 rounded-full tabular-nums">
-                              {p}
-                            </span>
-                          ))}
+                {loading ? (
+                  <div className="p-10 text-center animate-pulse text-slate-400 font-bold">{isRtl ? 'جاري جلب الفروع...' : 'Loading branches...'}</div>
+                ) : dbBranches && dbBranches.length > 0 ? (
+                  dbBranches.map((branch: any, idx: number) => (
+                    <div key={branch.id} className="bg-muted/30 border border-border/50 rounded-[2rem] p-6 flex gap-5 group hover:bg-background hover:shadow-xl transition-all duration-300" dir="rtl">
+                      <div className="w-14 h-14 rounded-2xl bg-primary/5 flex items-center justify-center text-primary shrink-0 group-hover:bg-primary group-hover:text-white transition-all shadow-sm">
+                        <Building2 className="w-7 h-7" />
+                      </div>
+                      <div className="space-y-1 justify-center flex flex-col text-right">
+                        <h4 className="font-black text-sm md:text-base leading-tight">{branch.nameAr}</h4>
+                        <p className="text-xs text-muted-foreground font-medium leading-relaxed">
+                          {branch.addressAr}
+                        </p>
+                        <div className="flex flex-wrap gap-2 mt-2 justify-start">
+                          <span className="text-[10px] font-black bg-primary/10 text-primary px-3 py-1 rounded-full tabular-nums">
+                            {branch.phoneNumber}
+                          </span>
                         </div>
-                      )}
+                      </div>
                     </div>
+                  ))
+                ) : (
+                  <div className="p-8 text-center bg-muted/20 rounded-2xl border border-dashed text-muted-foreground text-xs font-bold">
+                    {isRtl ? 'لا توجد فروع مسجلة حالياً.' : 'No branches registered yet.'}
                   </div>
-                ))}
+                )}
               </div>
             </div>
           </div>

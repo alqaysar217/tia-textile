@@ -3,7 +3,7 @@
 import React, { useMemo } from 'react';
 import { useTranslation } from './LanguageProvider';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, where, limit } from 'firebase/firestore';
+import { collection, query, where, limit, orderBy } from 'firebase/firestore';
 import { MapPin, Phone, ArrowRight, ArrowLeft, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -14,27 +14,18 @@ export function BranchesSection() {
   const db = useFirestore();
   const isRtl = lang === 'ar';
 
-  // جلب الفروع النشطة فقط من قاعدة البيانات
+  // جلب الفروع النشطة مرتبة حسب تاريخ الإضافة (الأقدم أولاً)
   const branchesQuery = useMemo(() => {
     if (!db) return null;
     return query(
       collection(db, 'branches'),
       where('status', '==', 'active'),
+      orderBy('createdAt', 'asc'), // أول فرع أضيف يظهر أولاً
       limit(4)
     );
   }, [db]);
 
   const { data: branches, loading } = useCollection<any>(branchesQuery);
-
-  // ترتيب الفروع: ما تم إضافته أولاً يظهر أولاً (حسب تاريخ الإنشاء تصاعدياً)
-  const sortedBranches = useMemo(() => {
-    if (!branches) return [];
-    return [...branches].sort((a, b) => {
-      const timeA = a.createdAt?.seconds || 0;
-      const timeB = b.createdAt?.seconds || 0;
-      return timeA - timeB;
-    });
-  }, [branches]);
 
   return (
     <section className="py-12 md:py-24 bg-background overflow-hidden border-t border-border/50">
@@ -56,7 +47,7 @@ export function BranchesSection() {
           </p>
           
           <Button variant="ghost" className="font-black text-primary hover:bg-primary/5 gap-2 group hidden md:flex mt-2" asChild>
-            <Link href="/contact">
+            <Link href="/contact#branches-list">
               {isRtl ? 'عرض كافة المواقع' : 'View All Locations'}
               {dir === 'rtl' ? <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" /> : <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />}
             </Link>
@@ -69,13 +60,13 @@ export function BranchesSection() {
             [...Array(4)].map((_, i) => (
               <div key={i} className="aspect-[4/5] bg-muted animate-pulse rounded-2xl" />
             ))
-          ) : sortedBranches.length === 0 ? (
+          ) : !branches || branches.length === 0 ? (
             <div className="col-span-full py-16 text-center text-muted-foreground font-bold border-2 border-dashed border-border/50 rounded-2xl bg-muted/5">
               <Building2 className="w-12 h-12 mx-auto mb-4 opacity-10" />
               {isRtl ? 'جاري تحديث قائمة الفروع من الإدارة...' : 'Updating branch list...'}
             </div>
           ) : (
-            sortedBranches.map((branch) => (
+            branches.map((branch) => (
               <div key={branch.id} className="group bg-background rounded-2xl border border-border/50 shadow-sm hover:shadow-xl transition-all duration-500 overflow-hidden flex flex-col h-full">
                 {/* Branch Image */}
                 <div className="aspect-[4/3] overflow-hidden bg-muted relative">
@@ -94,7 +85,7 @@ export function BranchesSection() {
                 </div>
 
                 {/* Branch Content */}
-                <div className="p-4 md:p-6 flex flex-col flex-1 space-y-4 text-right">
+                <div className="p-4 md:p-6 flex flex-col flex-1 space-y-4 text-right" dir="rtl">
                   {/* Name with Icon */}
                   <h3 className="font-black text-xs md:text-lg text-foreground line-clamp-1 group-hover:text-primary transition-colors flex items-center gap-2 justify-start">
                     <Building2 className="h-4 w-4 text-emerald-600 shrink-0" />
@@ -127,7 +118,7 @@ export function BranchesSection() {
         {/* Mobile View More Button */}
         <div className="mt-8 md:hidden text-center">
           <Button variant="outline" className="w-full rounded-xl h-12 font-black text-primary border-primary/20" asChild>
-            <Link href="/contact">
+            <Link href="/contact#branches-list">
               {isRtl ? 'عرض كافة الفروع' : 'View All Branches'}
             </Link>
           </Button>
