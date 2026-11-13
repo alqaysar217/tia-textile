@@ -32,7 +32,7 @@ export function ProductCard({ product }: { product: any }) {
 
   return (
     <div className="group bg-card rounded-xl overflow-hidden border border-border/40 hover:shadow-md transition-all duration-500 flex flex-col h-full">
-      {/* Image Container - Reduced size and square aspect ratio */}
+      {/* Image Container */}
       <div className="relative aspect-square overflow-hidden bg-muted">
         <img 
           src={product.image} 
@@ -72,48 +72,41 @@ export function ProductCard({ product }: { product: any }) {
       </div>
 
       {/* Info Section */}
-      <div className="p-2.5 md:p-3.5 flex flex-col flex-grow space-y-1 md:space-y-1.5">
-        <div className="flex items-center gap-1 text-[7px] md:text-[8px] text-primary/70 font-black uppercase tracking-widest">
-          <Tag className="h-2 w-2" />
-          {lang === 'ar' ? product.categoryAr : product.categoryEn}
-        </div>
-        
-        <h3 className="text-[10px] md:text-sm font-bold line-clamp-1 leading-tight group-hover:text-primary transition-colors">
-          {lang === 'ar' ? product.nameAr : product.nameEn}
-        </h3>
-        
-        <div className="pt-auto space-y-1.5">
-          <div className="flex items-baseline gap-1">
-            <span className="text-xs md:text-lg font-black text-primary tabular-nums">
-              {formattedPrice}
-            </span>
-            <span className="text-[8px] md:text-[9px] font-bold opacity-60">
-              {lang === 'ar' ? 'ريال' : 'YER'}
-            </span>
-          </div>
+      <div className="p-2.5 md:p-3.5 flex flex-col flex-grow space-y-2 md:space-y-3">
+        <Link href={`/products/${product.id}`} className="block space-y-1.5 md:space-y-2 group/text">
+          {/* Row 1: Name */}
+          <h3 className="text-[11px] md:text-sm font-black line-clamp-1 leading-tight group-hover/text:text-primary transition-colors">
+            {lang === 'ar' ? product.nameAr : product.nameEn}
+          </h3>
+          
+          {/* Row 2: Price and Category */}
+          <div className="flex items-center justify-between gap-2 border-t border-border/5 pt-1.5">
+            <div className="flex items-baseline gap-1">
+              <span className="text-xs md:text-lg font-black text-primary tabular-nums">
+                {formattedPrice}
+              </span>
+              <span className="text-[8px] md:text-[9px] font-bold opacity-60">
+                {lang === 'ar' ? 'ريال' : 'YER'}
+              </span>
+            </div>
 
-          <div className="grid grid-cols-1 gap-1">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="w-full rounded-lg text-[8px] md:text-[9px] font-bold h-7 md:h-9 border-primary/20 hover:bg-primary hover:text-white transition-all gap-1"
-              asChild
-            >
-              <Link href={`/products/${product.id}`}>
-                <Eye className="h-2.5 w-2.5" />
-                {lang === 'ar' ? 'التفاصيل' : 'Details'}
-              </Link>
-            </Button>
-            <Button 
-              variant="default" 
-              size="sm" 
-              className="w-full rounded-lg text-[8px] md:text-[9px] font-bold h-7 md:h-9 gap-1"
-              onClick={() => addToCart({ ...product, quantity: 1 })}
-            >
-              <ShoppingCart className="h-2.5 w-2.5" />
-              {t.products.addToCart}
-            </Button>
+            <div className="flex items-center gap-1 text-[7px] md:text-[8px] text-muted-foreground font-bold uppercase tracking-widest truncate max-w-[50%]">
+              <Tag className="h-2 w-2 shrink-0 text-primary/50" />
+              {product.category}
+            </div>
           </div>
+        </Link>
+        
+        <div className="mt-auto">
+          <Button 
+            variant="default" 
+            size="sm" 
+            className="w-full rounded-lg text-[8px] md:text-[9px] font-bold h-7 md:h-9 gap-1.5 shadow-sm active:scale-95 transition-all"
+            onClick={() => addToCart({ ...product, quantity: 1 })}
+          >
+            <ShoppingCart className="h-3 w-3 md:h-3.5 md:w-3.5" />
+            {t.products.addToCart}
+          </Button>
         </div>
       </div>
     </div>
