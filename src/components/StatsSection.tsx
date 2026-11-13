@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -63,13 +62,13 @@ export function StatsSection() {
         {/* Stats Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-8">
           {stats.map((stat, idx) => (
-            <div key={idx} className="group text-center space-y-2 md:space-y-4 p-6 md:p-10 bg-background rounded-[2rem] shadow-sm border border-border/50 hover:border-primary/50 hover:shadow-xl transition-all duration-500 relative overflow-hidden">
+            <div key={idx} className="group text-center space-y-2 md:space-y-4 p-6 md:p-10 bg-background rounded-2xl shadow-sm border border-border/50 hover:border-primary/50 hover:shadow-xl transition-all duration-500 relative overflow-hidden">
               <div className="absolute top-0 right-0 p-4 opacity-[0.03] group-hover:scale-110 transition-transform duration-500">
                 <BarChart3 className="w-24 h-24" />
               </div>
               
               <div className="flex justify-center relative z-10">
-                <div className="p-3 md:p-4 rounded-2xl bg-primary/5 text-primary group-hover:bg-primary group-hover:text-white transition-all duration-500 shadow-inner">
+                <div className="p-3 md:p-4 rounded-xl bg-primary/5 text-primary group-hover:bg-primary group-hover:text-white transition-all duration-500 shadow-inner">
                   {stat.icon}
                 </div>
               </div>
