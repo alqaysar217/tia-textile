@@ -19,27 +19,81 @@ export default function Home() {
   const { lang, t } = useTranslation();
   const db = useFirestore();
 
+  // المنتجات الافتراضية المطلوبة من المدير
+  const DEFAULT_PRODUCTS = [
+    {
+      id: 'default-1',
+      nameAr: 'حليسي معتكل',
+      nameEn: 'Halisi Moatakal',
+      price: 35000,
+      category: 'حليسي',
+      sku: 'PROD-9184',
+      status: 'available',
+      descriptionAr: 'يتميز بألوانه الزاهية المتناسقة مع إدخال خيوط القصب الذهبية في الأطراف والحواشي.',
+      image: '/images/project-1.png'
+    },
+    {
+      id: 'default-2',
+      nameAr: 'بيضاني درجة اولى',
+      nameEn: 'Baidani First Class',
+      price: 45000,
+      category: 'بيضاني',
+      sku: 'PROD-9039',
+      status: 'available',
+      descriptionAr: 'يشتهر بنقشة "الكسر" التقليدية على الحواف بألوان زرقاء وبحرية متداخلة.',
+      image: '/images/project-2.png'
+    },
+    {
+      id: 'default-3',
+      nameAr: 'حديدي درجة اولى',
+      nameEn: 'Hadeedi First Class',
+      price: 55000,
+      category: 'حديدي',
+      sku: 'PROD-7277',
+      status: 'available',
+      descriptionAr: 'منسوج بالكامل يدوياً في وصاب، معروف بمتانة خيوطه وجودته العالية للاستخدام اليومي.',
+      image: '/images/project-3.png'
+    },
+    {
+      id: 'default-4',
+      nameAr: 'شحري فاخر',
+      nameEn: 'Shihri Luxury',
+      price: 27000,
+      category: 'شحري',
+      sku: 'PROD-6835',
+      status: 'available',
+      descriptionAr: 'يتميز بنقشته الهادئة على الحواف، خفيف الوزن ويناسب الأجواء المعتدلة والحارة.',
+      image: '/images/project-4.png'
+    }
+  ];
+
   // جلب المنتجات الحقيقية من قاعدة البيانات
   const productsQuery = useMemo(() => {
     if (!db) return null;
     return query(
       collection(db, 'products'),
       where('status', '!=', 'deleted'),
-      limit(8) // عرض أول 8 منتجات فقط في الرئيسية
+      limit(8)
     );
   }, [db]);
 
   const { data: firestoreProducts, loading } = useCollection<any>(productsQuery);
 
-  // استخدام البيانات المجلوبة مع الترتيب الذكي
+  // استخدام البيانات المجلوبة أو الافتراضية
   const featuredProducts = useMemo(() => {
-    if (!firestoreProducts) return [];
-    return [...firestoreProducts].sort((a, b) => {
+    if (!firestoreProducts || firestoreProducts.length === 0) {
+      return DEFAULT_PRODUCTS;
+    }
+    
+    // إذا وجدت منتجات حقيقية، ندمجها مع الافتراضية لضمان عدم خلو الصفحة
+    const list = [...firestoreProducts].sort((a, b) => {
       const orderA = Number(a.displayOrder || 9999);
       const orderB = Number(b.displayOrder || 9999);
       if (orderA !== orderB) return orderA - orderB;
       return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
     });
+
+    return list.length < 4 ? [...list, ...DEFAULT_PRODUCTS.slice(0, 4 - list.length)] : list;
   }, [firestoreProducts]);
 
   return (
@@ -55,24 +109,18 @@ export default function Home() {
             <p className="text-muted-foreground text-xs md:text-lg font-medium">{t.products.subtitle}</p>
           </div>
 
-          {loading ? (
+          {loading && (!firestoreProducts || firestoreProducts.length === 0) ? (
             <div className="flex flex-col items-center justify-center py-20 gap-4">
               <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
               <p className="text-xs font-black text-primary/40 uppercase tracking-widest animate-pulse">
                 {lang === 'ar' ? 'جاري جلب المنتجات...' : 'Loading Collection...'}
               </p>
             </div>
-          ) : featuredProducts.length > 0 ? (
+          ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-6">
               {featuredProducts.map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}
-            </div>
-          ) : (
-            <div className="text-center py-20 bg-muted/10 rounded-3xl border border-dashed">
-              <p className="text-muted-foreground font-bold italic">
-                {lang === 'ar' ? 'لا توجد منتجات معروضة حالياً.' : 'No products available at the moment.'}
-              </p>
             </div>
           )}
 
