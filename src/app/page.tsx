@@ -1,5 +1,6 @@
 'use client';
 
+import React, { useMemo } from 'react';
 import { Hero } from '@/components/Hero';
 import { StatsSection } from '@/components/StatsSection';
 import { Features } from '@/components/Features';
@@ -11,56 +12,29 @@ import { ProductCard } from '@/components/ProductCard';
 import { FAQ } from '@/components/FAQ';
 import { Testimonials } from '@/components/Testimonials';
 import { BranchesSection } from '@/components/BranchesSection';
+import { useFirestore, useCollection } from '@/firebase';
+import { collection, query, limit, where } from 'firebase/firestore';
 
 export default function Home() {
   const { lang, t } = useTranslation();
+  const db = useFirestore();
 
-  // Featured Maawiz products
-  const featuredProducts = [
-    {
-      id: '1',
-      nameAr: 'معوز ملكي فاخر - نقشة خاصة',
-      nameEn: 'Premium Royal Maawiz - Special Pattern',
-      price: 15000,
-      originalPrice: 18000,
-      categoryAr: 'ملكي',
-      categoryEn: 'Royal',
-      image: 'https://picsum.photos/seed/m1/600/800',
-      status: 'available',
-      isNew: true
-    },
-    {
-      id: '2',
-      nameAr: 'معوز حليسي كلاسيك - يدوي',
-      nameEn: 'Classic Halisi Maawiz - Handmade',
-      price: 12000,
-      categoryAr: 'حليسي',
-      categoryEn: 'Halisi',
-      image: 'https://picsum.photos/seed/m2/600/800',
-      status: 'available'
-    },
-    {
-      id: '3',
-      nameAr: 'معوز بيضاني - شغل ممتاز',
-      nameEn: 'Baidani Maawiz - Excellent Work',
-      price: 14000,
-      categoryAr: 'بيضاني',
-      categoryEn: 'Baidani',
-      image: 'https://picsum.photos/seed/m3/600/800',
-      status: 'available'
-    },
-    {
-      id: '5',
-      nameAr: 'معوز سلاطيني - نخب أول',
-      nameEn: 'Salateeni Maawiz - Grade A',
-      price: 18000,
-      categoryAr: 'سلاطيني',
-      categoryEn: 'Salateeni',
-      image: 'https://picsum.photos/seed/m5/600/800',
-      status: 'available',
-      isNew: true
-    }
-  ];
+  // جلب المنتجات الحقيقية من قاعدة البيانات
+  const productsQuery = useMemo(() => {
+    if (!db) return null;
+    return query(
+      collection(db, 'products'),
+      where('status', '!=', 'deleted'),
+      limit(8) // عرض أول 8 منتجات فقط في الرئيسية
+    );
+  }, [db]);
+
+  const { data: firestoreProducts, loading } = useCollection<any>(productsQuery);
+
+  // استخدام البيانات المجلوبة أو مصفوفة فارغة في حالة التحميل
+  const featuredProducts = useMemo(() => {
+    return firestoreProducts || [];
+  }, [firestoreProducts]);
 
   return (
     <div className="space-y-0">
@@ -74,11 +48,28 @@ export default function Home() {
             <h2 className="text-2xl md:text-4xl font-black text-primary">{t.products.title}</h2>
             <p className="text-muted-foreground text-xs md:text-lg font-medium">{t.products.subtitle}</p>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-6">
-            {featuredProducts.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
+
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-20 gap-4">
+              <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+              <p className="text-xs font-black text-primary/40 uppercase tracking-widest animate-pulse">
+                {lang === 'ar' ? 'جاري جلب المنتجات...' : 'Loading Collection...'}
+              </p>
+            </div>
+          ) : featuredProducts.length > 0 ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-6">
+              {featuredProducts.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-20 bg-muted/10 rounded-3xl border border-dashed">
+              <p className="text-muted-foreground font-bold italic">
+                {lang === 'ar' ? 'لا توجد منتجات معروضة حالياً.' : 'No products available at the moment.'}
+              </p>
+            </div>
+          )}
+
           <div className="mt-8 md:mt-12 text-center">
             <Button size="lg" variant="outline" className="w-full md:w-auto px-10 rounded-full h-12 md:h-14 text-base font-bold border-primary text-primary hover:bg-primary hover:text-white transition-all shadow-lg" asChild>
               <Link href="/products">{t.products.viewAll}</Link>
@@ -136,7 +127,7 @@ export default function Home() {
               </div>
               
               <div className="flex flex-wrap gap-4 justify-center lg:justify-start">
-                <Button size="lg" variant="secondary" className="w-full md:w-auto px-10 rounded-full h-12 md:h-16 text-sm md:text-lg font-black shadow-2xl hover:scale-105 transition-transform" asChild>
+                <Button size="lg" variant="secondary" className="w-full md:w-auto px-10 rounded-full h-12 md:h-16 text-sm md:text-lg font-black shadow-2xl hover:scale-[1.02] transition-transform" asChild>
                   <Link href="/about">تعرف على قصتنا الكاملة</Link>
                 </Button>
                 <Button size="lg" className="w-full md:w-auto px-10 rounded-full h-12 md:h-16 text-sm md:text-lg font-black bg-white text-primary hover:bg-transparent hover:text-white hover:border hover:border-white transition-all shadow-xl" asChild>
