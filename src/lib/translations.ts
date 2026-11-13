@@ -12,6 +12,7 @@ export const translations = {
       offers: 'العروض',
       faq: 'الأسئلة الشائعة',
       contact: 'تواصل معنا',
+      branches: 'فروعنا',
       orderWhatsApp: 'اطلب عبر واتساب'
     },
     hero: {
@@ -126,6 +127,7 @@ export const translations = {
       offers: 'Offers',
       faq: 'FAQ',
       contact: 'Contact Us',
+      branches: 'Branches',
       orderWhatsApp: 'Order via WhatsApp'
     },
     hero: {
@@ -221,7 +223,7 @@ export const translations = {
       stats: {
         totalOrders: 'Total Production Orders',
         activeOrders: 'Active Orders',
-        dailyProduction: 'Accepted Daily Prod.',
+        dailyProduction: 'Accepted Daily Prob.',
         wipCount: 'Work In Process',
         readyProducts: 'Finished Goods',
         rawMaterialsCount: 'Raw Materials',
