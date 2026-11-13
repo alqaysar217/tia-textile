@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -21,10 +20,6 @@ export function FloatingWhatsApp() {
           </svg>
         </a>
       </Button>
-      <div className="absolute top-0 right-0 -mr-1 -mt-1 flex h-5 w-5">
-        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#25D366] opacity-75"></span>
-        <span className="relative inline-flex rounded-full h-5 w-5 bg-[#25D366]"></span>
-      </div>
     </div>
   );
 }
