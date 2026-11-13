@@ -18,8 +18,7 @@ import {
   MessageSquare, 
   HelpCircle, 
   LayoutDashboard, 
-  MapPin,
-  Star
+  MapPin
 } from 'lucide-react';
 import {
   Sheet,
@@ -42,7 +41,6 @@ export function Navbar() {
     { name: t.nav.branches, href: '/branches', icon: <MapPin className="h-4 w-4" /> },
     { name: t.nav.about, href: '/about', icon: <Info className="h-4 w-4" /> },
     { name: t.nav.gallery, href: '/gallery', icon: <ImageIcon className="h-4 w-4" /> },
-    { name: t.testimonials.title, href: '/testimonials', icon: <Star className="h-4 w-4" /> },
     { name: t.nav.faq, href: '/faq', icon: <HelpCircle className="h-4 w-4" /> },
     { name: t.nav.contact, href: '/contact', icon: <MessageSquare className="h-4 w-4" /> },
   ];
@@ -50,7 +48,7 @@ export function Navbar() {
   return (
     <nav className="sticky top-0 z-50 w-full bg-background/95 backdrop-blur-md border-b border-primary/5">
       <div className="container mx-auto px-4 h-20 flex items-center justify-between">
-        {/* Logo Section */}
+        {/* Logo Section - Always right in RTL */}
         <Link href="/" className="flex items-center gap-3 group shrink-0">
           <div className="relative w-12 h-12 md:w-14 md:h-14 overflow-hidden rounded-lg bg-muted/30 p-0 flex items-center justify-center border border-primary/5">
             <img 
@@ -70,7 +68,7 @@ export function Navbar() {
         </Link>
 
         {/* Desktop Nav Links - Center Area */}
-        <div className="hidden lg:flex items-center gap-4 xl:gap-6 mx-4">
+        <div className="hidden lg:flex items-center gap-4 xl:gap-6 mx-4 overflow-hidden">
           {navLinks.map((link) => (
             <Link
               key={link.href}
@@ -90,21 +88,36 @@ export function Navbar() {
           ))}
         </div>
 
-        {/* Actions Menu - Left Area (in Arabic) */}
+        {/* Actions Menu - Fixed alignment for RTL/LTR */}
         <div className="flex items-center gap-1.5 md:gap-3 shrink-0">
-          {/* Language Toggle */}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')}
-            className="rounded-lg hover:bg-primary/5 h-9 w-9"
-          >
-            <Globe className="h-5 w-5 text-muted-foreground" />
-          </Button>
+          <div className="hidden md:flex items-center gap-2">
+            {/* WhatsApp Button */}
+            <Button className="rounded-lg px-4 h-10 shadow-sm hover:shadow-md transition-all active:scale-95 text-xs font-black" asChild>
+              <a href="https://wa.me/967771687041" target="_blank" rel="noopener noreferrer">
+                <Phone className="h-4 w-4" />
+                {t.nav.orderWhatsApp}
+              </a>
+            </Button>
+
+            {/* ERP Entry Point Button */}
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex items-center gap-2 h-10 rounded-lg text-[10px] font-black border-primary/20 text-primary hover:bg-primary/5 px-4"
+              asChild
+            >
+              <Link href="/production">
+                <LayoutDashboard className="w-3.5 h-3.5" />
+                {lang === 'ar' ? 'نظام الإنتاج' : 'ERP System'}
+              </Link>
+            </Button>
+          </div>
+
+          <div className="h-6 w-px bg-border mx-1 hidden md:block" />
 
           {/* Cart Icon */}
           <Link href="/cart">
-            <Button variant="ghost" size="icon" className="relative rounded-lg hover:bg-primary/5 h-9 w-9">
+            <Button variant="ghost" size="icon" className="relative rounded-lg hover:bg-primary/5 h-10 w-10">
               <ShoppingCart className="h-5 w-5 text-muted-foreground" />
               {totalItems > 0 && (
                 <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow-md animate-in zoom-in">
@@ -114,75 +127,66 @@ export function Navbar() {
             </Button>
           </Link>
 
-          {/* ERP Entry Point Button */}
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="hidden lg:flex items-center gap-2 h-9 rounded-lg text-[10px] font-black border-primary/20 text-primary hover:bg-primary/5 px-4"
-            asChild
+          {/* Language Toggle */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')}
+            className="rounded-lg hover:bg-primary/5 h-10 w-10"
           >
-            <Link href="/production">
-              <LayoutDashboard className="w-3.5 h-3.5" />
-              {lang === 'ar' ? 'نظام الإنتاج' : 'ERP System'}
-            </Link>
-          </Button>
-
-          {/* WhatsApp Button */}
-          <Button className="hidden md:flex gap-2 rounded-lg px-5 h-10 shadow-sm hover:shadow-md transition-all active:scale-95 text-xs font-black" asChild>
-            <a href="https://wa.me/967771687041" target="_blank" rel="noopener noreferrer">
-              <Phone className="h-4 w-4" />
-              {t.nav.orderWhatsApp}
-            </a>
+            <Globe className="h-5 w-5 text-muted-foreground" />
           </Button>
 
           {/* Mobile Menu Trigger */}
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="lg:hidden rounded-lg h-9 w-9">
+              <Button variant="ghost" size="icon" className="lg:hidden rounded-lg h-10 w-10">
                 <Menu className="h-6 w-6" />
               </Button>
             </SheetTrigger>
             <SheetContent side={lang === 'ar' ? 'right' : 'left'} className="w-[320px] border-none flex flex-col p-0 overflow-hidden">
               <div className="flex flex-col h-full" dir={dir}>
+                {/* Fixed alignment for Header in Mobile Menu */}
                 <SheetHeader className="p-6 border-b border-border/50 bg-muted/20 text-right rtl:text-right ltr:text-left">
                   <SheetTitle className={cn("flex items-center gap-3", lang === 'ar' ? "justify-end" : "justify-start")}>
-                    <div className={cn("flex items-center gap-3", lang === 'ar' ? "flex-row-reverse" : "flex-row")}>
-                      <div className="w-12 h-12 rounded-lg overflow-hidden bg-white shadow-sm p-0 flex items-center justify-center border border-primary/5 shrink-0">
-                        <img src="/images/logo.png" alt="Logo" className="w-full h-full object-cover rounded-lg" />
-                      </div>
-                      <div className={cn("text-right", lang === 'en' && "text-left")}>
-                        <h1 className="text-xs font-black leading-tight text-primary uppercase tracking-tighter">
-                          {lang === 'ar' ? 'جمعية الصناعات النسيجية' : 'Textile Cooperative'}
-                        </h1>
-                        <p className="text-[9px] text-muted-foreground font-bold opacity-60 uppercase tracking-widest">
-                          {lang === 'ar' ? 'اليمن - شبوة' : 'Shabwa - Yemen'}
-                        </p>
-                      </div>
+                    <div className="w-12 h-12 rounded-lg overflow-hidden bg-white shadow-sm p-0 flex items-center justify-center border border-primary/5 shrink-0">
+                      <img src="/images/logo.png" alt="Logo" className="w-full h-full object-cover rounded-lg" />
+                    </div>
+                    <div className="flex flex-col">
+                      <h1 className="text-xs font-black leading-tight text-primary uppercase tracking-tighter">
+                        {lang === 'ar' ? 'جمعية الصناعات النسيجية' : 'Textile Cooperative'}
+                      </h1>
+                      <p className="text-[9px] text-muted-foreground font-bold opacity-60 uppercase tracking-widest">
+                        {lang === 'ar' ? 'اليمن - شبوة' : 'Shabwa - Yemen'}
+                      </p>
                     </div>
                   </SheetTitle>
                 </SheetHeader>
                 
                 <ScrollArea className="flex-1">
                   <div className="p-4 flex flex-col gap-1">
-                    {navLinks.map((link) => (
-                      <Link
-                        key={link.href}
-                        href={link.href}
-                        className={cn(
-                          "flex items-center gap-4 text-sm font-black p-4 rounded-lg transition-all active:scale-95 group",
-                          pathname === link.href 
-                            ? "bg-primary text-white" 
-                            : "text-foreground/80 hover:bg-primary/5 hover:text-primary",
-                          lang === 'ar' ? "flex-row-reverse text-right justify-start" : "flex-row text-left justify-start"
-                        )}
-                      >
-                        <span className={cn(
-                          "shrink-0",
-                          pathname === link.href ? "text-white" : "text-primary/60 group-hover:text-primary"
-                        )}>{link.icon}</span>
-                        <span className="flex-1">{link.name}</span>
-                      </Link>
-                    ))}
+                    {navLinks.map((link) => {
+                      const isActive = pathname === link.href;
+                      return (
+                        <Link
+                          key={link.href}
+                          href={link.href}
+                          className={cn(
+                            "flex items-center gap-4 text-sm font-black p-4 rounded-lg transition-all active:scale-95 group",
+                            isActive 
+                              ? "bg-primary text-white" 
+                              : "text-foreground/80 hover:bg-primary/5 hover:text-primary",
+                            lang === 'ar' ? "flex-row-reverse text-right justify-start" : "flex-row text-left justify-start"
+                          )}
+                        >
+                          <span className={cn(
+                            "shrink-0",
+                            isActive ? "text-white" : "text-primary/60 group-hover:text-primary"
+                          )}>{link.icon}</span>
+                          <span className="flex-1">{link.name}</span>
+                        </Link>
+                      );
+                    })}
                   </div>
                 </ScrollArea>
 
