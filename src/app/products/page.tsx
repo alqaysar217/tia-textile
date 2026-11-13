@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, Suspense } from 'react';
 import { useTranslation } from '@/components/LanguageProvider';
 import { ProductCard } from '@/components/ProductCard';
 import { Input } from '@/components/ui/input';
@@ -15,14 +15,28 @@ import {
 } from '@/components/ui/select';
 import { useCollection, useFirestore } from '@/firebase';
 import { collection } from 'firebase/firestore';
+import { useSearchParams } from 'next/navigation';
 
-export default function ProductsPage() {
+/**
+ * مكون عرض القائمة المنفصل لدعم الـ Suspense وقراءة الـ Params
+ */
+function ProductsList() {
   const { lang, t } = useTranslation();
   const db = useFirestore();
+  const searchParams = useSearchParams();
+  
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('all');
 
-  // Fetch real products from Firestore
+  // مزامنة الفلتر مع الرابط (مثلاً عند القدوم من الصفحة الرئيسية)
+  useEffect(() => {
+    const categoryParam = searchParams.get('category');
+    if (categoryParam) {
+      setCategory(categoryParam);
+    }
+  }, [searchParams]);
+
+  // جلب المنتجات الحقيقية من Firestore
   const productsQuery = useMemo(() => !db ? null : collection(db, 'products'), [db]);
   const { data: firestoreProducts, loading } = useCollection<any>(productsQuery);
 
@@ -65,7 +79,7 @@ export default function ProductsPage() {
         {/* Compact & Efficient Filter Bar */}
         <div className="bg-background border border-border/50 rounded-2xl shadow-sm p-3 md:p-4 mb-8">
           <div className="flex items-center gap-2 md:gap-4">
-            {/* Search Input - Flexible width */}
+            {/* Search Input */}
             <div className="relative flex-grow group">
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors rtl:left-3 rtl:right-auto" />
               <Input 
@@ -76,7 +90,7 @@ export default function ProductsPage() {
               />
             </div>
 
-            {/* Category Filter - Fixed width but compact */}
+            {/* Category Filter */}
             <div className="w-32 md:w-56 shrink-0">
               <Select value={category} onValueChange={setCategory}>
                 <SelectTrigger className="h-10 md:h-12 rounded-xl font-bold bg-muted/10 border-muted text-xs md:text-sm">
@@ -146,5 +160,23 @@ export default function ProductsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * الصفحة الرئيسية للمنتجات مغلفة بـ Suspense لضمان عمل useSearchParams بشكل صحيح
+ */
+export default function ProductsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+          <p className="font-black text-primary text-xs uppercase tracking-widest animate-pulse">جاري جلب الكتالوج...</p>
+        </div>
+      </div>
+    }>
+      <ProductsList />
+    </Suspense>
   );
 }
