@@ -28,31 +28,44 @@ function ProductsList() {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('all');
 
-  // مزامنة الفلتر مع الرابط (مثلاً عند القدوم من الصفحة الرئيسية)
-  useEffect(() => {
-    const categoryParam = searchParams.get('category');
-    if (categoryParam) {
-      setCategory(categoryParam);
-    }
-  }, [searchParams]);
-
-  // جلب المنتجات الحقيقية من Firestore
-  const productsQuery = useMemo(() => !db ? null : collection(db, 'products'), [db]);
-  const { data: firestoreProducts, loading } = useCollection<any>(productsQuery);
-
+  // قائمة التصنيفات المعتمدة والمطابقة لنظام الإنتاج
   const categories = [
     "شبواني", "ملكي", "حليسي", "بيضاني", "حديدي", "شحري", "سلاطيني", 
     "اللحجي", "الحضرمي", "الوصابي", "التهامي", "العدني", 
     "الصنعاني", "السادة", "الشموخ", "أخرى"
   ];
 
+  // مزامنة الفلتر مع الرابط (مثلاً عند القدوم من الصفحة الرئيسية)
+  useEffect(() => {
+    const categoryParam = searchParams.get('category');
+    if (categoryParam) {
+      // التأكد من أن التصنيف موجود في القائمة المعتمدة
+      if (categories.includes(categoryParam)) {
+        setCategory(categoryParam);
+      } else {
+        setCategory('all');
+      }
+    }
+  }, [searchParams, categories]);
+
+  // جلب المنتجات الحقيقية من Firestore
+  const productsQuery = useMemo(() => !db ? null : collection(db, 'products'), [db]);
+  const { data: firestoreProducts, loading } = useCollection<any>(productsQuery);
+
   const filteredProducts = useMemo(() => {
     const list = firestoreProducts?.length > 0 ? firestoreProducts : [];
     return list.filter(p => {
       if (p.status === 'deleted') return false;
-      const name = p.nameAr || '';
-      const matchesSearch = name.toLowerCase().includes(search.toLowerCase());
-      const matchesCategory = category === 'all' || p.category === category;
+      
+      const name = (p.nameAr || '').toLowerCase();
+      const matchesSearch = name.includes(search.toLowerCase());
+      
+      // منطق فلترة التصنيف المحسن لضمان المطابقة الدقيقة
+      const productCategory = p.category ? String(p.category).trim() : '';
+      const selectedCategory = category ? String(category).trim() : 'all';
+      
+      const matchesCategory = selectedCategory === 'all' || productCategory === selectedCategory;
+      
       return matchesSearch && matchesCategory;
     });
   }, [search, category, firestoreProducts]);
@@ -84,23 +97,23 @@ function ProductsList() {
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors rtl:left-3 rtl:right-auto" />
               <Input 
                 placeholder={t.products.search}
-                className="pl-10 md:pl-12 rtl:pr-10 md:rtl:pr-12 rtl:pl-3 h-10 md:h-12 rounded-xl border-muted bg-muted/10 focus:bg-background transition-all text-xs md:text-sm"
+                className="pl-10 md:pl-12 rtl:pr-10 md:rtl:pr-12 rtl:pl-3 h-10 md:h-12 rounded-xl border-muted bg-muted/10 focus:bg-background transition-all text-xs md:text-sm font-bold"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
 
             {/* Category Filter */}
-            <div className="w-32 md:w-56 shrink-0">
+            <div className="w-40 md:w-56 shrink-0">
               <Select value={category} onValueChange={setCategory}>
                 <SelectTrigger className="h-10 md:h-12 rounded-xl font-bold bg-muted/10 border-muted text-xs md:text-sm">
                   <div className="flex items-center gap-2 overflow-hidden">
                     <Filter className="h-3 w-3 md:h-4 md:w-4 opacity-50 shrink-0" />
-                    <SelectValue placeholder="Category" className="truncate" />
+                    <SelectValue placeholder={lang === 'ar' ? 'الفئة' : 'Category'} />
                   </div>
                 </SelectTrigger>
                 <SelectContent className="rounded-xl border-border shadow-xl max-h-[300px]">
-                  <SelectItem value="all" className="font-bold">{lang === 'ar' ? 'الكل' : 'All'}</SelectItem>
+                  <SelectItem value="all" className="font-bold">{lang === 'ar' ? 'كل المعاوز' : 'All Maawiz'}</SelectItem>
                   {categories.map(c => (
                     <SelectItem key={c} value={c} className="font-bold">{c}</SelectItem>
                   ))}
@@ -149,8 +162,8 @@ function ProductsList() {
               <h3 className="text-xl font-black">{lang === 'ar' ? 'لا توجد نتائج' : 'No Results'}</h3>
               <p className="text-muted-foreground max-w-xs mx-auto text-xs md:text-sm font-medium">
                 {lang === 'ar' 
-                  ? 'جرب البحث بكلمات أخرى.' 
-                  : 'Try searching for something else.'}
+                  ? 'لم نجد أي معاوز تحت هذا التصنيف حالياً، جرب تصفح فئة أخرى.' 
+                  : 'We couldn\'t find any items in this category. Try another one.'}
               </p>
             </div>
             <Button variant="outline" size="sm" onClick={() => { setSearch(''); setCategory('all'); }} className="rounded-full h-10 px-6 font-bold border-primary text-primary hover:bg-primary hover:text-white">
