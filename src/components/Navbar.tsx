@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -75,7 +74,7 @@ export function Navbar() {
           </div>
         </Link>
 
-        {/* Desktop Nav Links - Main Navigation */}
+        {/* Desktop Nav Links */}
         <div className="hidden lg:flex items-center gap-3 xl:gap-5 mx-2 flex-1 justify-center">
           {navLinks.map((link) => (
             <Link
@@ -101,9 +100,8 @@ export function Navbar() {
           ))}
         </div>
 
-        {/* Actions Menu - Ordered: Language -> Cart -> WhatsApp -> ERP */}
-        <div className="flex items-center gap-1 md:gap-2 shrink-0">
-          {/* 1. Language Toggle */}
+        {/* Actions Menu */}
+        <div className="flex items-center gap-2 shrink-0">
           <Button
             variant="ghost"
             size="icon"
@@ -113,7 +111,6 @@ export function Navbar() {
             <Globe className="h-5 w-5 text-muted-foreground" />
           </Button>
 
-          {/* 2. Cart Icon */}
           <Link href="/cart" className="shrink-0">
             <Button variant="ghost" size="icon" className="relative rounded-lg hover:bg-primary/5 h-10 w-10">
               <ShoppingCart className="h-5 w-5 text-muted-foreground" />
@@ -125,9 +122,7 @@ export function Navbar() {
             </Button>
           </Link>
 
-          {/* Buttons Group (Hidden on Mobile) */}
           <div className="hidden md:flex items-center gap-2">
-            {/* 3. WhatsApp Button */}
             <Button className="rounded-lg px-4 h-10 shadow-sm hover:shadow-md transition-all active:scale-95 text-[10px] xl:text-xs font-black shrink-0" asChild>
               <a href="https://wa.me/967771687041" target="_blank" rel="noopener noreferrer">
                 <Phone className="h-4 w-4" />
@@ -135,7 +130,6 @@ export function Navbar() {
               </a>
             </Button>
 
-            {/* 4. ERP Login Button */}
             <Button 
               variant="outline" 
               size="sm" 
@@ -156,10 +150,10 @@ export function Navbar() {
                 <Menu className="h-6 w-6" />
               </Button>
             </SheetTrigger>
-            <SheetContent side={isRtl ? 'right' : 'left'} className="w-[320px] border-none flex flex-col p-0 overflow-hidden">
+            <SheetContent side={isRtl ? 'right' : 'left'} className="w-[320px] border-none flex flex-col p-0 overflow-hidden rounded-l-lg rtl:rounded-l-none rtl:rounded-r-lg">
               <div className="flex flex-col h-full" dir={dir}>
                 <SheetHeader className="p-6 border-b border-border/50 bg-muted/20 text-right">
-                  <SheetTitle className={cn("flex items-center gap-3", isRtl ? "justify-end" : "justify-start")}>
+                  <SheetTitle className={cn("flex items-center gap-3", isRtl ? "flex-row-reverse justify-start" : "justify-start")}>
                     <div className="w-12 h-12 rounded-lg overflow-hidden bg-white shadow-sm p-0 flex items-center justify-center border border-primary/5 shrink-0">
                       <img src="/images/logo.png" alt="Logo" className="w-full h-full object-cover rounded-lg" />
                     </div>
@@ -202,13 +196,13 @@ export function Navbar() {
                 </ScrollArea>
 
                 <div className="p-4 border-t border-border/50 bg-background grid grid-cols-2 gap-3">
-                  <Button variant="outline" className={cn("gap-2 h-12 rounded-lg text-[10px] font-black border-border/60", isRtl && "flex-row-reverse")} asChild>
+                  <Button variant="outline" className={cn("gap-2 h-12 rounded-lg text-[10px] font-black border-border/60", isRtl && "flex-row-reverse justify-start")} asChild>
                     <Link href="/production">
                       <LayoutDashboard className="w-4 h-4" />
                       {lang === 'ar' ? 'نظام الإنتاج' : 'ERP Login'}
                     </Link>
                   </Button>
-                  <Button className={cn("gap-2 h-12 rounded-lg text-[10px] font-black shadow-lg shadow-primary/20", isRtl && "flex-row-reverse")} asChild>
+                  <Button className={cn("gap-2 h-12 rounded-lg text-[10px] font-black shadow-lg shadow-primary/20", isRtl && "flex-row-reverse justify-start")} asChild>
                     <a href="https://wa.me/967771687041" target="_blank" rel="noopener noreferrer">
                       <Phone className="w-4 h-4" />
                       {lang === 'ar' ? 'واتساب' : 'WhatsApp'}
