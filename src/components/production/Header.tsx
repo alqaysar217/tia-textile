@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -22,7 +23,8 @@ import {
   RefreshCcw,
   ShieldCheck,
   UserCheck,
-  Sparkles
+  Sparkles,
+  Database
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -280,50 +282,67 @@ export function Header() {
 
         <div className="h-8 w-px bg-slate-100 dark:bg-slate-800 mx-1" />
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className={cn(
-              "flex items-center gap-3 p-1 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-xl border border-transparent hover:border-slate-100 dark:hover:border-slate-800 transition-all group",
-              isRtl ? "ps-4 pe-1" : "pe-4 ps-1"
-            )}>
-              <div className="hidden md:flex flex-col text-right">
-                <p className="text-xs font-black text-slate-900 dark:text-slate-100 leading-none group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">
-                  {displayName}
-                </p>
-                <p className="text-[9px] text-slate-400 font-bold mt-1.5 uppercase tracking-widest">
-                  {displayRole === 'admin' ? (isRtl ? 'مدير نظام' : 'Administrator') : 
-                   displayRole === 'manager' ? (isRtl ? 'مدير إنتاج' : 'Manager') : 
-                   (isRtl ? 'موظف تشغيل' : 'Staff')}
-                </p>
-              </div>
-              <Avatar className="h-10 w-10 rounded-lg border-2 border-white dark:border-slate-800 shadow-sm ring-1 ring-slate-100 dark:ring-slate-700 overflow-hidden">
-                <AvatarImage src={displayPhoto} className="object-cover" />
-                <AvatarFallback className="bg-emerald-600 text-white font-black text-xs uppercase">
-                  {displayName.charAt(0)}
-                </AvatarFallback>
-              </Avatar>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align={isRtl ? 'end' : 'start'} className="w-56 rounded-xl border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl p-1.5 mt-2" dir={isRtl ? 'rtl' : 'ltr'}>
-            <DropdownMenuItem 
-              className="text-xs font-bold gap-3 focus:bg-emerald-50 dark:focus:bg-emerald-900/20 focus:text-emerald-700 dark:focus:text-emerald-400 cursor-pointer p-2.5 rounded-lg"
-              onClick={() => { setIsEditing(false); setIsProfileOpen(true); }}
-            >
-              <div className="w-7 h-7 rounded-md bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400"><User className="w-4 h-4" /></div>
-              {isRtl ? 'الملف الشخصي' : 'My Profile'}
-            </DropdownMenuItem>
-            
-            <DropdownMenuSeparator className="bg-slate-50 dark:bg-slate-800 my-1.5" />
-            
-            <DropdownMenuItem 
-              className="text-xs font-bold gap-3 text-rose-600 focus:bg-rose-50 dark:focus:bg-rose-900/20 focus:text-rose-700 cursor-pointer p-2.5 rounded-lg"
-              onClick={handleLogout}
-            >
-              <div className="w-7 h-7 rounded-md bg-rose-50 dark:bg-rose-900/20 flex items-center justify-center text-rose-600"><LogOut className="w-4 h-4" /></div>
-              {isRtl ? 'تسجيل الخروج' : 'Sign Out'}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center gap-4">
+          <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+             <div className="relative">
+                <Database className={cn("w-4 h-4", settings?.autoBackup ? "text-emerald-500" : "text-slate-300")} />
+                {settings?.autoBackup && (
+                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full animate-ping" />
+                )}
+             </div>
+             <div className="flex flex-col">
+                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">{isRtl ? 'حالة السحابة' : 'SYNC STATUS'}</span>
+                <span className={cn("text-[9px] font-bold mt-1", settings?.autoBackup ? "text-emerald-600" : "text-slate-400")}>
+                  {settings?.autoBackup ? (isRtl ? 'مؤمن سحابياً' : 'Cloud Protected') : (isRtl ? 'غير مفعل' : 'Sync Disabled')}
+                </span>
+             </div>
+          </div>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className={cn(
+                "flex items-center gap-3 p-1 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-xl border border-transparent hover:border-slate-100 dark:hover:border-slate-800 transition-all group",
+                isRtl ? "ps-4 pe-1" : "pe-4 ps-1"
+              )}>
+                <div className="hidden md:flex flex-col text-right">
+                  <p className="text-xs font-black text-slate-900 dark:text-slate-100 leading-none group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">
+                    {displayName}
+                  </p>
+                  <p className="text-[9px] text-slate-400 font-bold mt-1.5 uppercase tracking-widest">
+                    {displayRole === 'admin' ? (isRtl ? 'مدير نظام' : 'Administrator') : 
+                    displayRole === 'manager' ? (isRtl ? 'مدير إنتاج' : 'Manager') : 
+                    (isRtl ? 'موظف تشغيل' : 'Staff')}
+                  </p>
+                </div>
+                <Avatar className="h-10 w-10 rounded-lg border-2 border-white dark:border-slate-800 shadow-sm ring-1 ring-slate-100 dark:ring-slate-700 overflow-hidden">
+                  <AvatarImage src={displayPhoto} className="object-cover" />
+                  <AvatarFallback className="bg-emerald-600 text-white font-black text-xs uppercase">
+                    {displayName.charAt(0)}
+                  </AvatarFallback>
+                </Avatar>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align={isRtl ? 'end' : 'start'} className="w-56 rounded-xl border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl p-1.5 mt-2" dir={isRtl ? 'rtl' : 'ltr'}>
+              <DropdownMenuItem 
+                className="text-xs font-bold gap-3 focus:bg-emerald-50 dark:focus:bg-emerald-900/20 focus:text-emerald-700 dark:focus:text-emerald-400 cursor-pointer p-2.5 rounded-lg"
+                onClick={() => { setIsEditing(false); setIsProfileOpen(true); }}
+              >
+                <div className="w-7 h-7 rounded-md bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400"><User className="w-4 h-4" /></div>
+                {isRtl ? 'الملف الشخصي' : 'My Profile'}
+              </DropdownMenuItem>
+              
+              <DropdownMenuSeparator className="bg-slate-50 dark:bg-slate-800 my-1.5" />
+              
+              <DropdownMenuItem 
+                className="text-xs font-bold gap-3 text-rose-600 focus:bg-rose-50 dark:focus:bg-rose-900/20 focus:text-rose-700 cursor-pointer p-2.5 rounded-lg"
+                onClick={handleLogout}
+              >
+                <div className="w-7 h-7 rounded-md bg-rose-50 dark:bg-rose-900/20 flex items-center justify-center text-rose-600"><LogOut className="w-4 h-4" /></div>
+                {isRtl ? 'تسجيل الخروج' : 'Sign Out'}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       <Dialog open={isProfileOpen} onOpenChange={setIsProfileOpen}>
