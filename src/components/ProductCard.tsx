@@ -5,7 +5,7 @@ import { useTranslation } from './LanguageProvider';
 import { useCart } from './CartProvider';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ShoppingCart, Eye, Tag } from 'lucide-react';
+import { ShoppingCart, Eye, Tag, Wallet } from 'lucide-react';
 import Link from 'next/link';
 
 export function ProductCard({ product }: { product: any }) {
@@ -81,17 +81,20 @@ export function ProductCard({ product }: { product: any }) {
           
           {/* Row 2: Price and Category */}
           <div className="flex items-center justify-between gap-2 border-t border-border/5 pt-1.5">
-            <div className="flex items-baseline gap-1">
-              <span className="text-xs md:text-lg font-black text-primary tabular-nums">
-                {formattedPrice}
-              </span>
-              <span className="text-[8px] md:text-[9px] font-bold opacity-60">
-                {lang === 'ar' ? 'ريال' : 'YER'}
-              </span>
+            <div className="flex items-center gap-1">
+              <Wallet className="h-2.5 w-2.5 md:h-3.5 md:w-3.5 text-primary/40 shrink-0" />
+              <div className="flex items-baseline gap-0.5 md:gap-1">
+                <span className="text-xs md:text-lg font-black text-primary tabular-nums">
+                  {formattedPrice}
+                </span>
+                <span className="text-[7px] md:text-[9px] font-bold opacity-60">
+                  {lang === 'ar' ? 'ريال' : 'YER'}
+                </span>
+              </div>
             </div>
 
             <div className="flex items-center gap-1 text-[7px] md:text-[8px] text-muted-foreground font-bold uppercase tracking-widest truncate max-w-[50%]">
-              <Tag className="h-2 w-2 shrink-0 text-primary/50" />
+              <Tag className="h-2 w-2 md:h-2.5 md:w-2.5 shrink-0 text-primary/50" />
               {product.category}
             </div>
           </div>
