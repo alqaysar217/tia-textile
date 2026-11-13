@@ -18,7 +18,6 @@ import {
   MessageSquare, 
   HelpCircle, 
   LayoutDashboard, 
-  LogIn,
   MapPin,
   Star
 } from 'lucide-react';
@@ -52,7 +51,7 @@ export function Navbar() {
     <nav className="sticky top-0 z-50 w-full bg-background/95 backdrop-blur-md border-b border-primary/5">
       <div className="container mx-auto px-4 h-20 flex items-center justify-between">
         {/* Logo Section */}
-        <Link href="/" className="flex items-center gap-3 group">
+        <Link href="/" className="flex items-center gap-3 group shrink-0">
           <div className="relative w-12 h-12 md:w-14 md:h-14 overflow-hidden rounded-lg bg-muted/30 p-0 flex items-center justify-center border border-primary/5">
             <img 
               src="/images/logo.png" 
@@ -70,18 +69,18 @@ export function Navbar() {
           </div>
         </Link>
 
-        {/* Desktop Nav Links */}
-        <div className="hidden lg:flex items-center gap-4 xl:gap-6">
+        {/* Desktop Nav Links - Center Area */}
+        <div className="hidden lg:flex items-center gap-4 xl:gap-6 mx-4">
           {navLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
               className={cn(
-                "flex items-center gap-2 text-[10px] xl:text-xs font-black uppercase tracking-wider transition-colors py-2 relative group",
+                "flex items-center gap-2 text-[10px] xl:text-xs font-black uppercase tracking-wider transition-colors py-2 relative group whitespace-nowrap",
                 pathname === link.href ? "text-primary" : "text-foreground/80 hover:text-primary"
               )}
             >
-              <span className="opacity-40 group-hover:opacity-100 transition-opacity">{link.icon}</span>
+              <span className="opacity-40 group-hover:opacity-100 transition-opacity hidden xl:inline-block">{link.icon}</span>
               {link.name}
               <span className={cn(
                 "absolute bottom-0 left-0 h-0.5 bg-primary transition-all duration-300 group-hover:w-full",
@@ -91,33 +90,22 @@ export function Navbar() {
           ))}
         </div>
 
-        {/* Actions Menu */}
-        <div className="flex items-center gap-2">
-          {/* ERP Entry Point Button */}
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="hidden xl:flex items-center gap-2 h-9 rounded-lg text-[10px] font-black border-primary/20 text-primary hover:bg-primary/5 px-4"
-            asChild
-          >
-            <Link href="/production">
-              <LayoutDashboard className="w-3.5 h-3.5" />
-              {lang === 'ar' ? 'نظام الإنتاج' : 'System Login'}
-            </Link>
-          </Button>
-
+        {/* Actions Menu - Left Area (in Arabic) */}
+        <div className="flex items-center gap-1.5 md:gap-3 shrink-0">
+          {/* Language Toggle */}
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')}
-            className="rounded-lg hover:bg-primary/5"
+            className="rounded-lg hover:bg-primary/5 h-9 w-9"
           >
-            <Globe className="h-5 w-5" />
+            <Globe className="h-5 w-5 text-muted-foreground" />
           </Button>
 
+          {/* Cart Icon */}
           <Link href="/cart">
-            <Button variant="ghost" size="icon" className="relative rounded-lg hover:bg-primary/5">
-              <ShoppingCart className="h-5 w-5" />
+            <Button variant="ghost" size="icon" className="relative rounded-lg hover:bg-primary/5 h-9 w-9">
+              <ShoppingCart className="h-5 w-5 text-muted-foreground" />
               {totalItems > 0 && (
                 <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow-md animate-in zoom-in">
                   {totalItems}
@@ -126,7 +114,21 @@ export function Navbar() {
             </Button>
           </Link>
 
-          <Button className="hidden md:flex gap-2 rounded-lg px-6 h-10 shadow-sm hover:shadow-md transition-all active:scale-95" asChild>
+          {/* ERP Entry Point Button */}
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="hidden lg:flex items-center gap-2 h-9 rounded-lg text-[10px] font-black border-primary/20 text-primary hover:bg-primary/5 px-4"
+            asChild
+          >
+            <Link href="/production">
+              <LayoutDashboard className="w-3.5 h-3.5" />
+              {lang === 'ar' ? 'نظام الإنتاج' : 'ERP System'}
+            </Link>
+          </Button>
+
+          {/* WhatsApp Button */}
+          <Button className="hidden md:flex gap-2 rounded-lg px-5 h-10 shadow-sm hover:shadow-md transition-all active:scale-95 text-xs font-black" asChild>
             <a href="https://wa.me/967771687041" target="_blank" rel="noopener noreferrer">
               <Phone className="h-4 w-4" />
               {t.nav.orderWhatsApp}
@@ -136,24 +138,26 @@ export function Navbar() {
           {/* Mobile Menu Trigger */}
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="lg:hidden rounded-lg">
+              <Button variant="ghost" size="icon" className="lg:hidden rounded-lg h-9 w-9">
                 <Menu className="h-6 w-6" />
               </Button>
             </SheetTrigger>
             <SheetContent side={lang === 'ar' ? 'right' : 'left'} className="w-[320px] border-none flex flex-col p-0 overflow-hidden">
               <div className="flex flex-col h-full" dir={dir}>
-                <SheetHeader className="p-6 border-b border-border/50 bg-muted/20">
-                  <SheetTitle className={cn("flex items-center gap-3", lang === 'ar' ? "justify-end flex-row-reverse" : "justify-start")}>
-                    <div className="w-12 h-12 rounded-lg overflow-hidden bg-white shadow-sm p-0 flex items-center justify-center border border-primary/5 shrink-0">
-                      <img src="/images/logo.png" alt="Logo" className="w-full h-full object-cover rounded-lg" />
-                    </div>
-                    <div className={cn("text-right", lang === 'en' && "text-left")}>
-                      <h1 className="text-xs font-black leading-tight text-primary uppercase tracking-tighter">
-                        {lang === 'ar' ? 'جمعية الصناعات النسيجية' : 'Textile Cooperative'}
-                      </h1>
-                      <p className="text-[9px] text-muted-foreground font-bold opacity-60 uppercase tracking-widest">
-                        {lang === 'ar' ? 'اليمن - شبوة' : 'Shabwa - Yemen'}
-                      </p>
+                <SheetHeader className="p-6 border-b border-border/50 bg-muted/20 text-right rtl:text-right ltr:text-left">
+                  <SheetTitle className={cn("flex items-center gap-3", lang === 'ar' ? "justify-end" : "justify-start")}>
+                    <div className={cn("flex items-center gap-3", lang === 'ar' ? "flex-row-reverse" : "flex-row")}>
+                      <div className="w-12 h-12 rounded-lg overflow-hidden bg-white shadow-sm p-0 flex items-center justify-center border border-primary/5 shrink-0">
+                        <img src="/images/logo.png" alt="Logo" className="w-full h-full object-cover rounded-lg" />
+                      </div>
+                      <div className={cn("text-right", lang === 'en' && "text-left")}>
+                        <h1 className="text-xs font-black leading-tight text-primary uppercase tracking-tighter">
+                          {lang === 'ar' ? 'جمعية الصناعات النسيجية' : 'Textile Cooperative'}
+                        </h1>
+                        <p className="text-[9px] text-muted-foreground font-bold opacity-60 uppercase tracking-widest">
+                          {lang === 'ar' ? 'اليمن - شبوة' : 'Shabwa - Yemen'}
+                        </p>
+                      </div>
                     </div>
                   </SheetTitle>
                 </SheetHeader>
@@ -165,30 +169,31 @@ export function Navbar() {
                         key={link.href}
                         href={link.href}
                         className={cn(
-                          "flex items-center gap-4 text-sm font-black p-4 rounded-lg transition-all active:scale-95",
+                          "flex items-center gap-4 text-sm font-black p-4 rounded-lg transition-all active:scale-95 group",
                           pathname === link.href 
                             ? "bg-primary text-white" 
                             : "text-foreground/80 hover:bg-primary/5 hover:text-primary",
-                          lang === 'ar' && "flex-row-reverse text-right justify-end"
+                          lang === 'ar' ? "flex-row-reverse text-right justify-start" : "flex-row text-left justify-start"
                         )}
                       >
                         <span className={cn(
-                          pathname === link.href ? "text-white" : "text-primary/60"
+                          "shrink-0",
+                          pathname === link.href ? "text-white" : "text-primary/60 group-hover:text-primary"
                         )}>{link.icon}</span>
-                        {link.name}
+                        <span className="flex-1">{link.name}</span>
                       </Link>
                     ))}
                   </div>
                 </ScrollArea>
 
                 <div className="p-4 border-t border-border/50 bg-background grid grid-cols-2 gap-3">
-                  <Button variant="outline" className={cn("gap-2 h-12 rounded-lg text-[10px] font-black border-border/60", lang === 'ar' && "flex-row-reverse justify-end")} asChild>
+                  <Button variant="outline" className={cn("gap-2 h-12 rounded-lg text-[10px] font-black border-border/60", lang === 'ar' && "flex-row-reverse")} asChild>
                     <Link href="/production">
                       <LayoutDashboard className="w-4 h-4" />
                       {lang === 'ar' ? 'نظام الإنتاج' : 'ERP Login'}
                     </Link>
                   </Button>
-                  <Button className={cn("gap-2 h-12 rounded-lg text-[10px] font-black shadow-lg shadow-primary/20", lang === 'ar' && "flex-row-reverse justify-end")} asChild>
+                  <Button className={cn("gap-2 h-12 rounded-lg text-[10px] font-black shadow-lg shadow-primary/20", lang === 'ar' && "flex-row-reverse")} asChild>
                     <a href="https://wa.me/967771687041" target="_blank" rel="noopener noreferrer">
                       <Phone className="w-4 h-4" />
                       {lang === 'ar' ? 'واتساب' : 'WhatsApp'}
