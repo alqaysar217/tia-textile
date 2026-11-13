@@ -30,8 +30,21 @@ export function ProductCard({ product }: { product: any }) {
     ? product.price.toLocaleString('en-US') 
     : product.price.toString();
 
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    addToCart({ ...product, quantity: 1 });
+  };
+
   return (
-    <div className="group bg-card rounded-xl overflow-hidden border border-border/40 hover:shadow-md transition-all duration-500 flex flex-col h-full">
+    <div className="group bg-card rounded-xl overflow-hidden border border-border/40 hover:shadow-md transition-all duration-500 flex flex-col h-full relative">
+      {/* رابط شامل للبطاقة بالكامل */}
+      <Link 
+        href={`/products/${product.id}`} 
+        className="absolute inset-0 z-10" 
+        aria-label={lang === 'ar' ? product.nameAr : product.nameEn} 
+      />
+
       {/* Image Container */}
       <div className="relative aspect-square overflow-hidden bg-muted">
         <img 
@@ -41,7 +54,7 @@ export function ProductCard({ product }: { product: any }) {
         />
         
         {/* Badges Overlay */}
-        <div className="absolute top-2 right-2 left-2 flex justify-between items-start gap-1">
+        <div className="absolute top-2 right-2 left-2 flex justify-between items-start gap-1 z-20">
           <Badge variant={status.variant} className="shadow-sm backdrop-blur-md bg-opacity-90 rounded-md text-[8px] md:text-[9px] py-0 px-1.5">
             {lang === 'ar' ? status.labelAr : status.labelEn}
           </Badge>
@@ -53,8 +66,15 @@ export function ProductCard({ product }: { product: any }) {
         </div>
         
         {/* Desktop Quick Actions Overlay */}
-        <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 hidden md:flex items-center justify-center gap-2">
-          <Button variant="secondary" size="icon" className="h-8 w-8 rounded-full shadow-md hover:scale-110 transition-transform bg-white/90" asChild title={t.products.quickView}>
+        <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 hidden md:flex items-center justify-center gap-2 z-20">
+          <Button 
+            variant="secondary" 
+            size="icon" 
+            className="h-8 w-8 rounded-full shadow-md hover:scale-110 transition-transform bg-white/90" 
+            asChild 
+            title={t.products.quickView}
+            onClick={(e) => e.stopPropagation()}
+          >
             <Link href={`/products/${product.id}`}>
               <Eye className="h-3.5 w-3.5 text-primary" />
             </Link>
@@ -63,7 +83,7 @@ export function ProductCard({ product }: { product: any }) {
             variant="default" 
             size="icon" 
             className="h-8 w-8 rounded-full shadow-md hover:scale-110 transition-transform"
-            onClick={() => addToCart({ ...product, quantity: 1 })}
+            onClick={handleAddToCart}
             title={t.products.addToCart}
           >
             <ShoppingCart className="h-3.5 w-3.5" />
@@ -73,15 +93,15 @@ export function ProductCard({ product }: { product: any }) {
 
       {/* Info Section */}
       <div className="p-2.5 md:p-3.5 flex flex-col flex-grow space-y-2 md:space-y-3">
-        <Link href={`/products/${product.id}`} className="block space-y-1.5 md:space-y-2 group/text">
-          {/* Row 1: Name */}
-          <h3 className="text-[11px] md:text-sm font-black line-clamp-1 leading-tight group-hover/text:text-primary transition-colors">
+        <div className="block space-y-1.5 md:space-y-2">
+          {/* الصف الأول: الاسم */}
+          <h3 className="text-[11px] md:text-sm font-black line-clamp-1 leading-tight group-hover:text-primary transition-colors">
             {lang === 'ar' ? product.nameAr : product.nameEn}
           </h3>
           
-          {/* Row 2: Price and Category */}
+          {/* الصف الثاني: السعر والفئة */}
           <div className="flex items-center justify-between gap-2 border-t border-border/5 pt-2">
-            {/* Price with Wallet Icon */}
+            {/* السعر مع أيقونة المحفظة */}
             <div className="flex items-center gap-1.5">
               <Wallet className="h-3 w-3 md:h-4 md:w-4 text-primary/60 shrink-0" />
               <div className="flex items-baseline gap-0.5 md:gap-1">
@@ -94,25 +114,26 @@ export function ProductCard({ product }: { product: any }) {
               </div>
             </div>
 
-            {/* Category with Tag Icon */}
+            {/* الفئة مع أيقونة الوسم */}
             <div className="flex items-center gap-1.5 text-[8px] md:text-[10px] text-muted-foreground font-black uppercase tracking-widest truncate max-w-[50%] bg-muted/40 px-2 py-0.5 rounded-md">
               <Tag className="h-2.5 w-2.5 md:h-3.5 md:w-3.5 shrink-0 text-primary/50" />
               {product.category}
             </div>
           </div>
-        </Link>
-        
-        <div className="mt-auto">
-          <Button 
-            variant="default" 
-            size="sm" 
-            className="w-full rounded-lg text-[8px] md:text-[10px] font-black h-7 md:h-10 gap-1.5 shadow-sm active:scale-95 transition-all"
-            onClick={() => addToCart({ ...product, quantity: 1 })}
-          >
-            <ShoppingCart className="h-3 w-3 md:h-4 md:w-4" />
-            {t.products.addToCart}
-          </Button>
         </div>
+      </div>
+      
+      {/* زر أضف للسلة في الأسفل */}
+      <div className="p-2.5 md:p-3.5 pt-0 mt-auto z-20">
+        <Button 
+          variant="default" 
+          size="sm" 
+          className="w-full rounded-lg text-[8px] md:text-[10px] font-black h-7 md:h-10 gap-1.5 shadow-sm active:scale-95 transition-all"
+          onClick={handleAddToCart}
+        >
+          <ShoppingCart className="h-3.5 w-3.5 md:h-4 md:w-4" />
+          {t.products.addToCart}
+        </Button>
       </div>
     </div>
   );
