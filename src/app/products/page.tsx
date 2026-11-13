@@ -21,9 +21,10 @@ import { useSearchParams } from 'next/navigation';
  * مكون عرض القائمة المنفصل لدعم الـ Suspense وقراءة الـ Params
  */
 function ProductsList() {
-  const { lang, t } = useTranslation();
+  const { lang, t, dir } = useTranslation();
   const db = useFirestore();
   const searchParams = useSearchParams();
+  const isRtl = lang === 'ar';
   
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('all');
@@ -78,24 +79,37 @@ function ProductsList() {
   }, [search, category, firestoreProducts]);
 
   return (
-    <div className="py-6 md:py-12 min-h-screen bg-muted/5">
-      <div className="container mx-auto px-4">
-        {/* Elegant Header */}
-        <div className="mb-8 space-y-2">
-          <div className="inline-flex items-center gap-2 text-primary bg-primary/5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-primary/10">
+    <div className="min-h-screen bg-background relative overflow-hidden">
+      {/* الخلفية الزخرفية الموحدة */}
+      <div className="absolute inset-0 opacity-[0.03] pointer-events-none textile-pattern" />
+      <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-primary/5 rounded-full blur-[120px] -z-10 -mr-64 -mt-64" />
+
+      {/* رأس الصفحة بتصميم مطابق للواجهات الأخرى */}
+      <div className="py-12 md:py-20 bg-primary relative text-primary-foreground overflow-hidden">
+        <div className="absolute inset-0 opacity-10" 
+          style={{ 
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='104' viewBox='0 0 60 104' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M60 104l-30-17.321L0 104V69.359L30 52l30 17.359V104zm0-69.359L30 17.321 0 34.641V0l30 17.321L60 0v34.641z' fill='%23ffffff' fill-opacity='1' fill-rule='evenodd'/%3E%3C/svg%3E")`,
+            backgroundSize: '80px 138px'
+          }} 
+        />
+        
+        <div className="container mx-auto px-4 relative z-10 text-center space-y-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-white text-[10px] font-black uppercase tracking-widest border border-white/10 mx-auto">
             <LayoutGrid className="h-3 w-3" />
-            {lang === 'ar' ? 'تشكيلة الجمعية' : 'Association Collection'}
+            {isRtl ? 'تشكيلة الجمعية المتميزة' : 'ASSOCIATION PREMIUM COLLECTION'}
           </div>
-          <h1 className="text-2xl md:text-4xl font-black text-foreground">
+          <h1 className="text-3xl md:text-6xl font-black leading-tight drop-shadow-2xl">
             {t.products.title}
           </h1>
-          <p className="text-muted-foreground text-xs md:text-base max-w-2xl font-medium">
+          <p className="text-sm md:text-lg opacity-80 max-w-2xl mx-auto font-medium leading-relaxed">
             {lang === 'ar' 
-              ? 'تصفح أجود أنواع المعاوز اليمنية المحاكة يدوياً في مديرية الروضة.' 
-              : 'Browse the finest hand-woven Yemeni Maawiz from Al-Rawdah district.'}
+              ? 'تصفح أجود أنواع المعاوز اليمنية المحاكة يدوياً في مديرية الروضة بمحافظة شبوة.' 
+              : 'Browse the finest hand-woven Yemeni Maawiz from Al-Rawdah district in Shabwah governorate.'}
           </p>
         </div>
+      </div>
 
+      <div className="container mx-auto px-4 py-8 md:py-16 max-w-7xl relative z-10">
         {/* Compact & Efficient Filter Bar */}
         <div className="bg-background border border-border/50 rounded-2xl shadow-sm p-3 md:p-4 mb-8">
           <div className="flex items-center gap-2 md:gap-4">
