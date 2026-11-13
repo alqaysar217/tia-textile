@@ -138,17 +138,17 @@ export function Navbar() {
             </SheetTrigger>
             <SheetContent side={dir === 'rtl' ? 'right' : 'left'} className="w-[320px] border-none rounded-3xl flex flex-col p-0 overflow-hidden">
               <SheetHeader className="p-6 border-b border-border/50 bg-muted/20">
-                <SheetTitle className="flex items-center gap-3 justify-end rtl:flex-row-reverse">
-                  <div className="text-right rtl:text-right">
+                <SheetTitle className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl overflow-hidden bg-white shadow-sm p-0 flex items-center justify-center border border-primary/5 shrink-0">
+                    <img src="/images/logo.png" alt="Logo" className="w-full h-full object-cover rounded-xl" />
+                  </div>
+                  <div className="text-right rtl:text-right ltr:text-left">
                     <h1 className="text-xs font-black leading-tight text-primary uppercase tracking-tighter">
                       {lang === 'ar' ? 'جمعية الصناعات النسيجية' : 'Textile Cooperative'}
                     </h1>
                     <p className="text-[9px] text-muted-foreground font-bold opacity-60 uppercase tracking-widest">
                       {lang === 'ar' ? 'اليمن - شبوة' : 'Shabwa - Yemen'}
                     </p>
-                  </div>
-                  <div className="w-12 h-12 rounded-xl overflow-hidden bg-white shadow-sm p-0 flex items-center justify-center border border-primary/5 shrink-0">
-                    <img src="/images/logo.png" alt="Logo" className="w-full h-full object-cover rounded-xl" />
                   </div>
                 </SheetTitle>
               </SheetHeader>
@@ -159,23 +159,23 @@ export function Navbar() {
                     <Link
                       key={link.href}
                       href={link.href}
-                      className="flex items-center justify-end gap-4 text-sm font-black p-4 rounded-2xl hover:bg-primary/5 transition-all active:scale-95 text-foreground/80 hover:text-primary rtl:flex-row-reverse"
+                      className="flex items-center justify-start gap-4 text-sm font-black p-4 rounded-2xl hover:bg-primary/5 transition-all active:scale-95 text-foreground/80 hover:text-primary"
                     >
-                      {link.name}
                       <span className="text-primary/60">{link.icon}</span>
+                      {link.name}
                     </Link>
                   ))}
                 </div>
               </ScrollArea>
 
-              <div className="p-6 border-t border-border/50 bg-background flex gap-3 rtl:flex-row-reverse">
-                <Button variant="outline" className="flex-1 gap-2 h-12 rounded-xl text-[10px] font-black rtl:flex-row-reverse" asChild>
+              <div className="p-6 border-t border-border/50 bg-background flex gap-3">
+                <Button variant="outline" className="flex-1 gap-2 h-12 rounded-xl text-[10px] font-black" asChild>
                   <Link href="/production">
                     <LogIn className="w-4 h-4" />
                     {lang === 'ar' ? 'نظام الإنتاج' : 'ERP Login'}
                   </Link>
                 </Button>
-                <Button className="flex-1 gap-2 h-12 rounded-xl text-[10px] font-black shadow-lg shadow-primary/20 rtl:flex-row-reverse" asChild>
+                <Button className="flex-1 gap-2 h-12 rounded-xl text-[10px] font-black shadow-lg shadow-primary/20" asChild>
                   <a href="https://wa.me/967771687041" target="_blank" rel="noopener noreferrer">
                     <Phone className="h-4 w-4" />
                     {lang === 'ar' ? 'اطلب واتساب' : 'WhatsApp'}
