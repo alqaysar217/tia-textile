@@ -31,7 +31,8 @@ import {
   PieChart,
   CheckCircle2,
   Settings2,
-  UserPlus
+  UserPlus,
+  MapPin
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -126,6 +127,7 @@ export function Sidebar() {
       name: t.production.management,
       icon: <Settings className="w-5 h-5" />,
       children: [
+        { id: 'branches', name: lang === 'ar' ? 'فروع الجمعية' : 'Our Branches', href: '/production/branches', icon: <MapPin className="w-3.5 h-3.5" /> },
         { id: 'users', name: lang === 'ar' ? 'المستخدمين والصلاحيات' : 'Users & Permissions', href: '/production/users', icon: <UserPlus className="w-3.5 h-3.5" /> },
         { id: 'settings', name: t.production.settings, href: '/production/settings', icon: <Settings2 className="w-3.5 h-3.5" /> },
         { id: 'trash', name: t.production.trash, href: '/production/trash', icon: <Trash2 className="w-3.5 h-3.5" /> },

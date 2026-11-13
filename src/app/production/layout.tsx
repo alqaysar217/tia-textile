@@ -56,7 +56,7 @@ export default function ProductionLayout({
 
     if (userProfile.role === 'admin') return true;
 
-    // خريطة المسارات للموديولات المستقلة (21 موديولاً)
+    // خريطة المسارات للموديولات المستقلة (22 موديولاً)
     const moduleMap: Record<string, string> = {
       '/production/orders/completed': 'orders_completed',
       '/production/orders': 'orders',
@@ -74,6 +74,7 @@ export default function ProductionLayout({
       '/production/reports/costs': 'report_costs',
       '/production/reports/materials': 'report_consumption',
       '/production/reports/financial': 'report_financial',
+      '/production/branches': 'branches',
       '/production/users': 'users',
       '/production/settings': 'settings',
       '/production/trash': 'trash'

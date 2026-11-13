@@ -21,12 +21,13 @@ import {
   Calculator,
   PieChart,
   TrendingUp,
-  UserPlus
+  UserPlus,
+  MapPin
 } from 'lucide-react';
 
 /**
- * مصفوفة موديولات النظام الكاملة والمفصلة (21 موديولاً)
- * تم فصل المجموعات لضمان تحكم دقيق في الصلاحيات لكل واجهة على حدة.
+ * مصفوفة موديولات النظام الكاملة والمفصلة (22 موديولاً)
+ * تم إضافة موديول الفروع لضمان تحكم دقيق في مواقع الجمعية.
  */
 export const SYSTEM_MODULES = [
   { id: 'dashboard', labelAr: 'لوحة التحكم والإحصائيات', labelEn: 'Dashboard', icon: React.createElement(LayoutDashboard, { className: "w-3.5 h-3.5" }) },
@@ -60,6 +61,7 @@ export const SYSTEM_MODULES = [
   { id: 'report_financial', labelAr: 'تقرير الملخص المالي والنمو', labelEn: 'Financial Summary', icon: React.createElement(TrendingUp, { className: "w-3.5 h-3.5" }) },
   
   // الإدارة والرقابة
+  { id: 'branches', labelAr: 'إدارة فروع الجمعية', labelEn: 'Branch Management', icon: React.createElement(MapPin, { className: "w-3.5 h-3.5" }) },
   { id: 'users', labelAr: 'إدارة المستخدمين والصلاحيات', labelEn: 'Users & Permissions', icon: React.createElement(UserPlus, { className: "w-3.5 h-3.5" }) },
   { id: 'settings', labelAr: 'إعدادات النظام العامة', labelEn: 'General Settings', icon: React.createElement(Settings2, { className: "w-3.5 h-3.5" }) },
   { id: 'trash', labelAr: 'سلة المهملات والأرشفة', labelEn: 'Smart Trash', icon: React.createElement(Trash2, { className: "w-3.5 h-3.5" }) },
