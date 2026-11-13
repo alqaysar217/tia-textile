@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -95,16 +94,16 @@ export default function CartPage() {
             {/* Cart Items List */}
             <div className="space-y-3">
               {cart.map((item) => (
-                <div key={item.id} className="group relative flex items-center gap-3 md:gap-6 p-3 md:p-4 bg-background rounded-2xl border border-border/50 shadow-sm hover:shadow-md transition-all">
-                  {/* Compact Image */}
-                  <div className="w-16 h-16 md:w-20 md:h-20 rounded-xl overflow-hidden shrink-0 bg-muted/20 border border-border/10">
+                <div key={item.id} className="group relative flex items-center gap-3 md:gap-6 px-3 py-2 md:p-4 bg-background rounded-2xl border border-border/50 shadow-sm hover:shadow-md transition-all">
+                  {/* Compact Image - Reduced size on mobile */}
+                  <div className="w-14 h-14 md:w-20 md:h-20 rounded-xl overflow-hidden shrink-0 bg-muted/20 border border-border/10">
                     <img src={item.image} alt={item.nameAr} className="w-full h-full object-cover" />
                   </div>
                   
                   {/* Info Section */}
-                  <div className="flex-grow grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-4 items-center">
+                  <div className="flex-grow grid grid-cols-1 md:grid-cols-12 gap-1 md:gap-4 items-center">
                     <div className="md:col-span-5 space-y-0.5">
-                      <h3 className="text-sm md:text-base font-black leading-tight line-clamp-1 group-hover:text-primary transition-colors">
+                      <h3 className="text-xs md:text-base font-black leading-tight line-clamp-1 group-hover:text-primary transition-colors">
                         {lang === 'ar' ? item.nameAr : item.nameEn}
                       </h3>
                       <p className="text-primary font-bold text-[10px] md:text-sm tabular-nums opacity-70" suppressHydrationWarning>
@@ -112,40 +111,40 @@ export default function CartPage() {
                       </p>
                     </div>
                     
-                    <div className="md:col-span-7 flex items-center justify-between md:justify-end gap-4">
-                      {/* Quantity Selector */}
+                    <div className="md:col-span-7 flex items-center justify-between md:justify-end gap-3 md:gap-4">
+                      {/* Quantity Selector - More compact on mobile */}
                       <div className="flex items-center bg-muted/50 rounded-lg p-0.5 border border-border/20 scale-90 md:scale-100 origin-right">
                         <Button 
                           variant="ghost" 
                           size="icon" 
-                          className="h-7 w-7 rounded-md hover:bg-background transition-colors"
+                          className="h-6 w-6 md:h-7 md:w-7 rounded-md hover:bg-background transition-colors"
                           onClick={() => updateQuantity(item.id, item.quantity - 1)}
                           disabled={item.quantity <= 1}
                         >
                           <Minus className="h-3 w-3" />
                         </Button>
-                        <span className="w-8 text-center font-black text-xs md:text-sm tabular-nums">{item.quantity}</span>
+                        <span className="w-6 md:w-8 text-center font-black text-xs md:text-sm tabular-nums">{item.quantity}</span>
                         <Button 
                           variant="ghost" 
                           size="icon" 
-                          className="h-7 w-7 rounded-md hover:bg-background transition-colors"
+                          className="h-6 w-6 md:h-7 md:w-7 rounded-md hover:bg-background transition-colors"
                           onClick={() => updateQuantity(item.id, item.quantity + 1)}
                         >
                           <Plus className="h-3 w-3" />
                         </Button>
                       </div>
                       
-                      <div className="flex items-center gap-4 md:gap-8 min-w-[80px] md:min-w-[120px] justify-end">
+                      <div className="flex items-center gap-3 md:gap-8 min-w-[70px] md:min-w-[120px] justify-end">
                         <div className="text-right">
-                          <p className="text-sm md:text-base font-black tabular-nums" suppressHydrationWarning>{formatPrice(item.price * item.quantity)}</p>
+                          <p className="text-xs md:text-base font-black tabular-nums" suppressHydrationWarning>{formatPrice(item.price * item.quantity)}</p>
                         </div>
                         <Button 
                           variant="ghost" 
                           size="icon" 
-                          className="text-destructive/30 hover:text-destructive hover:bg-destructive/5 rounded-full h-8 w-8 transition-colors"
+                          className="text-destructive/30 hover:text-destructive hover:bg-destructive/5 rounded-full h-7 w-7 md:h-8 md:w-8 transition-colors"
                           onClick={() => removeFromCart(item.id)}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-3.5 w-3.5 md:h-4 md:w-4" />
                         </Button>
                       </div>
                     </div>
