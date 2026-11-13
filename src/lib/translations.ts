@@ -1,4 +1,3 @@
-
 export type Language = 'ar' | 'en';
 
 export const translations = {
@@ -8,7 +7,6 @@ export const translations = {
       products: 'المنتجات',
       about: 'من نحن',
       features: 'مميزاتنا',
-      gallery: 'معرض الصور',
       offers: 'العروض',
       faq: 'الأسئلة الشائعة',
       contact: 'تواصل معنا',
@@ -123,7 +121,6 @@ export const translations = {
       products: 'Products',
       about: 'About Us',
       features: 'Features',
-      gallery: 'Gallery',
       offers: 'Offers',
       faq: 'FAQ',
       contact: 'Contact Us',
