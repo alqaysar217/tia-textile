@@ -223,7 +223,8 @@ export function Header() {
   const displayRole = userProfile?.role || (authUser?.email === 'alqaysarpc219@gmail.com' ? 'admin' : 'staff');
   const displayPhoto = userProfile?.photoUrl || authUser?.photoURL || '';
 
-  const canAccessAI = isAdmin || permissions.ai?.read === true;
+  // التعديل الجوهري: ربط صلاحية الدخول بحالة التفعيل في الإعدادات العامة
+  const canAccessAI = (isAdmin || permissions.ai?.read === true) && settings?.aiEnabled === true;
 
   return (
     <header className="h-20 bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between px-6 md:px-10 z-20 shadow-sm transition-colors duration-300">
