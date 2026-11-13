@@ -1,13 +1,13 @@
-
 'use client';
 
 import React, { useMemo } from 'react';
 import { useTranslation } from '@/components/LanguageProvider';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
-import { MapPin, Phone, Building2, Globe, Clock, ShieldCheck } from 'lucide-react';
+import { MapPin, Phone, Building2, Globe, Clock, ShieldCheck, ChevronRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import Link from 'next/link';
 
 export default function BranchesPage() {
   const { lang, t, dir } = useTranslation();
@@ -29,24 +29,31 @@ export default function BranchesPage() {
     return [...rawBranches].sort((a, b) => {
       const timeA = a.createdAt?.seconds || 0;
       const timeB = b.createdAt?.seconds || 0;
-      return timeA - timeB; // Oldest first
+      return timeA - timeB; // الأقدم أولاً كما في نظام الإنتاج
     });
   }, [rawBranches]);
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
-      {/* Decorative Background */}
+      {/* الخلفية الزخرفية الموحدة */}
       <div className="absolute inset-0 opacity-[0.03] pointer-events-none textile-pattern" />
-      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px] -z-10" />
-
-      {/* Hero Header */}
-      <div className="py-16 md:py-24 bg-primary relative text-primary-foreground overflow-hidden">
-        <div className="container mx-auto px-4 relative z-10 text-center space-y-6">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-white text-[10px] font-black uppercase tracking-widest border border-white/10">
+      <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-primary/5 rounded-full blur-[120px] -z-10 -mr-64 -mt-64" />
+      
+      {/* رأس الصفحة بتصميم مطابق للواجهات الأخرى */}
+      <div className="py-12 md:py-20 bg-primary relative text-primary-foreground overflow-hidden">
+        <div className="absolute inset-0 opacity-10" 
+          style={{ 
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='104' viewBox='0 0 60 104' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M60 104l-30-17.321L0 104V69.359L30 52l30 17.359V104zm0-69.359L30 17.321 0 34.641V0l30 17.321L60 0v34.641z' fill='%23ffffff' fill-opacity='1' fill-rule='evenodd'/%3E%3C/svg%3E")`,
+            backgroundSize: '80px 138px'
+          }} 
+        />
+        
+        <div className="container mx-auto px-4 relative z-10 text-center space-y-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-white text-[10px] font-black uppercase tracking-widest border border-white/10 mx-auto">
             <Globe className="h-3 w-3" />
-            {isRtl ? 'شبكة معارضنا' : 'OUR SHOWROOM NETWORK'}
+            {isRtl ? 'شبكة معارضنا المعتمدة' : 'OUR AUTHORIZED NETWORK'}
           </div>
-          <h1 className="text-3xl md:text-6xl font-black drop-shadow-xl">
+          <h1 className="text-3xl md:text-6xl font-black leading-tight drop-shadow-2xl">
             {t.nav.branches}
           </h1>
           <p className="text-sm md:text-lg opacity-80 max-w-2xl mx-auto font-medium leading-relaxed">
@@ -57,62 +64,49 @@ export default function BranchesPage() {
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-16 md:py-24 max-w-7xl">
+      <div className="container mx-auto px-4 py-12 md:py-24 max-w-7xl">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-4">
             <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
             <p className="font-black text-primary animate-pulse">{isRtl ? 'جاري جلب المواقع...' : 'Loading locations...'}</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-12">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-8">
             {branches.map((branch) => (
-              <div key={branch.id} className="group bg-card rounded-[2.5rem] border border-border/50 shadow-sm hover:shadow-2xl transition-all duration-500 overflow-hidden flex flex-col h-full">
-                {/* Image Section */}
-                <div className="aspect-video relative overflow-hidden bg-muted">
+              <div key={branch.id} className="group bg-card rounded-2xl border border-border/50 shadow-sm hover:shadow-xl transition-all duration-500 overflow-hidden flex flex-col h-full">
+                {/* قسم الصورة */}
+                <div className="aspect-[4/3] relative overflow-hidden bg-muted">
                   <img 
                     src={branch.photoUrl || `https://picsum.photos/seed/${branch.id}/800/600`} 
                     alt={branch.nameAr} 
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
                   />
-                  <div className="absolute top-4 left-4">
-                    <Badge className="bg-white/90 text-primary hover:bg-white backdrop-blur-md border-none font-black shadow-lg">
-                      {isRtl ? 'فرع معتمد' : 'Authorized'}
+                  <div className="absolute top-2 right-2">
+                    <Badge className="bg-white/90 text-primary hover:bg-white backdrop-blur-md border-none font-black shadow-lg text-[8px] md:text-[10px]">
+                      {isRtl ? 'معتمد' : 'Authorized'}
                     </Badge>
                   </div>
                 </div>
 
-                {/* Content Section */}
-                <div className="p-8 space-y-6 flex flex-col flex-1">
-                  <div className="space-y-2 text-right" dir="rtl">
-                    <h2 className="text-xl md:text-2xl font-black text-foreground flex items-center gap-3 justify-start group-hover:text-primary transition-colors">
-                      <Building2 className="h-6 w-6 text-emerald-600 shrink-0" />
-                      {branch.nameAr}
-                    </h2>
-                    <div className="flex items-start gap-3 text-muted-foreground pt-2 justify-start">
-                      <MapPin className="h-5 w-5 text-primary shrink-0 mt-1" />
-                      <p className="text-sm md:text-base font-medium leading-relaxed">
+                {/* قسم المحتوى - RTL */}
+                <div className="p-4 md:p-6 flex flex-col flex-1 space-y-4 text-right" dir="rtl">
+                  <h2 className="text-xs md:text-lg font-black text-foreground flex items-center gap-2 justify-start group-hover:text-primary transition-colors">
+                    <Building2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                    {branch.nameAr}
+                  </h2>
+                  
+                  <div className="flex-1">
+                    <div className="flex items-start gap-2 text-muted-foreground justify-start">
+                      <MapPin className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+                      <p className="text-[10px] md:text-sm font-medium leading-relaxed line-clamp-2">
                         {branch.addressAr}
                       </p>
                     </div>
                   </div>
 
-                  <div className="pt-6 border-t border-border/50 space-y-4 mt-auto">
-                    <div className="flex items-center justify-between">
-                       <div className="flex items-center gap-3" dir="rtl">
-                          <div className="w-10 h-10 rounded-xl bg-primary/5 flex items-center justify-center text-primary">
-                             <Phone className="h-5 w-5" />
-                          </div>
-                          <span className="text-lg font-black tabular-nums tracking-tighter">{branch.phoneNumber}</span>
-                       </div>
-                       <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest border-primary/20 text-primary">
-                         {isRtl ? 'نشط' : 'ACTIVE'}
-                       </Badge>
-                    </div>
-                    
-                    <div className="flex items-center gap-2 text-[10px] font-black text-muted-foreground/60 uppercase tracking-widest justify-center md:justify-start">
-                       <Clock className="w-3 h-3" />
-                       {isRtl ? 'مفتوح من 8:00 صباحاً - 9:00 مساءً' : 'Open 8:00 AM - 9:00 PM'}
-                    </div>
+                  <div className="pt-3 border-t border-border/50 flex items-center gap-2 justify-start mt-auto">
+                    <Phone className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                    <span className="text-[10px] md:text-base font-black tabular-nums tracking-tighter">{branch.phoneNumber}</span>
                   </div>
                 </div>
               </div>
@@ -120,15 +114,21 @@ export default function BranchesPage() {
           </div>
         )}
 
-        {/* System Trust Note */}
-        <div className="mt-20 p-8 md:p-12 bg-muted/30 rounded-[3rem] border border-dashed border-border/50 text-center space-y-4">
+        {/* تذيل الصفحة الإرشادي */}
+        <div className="mt-16 md:mt-24 p-8 md:p-12 bg-muted/30 rounded-2xl border border-dashed border-border/50 text-center space-y-4">
            <ShieldCheck className="w-12 h-12 text-primary/30 mx-auto" />
-           <h3 className="text-xl font-black">{isRtl ? 'التزامنا بالجودة' : 'Our Quality Commitment'}</h3>
+           <h3 className="text-xl font-black">{isRtl ? 'ضمان الجودة والأصالة' : 'Quality & Authenticity'}</h3>
            <p className="text-sm text-muted-foreground max-w-2xl mx-auto leading-relaxed">
              {isRtl 
                ? 'جميع فروعنا المذكورة أعلاه تتبع مباشرة لجمعية الصناعات النسيجية، وتضمن لكم الحصول على المنتجات الأصلية المعتمدة بضمان الجودة الحرفية.' 
                : 'All our branches listed above belong directly to the Textile Industries Association, ensuring you receive authentic certified products with craftsmanship quality guarantee.'}
            </p>
+           <div className="pt-4">
+              <Link href="/contact" className="text-primary font-black text-xs md:text-sm hover:underline flex items-center justify-center gap-2">
+                {isRtl ? 'هل تحتاج إلى مساعدة في الوصول؟' : 'Need help with directions?'}
+                <ChevronRight className={cn("w-4 h-4", isRtl ? "rotate-180" : "")} />
+              </Link>
+           </div>
         </div>
       </div>
     </div>
