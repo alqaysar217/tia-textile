@@ -14,28 +14,63 @@ export function BranchesSection() {
   const db = useFirestore();
   const isRtl = lang === 'ar';
 
-  // جلب الفروع النشطة (بدون ترتيب مباشر لتجنب خطأ الـ Index)
+  // البيانات الثابتة التي تظهر فوراً قبل تحميل قاعدة البيانات
+  const staticBranches = [
+    {
+      id: 'static-1',
+      nameAr: 'فرع عتق',
+      addressAr: 'عتق - النصب - الشارع العام - امام بن روام للمواد الغذائية',
+      phoneNumber: '77246479',
+      photoUrl: 'https://picsum.photos/seed/branch1/600/400'
+    },
+    {
+      id: 'static-2',
+      nameAr: 'فرع الروضة',
+      addressAr: 'الروضة - الشارع العام - بجانب باعلي للصرافه',
+      phoneNumber: '777295911',
+      photoUrl: 'https://picsum.photos/seed/branch2/600/400'
+    },
+    {
+      id: 'static-3',
+      nameAr: 'فرع المكلا',
+      addressAr: 'المكلا - الشرج - الشارع الاول - بجانب مستوصف المدينة',
+      phoneNumber: '777488522',
+      photoUrl: 'https://picsum.photos/seed/branch3/600/400'
+    },
+    {
+      id: 'static-4',
+      nameAr: 'فرع سيئون',
+      addressAr: 'سيئون - جولة باحارثة - ممقابل مدرسة الشهيد الزبيدي',
+      phoneNumber: '774027755',
+      photoUrl: 'https://picsum.photos/seed/branch4/600/400'
+    }
+  ];
+
+  // جلب الفروع النشطة
   const branchesQuery = useMemo(() => {
     if (!db) return null;
     return query(
       collection(db, 'branches'),
       where('status', '==', 'active'),
-      limit(10) // نجلب عدداً كافياً لنرتبهم يدوياً
+      limit(10)
     );
   }, [db]);
 
   const { data: rawBranches, loading } = useCollection<any>(branchesQuery);
 
-  // الترتيب اليدوي لضمان ظهور أول فرع أضيف أولاً
-  const sortedBranches = useMemo(() => {
-    if (!rawBranches) return [];
-    return [...rawBranches]
-      .sort((a, b) => {
-        const timeA = a.createdAt?.seconds || 0;
-        const timeB = b.createdAt?.seconds || 0;
-        return timeA - timeB;
-      })
-      .slice(0, 4); // نأخذ أول 4 فروع فقط بعد الترتيب
+  // الترتيب اليدوي وتحديد البيانات المعروضة
+  const branchesToDisplay = useMemo(() => {
+    if (rawBranches && rawBranches.length > 0) {
+      return [...rawBranches]
+        .sort((a, b) => {
+          const timeA = a.createdAt?.seconds || 0;
+          const timeB = b.createdAt?.seconds || 0;
+          return timeA - timeB;
+        })
+        .slice(0, 4);
+    }
+    // في حال الجاري التحميل أو لا توجد بيانات، اعرض البيانات الثابتة
+    return staticBranches;
   }, [rawBranches]);
 
   return (
@@ -67,63 +102,47 @@ export function BranchesSection() {
 
         {/* Grid: 2 columns on mobile, 4 on desktop */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-8">
-          {loading ? (
-            [...Array(4)].map((_, i) => (
-              <div key={i} className="aspect-[4/5] bg-muted animate-pulse rounded-2xl" />
-            ))
-          ) : !sortedBranches || sortedBranches.length === 0 ? (
-            <div className="col-span-full py-16 text-center text-muted-foreground font-bold border-2 border-dashed border-border/50 rounded-2xl bg-muted/5">
-              <Building2 className="w-12 h-12 mx-auto mb-4 opacity-10" />
-              {isRtl ? 'جاري تحديث قائمة الفروع من الإدارة...' : 'Updating branch list...'}
-            </div>
-          ) : (
-            sortedBranches.map((branch) => (
-              <div key={branch.id} className="group bg-background rounded-2xl border border-border/50 shadow-sm hover:shadow-xl transition-all duration-500 overflow-hidden flex flex-col h-full">
-                {/* Branch Image */}
-                <div className="aspect-[4/3] overflow-hidden bg-muted relative">
-                  {branch.photoUrl ? (
-                    <img 
-                      src={branch.photoUrl} 
-                      alt={branch.nameAr} 
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-muted-foreground/20">
-                      <Building2 className="w-10 h-10 md:w-16 md:h-16" />
-                    </div>
-                  )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          {branchesToDisplay.map((branch) => (
+            <div key={branch.id} className={cn(
+              "group bg-background rounded-2xl border border-border/50 shadow-sm hover:shadow-xl transition-all duration-500 overflow-hidden flex flex-col h-full",
+              loading && branch.id.startsWith('static') && "opacity-80" // تعتيم بسيط للبيانات الثابتة أثناء التحميل
+            )}>
+              {/* Branch Image */}
+              <div className="aspect-[4/3] overflow-hidden bg-muted relative">
+                <img 
+                  src={branch.photoUrl} 
+                  alt={branch.nameAr} 
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                  data-ai-hint="store branch"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
+
+              {/* Branch Content */}
+              <div className="p-4 md:p-6 flex flex-col flex-1 space-y-4 text-right" dir="rtl">
+                <h3 className="font-black text-xs md:text-lg text-foreground line-clamp-1 group-hover:text-primary transition-colors flex items-center gap-2 justify-start">
+                  <Building2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                  {branch.nameAr}
+                </h3>
+                
+                <div className="flex-1">
+                  <div className="flex items-start gap-2 text-muted-foreground justify-start">
+                    <MapPin className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+                    <p className="text-[10px] md:sm font-medium line-clamp-2 leading-relaxed text-right">
+                      {branch.addressAr}
+                    </p>
+                  </div>
                 </div>
 
-                {/* Branch Content */}
-                <div className="p-4 md:p-6 flex flex-col flex-1 space-y-4 text-right" dir="rtl">
-                  {/* Name with Icon */}
-                  <h3 className="font-black text-xs md:text-lg text-foreground line-clamp-1 group-hover:text-primary transition-colors flex items-center gap-2 justify-start">
-                    <Building2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                    {branch.nameAr}
-                  </h3>
-                  
-                  {/* Address with Icon */}
-                  <div className="flex-1">
-                    <div className="flex items-start gap-2 text-muted-foreground justify-start">
-                      <MapPin className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
-                      <p className="text-[10px] md:sm font-medium line-clamp-2 leading-relaxed text-right">
-                        {branch.addressAr}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Phone with Icon */}
-                  <div className="pt-3 border-t border-border/50 flex items-center gap-2 justify-start">
-                    <Phone className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                    <span className="text-[10px] md:text-base font-black tabular-nums text-foreground tracking-tighter">
-                      {branch.phoneNumber}
-                    </span>
-                  </div>
+                <div className="pt-3 border-t border-border/50 flex items-center gap-2 justify-start">
+                  <Phone className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                  <span className="text-[10px] md:text-base font-black tabular-nums text-foreground tracking-tighter">
+                    {branch.phoneNumber}
+                  </span>
                 </div>
               </div>
-            ))
-          )}
+            </div>
+          ))}
         </div>
 
         {/* Mobile View More Button */}
