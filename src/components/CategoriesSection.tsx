@@ -9,12 +9,10 @@ export function CategoriesSection() {
   const { lang, dir } = useTranslation();
 
   const categories = [
-    { nameAr: 'المعوز الشبواني', nameEn: 'Shabwani Maawiz', image: 'shabwa-textile' },
-    { nameAr: 'المعاوز الملكي', nameEn: 'Royal Maawiz', image: 'textile-1' },
-    { nameAr: 'المعاوز الحليسي', nameEn: 'Halisi Maawiz', image: 'textile-2' },
-    { nameAr: 'المعاوز الشحري', nameEn: 'Shihri Maawiz', image: 'textile-3' },
-    { nameAr: 'المعاوز اللحجي', nameEn: 'Lahji Maawiz', image: 'textile-4' },
-    { nameAr: 'المعاوز الحضرمي', nameEn: 'Hadhrami Maawiz', image: 'textile-5' }
+    { nameAr: 'المعوز الحليسي', nameEn: 'Halisi Maawiz', image: 'filter-1.png' },
+    { nameAr: 'المعوز الشحري', nameEn: 'Shihri Maawiz', image: 'filter-2.png' },
+    { nameAr: 'المعوز البيضاني', nameEn: 'Baidani Maawiz', image: 'filter-3.png' },
+    { nameAr: 'المعوز الحديدي', nameEn: 'Hadeedi Maawiz', image: 'filter-4.png' }
   ];
 
   return (
@@ -32,8 +30,8 @@ export function CategoriesSection() {
           <div className="w-20 h-1.5 bg-secondary rounded-full mx-auto" />
           <p className="text-muted-foreground text-sm md:text-lg font-medium max-w-2xl">
             {lang === 'ar' 
-              ? 'تصفح مجموعتنا من المعاوز اليمنية المصنفة حسب النوع والعراقة التي تميز كل منطقة.' 
-              : 'Browse our collection of Yemeni Maawiz categorized by type and heritage that distinguishes each region.'}
+              ? 'تصفح مجموعتنا المختارة من المعاوز اليمنية المصنفة حسب النوع والعراقة.' 
+              : 'Browse our selected collection of Yemeni Maawiz categorized by type and heritage.'}
           </p>
           
           <Link href="/products" className="flex items-center gap-2 text-primary text-sm md:text-lg font-black hover:underline group mt-2">
@@ -42,7 +40,7 @@ export function CategoriesSection() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
           {categories.map((cat, idx) => (
             <Link 
               key={idx} 
@@ -50,7 +48,7 @@ export function CategoriesSection() {
               className="group relative h-48 md:h-80 overflow-hidden rounded-2xl shadow-lg hover:shadow-xl transition-all duration-500"
             >
               <img 
-                src={`https://picsum.photos/seed/${cat.image}/600/600`}
+                src={`/images/${cat.image}`}
                 alt={cat.nameAr}
                 className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
               />
@@ -59,7 +57,7 @@ export function CategoriesSection() {
                 <span className="inline-block px-2 py-0.5 rounded-full bg-primary/20 backdrop-blur-sm text-[8px] font-black uppercase border border-white/10">
                   {lang === 'ar' ? 'صناعة يدوية' : 'Handmade'}
                 </span>
-                <h3 className="text-sm md:text-2xl font-black">{lang === 'ar' ? cat.nameAr : cat.nameEn}</h3>
+                <h3 className="text-sm md:text-xl font-black">{lang === 'ar' ? cat.nameAr : cat.nameEn}</h3>
                 <div className="flex items-center gap-2 text-primary font-bold text-[8px] md:text-sm transform translate-y-3 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
                   {lang === 'ar' ? 'تصفح' : 'Browse'}
                   {dir === 'rtl' ? <ArrowLeft className="h-3 w-3 md:h-4 md:w-4" /> : <ArrowRight className="h-3 w-3 md:h-4 md:w-4" />}
