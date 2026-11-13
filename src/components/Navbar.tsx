@@ -101,7 +101,7 @@ export function Navbar() {
         </div>
 
         {/* Actions Menu */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-3 shrink-0">
           <Button
             variant="ghost"
             size="icon"
@@ -122,7 +122,7 @@ export function Navbar() {
             </Button>
           </Link>
 
-          <div className="hidden md:flex items-center gap-2">
+          <div className="hidden md:flex items-center gap-3">
             <Button className="rounded-lg px-4 h-10 shadow-sm hover:shadow-md transition-all active:scale-95 text-[10px] xl:text-xs font-black shrink-0" asChild>
               <a href="https://wa.me/967771687041" target="_blank" rel="noopener noreferrer">
                 <Phone className="h-4 w-4" />
@@ -150,14 +150,14 @@ export function Navbar() {
                 <Menu className="h-6 w-6" />
               </Button>
             </SheetTrigger>
-            <SheetContent side={isRtl ? 'right' : 'left'} className="w-[320px] border-none flex flex-col p-0 overflow-hidden rounded-l-lg rtl:rounded-l-none rtl:rounded-r-lg">
+            <SheetContent side={isRtl ? 'right' : 'left'} className="w-[320px] border-none flex flex-col p-0 overflow-hidden rounded-r-lg rtl:rounded-r-none rtl:rounded-l-lg">
               <div className="flex flex-col h-full" dir={dir}>
-                <SheetHeader className="p-6 border-b border-border/50 bg-muted/20 text-right">
+                <SheetHeader className={cn("p-6 border-b border-border/50 bg-muted/20", isRtl ? "text-right" : "text-left")}>
                   <SheetTitle className={cn("flex items-center gap-3", isRtl ? "flex-row-reverse justify-start" : "justify-start")}>
                     <div className="w-12 h-12 rounded-lg overflow-hidden bg-white shadow-sm p-0 flex items-center justify-center border border-primary/5 shrink-0">
                       <img src="/images/logo.png" alt="Logo" className="w-full h-full object-cover rounded-lg" />
                     </div>
-                    <div className="flex flex-col">
+                    <div className={cn("flex flex-col", isRtl ? "text-right" : "text-left")}>
                       <h1 className="text-xs font-black leading-tight text-primary uppercase tracking-tighter">
                         {lang === 'ar' ? 'جمعية الصناعات النسيجية' : 'Textile Cooperative'}
                       </h1>
@@ -181,7 +181,7 @@ export function Navbar() {
                             isActive 
                               ? "bg-primary text-white" 
                               : "text-foreground/80 hover:bg-primary/5 hover:text-primary",
-                            isRtl ? "flex-row-reverse text-right" : "text-left"
+                            isRtl ? "flex-row-reverse justify-start text-right" : "text-left"
                           )}
                         >
                           <span className={cn(
@@ -196,16 +196,16 @@ export function Navbar() {
                 </ScrollArea>
 
                 <div className="p-4 border-t border-border/50 bg-background grid grid-cols-2 gap-3">
-                  <Button variant="outline" className={cn("gap-2 h-12 rounded-lg text-[10px] font-black border-border/60", isRtl && "flex-row-reverse justify-start")} asChild>
+                  <Button variant="outline" className={cn("gap-2 h-12 rounded-lg text-[10px] font-black border-border/60", isRtl ? "flex-row-reverse" : "flex-row")} asChild>
                     <Link href="/production">
                       <LayoutDashboard className="w-4 h-4" />
                       {lang === 'ar' ? 'نظام الإنتاج' : 'ERP Login'}
                     </Link>
                   </Button>
-                  <Button className={cn("gap-2 h-12 rounded-lg text-[10px] font-black shadow-lg shadow-primary/20", isRtl && "flex-row-reverse justify-start")} asChild>
+                  <Button className={cn("gap-2 h-12 rounded-lg text-[10px] font-black shadow-lg shadow-primary/20", isRtl ? "flex-row-reverse" : "flex-row")} asChild>
                     <a href="https://wa.me/967771687041" target="_blank" rel="noopener noreferrer">
                       <Phone className="w-4 h-4" />
-                      {lang === 'ar' ? 'واتساب' : 'WhatsApp'}
+                      {lang === 'ar' ? 'اطلب واتساب' : 'WhatsApp'}
                     </a>
                   </Button>
                 </div>
