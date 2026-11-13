@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -46,7 +47,6 @@ export function Navbar() {
     { name: t.nav.contact, href: '/contact', icon: <MessageSquare className="h-4 w-4" /> },
   ];
 
-  // Mobile navigation includes more items
   const mobileLinks = [
     ...navLinks,
     { name: lang === 'ar' ? 'ماذا يقول عملاؤنا؟' : 'Testimonials', href: '/testimonials', icon: <Star className="h-4 w-4" /> },
@@ -86,6 +86,12 @@ export function Navbar() {
                 pathname === link.href ? "text-primary" : "text-foreground/80 hover:text-primary"
               )}
             >
+              <span className={cn(
+                "shrink-0 transition-colors",
+                pathname === link.href ? "text-primary" : "text-muted-foreground/60 group-hover:text-primary"
+              )}>
+                {link.icon}
+              </span>
               {link.name}
               <span className={cn(
                 "absolute bottom-0 left-0 h-0.5 bg-primary transition-all duration-300 group-hover:w-full",
@@ -124,7 +130,7 @@ export function Navbar() {
             {/* 3. WhatsApp Button */}
             <Button className="rounded-lg px-4 h-10 shadow-sm hover:shadow-md transition-all active:scale-95 text-[10px] xl:text-xs font-black shrink-0" asChild>
               <a href="https://wa.me/967771687041" target="_blank" rel="noopener noreferrer">
-                < Phone className="h-4 w-4" />
+                <Phone className="h-4 w-4" />
                 {t.nav.orderWhatsApp}
               </a>
             </Button>
