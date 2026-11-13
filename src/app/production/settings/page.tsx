@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -16,7 +15,7 @@ import {
   Info,
   Languages,
   RefreshCcw,
-  CloudCheck,
+  Cloud,
   Download,
   ShieldAlert,
   HardDriveDownload,
@@ -159,7 +158,7 @@ export default function GeneralSettingsPage() {
 
       toast({
         title: lang === 'ar' ? "اكتمل النسخ المحلي" : "Local Backup Ready",
-        description: lang === 'ar' ? "تم تحميل " + masterBackup.data.vouchers.length + " سند في ملفك الخاص." : "Saved " + masterBackup.data.vouchers.length + " vouchers to your disk."
+        description: lang === 'ar' ? "تم تحميل " + (masterBackup.data.vouchers?.length || 0) + " سند في ملفك الخاص." : "Saved " + (masterBackup.data.vouchers?.length || 0) + " vouchers to your disk."
       });
     } catch (err) {
       console.error("Backup Error:", err);
@@ -227,7 +226,7 @@ export default function GeneralSettingsPage() {
              </p>
           </div>
 
-          {/* NEW SECTION: DATA GOVERNANCE (The Explanation) */}
+          {/* SECTION: DATA GOVERNANCE */}
           <div className="space-y-3">
              <div className="flex items-center gap-2 px-1 mb-2">
                 <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
@@ -239,7 +238,7 @@ export default function GeneralSettingsPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                    <div className="space-y-4">
                       <div className="flex items-center gap-3">
-                         <div className="p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg text-emerald-600"><CloudCheck className="w-5 h-5" /></div>
+                         <div className="p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg text-emerald-600"><Cloud className="w-5 h-5" /></div>
                          <h4 className="text-sm font-black text-slate-800 dark:text-slate-100">{lang === 'ar' ? 'أين بياناتي الآن؟' : 'Where is my data?'}</h4>
                       </div>
                       <p className="text-[11px] text-slate-500 dark:text-slate-400 font-bold leading-relaxed">
@@ -384,7 +383,7 @@ export default function GeneralSettingsPage() {
             </Card>
           </div>
 
-          {/* DANGER ZONE: DATA PURGE PROTECTION */}
+          {/* DANGER ZONE */}
           <div className="pt-8">
              <div className="p-5 bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div className="flex items-start gap-4">
