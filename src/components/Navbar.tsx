@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -150,14 +151,14 @@ export function Navbar() {
                 <Menu className="h-6 w-6" />
               </Button>
             </SheetTrigger>
-            <SheetContent side={isRtl ? 'right' : 'left'} className="w-[320px] border-none flex flex-col p-0 overflow-hidden rounded-r-lg rtl:rounded-r-none rtl:rounded-l-lg">
+            <SheetContent side={isRtl ? 'right' : 'left'} className="w-[320px] border-none flex flex-col p-0 overflow-hidden rounded-l-lg rtl:rounded-l-none rtl:rounded-r-lg">
               <div className="flex flex-col h-full" dir={dir}>
                 <SheetHeader className={cn("p-6 border-b border-border/50 bg-muted/20", isRtl ? "text-right" : "text-left")}>
-                  <SheetTitle className={cn("flex items-center gap-3", isRtl ? "flex-row-reverse justify-start" : "justify-start")}>
+                  <SheetTitle className={cn("flex items-center gap-3 w-full", isRtl ? "flex-row justify-start" : "justify-start")}>
                     <div className="w-12 h-12 rounded-lg overflow-hidden bg-white shadow-sm p-0 flex items-center justify-center border border-primary/5 shrink-0">
                       <img src="/images/logo.png" alt="Logo" className="w-full h-full object-cover rounded-lg" />
                     </div>
-                    <div className={cn("flex flex-col", isRtl ? "text-right" : "text-left")}>
+                    <div className={cn("flex flex-col flex-1", isRtl ? "text-right" : "text-left")}>
                       <h1 className="text-xs font-black leading-tight text-primary uppercase tracking-tighter">
                         {lang === 'ar' ? 'جمعية الصناعات النسيجية' : 'Textile Cooperative'}
                       </h1>
@@ -179,9 +180,9 @@ export function Navbar() {
                           className={cn(
                             "flex items-center gap-4 text-sm font-black p-4 rounded-lg transition-all active:scale-95 group",
                             isActive 
-                              ? "bg-primary text-white" 
+                              ? "bg-primary text-white shadow-md" 
                               : "text-foreground/80 hover:bg-primary/5 hover:text-primary",
-                            isRtl ? "flex-row-reverse justify-start text-right" : "text-left"
+                            isRtl ? "flex-row-reverse justify-end text-right" : "text-left"
                           )}
                         >
                           <span className={cn(
@@ -196,13 +197,13 @@ export function Navbar() {
                 </ScrollArea>
 
                 <div className="p-4 border-t border-border/50 bg-background grid grid-cols-2 gap-3">
-                  <Button variant="outline" className={cn("gap-2 h-12 rounded-lg text-[10px] font-black border-border/60", isRtl ? "flex-row-reverse" : "flex-row")} asChild>
+                  <Button variant="outline" className={cn("gap-2 h-12 rounded-lg text-[10px] font-black border-border/60 justify-center", isRtl ? "flex-row-reverse" : "flex-row")} asChild>
                     <Link href="/production">
                       <LayoutDashboard className="w-4 h-4" />
                       {lang === 'ar' ? 'نظام الإنتاج' : 'ERP Login'}
                     </Link>
                   </Button>
-                  <Button className={cn("gap-2 h-12 rounded-lg text-[10px] font-black shadow-lg shadow-primary/20", isRtl ? "flex-row-reverse" : "flex-row")} asChild>
+                  <Button className={cn("gap-2 h-12 rounded-lg text-[10px] font-black shadow-lg shadow-primary/20 justify-center", isRtl ? "flex-row-reverse" : "flex-row")} asChild>
                     <a href="https://wa.me/967771687041" target="_blank" rel="noopener noreferrer">
                       <Phone className="w-4 h-4" />
                       {lang === 'ar' ? 'اطلب واتساب' : 'WhatsApp'}
