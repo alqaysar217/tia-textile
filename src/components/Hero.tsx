@@ -25,8 +25,8 @@ export function Hero() {
       </div>
 
       <div className="container mx-auto px-4 relative z-20">
-        <div className="max-w-3xl space-y-6 md:space-y-10">
-          <div className="inline-flex items-center gap-3 px-4 py-1.5 rounded-full bg-primary/20 text-emerald-400 text-[10px] md:text-xs font-black uppercase tracking-[0.3em] border border-emerald-500/30 backdrop-blur-md w-fit animate-in slide-in-from-top duration-700">
+        <div className="max-w-3xl space-y-6 md:space-y-10 text-center lg:text-right rtl:lg:text-right ltr:lg:text-left">
+          <div className="inline-flex items-center gap-3 px-4 py-1.5 rounded-full bg-primary/20 text-emerald-400 text-[10px] md:text-xs font-black uppercase tracking-[0.3em] border border-emerald-500/30 backdrop-blur-md w-fit animate-in slide-in-from-top duration-700 mx-auto lg:mx-0">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
             {lang === 'ar' ? 'تراث الروضة - شبوة' : 'AL-RAWDAH HERITAGE'}
           </div>
@@ -35,18 +35,18 @@ export function Hero() {
             <h1 className="text-4xl md:text-7xl font-black leading-[1.05] text-white drop-shadow-2xl">
               {t.hero.title}
             </h1>
-            <div className="w-24 h-2 bg-secondary rounded-full" />
+            <div className="w-24 h-2 bg-secondary rounded-full mx-auto lg:mx-0" />
           </div>
           
-          <p className="text-lg md:text-2xl text-white/80 leading-relaxed max-w-xl font-medium animate-in slide-in-from-bottom duration-700 delay-300">
+          <p className="text-lg md:text-2xl text-white/80 leading-relaxed max-w-xl font-medium animate-in slide-in-from-bottom duration-700 delay-300 mx-auto lg:mx-0">
             {t.hero.subtitle}
           </p>
           
-          <div className="flex flex-wrap gap-5 pt-6 animate-in slide-in-from-bottom duration-700 delay-500">
-            <Button size="lg" className="h-14 md:h-18 px-10 md:px-12 text-base md:text-xl font-black rounded-full shadow-2xl shadow-emerald-900/40 hover:scale-105 transition-all bg-primary hover:bg-emerald-700" asChild>
+          <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-6 animate-in slide-in-from-bottom duration-700 delay-500">
+            <Button size="lg" className="h-14 md:h-16 w-full sm:w-auto px-10 md:px-12 text-base md:text-lg font-black rounded-xl shadow-2xl shadow-emerald-900/40 hover:scale-105 transition-all bg-primary hover:bg-emerald-700 border-none" asChild>
               <Link href="/products">{t.hero.ctaPrimary}</Link>
             </Button>
-            <Button size="lg" variant="outline" className="h-14 md:h-18 px-10 md:px-12 text-base md:text-xl font-black rounded-full bg-white/5 backdrop-blur-xl border-white/20 text-white hover:bg-white/10 hover:border-white/40 transition-all" asChild>
+            <Button size="lg" variant="outline" className="h-14 md:h-16 w-full sm:w-auto px-10 md:px-12 text-base md:text-lg font-black rounded-xl bg-white/5 backdrop-blur-xl border-white/20 text-white hover:bg-white/10 hover:border-white/40 transition-all" asChild>
               <Link href="/contact">{t.hero.ctaSecondary}</Link>
             </Button>
           </div>
