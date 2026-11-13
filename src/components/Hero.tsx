@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -10,7 +9,7 @@ export function Hero() {
   const { t, lang } = useTranslation();
 
   return (
-    <section className="relative min-h-[80vh] md:min-h-[90vh] flex items-center overflow-hidden bg-[#022c22]">
+    <section className="relative min-h-screen md:min-h-[90vh] flex items-center overflow-hidden bg-[#022c22]">
       {/* Background Image Layer using the newly generated heritage image */}
       <div 
         className="absolute inset-0 bg-cover bg-center z-0 scale-105 animate-in fade-in zoom-in duration-1000"
