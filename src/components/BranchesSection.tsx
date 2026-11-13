@@ -29,24 +29,23 @@ export function BranchesSection() {
   return (
     <section className="py-12 md:py-24 bg-background overflow-hidden border-t border-border/50">
       <div className="container mx-auto px-4">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-end gap-6 mb-10 md:mb-16">
-          <div className="space-y-3 text-right">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest border border-primary/10">
-              <MapPin className="h-3 w-3" />
-              {isRtl ? 'تجمعنا بكم فروعنا' : 'OUR LOCATIONS'}
-            </div>
-            <h2 className="text-2xl md:text-5xl font-black text-foreground">
-              {isRtl ? 'فروعنا ومعارضنا' : 'Our Branches'}
-            </h2>
-            <div className="w-16 h-1 bg-secondary rounded-full" />
-            <p className="text-muted-foreground text-sm md:text-lg font-medium max-w-xl">
-              {isRtl 
-                ? 'تفضلوا بزيارة معارضنا المعتمدة في محافظة شبوة لاكتشاف أجود أنواع المعاوز يدوية الصنع والمنسوجات التراثية.' 
-                : 'Visit our authorized showrooms in Shabwah to discover the finest handmade Maawiz and traditional textiles.'}
-            </p>
+        {/* Header - Now Centered */}
+        <div className="flex flex-col items-center text-center max-w-3xl mx-auto mb-12 md:mb-20 space-y-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest border border-primary/10">
+            <MapPin className="h-3 w-3" />
+            {isRtl ? 'تجمعنا بكم فروعنا' : 'OUR LOCATIONS'}
           </div>
-          <Button variant="ghost" className="font-black text-primary hover:bg-primary/5 gap-2 group hidden md:flex" asChild>
+          <h2 className="text-3xl md:text-5xl font-black text-foreground">
+            {isRtl ? 'فروعنا ومعارضنا' : 'Our Branches'}
+          </h2>
+          <div className="w-20 h-1.5 bg-secondary rounded-full mx-auto" />
+          <p className="text-muted-foreground text-sm md:text-lg font-medium">
+            {isRtl 
+              ? 'تفضلوا بزيارة معارضنا المعتمدة في محافظة شبوة لاكتشاف أجود أنواع المعاوز يدوية الصنع والمنسوجات التراثية.' 
+              : 'Visit our authorized showrooms in Shabwah to discover the finest handmade Maawiz and traditional textiles.'}
+          </p>
+          
+          <Button variant="ghost" className="font-black text-primary hover:bg-primary/5 gap-2 group hidden md:flex mt-2" asChild>
             <Link href="/contact">
               {isRtl ? 'عرض كافة المواقع' : 'View All Locations'}
               {dir === 'rtl' ? <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" /> : <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />}
