@@ -23,6 +23,7 @@ import {
 import Link from 'next/link';
 import { useFirestore, useDoc } from '@/firebase';
 import { doc } from 'firebase/firestore';
+import { cn } from '@/lib/utils';
 
 export default function ProductDetailsPage() {
   const { id } = useParams();
