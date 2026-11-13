@@ -11,11 +11,11 @@ export function Hero() {
 
   return (
     <section className="relative min-h-[80vh] md:min-h-[90vh] flex items-center overflow-hidden bg-[#022c22]">
-      {/* Background Image Layer with improved contrast and zoom effect */}
+      {/* Background Image Layer using the newly generated heritage image */}
       <div 
         className="absolute inset-0 bg-cover bg-center z-0 scale-105 animate-in fade-in zoom-in duration-1000"
         style={{ 
-          backgroundImage: `url('https://picsum.photos/seed/shabwa-weaving/1920/1080')`,
+          backgroundImage: `url('/images/hero.png')`,
           filter: 'brightness(0.7)'
         }}
         data-ai-hint="yemeni weaver workshop"
