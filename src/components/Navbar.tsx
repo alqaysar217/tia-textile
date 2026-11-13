@@ -145,10 +145,10 @@ export function Navbar() {
                 <Menu className="h-6 w-6" />
               </Button>
             </SheetTrigger>
-            <SheetContent side={dir === 'rtl' ? 'right' : 'left'} className="w-[300px] border-none rounded-none flex flex-col p-0 overflow-hidden">
+            <SheetContent side={dir === 'rtl' ? 'right' : 'left'} className="w-[320px] border-none rounded-none flex flex-col p-0 overflow-hidden">
               <div className="flex flex-col h-full" dir={dir}>
                 <SheetHeader className="p-6 border-b border-border/50 bg-muted/20">
-                  <SheetTitle className="flex items-center gap-3">
+                  <SheetTitle className={cn("flex items-center gap-3", lang === 'ar' && "flex-row-reverse")}>
                     <div className="w-12 h-12 rounded-lg overflow-hidden bg-white shadow-sm p-0 flex items-center justify-center border border-primary/5 shrink-0">
                       <img src="/images/logo.png" alt="Logo" className="w-full h-full object-cover rounded-lg" />
                     </div>
@@ -173,7 +173,8 @@ export function Navbar() {
                           "flex items-center gap-4 text-sm font-black p-4 rounded-lg transition-all active:scale-95",
                           pathname === link.href 
                             ? "bg-primary text-white" 
-                            : "text-foreground/80 hover:bg-primary/5 hover:text-primary"
+                            : "text-foreground/80 hover:bg-primary/5 hover:text-primary",
+                          lang === 'ar' && "flex-row-reverse text-right"
                         )}
                       >
                         <span className={cn(
@@ -186,13 +187,13 @@ export function Navbar() {
                 </ScrollArea>
 
                 <div className="p-4 border-t border-border/50 bg-background grid grid-cols-2 gap-3">
-                  <Button variant="outline" className="gap-2 h-12 rounded-lg text-[10px] font-black border-border/60" asChild>
+                  <Button variant="outline" className={cn("gap-2 h-12 rounded-lg text-[10px] font-black border-border/60", lang === 'ar' && "flex-row-reverse")} asChild>
                     <Link href="/production">
                       <LogIn className="w-4 h-4" />
                       {lang === 'ar' ? 'نظام الإنتاج' : 'ERP Login'}
                     </Link>
                   </Button>
-                  <Button className="gap-2 h-12 rounded-lg text-[10px] font-black shadow-lg shadow-primary/20" asChild>
+                  <Button className={cn("gap-2 h-12 rounded-lg text-[10px] font-black shadow-lg shadow-primary/20", lang === 'ar' && "flex-row-reverse")} asChild>
                     <a href="https://wa.me/967771687041" target="_blank" rel="noopener noreferrer">
                       <Phone className="w-4 h-4" />
                       {lang === 'ar' ? 'واتساب' : 'WhatsApp'}
