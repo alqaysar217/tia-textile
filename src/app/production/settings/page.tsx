@@ -14,10 +14,8 @@ import {
   ShieldCheck,
   Info,
   Languages,
-  RefreshCcw,
   Cloud,
   Download,
-  HardDriveDownload,
   Lock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -110,7 +108,6 @@ export default function GeneralSettingsPage() {
 
   /**
    * دالة النسخ الاحتياطي المحلي الحقيقي (Universal Data Export)
-   * تقوم بجلب كافة البيانات من قاعدة البيانات السحابية وتحميلها كملف في جهاز الموظف
    */
   const handleManualBackup = async () => {
     if (isSyncing || !db) return;
@@ -146,7 +143,7 @@ export default function GeneralSettingsPage() {
       // تحويل البيانات لملف JSON وتحميله محلياً
       const dataStr = JSON.stringify(masterBackup, null, 2);
       const dataBlob = new Blob([dataStr], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
+      const url = URL.createObjectURL(dataBlob);
       
       const link = document.createElement('a');
       link.href = url;
@@ -157,7 +154,7 @@ export default function GeneralSettingsPage() {
 
       toast({
         title: lang === 'ar' ? "اكتمل النسخ المحلي" : "Local Backup Ready",
-        description: lang === 'ar' ? "تم تحميل " + (masterBackup.data.vouchers?.length || 0) + " سند في ملفك الخاص." : "Saved " + (masterBackup.data.vouchers?.length || 0) + " vouchers to your disk."
+        description: lang === 'ar' ? "تم تحميل سجلات الجمعية في ملفك الخاص بنجاح." : "Saved records to your disk successfully."
       });
     } catch (err) {
       console.error("Backup Error:", err);
@@ -190,7 +187,7 @@ export default function GeneralSettingsPage() {
               <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                 <span>{lang === 'ar' ? 'النظام' : 'System'}</span>
                 <ChevronRight className={cn("w-3 h-3", dir === 'rtl' ? "rotate-180" : "")} />
-                <span className="text-emerald-600 dark:text-emerald-400">{lang === 'ar' ? 'إعدادات نظام الإنتاج' : 'Production Core Settings'}</span>
+                <span className="text-emerald-600 dark:text-emerald-400">{lang === 'ar' ? 'إعدادات النظام العامة' : 'Core Settings'}</span>
               </div>
               <h1 className="text-xl font-black text-slate-900 dark:text-slate-100 leading-tight">
                 {lang === 'ar' ? 'تهيئة بيئة العمل الداخلية' : 'ERP Workspace Configuration'}
@@ -223,42 +220,6 @@ export default function GeneralSettingsPage() {
                   ? 'تنبيه: الإعدادات في هذه الصفحة تخص "نظام إدارة الإنتاج" فقط ولن تؤثر على المظهر أو اللغة في الموقع الإلكتروني العام المخصص للزوار.' 
                   : 'Note: Settings here apply to the "Production Management System" only and will not affect the public website appearance.'}
              </p>
-          </div>
-
-          {/* SECTION: DATA GOVERNANCE */}
-          <div className="space-y-3">
-             <div className="flex items-center gap-2 px-1 mb-2">
-                <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                <h3 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-widest">
-                  {lang === 'ar' ? 'سيادة البيانات والأمان' : 'Data Sovereignty & Security'}
-                </h3>
-             </div>
-             <Card className="p-6 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-xl">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                   <div className="space-y-4">
-                      <div className="flex items-center gap-3">
-                         <div className="p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg text-emerald-600"><Cloud className="w-5 h-5" /></div>
-                         <h4 className="text-sm font-black text-slate-800 dark:text-slate-100">{lang === 'ar' ? 'أين بياناتي الآن؟' : 'Where is my data?'}</h4>
-                      </div>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 font-bold leading-relaxed">
-                        {lang === 'ar' 
-                          ? 'بياناتك محفوظة حالياً في سحابة جوجل (Firestore) في مراكز بيانات مؤمنة عالمياً. هي مشفرة ولا يمكن لأحد الوصول إليها إلا بصلاحياتك.' 
-                          : 'Your data is stored in Google Cloud (Firestore) in secured data centers. It is encrypted and accessible only with your credentials.'}
-                      </p>
-                   </div>
-                   <div className="space-y-4">
-                      <div className="flex items-center gap-3">
-                         <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-600"><HardDriveDownload className="w-5 h-5" /></div>
-                         <h4 className="text-sm font-black text-slate-800 dark:text-slate-100">{lang === 'ar' ? 'كيف أحميها محلياً؟' : 'How to protect it locally?'}</h4>
-                      </div>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 font-bold leading-relaxed">
-                        {lang === 'ar' 
-                          ? 'نحن نؤمن لك "حق الملكية". يمكنك في أي وقت تحميل ملف يحتوي على كافة سجلات الجمعية (السندات، العمال، المخزون) والاحتفاظ به في فلاش ميموري أو جهازك الخاص لضمان العمل في حال توقف السحابة.' 
-                          : 'We guarantee your ownership. You can download a file containing all records (vouchers, staff, stock) and keep it in your local storage to ensure business continuity if cloud services fail.'}
-                      </p>
-                   </div>
-                </div>
-             </Card>
           </div>
 
           {/* SECTION 1: REGIONAL & LOCALIZATION */}
@@ -356,8 +317,8 @@ export default function GeneralSettingsPage() {
 
               <SettingRow 
                 icon={<Database className="w-4 h-4 text-slate-400 dark:text-slate-500" />}
-                title={lang === 'ar' ? 'النسخ الاحتياطي والمزامنة' : 'Cloud Sync & Local Backup'}
-                description={lang === 'ar' ? 'تأمين السجلات سحابياً وإتاحة التحميل المحلي للبيانات' : 'Automated cloud sync and offline data ownership'}
+                title={lang === 'ar' ? 'تحميل السجلات (نسخة محلية)' : 'Records Export (Local)'}
+                description={lang === 'ar' ? 'إتاحة تحميل نسخة احتياطية من سجلات الجمعية لجهازك الشخصي' : 'Download a backup file of all association records'}
               >
                 <div className="flex items-center gap-3">
                   <Button 
@@ -368,7 +329,7 @@ export default function GeneralSettingsPage() {
                     className="h-9 px-4 rounded-lg text-[10px] font-black uppercase border-emerald-100 dark:border-slate-700 hover:bg-emerald-50 dark:hover:bg-slate-800 text-emerald-600 transition-all gap-2 shadow-sm"
                   >
                     {isSyncing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                    {lang === 'ar' ? 'تحميل نسخة احتياطية (محلي)' : 'Download Backup'}
+                    {lang === 'ar' ? 'تحميل نسخة احتياطية' : 'Download Backup'}
                   </Button>
                   
                   <Switch 
