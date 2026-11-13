@@ -8,11 +8,12 @@ import { ArrowRight, ArrowLeft, Tag } from 'lucide-react';
 export function CategoriesSection() {
   const { lang, dir } = useTranslation();
 
+  // مسميات الفئات هنا يجب أن تطابق بدقة ما يتم إدخاله في نظام الإنتاج (حليسي، شحري، إلخ)
   const categories = [
-    { nameAr: 'المعوز الحليسي', nameEn: 'Halisi Maawiz', image: 'filter-1.png' },
-    { nameAr: 'المعوز الشحري', nameEn: 'Shihri Maawiz', image: 'filter-2.png' },
-    { nameAr: 'المعوز البيضاني', nameEn: 'Baidani Maawiz', image: 'filter-3.png' },
-    { nameAr: 'المعوز الحديدي', nameEn: 'Hadeedi Maawiz', image: 'filter-4.png' }
+    { nameAr: 'المعوز الحليسي', nameEn: 'Halisi Maawiz', image: 'filter-1.png', slug: 'حليسي' },
+    { nameAr: 'المعوز الشحري', nameEn: 'Shihri Maawiz', image: 'filter-2.png', slug: 'شحري' },
+    { nameAr: 'المعوز البيضاني', nameEn: 'Baidani Maawiz', image: 'filter-3.png', slug: 'بيضاني' },
+    { nameAr: 'المعوز الحديدي', nameEn: 'Hadeedi Maawiz', image: 'filter-4.png', slug: 'حديدي' }
   ];
 
   return (
@@ -44,7 +45,7 @@ export function CategoriesSection() {
           {categories.map((cat, idx) => (
             <Link 
               key={idx} 
-              href={`/products?category=${cat.nameAr}`}
+              href={`/products?category=${encodeURIComponent(cat.slug)}`}
               className="group relative h-48 md:h-80 overflow-hidden rounded-2xl shadow-lg hover:shadow-xl transition-all duration-500"
             >
               <img 

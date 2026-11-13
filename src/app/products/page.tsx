@@ -39,14 +39,21 @@ function ProductsList() {
   useEffect(() => {
     const categoryParam = searchParams.get('category');
     if (categoryParam) {
-      // التأكد من أن التصنيف موجود في القائمة المعتمدة
-      if (categories.includes(categoryParam)) {
-        setCategory(categoryParam);
+      // تنظيف النص وتجربة المطابقة المباشرة أو الجزئية
+      const decodedParam = decodeURIComponent(categoryParam);
+      const cleanParam = decodedParam.replace('المعوز ', '').trim();
+      
+      if (categories.includes(cleanParam)) {
+        setCategory(cleanParam);
+      } else if (categories.includes(decodedParam)) {
+        setCategory(decodedParam);
       } else {
         setCategory('all');
       }
+    } else {
+      setCategory('all');
     }
-  }, [searchParams, categories]);
+  }, [searchParams]);
 
   // جلب المنتجات الحقيقية من Firestore
   const productsQuery = useMemo(() => !db ? null : collection(db, 'products'), [db]);
