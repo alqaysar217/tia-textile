@@ -4,7 +4,6 @@ import React, { useMemo } from 'react';
 import { Hero } from '@/components/Hero';
 import { StatsSection } from '@/components/StatsSection';
 import { Features } from '@/components/Features';
-import { CategoriesSection } from '@/components/CategoriesSection';
 import { useTranslation } from '@/components/LanguageProvider';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -19,7 +18,7 @@ export default function Home() {
   const { lang, t } = useTranslation();
   const db = useFirestore();
 
-  // المنتجات الافتراضية المطلوبة من المدير
+  // المنتجات الافتراضية المطلوبة من المدير لضمان ظهورها فوراً
   const DEFAULT_PRODUCTS = [
     {
       id: 'default-1',
@@ -85,7 +84,7 @@ export default function Home() {
       return DEFAULT_PRODUCTS;
     }
     
-    // إذا وجدت منتجات حقيقية، ندمجها مع الافتراضية لضمان عدم خلو الصفحة
+    // الترتيب: أولاً حسب رقم الترتيب، ثم الأحدث
     const list = [...firestoreProducts].sort((a, b) => {
       const orderA = Number(a.displayOrder || 9999);
       const orderB = Number(b.displayOrder || 9999);
@@ -93,6 +92,7 @@ export default function Home() {
       return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
     });
 
+    // إذا كانت المنتجات الحقيقية أقل من 4، نكملها من الافتراضية
     return list.length < 4 ? [...list, ...DEFAULT_PRODUCTS.slice(0, 4 - list.length)] : list;
   }, [firestoreProducts]);
 
@@ -109,20 +109,11 @@ export default function Home() {
             <p className="text-muted-foreground text-xs md:text-lg font-medium">{t.products.subtitle}</p>
           </div>
 
-          {loading && (!firestoreProducts || firestoreProducts.length === 0) ? (
-            <div className="flex flex-col items-center justify-center py-20 gap-4">
-              <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-              <p className="text-xs font-black text-primary/40 uppercase tracking-widest animate-pulse">
-                {lang === 'ar' ? 'جاري جلب المنتجات...' : 'Loading Collection...'}
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-6">
-              {featuredProducts.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
-          )}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-6">
+            {featuredProducts.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
 
           <div className="mt-8 md:mt-12 text-center">
             <Button size="lg" variant="outline" className="w-full md:w-auto px-10 rounded-full h-12 md:h-14 text-base font-bold border-primary text-primary hover:bg-primary hover:text-white transition-all shadow-lg" asChild>
@@ -192,10 +183,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
-      <div className="bg-muted/30">
-        <CategoriesSection />
-      </div>
 
       <BranchesSection />
 
