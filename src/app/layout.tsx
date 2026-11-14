@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { LanguageProvider } from '@/components/LanguageProvider';
@@ -20,22 +20,29 @@ const inter = Inter({
   display: 'swap',
 });
 
+export const viewport: Viewport = {
+  themeColor: '#065F34',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+};
+
 export const metadata: Metadata = {
   title: 'جمعية الصناعات النسيجية | المعاوز الشبوانية الأصيلة',
   description: 'المنصة الرسمية لجمعية الصناعات النسيجية بالروضة، محافظة شبوة. نقدم أجود أنواع المعاوز اليمنية (ملكي، حليسي، بيضاني) المحاكة يدوياً بأيدي حرفيين مهرة. أصالة تتوارثها الأجيال.',
   keywords: [
     'معاوز يمنية', 'جمعية الصناعات النسيجية', 'الروضة شبوة', 'معوز ملكي', 
     'معوز حليسي', 'معوز بيضاني', 'صناعة يدوية يمنية', 'تراث شبوة', 
-    'منسوجات الروضة', 'غزل ونسيج اليمن', 'شراء معاوز اونلاين'
+    'منسوجات الروضة', 'غزل ونسيج اليمن', 'شراء معاوز اونلاين', 'حياكة الروضة'
   ],
   authors: [{ name: 'جمعية الصناعات النسيجية - الروضة' }],
-  applicationName: 'جمعية المنسوجات',
+  applicationName: 'الجمعية النسيجية',
   generator: 'Next.js',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'جمعية المنسوجات',
+    title: 'الجمعية النسيجية',
   },
   formatDetection: {
     telephone: false,
@@ -45,6 +52,7 @@ export const metadata: Metadata = {
       { url: '/favicon.ico' },
       { url: '/favicon-96x96.png', sizes: '96x96', type: 'image/png' },
       { url: '/web-app-manifest-192x192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/web-app-manifest-512x512.png', sizes: '512x512', type: 'image/png' },
     ],
     apple: [
       { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
