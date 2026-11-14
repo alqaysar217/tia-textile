@@ -35,17 +35,11 @@ export const metadata: Metadata = {
     'معوز حليسي', 'معوز بيضاني', 'صناعة يدوية يمنية', 'تراث شبوة', 
     'منسوجات الروضة', 'غزل ونسيج اليمن', 'شراء معاوز اونلاين', 'حياكة الروضة'
   ],
-  authors: [{ name: 'جمعية الصناعات النسيجية - الروضة' }],
-  applicationName: 'الجمعية النسيجية',
-  generator: 'Next.js',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
     title: 'الجمعية النسيجية',
-  },
-  formatDetection: {
-    telephone: false,
   },
   icons: {
     icon: [
@@ -81,10 +75,6 @@ export const metadata: Metadata = {
     description: 'أصالة المنسوجات اليمنية المحاكة يدوياً. اطلب أفضل المعاوز الشبوانية الآن.',
     images: ['/web-app-manifest-512x512.png'],
   },
-  other: {
-    'mobile-web-app-capable': 'yes',
-    'apple-mobile-web-app-title': 'الجمعية النسيجية',
-  }
 };
 
 export default function RootLayout({
@@ -94,6 +84,27 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ar" dir="rtl" className={`${ibmPlexSansArabic.variable} ${inter.variable}`}>
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js').then(function(registration) {
+                    console.log('ServiceWorker registration successful');
+                  }, function(err) {
+                    console.log('ServiceWorker registration failed: ', err);
+                  });
+                });
+              }
+            `,
+          }}
+        />
+      </head>
       <body className="antialiased min-h-screen flex flex-col selection:bg-primary/20">
         <LanguageProvider>
           <FirebaseClientProvider>
