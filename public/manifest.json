@@ -1,19 +1,12 @@
 {
-  "name": "جمعية الصناعات النسيجية بالروضة",
-  "short_name": "الجمعية النسيجية",
-  "description": "المنصة الرسمية لإنتاج المعاوز الشبوانية الأصيلة",
+  "name": "الجمعية النسيجية - الروضة",
+  "short_name": "النسيجية",
+  "description": "المنصة الرسمية لجمعية الصناعات النسيجية بالروضة، شبوة - أصالة المعاوز اليمنية",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#065F34",
   "theme_color": "#065F34",
-  "orientation": "portrait",
   "icons": [
-    {
-      "src": "/favicon-96x96.png",
-      "sizes": "96x96",
-      "type": "image/png",
-      "purpose": "any"
-    },
     {
       "src": "/web-app-manifest-192x192.png",
       "sizes": "192x192",

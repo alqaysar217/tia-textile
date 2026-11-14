@@ -1,6 +1,4 @@
-// Service Worker for TIA PWA Installation Support
-const CACHE_NAME = 'tia-pwa-cache-v1';
-
+// Service Worker لضمان استيفاء شروط PWA وتفعيل ميزة التثبيت
 self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
@@ -10,14 +8,6 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Strategy: Network only for the production dashboard, Cache first for assets
-  if (event.request.url.includes('/production')) {
-    return;
-  }
-  
-  event.respondWith(
-    fetch(event.request).catch(() => {
-      return caches.match(event.request);
-    })
-  );
+  // مطلوب لمتصفح كروم لتفعيل زر التثبيت الرسمي
+  event.respondWith(fetch(event.request));
 });
