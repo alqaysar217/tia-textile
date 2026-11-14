@@ -21,26 +21,38 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'جمعية الصناعات النسيجية | Textile Association',
-  description: 'جمعية الصناعات النسيجية للمعاوز والغزل – الروضة، محافظة شبوة، اليمن. أصالة تُنسج بإتقان وتراث يمتد عبر الأجيال وبأيدي حرفيين مهرة.',
-  keywords: ['معاوز', 'معاوز يمنية', 'الروضة', 'شبوة', 'صناعات نسيجية', 'حياكة يدوية', 'تراث يمني', 'معوز ملكي', 'معوز حليسي', 'منسوجات شبوة'],
-  authors: [{ name: 'جمعية الصناعات النسيجية' }],
-  viewport: 'width=device-width, initial-scale=1, maximum-scale=1',
-  alternates: {
-    canonical: '/',
+  title: 'جمعية الصناعات النسيجية | المعاوز الشبوانية الأصيلة',
+  description: 'المنصة الرسمية لجمعية الصناعات النسيجية بالروضة، محافظة شبوة. نقدم أجود أنواع المعاوز اليمنية (ملكي، حليسي، بيضاني) المحاكة يدوياً بأيدي حرفيين مهرة. أصالة تتوارثها الأجيال.',
+  keywords: [
+    'معاوز يمنية', 'جمعية الصناعات النسيجية', 'الروضة شبوة', 'معوز ملكي', 
+    'معوز حليسي', 'معوز بيضاني', 'صناعة يدوية يمنية', 'تراث شبوة', 
+    'منسوجات الروضة', 'غزل ونسيج اليمن', 'شراء معاوز اونلاين'
+  ],
+  authors: [{ name: 'جمعية الصناعات النسيجية - الروضة' }],
+  applicationName: 'جمعية المنسوجات',
+  generator: 'Next.js',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'جمعية المنسوجات',
+  },
+  formatDetection: {
+    telephone: false,
   },
   icons: {
     icon: [
       { url: '/favicon.ico' },
       { url: '/favicon-96x96.png', sizes: '96x96', type: 'image/png' },
+      { url: '/web-app-manifest-192x192.png', sizes: '192x192', type: 'image/png' },
     ],
     apple: [
       { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
     ],
   },
   openGraph: {
-    title: 'جمعية الصناعات النسيجية | أصالة وتراث يمني',
-    description: 'نقدم أجود أنواع المعاوز اليمنية المحاكة يدوياً بمديرية الروضة - شبوة. جودة نثق بها وتراث نفخر به.',
+    title: 'جمعية الصناعات النسيجية بالروضة | فخر الصناعة اليمنية',
+    description: 'اكتشف تشكيلتنا الفاخرة من المعاوز اليدوية الشبوانية. جودة لا تضاهى وتصاميم تحاكي التراث الأصيل.',
     url: 'https://nseeg-shabwa.com',
     siteName: 'جمعية الصناعات النسيجية',
     images: [
@@ -48,7 +60,7 @@ export const metadata: Metadata = {
         url: '/web-app-manifest-512x512.png',
         width: 512,
         height: 512,
-        alt: 'لوجو جمعية الصناعات النسيجية - الروضة',
+        alt: 'شعار جمعية الصناعات النسيجية - الروضة',
       },
     ],
     locale: 'ar_YE',
@@ -56,8 +68,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'جمعية الصناعات النسيجية | أصالة وتراث يمني',
-    description: 'أجود المعاوز اليدوية من قلب الروضة - شبوة.',
+    title: 'جمعية الصناعات النسيجية - الروضة، شبوة',
+    description: 'أصالة المنسوجات اليمنية المحاكة يدوياً. اطلب أفضل المعاوز الشبوانية الآن.',
     images: ['/web-app-manifest-512x512.png'],
   },
 };
