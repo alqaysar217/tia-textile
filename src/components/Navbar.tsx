@@ -193,18 +193,18 @@ export function Navbar() {
                   </div>
                 </ScrollArea>
 
-                <div className="p-4 border-t border-border/50 bg-background grid grid-cols-2 gap-3">
-                  <Button variant="outline" className={cn("gap-2 h-12 rounded-lg text-[10px] font-black border-border/60 justify-center", isRtl ? "flex-row-reverse" : "flex-row")} asChild>
-                    <Link href="/production">
-                      <LayoutDashboard className="w-4 h-4" />
-                      {lang === 'ar' ? 'نظام الإنتاج' : 'ERP Login'}
-                    </Link>
-                  </Button>
-                  <Button className={cn("gap-2 h-12 rounded-lg text-[10px] font-black shadow-lg shadow-primary/20 justify-center", isRtl ? "flex-row-reverse" : "flex-row")} asChild>
+                <div className="p-4 border-t border-border/50 bg-background flex flex-col gap-3">
+                  <Button className={cn("gap-2 h-12 rounded-lg text-xs font-black shadow-lg shadow-primary/20 justify-center w-full", isRtl ? "flex-row-reverse" : "flex-row")} asChild>
                     <a href="https://wa.me/967771687041" target="_blank" rel="noopener noreferrer">
                       <Phone className="w-4 h-4" />
-                      {lang === 'ar' ? 'اطلب واتساب' : 'WhatsApp'}
+                      {lang === 'ar' ? 'اطلب عبر واتساب' : 'Order via WhatsApp'}
                     </a>
+                  </Button>
+                  <Button variant="outline" className={cn("gap-2 h-12 rounded-lg text-xs font-black border-border/60 justify-center w-full", isRtl ? "flex-row-reverse" : "flex-row")} asChild>
+                    <Link href="/production">
+                      <LayoutDashboard className="w-4 h-4" />
+                      {lang === 'ar' ? 'نظام إدارة الإنتاج' : 'Production System'}
+                    </Link>
                   </Button>
                 </div>
               </div>

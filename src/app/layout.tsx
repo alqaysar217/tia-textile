@@ -41,6 +41,7 @@ export const metadata: Metadata = {
     statusBarStyle: 'default',
     title: 'الجمعية النسيجية',
   },
+  applicationName: 'الجمعية النسيجية',
   icons: {
     icon: [
       { url: '/favicon.ico', rel: 'icon' },
