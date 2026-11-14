@@ -80,6 +80,10 @@ export const metadata: Metadata = {
     description: 'أصالة المنسوجات اليمنية المحاكة يدوياً. اطلب أفضل المعاوز الشبوانية الآن.',
     images: ['/web-app-manifest-512x512.png'],
   },
+  other: {
+    'mobile-web-app-capable': 'yes',
+    'apple-mobile-web-app-title': 'الجمعية النسيجية',
+  }
 };
 
 export default function RootLayout({
