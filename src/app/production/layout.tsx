@@ -49,11 +49,10 @@ export default function ProductionLayout({
     if (pathname === '/production/login' || pathname === '/production') return true;
     if (profileLoading) return true;
     
-    if (!userProfile) {
-        if (user?.email === 'alqaysarpc219@gmail.com') return true;
-        return false;
-    }
+    // المطور له حق الدخول لجميع المسارات دائماً
+    if (user?.email === 'alqaysarpc219@gmail.com') return true;
 
+    if (!userProfile) return false;
     if (userProfile.role === 'admin') return true;
 
     // خريطة المسارات للموديولات المستقلة (22 موديولاً)
@@ -80,7 +79,6 @@ export default function ProductionLayout({
       '/production/trash': 'trash'
     };
 
-    // البحث عن الموديول المناسب بناءً على طول المسار (الأكثر دقة أولاً)
     const activeModule = Object.entries(moduleMap)
       .sort((a, b) => b[0].length - a[0].length)
       .find(([path]) => pathname.startsWith(path))?.[1];

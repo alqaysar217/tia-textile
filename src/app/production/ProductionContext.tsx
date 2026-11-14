@@ -1,10 +1,10 @@
 'use client';
 
-import React, { createContext, useContext, ReactNode } from 'react';
+import React, { createContext, useContext, ReactNode, useMemo } from 'react';
 
 /**
- * @fileOverview ProductionContext - محرك الصلاحيات المركزي
- * هذا الملف هو المسؤول عن توفير بيانات المستخدم وصلاحياته لكل أجزاء النظام.
+ * @fileOverview ProductionContext - محرك الصلاحيات المركزي المطور
+ * تم إضافة منطق الـ Super Admin لضمان صلاحيات المطور.
  */
 
 interface Permission {
@@ -28,10 +28,14 @@ interface ProductionContextType {
   userProfile: UserProfile | null;
   permissions: Record<string, Permission>;
   isAdmin: boolean;
+  isDeveloper: boolean;
   loading: boolean;
 }
 
 const ProductionContext = createContext<ProductionContextType | undefined>(undefined);
+
+// البريد الإلكتروني الرسمي للمطور (صلاحيات مطلقة)
+const DEV_EMAIL = 'alqaysarpc219@gmail.com';
 
 export function ProductionProvider({ 
   children, 
@@ -42,15 +46,18 @@ export function ProductionProvider({
   userProfile: any; 
   loading: boolean;
 }) {
-  const isAdmin = userProfile?.role === 'admin';
+  // المطور دائماً له صلاحيات كاملة، والأدمن المسجل كذلك
+  const isDeveloper = userProfile?.email === DEV_EMAIL;
+  const isAdmin = userProfile?.role === 'admin' || isDeveloper;
   
-  // دالة ذكية لفحص الصلاحية؛ إذا كان أدمن فله كل الصلاحيات دائماً
-  const permissions = userProfile?.permissions || {};
+  // جلب الصلاحيات من البروفايل
+  const rawPermissions = userProfile?.permissions || {};
 
   const value = {
     userProfile,
-    permissions,
+    permissions: rawPermissions,
     isAdmin,
+    isDeveloper,
     loading
   };
 

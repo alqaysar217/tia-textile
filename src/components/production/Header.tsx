@@ -168,12 +168,13 @@ export function Header() {
     if (!db || !authUser || isSaving) return;
     setIsSaving(true);
     try {
-      const isInitialAdmin = !userProfile && authUser.email === 'alqaysarpc219@gmail.com';
+      // حماية المطور ليكون دائماً أدمن
+      const isDeveloper = authUser.email === 'alqaysarpc219@gmail.com';
       
       const updatedData = {
         ...profileForm,
         email: authUser.email,
-        role: isInitialAdmin ? 'admin' : profileForm.role,
+        role: isDeveloper ? 'admin' : profileForm.role,
         updatedAt: serverTimestamp(),
       };
 
@@ -181,7 +182,8 @@ export function Header() {
         ...updatedData,
         createdAt: userProfile?.createdAt || serverTimestamp(),
         active: true,
-        ...(isInitialAdmin && {
+        // منح كافة الصلاحيات فوراً للمطور
+        ...(isDeveloper && {
           permissions: {
             dashboard: { read: true, create: true, edit: true, delete: true },
             orders: { read: true, create: true, edit: true, delete: true },
@@ -200,6 +202,7 @@ export function Header() {
             report_costs: { read: true, create: true, edit: true, delete: true },
             report_consumption: { read: true, create: true, edit: true, delete: true },
             report_financial: { read: true, create: true, edit: true, delete: true },
+            branches: { read: true, create: true, edit: true, delete: true },
             users: { read: true, create: true, edit: true, delete: true },
             settings: { read: true, create: true, edit: true, delete: true },
             trash: { read: true, create: true, edit: true, delete: true },
