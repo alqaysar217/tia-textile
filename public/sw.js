@@ -1,3 +1,4 @@
+// Service Worker for PWA Installation
 self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
@@ -7,6 +8,6 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // الحد الأدنى المطلوب لتفعيل خيار التثبيت في المتصفح
+  // Basic fetch handler required for PWA install criteria
   event.respondWith(fetch(event.request));
 });
