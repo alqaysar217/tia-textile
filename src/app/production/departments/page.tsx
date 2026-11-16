@@ -227,7 +227,7 @@ export default function DepartmentsPage() {
     } catch (err: any) {
       toast({ variant: "destructive", title: "Archive Failed" });
     } finally {
-      setDeletingDeptId(null); // يغلق الـ AlertDialog إجبارياً
+      setDeletingDeptId(null);
       setIsSubmitting(false);
     }
   };
@@ -265,7 +265,6 @@ export default function DepartmentsPage() {
   return (
     <div className="flex flex-col h-full bg-[#f1f5f9] dark:bg-slate-950 overflow-hidden transition-colors duration-300">
       
-      {/* HEADER */}
       <div className="flex-none bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 z-30 px-6 py-4 shadow-sm">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div className="flex items-center gap-4">
@@ -299,7 +298,6 @@ export default function DepartmentsPage() {
           </div>
         </div>
 
-        {/* SEARCH BAR */}
         <div className="mt-4 flex items-center gap-2 bg-slate-50 dark:bg-slate-800/50 p-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
           <div className="relative flex-1">
             <Search className={cn("absolute top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500", dir === 'rtl' ? "right-3" : "left-3")} />
@@ -317,7 +315,6 @@ export default function DepartmentsPage() {
         </div>
       </div>
 
-      {/* DATA GRID */}
       <div className="flex-1 min-h-0 flex flex-col p-4 overflow-hidden">
         <div className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg shadow-sm overflow-hidden flex flex-col transition-colors duration-300">
           <div className="flex-1 overflow-auto no-scrollbar relative">
@@ -385,7 +382,6 @@ export default function DepartmentsPage() {
           </div>
         </div>
 
-        {/* SYSTEM NOTE */}
         <div className="mt-4 flex-none bg-slate-900 dark:bg-slate-900/80 rounded-lg p-3 text-white flex items-center gap-4 border border-slate-800 shadow-inner">
           <div className="w-8 h-8 bg-emerald-500/20 rounded flex items-center justify-center text-emerald-400 shrink-0"><Info className="w-4 h-4" /></div>
           <div className="flex-1 text-right">
@@ -395,7 +391,6 @@ export default function DepartmentsPage() {
         </div>
       </div>
 
-      {/* ADD/EDIT DIALOG */}
       <Dialog open={isAddDialogOpen} onOpenChange={(open) => !open && resetForm()}>
         <DialogContent className="sm:max-w-[500px] rounded-lg border-none shadow-2xl p-0 overflow-hidden dark:bg-slate-900">
           <div className="premium-gradient p-6 text-white relative">
@@ -440,7 +435,6 @@ export default function DepartmentsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* DELETE CONFIRMATION */}
       <AlertDialog open={!!deletingDeptId} onOpenChange={(open) => { if(!open && !isSubmitting) setDeletingDeptId(null); }}>
         <AlertDialogContent className="max-w-[400px] rounded-lg border-none shadow-2xl p-0 overflow-hidden dark:bg-slate-900 transition-colors duration-300">
           <div className="bg-slate-950 p-8 text-center relative overflow-hidden">
