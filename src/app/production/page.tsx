@@ -63,6 +63,7 @@ export default function ProductionDashboard() {
   const vouchersQuery = useMemo(() => !db ? null : collection(db, 'vouchers'), [db]);
   const deptsQuery = useMemo(() => !db ? null : collection(db, 'departments'), [db]);
   const productsQuery = useMemo(() => !db ? null : collection(db, 'products'), [db]);
+  const whQuery = useMemo(() => !db ? null : collection(db, 'finishedGoodsWarehouse'), [db]);
 
   const { data: allOrders, loading: ordersLoading } = useCollection<any>(ordersQuery);
   const { data: allMaterials, loading: materialsLoading } = useCollection<any>(materialsQuery);
@@ -70,8 +71,9 @@ export default function ProductionDashboard() {
   const { data: allVouchers, loading: vouchersLoading } = useCollection<any>(vouchersQuery);
   const { data: allDepartments } = useCollection<any>(deptsQuery);
   const { data: allProducts } = useCollection<any>(productsQuery);
+  const { data: whData, loading: whLoading } = useCollection<any>(whQuery);
 
-  const loading = ordersLoading || materialsLoading || workersLoading || vouchersLoading;
+  const loading = ordersLoading || materialsLoading || workersLoading || vouchersLoading || whLoading;
 
   // Formatting helper to force English numbers
   const formatNum = (val: number | string) => {
@@ -82,21 +84,30 @@ export default function ProductionDashboard() {
     return Number(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
-  // 1. Stats Processing
+  // 1. Stats Processing - دقة متناهية في الحساب
   const stats = useMemo(() => {
-    if (!allOrders || !allMaterials || !allWorkers) return null;
+    if (!allOrders || !allMaterials || !allWorkers || !allVouchers || !whData) return null;
+    
     const active = allOrders.filter(o => o.status === 'active').length;
     const lowStock = allMaterials.filter(m => (m.currentQty || 0) <= (m.minQty || 0)).length;
-    const totalCompleted = allOrders.reduce((acc, curr) => acc + (curr.completedQty || 0), 0);
+    
+    // حساب الإنتاج اليومي الحقيقي (من سندات الاستلام بتاريخ اليوم)
+    const todayStr = new Date().toISOString().split('T')[0];
+    const todayProduction = allVouchers
+      .filter(v => v.type === 'production_receipt' && v.date === todayStr && v.status !== 'deleted')
+      .reduce((acc, curr) => acc + (curr.qtyAccepted || 0), 0);
+
+    // حساب إجمالي المنجز النهائي الجاهز للبيع (من واقع رصيد المستودع)
+    const totalFinishedGoods = whData.reduce((acc, curr) => acc + (curr.totalQty || 0), 0);
 
     return [
       { title: t.production.stats.totalOrders, value: allOrders.length, change: 'Orders', type: 'info', icon: <Factory className="w-4 h-4" />, gradient: 'from-blue-600 to-blue-400' },
       { title: t.production.stats.activeOrders, value: active, change: 'Live', type: 'increase', icon: <PlayCircle className="w-4 h-4" />, gradient: 'from-emerald-600 to-emerald-400' },
-      { title: t.production.stats.dailyProduction, value: totalCompleted, change: 'Total Pcs', type: 'increase', icon: <CheckCircle2 className="w-4 h-4" />, gradient: 'from-violet-600 to-violet-400' },
+      { title: t.production.stats.dailyProduction, value: todayProduction, change: 'Today', type: 'increase', icon: <Activity className="w-4 h-4" />, gradient: 'from-violet-600 to-violet-400' },
+      { title: t.production.stats.readyProducts, value: totalFinishedGoods, change: 'In Stock', type: 'increase', icon: <Package className="w-4 h-4" />, gradient: 'from-emerald-800 to-emerald-600' },
       { title: t.production.stats.rawMaterialsCount, value: allMaterials.length, change: `${lowStock} Low`, type: lowStock > 0 ? 'danger' : 'info', icon: <Box className="w-4 h-4" />, gradient: 'from-amber-600 to-amber-400' },
-      { title: t.production.stats.activeWorkers, value: allWorkers.filter(w => w.active).length, change: 'Staff', type: 'info', icon: <Users className="w-4 h-4" />, gradient: 'from-rose-600 to-rose-400' },
     ];
-  }, [allOrders, allMaterials, allWorkers, t.production.stats]);
+  }, [allOrders, allMaterials, allWorkers, allVouchers, whData, t.production.stats]);
 
   // 2. Production Growth Chart Data
   const growthChartData = useMemo(() => {
