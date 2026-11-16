@@ -218,7 +218,7 @@ export default function DepartmentsPage() {
           ? (isRtl ? "ليس لديك صلاحية للقيام بهذا الإجراء" : "Permission Denied")
           : (isRtl ? "حدث خطأ غير متوقع في قاعدة البيانات" : "Unexpected error occurred")
       });
-    } finally {
+      // ضمان إعادة تفعيل الواجهة حتى في حالة الخطأ
       setIsSubmitting(false);
     }
   };
@@ -241,7 +241,11 @@ export default function DepartmentsPage() {
   };
 
   const handleArchiveDepartment = async () => {
-    if (!db || !deletingDeptId || !canDelete) return;
+    if (!db || !deletingDeptId || !canDelete) {
+      setDeletingDeptId(null);
+      return;
+    }
+    
     setIsSubmitting(true);
     try {
       const docRef = doc(db, 'departments', deletingDeptId);
@@ -250,6 +254,7 @@ export default function DepartmentsPage() {
         deletedAt: serverTimestamp(),
       });
       toast({ title: lang === 'ar' ? "تم النقل للأرشيف" : "Archived" });
+      // تصفية المعرف فوراً لإغلاق النافذة وفك تجميد الشاشة
       setDeletingDeptId(null);
     } catch (err: any) {
       console.error("Archive Error:", err);
@@ -258,6 +263,8 @@ export default function DepartmentsPage() {
         title: isRtl ? "فشلت الأرشفة" : "Archive Failed",
         description: isRtl ? "تأكد من صلاحيات الوصول" : "Check your permissions"
       });
+      // حتى في حالة الخطأ، يجب تصفية المعرف لفك تجميد النظام
+      setDeletingDeptId(null);
     } finally {
       setIsSubmitting(false);
     }
@@ -662,7 +669,7 @@ export default function DepartmentsPage() {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={!!deletingDeptId} onOpenChange={(open) => !open && setDeletingDeptId(null)}>
+      <AlertDialog open={!!deletingDeptId} onOpenChange={(open) => { if(!open) setDeletingDeptId(null); }}>
         <AlertDialogContent className="max-w-[400px] rounded-lg border-none shadow-2xl p-0 overflow-hidden dark:bg-slate-900 transition-colors duration-300">
           <div className="bg-slate-950 p-8 text-center relative overflow-hidden">
             <div className="absolute top-0 right-0 p-4 opacity-5"><Layers className="w-32 h-32 text-white" /></div>
