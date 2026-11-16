@@ -27,7 +27,8 @@ import {
   SortDesc,
   ArrowUpDown,
   Check,
-  FileDown
+  FileDown,
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -123,16 +124,13 @@ export default function DepartmentsPage() {
   const loading = deptsLoading || workersLoading;
 
   const filtered = useMemo(() => {
-    // 1. Get raw depts and calculate live worker count for each
     let rawData = (departments || []).map(dept => {
       const actualWorkerCount = (workers || []).filter(w => w.departmentId === dept.id && w.status !== 'deleted').length;
       return { ...dept, actualWorkerCount };
     });
     
-    // 2. Filter out deleted
     rawData = rawData.filter(d => d.status !== 'deleted');
 
-    // 3. Search Filter
     if (search) {
       rawData = rawData.filter(d => 
         (d.nameAr?.includes(search) || 
@@ -141,12 +139,10 @@ export default function DepartmentsPage() {
       );
     }
 
-    // 4. Status Filter
     if (statusFilter !== 'all') {
       rawData = rawData.filter(d => d.status === statusFilter);
     }
 
-    // 5. Sorting
     return rawData.sort((a, b) => {
       let valA = a[sortBy] ?? '';
       let valB = b[sortBy] ?? '';
@@ -170,11 +166,10 @@ export default function DepartmentsPage() {
     setFormData({ code: '', nameAr: '', nameEn: '', descAr: '', status: 'active' });
   }, []);
 
-  const handleSaveDepartment = (e: React.FormEvent) => {
+  const handleSaveDepartment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!db || isSubmitting) return;
 
-    // فحص الصلاحية برمجياً
     if (editingDeptId && !canEdit) {
       toast({ variant: "destructive", title: isRtl ? "غير مسموح بالتعديل" : "Permission Denied" });
       return;
@@ -196,66 +191,76 @@ export default function DepartmentsPage() {
     }
 
     setIsSubmitting(true);
-    const currentId = editingDeptId;
-    const isEdit = !!currentId;
-    
-    const deptData = {
-      code: formData.code.toUpperCase(),
-      nameAr: formData.nameAr,
-      nameEn: formData.nameEn,
-      descAr: formData.descAr,
-      status: formData.status,
-      updatedAt: serverTimestamp(),
-    };
+    try {
+      const deptData = {
+        code: formData.code.toUpperCase(),
+        nameAr: formData.nameAr,
+        nameEn: formData.nameEn,
+        descAr: formData.descAr,
+        status: formData.status,
+        updatedAt: serverTimestamp(),
+      };
 
-    resetForm();
-
-    setTimeout(() => {
-      if (isEdit && currentId) {
-        const docRef = doc(db, 'departments', currentId);
-        updateDoc(docRef, deptData).catch((err) => {
-          errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: 'departments',
-            operation: 'update',
-            requestResourceData: deptData
-          }));
-        });
-        toast({ title: lang === 'ar' ? "تم التحديث" : "Updated" });
+      if (editingDeptId) {
+        await updateDoc(doc(db, 'departments', editingDeptId), deptData);
+        toast({ title: lang === 'ar' ? "تم التحديث بنجاح" : "Updated Successfully" });
       } else {
-        const colRef = collection(db, 'departments');
-        const newDoc = { ...deptData, createdAt: serverTimestamp() };
-        addDoc(colRef, newDoc).catch((err) => {
-          errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: 'departments',
-            operation: 'create',
-            requestResourceData: newDoc
-          }));
-        });
-        toast({ title: lang === 'ar' ? "تمت الإضافة" : "Added" });
+        await addDoc(collection(db, 'departments'), { ...deptData, createdAt: serverTimestamp() });
+        toast({ title: lang === 'ar' ? "تمت الإضافة بنجاح" : "Added Successfully" });
       }
-    }, 0);
+      resetForm();
+    } catch (err: any) {
+      console.error("Save Dept Error:", err);
+      toast({ 
+        variant: "destructive", 
+        title: isRtl ? "فشلت العملية" : "Operation Failed",
+        description: err.code === 'permission-denied' 
+          ? (isRtl ? "ليس لديك صلاحية للقيام بهذا الإجراء" : "Permission Denied")
+          : (isRtl ? "حدث خطأ غير متوقع في قاعدة البيانات" : "Unexpected error occurred")
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleStatusToggle = (dept: any) => {
+  const handleStatusToggle = async (dept: any) => {
     if (!db || !canEdit) return;
-    const newStatus = dept.status === 'active' ? 'inactive' : 'active';
-    const docRef = doc(db, 'departments', dept.id);
-    updateDoc(docRef, { status: newStatus, updatedAt: serverTimestamp() });
+    try {
+      const newStatus = dept.status === 'active' ? 'inactive' : 'active';
+      const docRef = doc(db, 'departments', dept.id);
+      await updateDoc(docRef, { status: newStatus, updatedAt: serverTimestamp() });
+      toast({ title: isRtl ? "تمت تحديث الحالة" : "Status Updated" });
+    } catch (err: any) {
+      console.error("Status Toggle Error:", err);
+      toast({ 
+        variant: "destructive", 
+        title: isRtl ? "خطأ في التحديث" : "Update Failed",
+        description: isRtl ? "تعذر تغيير حالة القسم حالياً" : "Could not change status" 
+      });
+    }
   };
 
-  const handleArchiveDepartment = () => {
+  const handleArchiveDepartment = async () => {
     if (!db || !deletingDeptId || !canDelete) return;
-    const targetId = deletingDeptId;
-    setDeletingDeptId(null);
-
-    setTimeout(() => {
-      const docRef = doc(db, 'departments', targetId);
-      updateDoc(docRef, {
+    setIsSubmitting(true);
+    try {
+      const docRef = doc(db, 'departments', deletingDeptId);
+      await updateDoc(docRef, {
         status: 'deleted',
         deletedAt: serverTimestamp(),
       });
-      toast({ title: lang === 'ar' ? "تمت الأرشفة" : "Archived" });
-    }, 0);
+      toast({ title: lang === 'ar' ? "تم النقل للأرشيف" : "Archived" });
+      setDeletingDeptId(null);
+    } catch (err: any) {
+      console.error("Archive Error:", err);
+      toast({ 
+        variant: "destructive", 
+        title: isRtl ? "فشلت الأرشفة" : "Archive Failed",
+        description: isRtl ? "تأكد من صلاحيات الوصول" : "Check your permissions"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleEditClick = (dept: any) => {
@@ -646,7 +651,7 @@ export default function DepartmentsPage() {
 
             <div className="flex gap-3 pt-2 border-t dark:border-slate-800">
               <Button type="submit" disabled={isSubmitting} className="flex-1 h-11 premium-gradient hover:opacity-90 text-white rounded-md font-black text-sm border-none shadow-md shadow-emerald-900/10 transition-all active:scale-95">
-                <Save className="w-4 h-4 me-2" />
+                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : <Save className="w-4 h-4 me-2" />}
                 {lang === 'ar' ? (isSubmitting ? 'جاري الحفظ...' : 'حفظ البيانات') : 'Commit Changes'}
               </Button>
               <Button type="button" variant="outline" onClick={resetForm} className="px-6 h-11 font-black text-slate-400 dark:text-slate-500 rounded-md border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800">
@@ -672,8 +677,8 @@ export default function DepartmentsPage() {
             </AlertDialogDescription>
           </div>
           <div className="bg-white dark:bg-slate-900 p-6 flex gap-3">
-            <AlertDialogAction onClick={handleArchiveDepartment} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-md font-black border-none shadow-lg transition-all active:scale-95">
-              {lang === 'ar' ? 'تأكيد الأرشفة' : 'Confirm'}
+            <AlertDialogAction onClick={handleArchiveDepartment} disabled={isSubmitting} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-md font-black border-none shadow-lg transition-all active:scale-95">
+              {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : (lang === 'ar' ? 'تأكيد الأرشفة' : 'Confirm')}
             </AlertDialogAction>
             <AlertDialogCancel onClick={() => setDeletingDeptId(null)} className="flex-1 h-11 bg-slate-50 dark:bg-slate-800 border-none text-slate-400 dark:text-slate-500 rounded-md font-black hover:bg-slate-100 dark:hover:bg-slate-700 transition-all">
               {lang === 'ar' ? 'تراجع' : 'Cancel'}
