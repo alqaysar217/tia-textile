@@ -149,6 +149,13 @@ export default function DepartmentsPage() {
     setIsSubmitting(false);
     setCodeError(null);
     setFormData({ code: '', nameAr: '', nameEn: '', descAr: '', status: 'active' });
+
+    // تنظيف فوري لأي قفل واجهة قد تتركه نافذة التعديل (Dialog)
+    requestAnimationFrame(() => {
+      document.body.style.pointerEvents = 'auto';
+      document.body.style.removeProperty('overflow');
+      document.body.removeAttribute('data-scroll-locked');
+    });
   }, []);
 
   const handleSaveDepartment = async (e: React.FormEvent) => {
@@ -176,6 +183,11 @@ export default function DepartmentsPage() {
     }
 
     setIsSubmitting(true);
+    
+    // إغلاق الـ Dialog مبكراً وقبل تنفيذ الـ Await لمنع تعارض مكدس الاتصال مع Radix UI
+    const targetEditingId = editingDeptId;
+    setIsAddDialogOpen(false); 
+
     try {
       const deptData = {
         code: formData.code.toUpperCase(),
@@ -186,8 +198,8 @@ export default function DepartmentsPage() {
         updatedAt: serverTimestamp(),
       };
 
-      if (editingDeptId) {
-        await updateDoc(doc(db, 'departments', editingDeptId), deptData);
+      if (targetEditingId) {
+        await updateDoc(doc(db, 'departments', targetEditingId), deptData);
         toast({ title: isRtl ? "تم التحديث بنجاح" : "Updated Successfully" });
       } else {
         await addDoc(collection(db, 'departments'), { ...deptData, createdAt: serverTimestamp() });
@@ -196,10 +208,11 @@ export default function DepartmentsPage() {
       resetForm();
     } catch (err: any) {
       toast({ variant: "destructive", title: isRtl ? "فشلت العملية" : "Failed", description: err.message });
+      setIsAddDialogOpen(true); // إعادة فتح النافذة في حال فشل الاتصال لكي لا يفقد المستخدم ما كتبه
     } finally {
       setIsSubmitting(false);
       
-      // ضمان إزالة أي قفل واجهة ناتج عن Radix UI
+      // ضمان تدمير أي قفل pointer-events نهائياً
       requestAnimationFrame(() => {
         document.body.style.pointerEvents = 'auto';
         document.body.style.removeProperty('overflow');
