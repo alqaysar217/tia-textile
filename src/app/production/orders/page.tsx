@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useCallback } from 'react';
@@ -26,7 +25,8 @@ import {
   ChevronDown,
   ArrowRight,
   RefreshCcw,
-  Check
+  Check,
+  ShieldCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -299,8 +299,6 @@ export default function ProductionOrdersPage() {
         ) : filteredOrders.map((order) => {
           const product = products?.find(p => p.id === order.productId);
           
-          // دالة ذكية لحساب المنجز النهائي بدقة
-          // المنجز النهائي = أي استلام في آخر مرحلة + أي استلام تم ترحيله للمستودع فعلياً
           const finalStage = sortedDepts[sortedDepts.length - 1];
           const orderReceipts = allReceipts?.filter(r => r.orderId === order.id && r.type === 'production_receipt') || [];
           
