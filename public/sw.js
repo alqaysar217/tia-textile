@@ -1,6 +1,4 @@
-// Service Worker لضمان استيفاء شروط PWA وتفعيل ميزة التثبيت
-const CACHE_NAME = 'nseeg-v1';
-
+// عامل خدمة بسيط جداً لتلبية شروط التثبيت (PWA) دون التداخل مع قاعدة البيانات
 self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
@@ -10,8 +8,6 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // الحد الأدنى المطلوب لعمل الـ Service Worker
-  event.respondWith(fetch(event.request).catch(() => {
-    return caches.match(event.request);
-  }));
+  // لا نقوم بأي اعتراض للطلبات هنا لضمان عمل Firestore بشكل سليم
+  return;
 });
