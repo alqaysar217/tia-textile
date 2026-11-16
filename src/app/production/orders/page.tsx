@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useCallback } from 'react';
@@ -111,8 +112,7 @@ export default function ProductionOrdersPage() {
 
   const filteredOrders = useMemo(() => {
     if (!orders) return [];
-    // Only show 'active' orders by default to avoid clutter
-    const activeOrders = orders.filter(o => o.status === 'active');
+    const activeOrders = orders.filter(o => o.status === 'active' || o.status === 'completed');
     return activeOrders.filter(o => {
       const product = products?.find(p => p.id === o.productId);
       const productName = product?.nameAr || '';
@@ -147,7 +147,6 @@ export default function ProductionOrdersPage() {
     e.preventDefault();
     if (!db || isSubmitting) return;
 
-    // حماية تنفيذية
     if (editingOrderId && !canEdit) {
       toast({ variant: "destructive", title: lang === 'ar' ? "غير مسموح بالتعديل" : "Access Denied" });
       return;
@@ -299,14 +298,19 @@ export default function ProductionOrdersPage() {
           </div>
         ) : filteredOrders.map((order) => {
           const product = products?.find(p => p.id === order.productId);
-          const finalStage = sortedDepts[sortedDepts.length - 1];
-          const finalStageReceipts = allReceipts?.filter(r => 
-            r.orderId === order.id && 
-            r.type === 'production_receipt' && 
-            r.currentStageId === finalStage?.id
-          ) || [];
           
-          const finalCompletedQty = finalStageReceipts.reduce((acc, curr) => acc + (curr.qtyAccepted || 0), 0);
+          // دالة ذكية لحساب المنجز النهائي بدقة
+          // المنجز النهائي = أي استلام في آخر مرحلة + أي استلام تم ترحيله للمستودع فعلياً
+          const finalStage = sortedDepts[sortedDepts.length - 1];
+          const orderReceipts = allReceipts?.filter(r => r.orderId === order.id && r.type === 'production_receipt') || [];
+          
+          const finalCompletedQty = orderReceipts.reduce((acc, curr) => {
+             const isFinalStage = curr.currentStageId === finalStage?.id;
+             const isTransferred = curr.isTransferred === true;
+             if (isFinalStage || isTransferred) return acc + (curr.qtyAccepted || 0);
+             return acc;
+          }, 0);
+
           const progress = Math.round((finalCompletedQty / (order.targetQty || 1)) * 100) || 0;
           
           return (
@@ -351,10 +355,10 @@ export default function ProductionOrdersPage() {
                 <div className="hidden md:flex items-center gap-2 border-r border-slate-100 dark:border-slate-800 px-4 h-full">
                   <div className={cn(
                     "w-2 h-2 rounded-full",
-                    progress >= 100 ? "bg-emerald-500" : "bg-amber-500 animate-pulse"
+                    order.status === 'completed' || progress >= 100 ? "bg-emerald-500" : "bg-amber-500 animate-pulse"
                   )} />
                   <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-tight">
-                    {progress >= 100 
+                    {order.status === 'completed' || progress >= 100 
                       ? (lang === 'ar' ? 'مكتمل' : 'COMPLETED') 
                       : (lang === 'ar' ? 'قيد الإنتاج' : 'IN PROGRESS')}
                   </span>
@@ -491,6 +495,15 @@ export default function ProductionOrdersPage() {
            </div>
         </AlertDialogContent>
       </AlertDialog>
+
+      <div className="flex-none p-3 bg-slate-900 dark:bg-slate-900/80 text-white/40 dark:text-slate-500 flex items-center justify-center gap-4 border-t border-white/5 shadow-2xl transition-colors duration-300">
+         <ShieldCheck className="w-4 h-4 text-emerald-500" />
+         <p className="text-[10px] font-bold tracking-tight">
+           {lang === 'ar' 
+             ? 'بروتوكول الرقابة: المنجز النهائي يحسب بناءً على الكميات الواصلة للمرحلة الأخيرة أو المرحلة للمستودع فعلياً.' 
+             : 'Audit Protocol: Final yield is calculated based on items reaching the last stage or transferred to warehouse.'}
+         </p>
+      </div>
 
     </div>
   );
