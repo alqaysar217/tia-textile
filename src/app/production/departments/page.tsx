@@ -188,16 +188,23 @@ export default function DepartmentsPage() {
 
       if (editingDeptId) {
         await updateDoc(doc(db, 'departments', editingDeptId), deptData);
-        toast({ title: isRtl ? "تم التحديث" : "Updated" });
+        toast({ title: isRtl ? "تم التحديث بنجاح" : "Updated Successfully" });
       } else {
         await addDoc(collection(db, 'departments'), { ...deptData, createdAt: serverTimestamp() });
-        toast({ title: isRtl ? "تمت الإضافة" : "Added" });
+        toast({ title: isRtl ? "تمت الإضافة بنجاح" : "Added Successfully" });
       }
       resetForm();
     } catch (err: any) {
       toast({ variant: "destructive", title: isRtl ? "فشلت العملية" : "Failed", description: err.message });
     } finally {
       setIsSubmitting(false);
+      
+      // ضمان إزالة أي قفل واجهة ناتج عن Radix UI
+      requestAnimationFrame(() => {
+        document.body.style.pointerEvents = 'auto';
+        document.body.style.removeProperty('overflow');
+        document.body.removeAttribute('data-scroll-locked');
+      });
     }
   };
 
@@ -218,17 +225,28 @@ export default function DepartmentsPage() {
   const handleArchiveDepartment = async () => {
     if (!db || !deletingDeptId || !canDelete || isSubmitting) return;
     setIsSubmitting(true);
+    
+    // حفظ الـ ID ثم تصفير الـ State لإغلاق المودال فوراً ومنع تعارض Radix UI
+    const targetId = deletingDeptId;
+    setDeletingDeptId(null); 
+
     try {
-      await updateDoc(doc(db, 'departments', deletingDeptId), {
+      await updateDoc(doc(db, 'departments', targetId), {
         status: 'deleted',
         deletedAt: serverTimestamp(),
       });
-      toast({ title: isRtl ? "تم الأرشفة" : "Archived" });
+      toast({ title: isRtl ? "تم الأرشفة بنجاح" : "Archived Successfully" });
     } catch (err: any) {
-      toast({ variant: "destructive", title: "Archive Failed" });
+      toast({ variant: "destructive", title: "Archive Failed", description: err.message });
     } finally {
-      setDeletingDeptId(null);
       setIsSubmitting(false);
+      
+      // [حارس أمان إضافي لإزالة أي قفل pointer-events عالق من Radix UI]:
+      requestAnimationFrame(() => {
+        document.body.style.pointerEvents = 'auto';
+        document.body.style.removeProperty('overflow');
+        document.body.removeAttribute('data-scroll-locked');
+      });
     }
   };
 
@@ -418,11 +436,11 @@ export default function DepartmentsPage() {
             </div>
             <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
               <Label className="text-[10px] font-black uppercase text-slate-400">ARABIC NAME</Label>
-              <Input value={formData.nameAr} onChange={(e) => setFormData({...formData, nameAr: e.target.value})} className="h-10 font-bold text-xs bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 dark:text-slate-100" dir={dir} required />
+              <Input value={formData.nameAr} onChange={(e) => setFormData({...formData, nameAr: e.target.value})} className="h-10 font-bold text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 dark:text-slate-100" dir={dir} required />
             </div>
             <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
               <Label className="text-[10px] font-black uppercase text-slate-400">ENGLISH NAME</Label>
-              <Input value={formData.nameEn} onChange={(e) => setFormData({...formData, nameEn: e.target.value})} className="h-10 font-bold text-xs bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 dark:text-slate-100" dir="ltr" required />
+              <Input value={formData.nameEn} onChange={(e) => setFormData({...formData, nameEn: e.target.value})} className="h-10 font-bold text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 dark:text-slate-100" dir="ltr" required />
             </div>
             <div className="flex gap-3 pt-2 border-t dark:border-slate-800">
               <Button type="submit" disabled={isSubmitting} className="flex-1 h-11 premium-gradient text-white rounded-md font-black text-sm border-none shadow-md">
