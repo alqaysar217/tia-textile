@@ -192,6 +192,13 @@ export default function WorkersPage() {
       isSupervisor: false,
       supervisorId: ''
     });
+
+    // تنظيف فوري لأي قفل واجهة ناتج عن المودالات
+    requestAnimationFrame(() => {
+      document.body.style.pointerEvents = 'auto';
+      document.body.style.removeProperty('overflow');
+      document.body.removeAttribute('data-scroll-locked');
+    });
   }, []);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -221,7 +228,7 @@ export default function WorkersPage() {
     };
   };
 
-  const handleSaveWorker = (e: React.FormEvent) => {
+  const handleSaveWorker = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!db || isSubmitting || isCompressing) return;
     
@@ -248,60 +255,82 @@ export default function WorkersPage() {
 
     setIsSubmitting(true);
     const currentId = editingWorkerId;
-    const isEdit = !!currentId;
     
-    const workerData = {
-      fullName: formData.fullName,
-      departmentId: formData.departmentId,
-      phoneNumber: formData.phoneNumber,
-      photoUrl: formData.photoUrl,
-      joinDate: formData.joinDate,
-      active: formData.active,
-      isSupervisor: formData.isSupervisor,
-      supervisorId: formData.isSupervisor ? '' : formData.supervisorId,
-      updatedAt: serverTimestamp(),
-    };
+    // إغلاق المودال مبكراً لفك قفل الواجهة
+    setIsAddDialogOpen(false);
 
-    resetForm();
+    try {
+      const workerData = {
+        fullName: formData.fullName,
+        departmentId: formData.departmentId,
+        phoneNumber: formData.phoneNumber,
+        photoUrl: formData.photoUrl,
+        joinDate: formData.joinDate,
+        active: formData.active,
+        isSupervisor: formData.isSupervisor,
+        supervisorId: formData.isSupervisor ? '' : formData.supervisorId,
+        updatedAt: serverTimestamp(),
+      };
 
-    setTimeout(() => {
-      if (isEdit && currentId) {
-        const docRef = doc(db, 'workers', currentId);
-        updateDoc(docRef, workerData).catch((err) => {
-          errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: 'workers', operation: 'update', requestResourceData: workerData
-          }));
-        });
+      if (currentId) {
+        await updateDoc(doc(db, 'workers', currentId), workerData);
         toast({ title: lang === 'ar' ? "تم تحديث البيانات" : "Updated" });
       } else {
-        const colRef = collection(db, 'workers');
         const workerId = `WRK-${Math.floor(1000 + Math.random() * 9000)}`;
         const newDoc = { ...workerData, workerId, createdAt: serverTimestamp() };
-        addDoc(colRef, newDoc).catch((err) => {
-          errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: 'workers', operation: 'create', requestResourceData: newDoc
-          }));
-        });
+        await addDoc(collection(db, 'workers'), newDoc);
         toast({ title: lang === 'ar' ? "تم التسجيل بنجاح" : "Registered Successfully" });
       }
-    }, 0);
+      resetForm();
+    } catch (err: any) {
+      console.error(err);
+      toast({ variant: "destructive", title: "Error Saving Data" });
+      setIsAddDialogOpen(true); // إعادة الفتح في حال الخطأ
+    } finally {
+      setIsSubmitting(false);
+      requestAnimationFrame(() => {
+        document.body.style.pointerEvents = 'auto';
+        document.body.style.removeProperty('overflow');
+        document.body.removeAttribute('data-scroll-locked');
+      });
+    }
   };
 
-  const handleStatusToggle = (worker: any) => {
+  const handleStatusToggle = async (worker: any) => {
     if (!db || !canEdit) return;
-    const docRef = doc(db, 'workers', worker.id);
-    updateDoc(docRef, { active: !worker.active, updatedAt: serverTimestamp() });
+    try {
+      const docRef = doc(db, 'workers', worker.id);
+      await updateDoc(docRef, { active: !worker.active, updatedAt: serverTimestamp() });
+      toast({ title: isRtl ? "تم تغيير الحالة" : "Status Changed" });
+    } catch (err) {}
   };
 
-  const handleArchiveWorker = () => {
-    if (!db || !deletingWorkerId || !canDelete) return;
+  const handleArchiveWorker = async () => {
+    if (!db || !deletingWorkerId || !canDelete || isSubmitting) return;
+    
+    setIsSubmitting(true);
     const targetId = deletingWorkerId;
+    
+    // إغلاق المودال فوراً
     setDeletingWorkerId(null);
-    setTimeout(() => {
+
+    try {
       const docRef = doc(db, 'workers', targetId);
-      updateDoc(docRef, { status: 'deleted', deletedAt: serverTimestamp() });
+      await updateDoc(docRef, { 
+        status: 'deleted', 
+        deletedAt: serverTimestamp() 
+      });
       toast({ title: lang === 'ar' ? "تم النقل للأرشيف" : "Archived" });
-    }, 0);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+      requestAnimationFrame(() => {
+        document.body.style.pointerEvents = 'auto';
+        document.body.style.removeProperty('overflow');
+        document.body.removeAttribute('data-scroll-locked');
+      });
+    }
   };
 
   const handleEditClick = (worker: any) => {
@@ -711,7 +740,7 @@ export default function WorkersPage() {
             )}
 
             <div className="flex gap-3 pt-2 border-t dark:border-slate-800">
-              <Button type="submit" disabled={isSubmitting || isCompressing} className="flex-1 h-11 premium-gradient text-white rounded-md font-black text-sm shadow-md border-none transition-all active:scale-95">
+              <Button type="submit" disabled={isSubmitting || isCompressing} className="flex-1 h-11 premium-gradient hover:opacity-90 text-white rounded-md font-black text-sm border-none shadow-md border-none transition-all active:scale-95">
                 {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : <Save className="w-4 h-4 me-2" />}
                 {lang === 'ar' ? (isSubmitting ? 'جاري الحفظ...' : 'حفظ البيانات') : 'Commit Record'}
               </Button>
@@ -739,8 +768,8 @@ export default function WorkersPage() {
             </AlertDialogDescription>
           </div>
           <div className="bg-white dark:bg-slate-900 p-6 flex gap-3 transition-colors">
-            <AlertDialogAction onClick={handleArchiveWorker} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-md font-black border-none shadow-lg transition-all active:scale-95">
-              {lang === 'ar' ? 'تأكيد الأرشفة' : 'Confirm'}
+            <AlertDialogAction onClick={handleArchiveWorker} disabled={isSubmitting} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-md font-black border-none shadow-lg transition-all active:scale-95">
+              {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : (isRtl ? "تأكيد" : "Confirm")}
             </AlertDialogAction>
             <AlertDialogCancel onClick={() => setDeletingWorkerId(null)} className="flex-1 h-11 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500 rounded-md font-black hover:bg-slate-100 dark:hover:bg-slate-700 transition-all">
               {lang === 'ar' ? 'تراجع' : 'Cancel'}
