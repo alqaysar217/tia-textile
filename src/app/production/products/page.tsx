@@ -188,7 +188,6 @@ export default function ProductsManagementPage() {
     });
   }, [products, search, categoryFilter, statusFilter, sortBy, sortOrder]);
 
-  // دالة ذكية لاكتشاف تكرار رقم الترتيب
   const orderConflict = useMemo(() => {
     if (!formData.displayOrder || !products) return null;
     const conflict = products.find(p => 
@@ -199,7 +198,6 @@ export default function ProductsManagementPage() {
     return conflict ? conflict.nameAr : null;
   }, [formData.displayOrder, products, editingProdId]);
 
-  // دالة ذكية لاقتراح الرقم التالي المتاح
   const suggestNextOrder = () => {
     if (!products || products.length === 0) {
       setFormData(prev => ({ ...prev, displayOrder: 1 }));
@@ -228,6 +226,13 @@ export default function ProductsManagementPage() {
       image: '',
       displayOrder: (products?.filter(p => p.status !== 'deleted').length || 0) + 1,
       gallery: []
+    });
+
+    // تنظيف فوري لأي قفل واجهة
+    requestAnimationFrame(() => {
+      document.body.style.pointerEvents = 'auto';
+      document.body.style.removeProperty('overflow');
+      document.body.removeAttribute('data-scroll-locked');
     });
   }, [systemCurrency, products]);
 
@@ -273,7 +278,7 @@ export default function ProductsManagementPage() {
     const newImages = await Promise.all(files.map(file => compressImage(file, 300)));
     setFormData(prev => ({ 
       ...prev, 
-      gallery: [...(prev.gallery || []), ...newImages].slice(0, 10) // Limit to 10 images
+      gallery: [...(prev.gallery || []), ...newImages].slice(0, 10) 
     }));
     setIsCompressing(false);
   };
@@ -285,11 +290,10 @@ export default function ProductsManagementPage() {
     }));
   };
 
-  const handleSaveProduct = (e: React.FormEvent) => {
+  const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!db || isSubmitting || isCompressing) return;
 
-    // حماية تنفيذية
     if (editingProdId && !canEdit) {
       toast({ variant: "destructive", title: lang === 'ar' ? "غير مسموح بالتعديل" : "Permission Denied" });
       return;
@@ -301,6 +305,7 @@ export default function ProductsManagementPage() {
 
     setIsSubmitting(true);
     const generatedSku = editingProdId ? formData.sku : `PROD-${Math.floor(1000 + Math.random() * 9000)}`;
+    const targetId = editingProdId;
 
     const productData = {
       ...formData,
@@ -311,53 +316,55 @@ export default function ProductsManagementPage() {
       updatedAt: serverTimestamp(),
     };
 
-    const currentId = editingProdId;
-    resetForm();
+    // إغلاق المودال مبكراً
+    setIsAddDialogOpen(false);
 
-    setTimeout(() => {
-      if (currentId) {
-        const docRef = doc(db, 'products', currentId);
-        updateDoc(docRef, productData).catch(err => {
-          errorEmitter.emit('permission-error', new FirestorePermissionError({ path: 'products', operation: 'update', requestResourceData: productData }));
-        });
+    try {
+      if (targetId) {
+        await updateDoc(doc(db, 'products', targetId), productData);
         toast({ title: lang === 'ar' ? "تم تحديث المنتج" : "Product Updated" });
       } else {
-        const colRef = collection(db, 'products');
-        const newDoc = { ...productData, createdAt: serverTimestamp() };
-        addDoc(colRef, newDoc).catch(err => {
-          errorEmitter.emit('permission-error', new FirestorePermissionError({ path: 'products', operation: 'create', requestResourceData: newDoc }));
-        });
+        await addDoc(collection(db, 'products'), { ...productData, createdAt: serverTimestamp() });
         toast({ title: lang === 'ar' ? "تمت إضافة المنتج" : "Product Added" });
       }
-    }, 0);
+      resetForm();
+    } catch (err: any) {
+      console.error(err);
+      toast({ variant: "destructive", title: "Failed to save" });
+      setIsAddDialogOpen(true); // إعادة الفتح في حال الخطأ
+    } finally {
+      setIsSubmitting(false);
+      requestAnimationFrame(() => {
+        document.body.style.pointerEvents = 'auto';
+        document.body.style.removeProperty('overflow');
+        document.body.removeAttribute('data-scroll-locked');
+      });
+    }
   };
 
-  const handleArchiveProduct = () => {
-    if (!db || !deletingProdId || !canDelete) return;
+  const handleArchiveProduct = async () => {
+    if (!db || !deletingProdId || !canDelete || isSubmitting) return;
+    
+    setIsSubmitting(true);
     const targetId = deletingProdId;
     setDeletingProdId(null);
-    updateDoc(doc(db, 'products', targetId), { status: 'deleted', deletedAt: serverTimestamp() });
-    toast({ title: lang === 'ar' ? "تم النقل للأرشيف" : "Archived" });
-  };
 
-  const handleEditClick = (prod: any) => {
-    if (!canEdit) return;
-    setEditingProdId(prod.id);
-    setFormData({
-      sku: prod.sku || '',
-      nameAr: prod.nameAr || '',
-      nameEn: prod.nameEn || '',
-      descriptionAr: prod.descriptionAr || '',
-      descriptionEn: prod.descriptionEn || '',
-      category: prod.category || 'شبواني',
-      price: prod.price || 0,
-      currency: prod.currency || systemCurrency,
-      status: prod.status || 'available',
-      image: prod.image || '',
-      displayOrder: prod.displayOrder || 1,
-      gallery: prod.gallery || []
-    });
-    setIsAddDialogOpen(true);
+    try {
+      await updateDoc(doc(db, 'products', targetId), { 
+        status: 'deleted', 
+        deletedAt: serverTimestamp() 
+      });
+      toast({ title: lang === 'ar' ? "تم النقل للأرشيف" : "Archived" });
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+      requestAnimationFrame(() => {
+        document.body.style.pointerEvents = 'auto';
+        document.body.style.removeProperty('overflow');
+        document.body.removeAttribute('data-scroll-locked');
+      });
+    }
   };
 
   const toggleSort = (key: 'sku' | 'nameAr' | 'price' | 'displayOrder') => {
@@ -614,7 +621,7 @@ export default function ProductsManagementPage() {
                 <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 block text-center">الصورة الرئيسية</Label>
                 <div 
                   onClick={() => !isCompressing && fileInputRef.current?.click()}
-                  className="relative group cursor-pointer aspect-square rounded-2xl border-4 border-slate-100 dark:border-slate-800 shadow-md bg-slate-50 dark:bg-slate-800 overflow-hidden flex items-center justify-center"
+                  className="relative group cursor-pointer aspect-square rounded-2xl border-4 border-slate-100 dark:border-slate-800 shadow-md bg-slate-50 dark:bg-slate-800 flex items-center justify-center"
                 >
                   <Avatar className="w-full h-full rounded-none">
                     <AvatarImage src={formData.image || undefined} className="object-cover w-full h-full" />
@@ -720,7 +727,6 @@ export default function ProductsManagementPage() {
                 </select>
               </div>
 
-              {/* حقل الترتيب الذكي الجديد */}
               <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
                 <div className="flex items-center justify-between">
                   <Label className={cn("text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start")}>
@@ -791,10 +797,10 @@ export default function ProductsManagementPage() {
             </AlertDialogDescription>
           </div>
           <div className="bg-white dark:bg-slate-900 p-6 flex gap-3">
-            <AlertDialogAction onClick={handleArchiveProduct} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-md font-black border-none shadow-lg">
-              {lang === 'ar' ? 'تأكيد الأرشفة' : 'Confirm'}
+            <AlertDialogAction onClick={handleArchiveProduct} disabled={isSubmitting} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-md font-black border-none shadow-lg transition-all active:scale-95">
+              {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : (isRtl ? "تأكيد" : "Confirm")}
             </AlertDialogAction>
-            <AlertDialogCancel onClick={() => setDeletingProdId(null)} className="flex-1 h-11 bg-slate-50 dark:bg-slate-800 border-none text-slate-400 dark:text-slate-500 rounded-md font-black">
+            <AlertDialogCancel onClick={() => setDeletingProdId(null)} className="flex-1 h-11 bg-slate-50 dark:bg-slate-800 border-none text-slate-400 dark:text-slate-500 rounded-md font-black hover:bg-slate-100 transition-all">
               {lang === 'ar' ? 'تراجع' : 'Cancel'}
             </AlertDialogCancel>
           </div>
