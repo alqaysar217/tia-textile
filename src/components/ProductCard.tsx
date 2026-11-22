@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -36,6 +37,9 @@ export function ProductCard({ product }: { product: any }) {
     addToCart({ ...product, quantity: 1 });
   };
 
+  // حماية رابط الصورة: إذا كانت القيمة فارغة، نستخدم صورة مؤقتة لمنع خطأ المتصفح
+  const productImage = product.image && product.image.trim() !== "" ? product.image : "https://placehold.co/600x800?text=No+Image";
+
   return (
     <div className="group bg-card rounded-xl overflow-hidden border border-border/40 hover:shadow-md transition-all duration-500 flex flex-col h-full relative">
       {/* رابط شامل للبطاقة بالكامل */}
@@ -48,7 +52,7 @@ export function ProductCard({ product }: { product: any }) {
       {/* Image Container */}
       <div className="relative aspect-square overflow-hidden bg-muted">
         <img 
-          src={product.image} 
+          src={productImage} 
           alt={lang === 'ar' ? product.nameAr : product.nameEn}
           className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
         />
@@ -100,7 +104,7 @@ export function ProductCard({ product }: { product: any }) {
           </h3>
           
           {/* الصف الثاني: السعر والفئة */}
-          <div className="flex items-center justify-between gap-2 border-t border-border/5 pt-2">
+          <div className="flex items-center justify-between gap-2 border-t border-border/50 pt-2">
             {/* السعر مع أيقونة المحفظة */}
             <div className="flex items-center gap-1.5">
               <Wallet className="h-3 w-3 md:h-4 md:w-4 text-primary/60 shrink-0" />
