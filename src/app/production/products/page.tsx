@@ -75,8 +75,6 @@ import { Label } from "@/components/ui/label";
 import { Badge } from '@/components/ui/badge';
 import { useFirestore, useCollection, useDoc } from '@/firebase';
 import { collection, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -126,13 +124,6 @@ export default function ProductsManagementPage() {
     displayOrder: 1,
     gallery: [] as string[]
   });
-
-  // Sync currency with system settings when adding new product
-  useEffect(() => {
-    if (!editingProdId && systemCurrency) {
-      setFormData(prev => ({ ...prev, currency: systemCurrency }));
-    }
-  }, [systemCurrency, editingProdId, isAddDialogOpen]);
 
   const productsQuery = useMemo(() => {
     if (!db) return null;
@@ -236,6 +227,13 @@ export default function ProductsManagementPage() {
     });
   }, [systemCurrency, products]);
 
+  // Sync currency with system settings when adding new product
+  useEffect(() => {
+    if (!editingProdId && systemCurrency) {
+      setFormData(prev => ({ ...prev, currency: systemCurrency }));
+    }
+  }, [systemCurrency, editingProdId, isAddDialogOpen]);
+
   const compressImage = (file: File, maxSize: number = 400): Promise<string> => {
     return new Promise((resolve) => {
       const reader = new FileReader();
@@ -288,6 +286,26 @@ export default function ProductsManagementPage() {
       ...prev,
       gallery: prev.gallery.filter((_, i) => i !== index)
     }));
+  };
+
+  const handleEditClick = (prod: any) => {
+    if (!canEdit) return;
+    setEditingProdId(prod.id);
+    setFormData({
+      sku: prod.sku || '',
+      nameAr: prod.nameAr || '',
+      nameEn: prod.nameEn || '',
+      descriptionAr: prod.descriptionAr || '',
+      descriptionEn: prod.descriptionEn || '',
+      category: prod.category || 'شبواني',
+      price: prod.price || 0,
+      currency: prod.currency || systemCurrency,
+      status: prod.status || 'available',
+      image: prod.image || '',
+      displayOrder: prod.displayOrder || 1,
+      gallery: prod.gallery || []
+    });
+    setIsAddDialogOpen(true);
   };
 
   const handleSaveProduct = async (e: React.FormEvent) => {
@@ -535,9 +553,7 @@ export default function ProductsManagementPage() {
                       </div>
                     </TableCell>
                     <TableCell className="px-6 py-3">
-                      <span className="inline-block px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded text-[10px] font-black uppercase">
-                        {prod.category}
-                      </span>
+                      <span className="inline-block px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded text-[10px] font-black uppercase">{prod.category}</span>
                     </TableCell>
                     <TableCell className="px-6 py-3 text-center">
                       <div className="flex flex-col items-center">
@@ -561,7 +577,7 @@ export default function ProductsManagementPage() {
                     <TableCell className="px-6 py-3 sticky right-0 bg-white dark:bg-slate-900 group-hover:bg-slate-50/50 dark:group-hover:bg-slate-800/50 shadow-[-10px_0_10px_-5px_rgba(0,0,0,0.05)] dark:shadow-none border-l dark:border-slate-800">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"><MoreVertical className="w-4 h-4 text-slate-400 dark:text-slate-500" /></Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-md hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"><MoreVertical className="w-4 h-4 text-slate-400 dark:text-slate-500" /></Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="rounded-lg border-slate-200 dark:border-slate-800 dark:bg-slate-900 shadow-xl min-w-[180px]">
                           {canEdit && (
@@ -771,7 +787,7 @@ export default function ProductsManagementPage() {
             </div>
 
             <div className="flex gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
-              <Button type="submit" disabled={isSubmitting || isCompressing} className="flex-1 h-11 premium-gradient hover:opacity-90 text-white rounded-md font-black text-sm border-none shadow-md">
+              <Button type="submit" disabled={isSubmitting || isCompressing} className="flex-1 h-12 premium-gradient hover:opacity-90 text-white rounded-md font-black text-sm border-none shadow-md">
                 {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : <Save className="w-4 h-4 me-2" />}
                 {lang === 'ar' ? (isSubmitting ? 'جاري الحفظ...' : 'حفظ المنتج') : 'Commit Product'}
               </Button>
