@@ -128,6 +128,13 @@ export default function MaterialIssuePage() {
     setIsAddDialogOpen(false);
     setEditingVoucherId(null);
     setFormData({ date: new Date().toISOString().split('T')[0], orderId: '', workerId: '', notes: '', items: [] });
+    
+    // تنظيف فوري لأي قفل واجهة
+    requestAnimationFrame(() => {
+      document.body.style.pointerEvents = 'auto';
+      document.body.style.removeProperty('overflow');
+      document.body.removeAttribute('data-scroll-locked');
+    });
   }, []);
 
   const handleSaveVoucher = async (e: React.FormEvent) => {
@@ -158,6 +165,9 @@ export default function MaterialIssuePage() {
       updatedAt: serverTimestamp()
     };
 
+    // إغلاق المودال مبكراً
+    setIsAddDialogOpen(false);
+
     try {
       if (editingVoucherId) {
         const oldSnap = await getDoc(doc(db, 'vouchers', editingVoucherId));
@@ -184,24 +194,48 @@ export default function MaterialIssuePage() {
       await batch.commit();
       toast({ title: isRtl ? "تم الحفظ وتحديث المخزون" : "Success" });
       resetDialog();
-    } catch (err) { console.error(err); } finally { setIsSubmitting(false); }
+    } catch (err) { 
+      console.error(err);
+      toast({ variant: "destructive", title: "Error" });
+      setIsAddDialogOpen(true); // إعادة الفتح في حال الخطأ
+    } finally { 
+      setIsSubmitting(false); 
+      requestAnimationFrame(() => {
+        document.body.style.pointerEvents = 'auto';
+        document.body.style.removeProperty('overflow');
+        document.body.removeAttribute('data-scroll-locked');
+      });
+    }
   };
 
   const handleDeleteVoucher = async () => {
-    if (!db || !deletingVoucher || !canDelete) return;
+    if (!db || !deletingVoucher || !canDelete || isSubmitting) return;
+    
     setIsSubmitting(true);
+    const targetVoucher = deletingVoucher;
+    setDeletingVoucher(null); // إغلاق المودال مبكراً
+
     const batch = writeBatch(db);
     try {
-      deletingVoucher.items.forEach((item: any) => {
+      targetVoucher.items.forEach((item: any) => {
         if (item.itemType === 'material') {
           const m = materials?.find(mat => mat.id === item.id);
           if (m) batch.update(doc(db, 'materials', item.id), { currentQty: (m.currentQty || 0) + item.qty });
         }
       });
-      batch.update(doc(db, 'vouchers', deletingVoucher.id), { status: 'deleted', deletedAt: serverTimestamp() });
+      batch.update(doc(db, 'vouchers', targetVoucher.id), { status: 'deleted', deletedAt: serverTimestamp() });
       await batch.commit();
       toast({ title: isRtl ? "تم الإلغاء وإرجاع المخزون" : "Reversed" });
-    } finally { setIsSubmitting(false); setDeletingVoucher(null); }
+    } catch (err) {
+      console.error(err);
+    } finally { 
+      setIsSubmitting(false); 
+      requestAnimationFrame(() => {
+        document.body.style.pointerEvents = 'auto';
+        document.body.style.removeProperty('overflow');
+        document.body.removeAttribute('data-scroll-locked');
+      });
+    }
   };
 
   const handleDownloadImage = async () => {
