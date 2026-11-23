@@ -119,6 +119,15 @@ export default function PayrollManagementPage() {
   const [workerFilter, setWorkerFilter] = useState('all');
   const [currencyFilter, setCurrencyFilter] = useState('all');
 
+  // حارس الأمان الشامل لفك قفل الواجهة يدوياً
+  const forceUIUnlock = useCallback(() => {
+    setTimeout(() => {
+      document.body.style.pointerEvents = 'auto';
+      document.body.style.overflow = 'auto';
+      document.body.removeAttribute('data-scroll-locked');
+    }, 100);
+  }, []);
+
   const settingsRef = useMemo(() => !db ? null : doc(db, 'settings', 'global'), [db]);
   const { data: savedSettings } = useDoc<any>(settingsRef);
   const systemCurrency = savedSettings?.baseCurrency || 'YER';
@@ -127,7 +136,7 @@ export default function PayrollManagementPage() {
     date: new Date().toISOString().split('T')[0],
     workerId: '',
     amount: 0,
-    currency: systemCurrency,
+    currency: 'YER',
     notes: '',
     linkedReceipts: [] as string[]
   });
@@ -150,7 +159,7 @@ export default function PayrollManagementPage() {
   ), [db]);
 
   const { data: allWorkers, loading: workersLoading } = useCollection<any>(workersQuery);
-  const { data: allDepartments, loading: deptsLoading } = useCollection<any>(deptsQuery);
+  const { data: allDepartments } = useCollection<any>(deptsQuery);
   const { data: allProducts } = useCollection<any>(productsQuery);
   const { data: allOrders } = useCollection<any>(ordersQuery);
   const { data: allReceipts, loading: receiptsLoading } = useCollection<any>(receiptsQuery);
@@ -158,27 +167,18 @@ export default function PayrollManagementPage() {
 
   const loading = workersLoading || receiptsLoading || paymentsLoading;
 
-  const forceUIUnlock = useCallback(() => {
-    setTimeout(() => {
-      document.body.style.pointerEvents = 'auto';
-      document.body.style.overflow = 'auto';
-      document.body.removeAttribute('data-scroll-locked');
-    }, 100);
-  }, []);
-
-  // Effect A: Sync currency with system currency when opening for NEW voucher
+  // دالة موحدة لمزامنة بيانات النموذج ومنع حلقات التكرار (Infinite Loops)
   useEffect(() => {
-    if (isPayDialogOpen && !editingVoucherId && systemCurrency) {
-      setFormData(prev => {
-        if (prev.currency === systemCurrency) return prev;
-        return { ...prev, currency: systemCurrency };
-      });
+    if (!isPayDialogOpen || editingVoucherId || !allReceipts) return;
+
+    // 1. مزامنة العملة أولاً
+    if (systemCurrency && formData.currency !== systemCurrency && formData.workerId === '') {
+      setFormData(prev => prev.currency === systemCurrency ? prev : { ...prev, currency: systemCurrency });
+      return;
     }
-  }, [isPayDialogOpen, editingVoucherId, systemCurrency]);
 
-  // Effect B: Auto-calculate and select dues when worker changes in NEW voucher
-  useEffect(() => {
-    if (isPayDialogOpen && formData.workerId && !editingVoucherId && allReceipts) {
+    // 2. مزامنة المستحقات عند اختيار عامل
+    if (formData.workerId) {
       const myDues = allReceipts.filter(r => 
         r.workerId === formData.workerId && 
         r.status === 'posted' && 
@@ -190,13 +190,14 @@ export default function PayrollManagementPage() {
       const total = myDues.reduce((sum, r) => sum + (Number(r.wageAmount) || 0), 0);
       
       setFormData(prev => {
-        const sameIds = prev.linkedReceipts.length === ids.length && prev.linkedReceipts.every((id, i) => id === ids[i]);
-        const sameAmount = prev.amount === total;
-        if (sameIds && sameAmount) return prev;
+        const isMatch = prev.linkedReceipts.length === ids.length && 
+                        prev.linkedReceipts.every((id, i) => id === ids[i]) &&
+                        prev.amount === total;
+        if (isMatch) return prev;
         return { ...prev, linkedReceipts: ids, amount: total };
       });
     }
-  }, [formData.workerId, formData.currency, isPayDialogOpen, allReceipts, editingVoucherId]);
+  }, [isPayDialogOpen, editingVoucherId, systemCurrency, formData.workerId, formData.currency, allReceipts]);
 
   const unpaidReceipts = useMemo(() => {
     if (!formData.workerId || !allReceipts) return [];
@@ -286,6 +287,7 @@ export default function PayrollManagementPage() {
     }
 
     setIsSubmitting(true);
+    // إغلاق النافذة مبكراً لضمان عدم حدوث تعليق
     setIsPayDialogOpen(false); 
 
     const batch = writeBatch(db);
@@ -418,6 +420,7 @@ export default function PayrollManagementPage() {
 
   return (
     <div className="flex flex-col h-full bg-[#f8fafc] dark:bg-slate-950 overflow-hidden transition-colors duration-300" dir={dir}>
+      {/* HEADER */}
       <div className="flex-none bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 z-30 px-6 py-4 shadow-sm">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div className="flex items-center gap-4">
@@ -591,7 +594,15 @@ export default function PayrollManagementPage() {
       </div>
 
       {/* PAYMENT DIALOG */}
-      <Dialog open={isPayDialogOpen} onOpenChange={(open) => { forceUIUnlock(); if (!open) resetDialog(); }}>
+      <Dialog 
+        open={isPayDialogOpen} 
+        onOpenChange={(open) => { 
+          if (!open) {
+            resetDialog();
+          }
+          forceUIUnlock(); 
+        }}
+      >
         <DialogContent className="sm:max-w-[800px] rounded-lg p-0 overflow-hidden border-none shadow-2xl dark:bg-slate-900">
           <div className="premium-gradient p-6 text-white">
             <DialogHeader className={cn("text-right rtl:text-right ltr:text-left")}>
@@ -677,7 +688,15 @@ export default function PayrollManagementPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!printingVoucher} onOpenChange={(open) => { forceUIUnlock(); if (!open) setPrintingVoucher(null); }}>
+      <Dialog 
+        open={!!printingVoucher} 
+        onOpenChange={(open) => { 
+          if (!open) {
+            setPrintingVoucher(null);
+          }
+          forceUIUnlock(); 
+        }}
+      >
         <DialogContent className="sm:max-w-[850px] p-0 overflow-hidden border-none bg-white shadow-2xl">
           <DialogHeader className="sr-only"><DialogTitle>سند صرف مالي</DialogTitle></DialogHeader>
           <ScrollArea className="max-h-[85vh]">
@@ -706,7 +725,15 @@ export default function PayrollManagementPage() {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={!!deletingVoucher} onOpenChange={(open) => { forceUIUnlock(); if (!open) setDeletingVoucher(null); }}>
+      <AlertDialog 
+        open={!!deletingVoucher} 
+        onOpenChange={(open) => { 
+          if (!open) {
+            setDeletingVoucher(null);
+          }
+          forceUIUnlock(); 
+        }}
+      >
         <AlertDialogContent className="max-w-[400px] rounded-lg border-none shadow-2xl p-0 overflow-hidden dark:bg-slate-900 transition-colors duration-300">
           <div className="bg-slate-950 p-8 text-center relative overflow-hidden">
             <div className="absolute top-0 right-0 p-4 opacity-5"><RefreshCcw className="w-32 h-32 text-white" /></div>
