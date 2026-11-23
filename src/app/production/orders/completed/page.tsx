@@ -19,14 +19,17 @@ import {
   Check,
   SortAsc,
   SortDesc,
-  ArrowUpDown
+  ArrowUpDown,
+  RotateCcw,
+  RefreshCw,
+  AlertCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useTranslation } from '@/components/LanguageProvider';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { collection, query, where, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { 
   Table, 
   TableBody, 
@@ -52,6 +55,16 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useProduction } from '../../ProductionContext';
 
 export default function CompletedOrdersPage() {
@@ -62,6 +75,7 @@ export default function CompletedOrdersPage() {
 
   // استيراد الصلاحيات للتأكد من هوية المستخدم
   const { isAdmin, permissions } = useProduction();
+  const canEdit = isAdmin || permissions.orders?.edit;
 
   // State Management
   const [search, setSearch] = useState('');
@@ -69,6 +83,8 @@ export default function CompletedOrdersPage() {
   const [dateTo, setDateTo] = useState('');
   const [sortBy, setSortBy] = useState<'orderNumber' | 'completedAt' | 'completedQty'>('completedAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [reactivatingOrder, setReactivatingOrder] = useState<any | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   /**
    * دالة حارس الأمان لفك تجمد الواجهة يدوياً (بروتوكول المطهر الشامل)
@@ -86,10 +102,12 @@ export default function CompletedOrdersPage() {
     }, 200);
   }, []);
 
-  // المراقبة لضمان استقرار الواجهة بعد إغلاق أي قوائم منبثقة أو نوافذ
+  // المراقبة لضمان استقرار الواجهة دائماً
   useEffect(() => {
-    forceUIUnlock();
-  }, [forceUIUnlock]);
+    if (!reactivatingOrder) {
+      forceUIUnlock();
+    }
+  }, [reactivatingOrder, forceUIUnlock]);
 
   // Queries
   const ordersQuery = useMemo(() => !db ? null : query(
@@ -145,6 +163,35 @@ export default function CompletedOrdersPage() {
       return sortOrder === 'asc' ? valA - valB : valB - valA;
     });
   }, [orders, products, search, dateFrom, dateTo, sortBy, sortOrder]);
+
+  const handleReactivateOrder = async () => {
+    if (!db || !reactivatingOrder || !canEdit || isSubmitting) return;
+
+    setIsSubmitting(true);
+    const targetId = reactivatingOrder.id;
+    
+    // إغلاق المودال وتحرير الواجهة فوراً لضمان السرعة
+    setReactivatingOrder(null);
+    forceUIUnlock();
+
+    try {
+      await updateDoc(doc(db, 'productionOrders', targetId), {
+        status: 'active',
+        completedAt: null,
+        updatedAt: serverTimestamp()
+      });
+      toast({ 
+        title: isRtl ? "تم إعادة تنشيط الأمر" : "Order Re-activated",
+        description: isRtl ? "تم نقل الأمر إلى ساحة العمل النشطة بنجاح." : "Order moved back to active workspace."
+      });
+    } catch (err) {
+      console.error(err);
+      toast({ variant: "destructive", title: "Error" });
+    } finally {
+      setIsSubmitting(false);
+      forceUIUnlock();
+    }
+  };
 
   const handleExportCSV = () => {
     const headers = isRtl 
@@ -205,7 +252,6 @@ export default function CompletedOrdersPage() {
           </div>
 
           <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800/50 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 w-full lg:w-auto">
-            {/* Search Bar */}
             <div className="relative flex-1 lg:w-64">
               <Search className={cn("absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 dark:text-slate-500", isRtl ? "right-3" : "left-3")} />
               <Input 
@@ -219,7 +265,6 @@ export default function CompletedOrdersPage() {
               />
             </div>
 
-            {/* Date Range Popover */}
             <Popover onOpenChange={(open) => !open && forceUIUnlock()}>
               <PopoverTrigger asChild>
                 <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all", (dateFrom || dateTo) && "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20")}>
@@ -251,7 +296,6 @@ export default function CompletedOrdersPage() {
               </PopoverContent>
             </Popover>
 
-            {/* Filter & Sort Dropdown */}
             <DropdownMenu onOpenChange={(open) => !open && forceUIUnlock()}>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
@@ -275,12 +319,10 @@ export default function CompletedOrdersPage() {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* Export Button */}
             <Button onClick={handleExportCSV} variant="ghost" size="icon" className="h-9 w-9 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 shadow-md border-none">
               <FileDown className="w-4 h-4" />
             </Button>
 
-            {/* Compact Stats */}
             <div className="h-9 w-px bg-slate-200 dark:bg-slate-700 mx-1 hidden sm:block" />
             <div className="bg-slate-900 dark:bg-slate-950 text-white px-3 py-1 rounded-lg flex flex-col items-center justify-center min-w-[60px] hidden sm:flex">
               <span className="text-[7px] font-black uppercase opacity-50 leading-none">{isRtl ? 'المجموع' : 'TOTAL'}</span>
@@ -312,7 +354,7 @@ export default function CompletedOrdersPage() {
                        <TableHead className="px-6 py-4 font-black text-[10px] text-slate-500 dark:text-slate-400 uppercase text-center border-b border-slate-200 dark:border-slate-700">
                           {isRtl ? 'الكمية النهائية' : 'YIELD'}
                        </TableHead>
-                       <TableHead className="w-20 px-6 py-4 border-b border-slate-200 dark:border-slate-700"></TableHead>
+                       <TableHead className="w-32 px-6 py-4 border-b border-slate-200 dark:border-slate-700"></TableHead>
                     </TableRow>
                  </TableHeader>
                  <TableBody>
@@ -354,14 +396,35 @@ export default function CompletedOrdersPage() {
                               </div>
                            </TableCell>
                            <TableCell className="px-6 py-4 text-center">
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                onClick={() => router.push(`/production/orders/${order.id}`)} 
-                                className="h-8 w-8 text-slate-400 dark:text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all rounded-lg"
-                              >
-                                 <ArrowUpRight className="w-4 h-4" />
-                              </Button>
+                              <div className="flex items-center justify-center gap-2">
+                                 {/* ميزة إعادة التنشيط في حال الخطأ */}
+                                 {canEdit && (
+                                   <TooltipProvider>
+                                     <Tooltip>
+                                       <TooltipTrigger asChild>
+                                         <Button 
+                                           variant="ghost" 
+                                           size="icon" 
+                                           onClick={() => setReactivatingOrder(order)}
+                                           className="h-8 w-8 text-amber-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg"
+                                         >
+                                           <RotateCcw className="w-4 h-4" />
+                                         </Button>
+                                       </TooltipTrigger>
+                                       <TooltipContent className="dark:bg-slate-800 dark:border-slate-700"><p className="text-[10px] font-bold">{isRtl ? 'إلغاء الإتمام (إعادة للعمل)' : 'Undo Completion'}</p></TooltipContent>
+                                     </Tooltip>
+                                   </TooltipProvider>
+                                 )}
+
+                                 <Button 
+                                   variant="ghost" 
+                                   size="icon" 
+                                   onClick={() => router.push(`/production/orders/${order.id}`)} 
+                                   className="h-8 w-8 text-slate-400 dark:text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all rounded-lg"
+                                 >
+                                    <ArrowUpRight className="w-4 h-4" />
+                                 </Button>
+                              </div>
                            </TableCell>
                         </TableRow>
                       );
@@ -372,16 +435,44 @@ export default function CompletedOrdersPage() {
         </div>
       </div>
 
+      {/* RE-ACTIVATE CONFIRMATION DIALOG */}
+      <AlertDialog open={!!reactivatingOrder} onOpenChange={(open) => { if(!open) setReactivatingOrder(null); forceUIUnlock(); }}>
+        <AlertDialogContent className="max-w-[450px] rounded-[1.5rem] p-0 overflow-hidden border-none shadow-2xl dark:bg-slate-900">
+           <div className="bg-amber-950 p-8 text-center relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-4 opacity-5"><RefreshCw className="w-32 h-32 text-white" /></div>
+              <div className="w-16 h-16 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-amber-500/20 shadow-inner">
+                <RotateCcw className="w-8 h-8 text-amber-400" />
+              </div>
+              <AlertDialogTitle className="text-white text-xl font-black">{isRtl ? 'إلغاء إتمام الطلب' : 'Undo Order Completion'}</AlertDialogTitle>
+              <AlertDialogDescription className="text-amber-100/50 font-bold mt-2 text-xs leading-relaxed text-center">
+                 {isRtl 
+                   ? `هل ترغب في إعادة أمر الإنتاج رقم (${reactivatingOrder?.orderNumber}) إلى قائمة "تحذير العمل" النشطة؟ سيتمكن الموظفون من تسجيل سندات جديدة عليه مرة أخرى.` 
+                   : `Do you want to move order (${reactivatingOrder?.orderNumber}) back to active workspace? This will allow new vouchers to be recorded.`}
+              </AlertDialogDescription>
+           </div>
+           <div className="bg-white dark:bg-slate-900 p-6 flex gap-3">
+              <AlertDialogAction onClick={handleReactivateOrder} disabled={isSubmitting} className="flex-1 h-12 bg-amber-600 hover:bg-amber-700 text-white font-black rounded-xl shadow-lg border-none transition-all active:scale-95">
+                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : <RefreshCw className="w-4 h-4 me-2" />}
+                {isRtl ? 'تأكيد الإرجاع' : 'Yes, Re-activate'}
+              </AlertDialogAction>
+              <AlertDialogCancel className="flex-1 h-12 bg-slate-50 dark:bg-slate-800 font-black rounded-xl text-slate-400 dark:text-slate-500 border-none">{isRtl ? 'تراجع' : 'Cancel'}</AlertDialogCancel>
+           </div>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* SYSTEM NOTE */}
       <div className="flex-none p-3 bg-slate-900 dark:bg-slate-900/80 text-white/40 dark:text-slate-500 flex items-center justify-center gap-4 border-t border-white/5 shadow-2xl transition-colors duration-300">
          <ShieldCheck className="w-4 h-4 text-emerald-500" />
          <p className="text-[10px] font-bold tracking-tight">
            {isRtl 
-             ? 'بروتوكول السجلات التاريخية: أوامر الإنتاج المكتملة هي مرجع إداري غير قابل للتعديل المباشر لضمان دقة التقارير السنوية.' 
-             : 'Historical Protocol: Closed orders are read-only administrative references for accurate annual auditing.'}
+             ? 'بروتوكول السجلات التاريخية: أوامر الإنتاج المكتملة هي مرجع إداري. ميزة "إعادة التنشيط" متاحة فقط لتصحيح الأخطاء الإجرائية.' 
+             : 'Historical Protocol: Closed orders are administrative references. "Undo" is for corrective actions only.'}
          </p>
       </div>
 
     </div>
   );
 }
+
+// استيراد أدوات التلميح الإضافية
+import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';

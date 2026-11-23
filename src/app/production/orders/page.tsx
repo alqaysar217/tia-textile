@@ -141,7 +141,8 @@ export default function ProductionOrdersPage() {
 
   const filteredOrders = useMemo(() => {
     if (!orders) return [];
-    const activeOrders = orders.filter(o => o.status === 'active' || o.status === 'completed');
+    // تعديل الفلترة لتعرض فقط الأوامر النشطة
+    const activeOrders = orders.filter(o => o.status === 'active');
     return activeOrders.filter(o => {
       const product = products?.find(p => p.id === o.productId);
       const productName = product?.nameAr || '';
