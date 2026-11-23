@@ -40,7 +40,7 @@ export function ReturnFormDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[850px] rounded-lg p-0 overflow-hidden border-none shadow-2xl dark:bg-slate-900">
+      <DialogContent className="sm:max-w-[850px] rounded-[1.5rem] p-0 overflow-hidden border-none shadow-2xl dark:bg-slate-900 transition-colors duration-300">
         <div className="premium-gradient p-6 text-white">
           <DialogHeader className={cn("text-right rtl:text-right ltr:text-left")}>
             <DialogTitle className="text-xl font-black flex items-center gap-3 text-white">
@@ -103,7 +103,7 @@ export function ReturnFormDialog({
            </div>
 
            <div className="flex gap-3 pt-4 border-t dark:border-slate-800">
-              <Button type="submit" disabled={isSubmitting} className="flex-1 h-14 premium-gradient text-white font-black text-base shadow-xl border-none transition-all active:scale-95">
+              <Button type="submit" disabled={isSubmitting} className="flex-1 h-14 premium-gradient text-white rounded-xl font-black text-base shadow-xl border-none transition-all active:scale-95">
                 {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin me-2" /> : <CheckCircle2 className="w-5 h-5 me-2" />}
                 {isRtl ? 'تأكيد دخول المخزن وتصفية العهدة' : 'Confirm Inventory Re-entry'}
               </Button>

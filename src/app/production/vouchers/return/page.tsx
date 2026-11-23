@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useTranslation } from '@/components/LanguageProvider';
 import { useFirestore, useCollection } from '@/firebase';
 import { 
@@ -33,6 +33,23 @@ export default function MaterialReturnPage() {
   const canCreate = isAdmin || permissions.vouchers_return?.create;
   const canVerify = canCreate; 
 
+  /**
+   * دالة حارس الأمان لفك تجمد الواجهة يدوياً (بروتوكول المطهر الشامل)
+   * تضمن تحرير المتصفح من كافة الأقفال فور إغلاق أي نافذة
+   */
+  const forceUIUnlock = useCallback(() => {
+    setTimeout(() => {
+      document.body.style.pointerEvents = 'auto';
+      document.body.style.overflow = 'auto';
+      document.body.removeAttribute('data-scroll-locked');
+      
+      const html = document.documentElement;
+      html.style.pointerEvents = 'auto';
+      html.style.overflow = 'auto';
+      html.removeAttribute('data-scroll-locked');
+    }, 200);
+  }, []);
+
   const [activeTab, setActiveTab] = useState<'pending' | 'verified'>('pending');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingVoucherId, setEditingVoucherId] = useState<string | null>(null);
@@ -46,6 +63,16 @@ export default function MaterialReturnPage() {
   const [dateTo, setDateTo] = useState('');
   const [workerFilter, setWorkerFilter] = useState('all');
   const [orderFilter, setOrderFilter] = useState('all');
+
+  /**
+   * نظام المراقبة الذكي - يراقب حالة إغلاق النوافذ (بما فيها الضغط بالخارج)
+   * ويقوم باستدعاء المطهر البرمجي فوراً لضمان عدم تجمد الشاشة
+   */
+  useEffect(() => {
+    if (!isAddDialogOpen && !printingVoucher) {
+      forceUIUnlock();
+    }
+  }, [isAddDialogOpen, printingVoucher, forceUIUnlock]);
 
   const [formData, setFormData] = useState({ date: new Date().toISOString().split('T')[0], orderId: '', workerId: '', linkedReceiptId: '', notes: '', items: [] as any[] });
 
@@ -100,8 +127,9 @@ export default function MaterialReturnPage() {
 
     setIsSubmitting(true);
     
-    // إغلاق المودال مبكراً لتحرير الواجهة ومنع التجمد
+    // إغلاق المودال مبكراً وتحرير الواجهة لضمان السرعة ومنع التجمد
     setIsAddDialogOpen(false);
+    forceUIUnlock();
 
     const batch = writeBatch(db);
     try {
@@ -124,16 +152,11 @@ export default function MaterialReturnPage() {
       toast({ title: isRtl ? "تم التوثيق بنجاح" : "Success" });
       setFormData({ date: new Date().toISOString().split('T')[0], orderId: '', workerId: '', linkedReceiptId: '', notes: '', items: [] });
     } catch (err: any) {
-      toast({ variant: "destructive", title: isRtl ? "فشلت العملية" : "Failed", description: err.message });
-      setIsAddDialogOpen(true); // إعادة فتح النافذة في حال فشل الاتصال لكي لا يفقد المستخدم ما كتبه
+      console.error(err);
+      toast({ variant: "destructive", title: isRtl ? "فشلت العملية" : "Failed" });
     } finally { 
       setIsSubmitting(false); 
-      // حارس الأمان لفك قفل الماوس والتمرير
-      requestAnimationFrame(() => {
-        document.body.style.pointerEvents = 'auto';
-        document.body.style.removeProperty('overflow');
-        document.body.removeAttribute('data-scroll-locked');
-      });
+      forceUIUnlock();
     }
   };
 
@@ -142,7 +165,7 @@ export default function MaterialReturnPage() {
     if (!el || !printingVoucher) return;
     setIsDownloading(true);
     try { 
-      await new Promise(r => setTimeout(r, 800)); 
+      await new Promise(r => setTimeout(r, 1000)); 
       const dataUrl = await toPng(el, { 
         backgroundColor: '#ffffff', 
         pixelRatio: 2,
@@ -153,7 +176,9 @@ export default function MaterialReturnPage() {
       link.download = `Return-${printingVoucher.voucherNumber}.png`; 
       link.href = dataUrl; 
       link.click(); 
-    } finally { setIsDownloading(false); }
+    } finally { 
+      setIsDownloading(false); 
+    }
   };
 
   return (
@@ -175,21 +200,46 @@ export default function MaterialReturnPage() {
         <ReturnTable 
           list={activeTab === 'pending' ? pendingReturns : verifiedReturns} allWorkers={allWorkers || []} allOrders={allOrders || []}
           activeTab={activeTab} lang={lang} dir={dir} 
-          onVerify={(v) => { if(!canVerify) return; setFormData({ date: new Date().toISOString().split('T')[0], orderId: v.orderId, workerId: v.workerId, linkedReceiptId: v.id, notes: isRtl ? `توثيق آلي للمرتجع من سند رقم ${v.voucherNumber}` : `Auto-verify ${v.voucherNumber}`, items: [...v.returnedItems] }); setIsAddDialogOpen(true); }}
+          onVerify={(v) => { 
+            if(!canVerify) return; 
+            setFormData({ 
+              date: new Date().toISOString().split('T')[0], 
+              orderId: v.orderId, 
+              workerId: v.workerId, 
+              linkedReceiptId: v.id, 
+              notes: isRtl ? `توثيق آلي للمرتجع من سند رقم ${v.voucherNumber}` : `Auto-verify ${v.voucherNumber}`, 
+              items: [...v.returnedItems] 
+            }); 
+            setIsAddDialogOpen(true); 
+          }}
           onPrint={(v) => setPrintingVoucher(v)}
           canVerify={canVerify}
         />
       </div>
 
       <ReturnFormDialog 
-        isOpen={isAddDialogOpen} onClose={() => setIsAddDialogOpen(false)} lang={lang} isSubmitting={isSubmitting} 
-        formData={formData} setFormData={setFormData} allWorkers={allWorkers || []} allOrders={allOrders || []} onSubmit={handleSaveVoucher} 
+        isOpen={isAddDialogOpen} 
+        onClose={() => { setIsAddDialogOpen(false); forceUIUnlock(); }} 
+        lang={lang} 
+        isSubmitting={isSubmitting} 
+        formData={formData} 
+        setFormData={setFormData} 
+        allWorkers={allWorkers || []} 
+        allOrders={allOrders || []} 
+        onSubmit={handleSaveVoucher} 
       />
       
       <ReturnPrintPreview 
-        isOpen={!!printingVoucher} onClose={() => setPrintingVoucher(null)} voucher={printingVoucher} 
-        lang={lang} allOrders={allOrders || []} allWorkers={allWorkers || []} allDepartments={allDepartments || []} 
-        allProducts={allProducts || []} isDownloading={isDownloading} onDownload={handleDownloadImage} 
+        isOpen={!!printingVoucher} 
+        onClose={() => { setPrintingVoucher(null); forceUIUnlock(); }} 
+        voucher={printingVoucher} 
+        lang={lang} 
+        allOrders={allOrders || []} 
+        allWorkers={allWorkers || []} 
+        allDepartments={allDepartments || []} 
+        allProducts={allProducts || []} 
+        isDownloading={isDownloading} 
+        onDownload={handleDownloadImage} 
       />
 
       <div className="flex-none p-3 bg-slate-900 dark:bg-slate-900/80 text-white/50 flex items-center justify-center gap-4 border-t border-white/5 shadow-2xl">
