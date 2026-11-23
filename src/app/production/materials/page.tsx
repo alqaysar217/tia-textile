@@ -46,6 +46,23 @@ export default function MaterialsPage() {
   const canEdit = isAdmin || permissions.materials?.edit;
   const canDelete = isAdmin || permissions.materials?.delete;
 
+  /**
+   * دالة حارس الأمان لفك تجمد الواجهة يدوياً (بروتوكول المطهر الشامل)
+   * تضمن تحرير المتصفح من كافة الأقفال فور إغلاق أي نافذة
+   */
+  const forceUIUnlock = useCallback(() => {
+    setTimeout(() => {
+      document.body.style.pointerEvents = 'auto';
+      document.body.style.overflow = 'auto';
+      document.body.removeAttribute('data-scroll-locked');
+      
+      const html = document.documentElement;
+      html.style.pointerEvents = 'auto';
+      html.style.overflow = 'auto';
+      html.removeAttribute('data-scroll-locked');
+    }, 200);
+  }, []);
+
   // State Management
   const [activeTab, setActiveTab] = useState('catalog');
   const [search, setSearch] = useState('');
@@ -61,6 +78,16 @@ export default function MaterialsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCompressing, setIsCompressing] = useState(false);
 
+  /**
+   * نظام المراقبة الذكي - يراقب حالة إغلاق النوافذ (بما فيها الضغط بالخارج)
+   * ويقوم باستدعاء المطهر البرمجي فوراً لضمان عدم تجمد الشاشة
+   */
+  useEffect(() => {
+    if (!isAddDialogOpen && !isStockInDialogOpen && !deletingMatId) {
+      forceUIUnlock();
+    }
+  }, [isAddDialogOpen, isStockInDialogOpen, deletingMatId, forceUIUnlock]);
+
   // Fetch Global Settings for Currency (Real-time listener)
   const settingsRef = useMemo(() => !db ? null : doc(db, 'settings', 'global'), [db]);
   const { data: savedSettings } = useDoc<any>(settingsRef);
@@ -73,7 +100,7 @@ export default function MaterialsPage() {
     photoUrl: '', status: 'active'
   });
 
-  // CRITICAL FIX: Sync currency with system settings when adding new material
+  // Sync currency with system settings when adding new material
   useEffect(() => {
     if (!editingMatId && systemCurrency) {
       setFormData(prev => ({ ...prev, currency: systemCurrency }));
@@ -208,7 +235,6 @@ export default function MaterialsPage() {
     e.preventDefault();
     if (!db || isSubmitting || isCompressing || formData.currentQty < 0) return;
 
-    // حماية تنفيذية
     if (editingMatId && !canEdit) {
       toast({ variant: "destructive", title: isRtl ? "غير مسموح بالتعديل" : "Permission Denied" });
       return;
@@ -228,12 +254,16 @@ export default function MaterialsPage() {
       currency: formData.currency || systemCurrency,
       updatedAt: serverTimestamp(),
     };
+
+    // إغلاق المودال وتحرير الواجهة فوراً
+    setIsAddDialogOpen(false);
+    forceUIUnlock();
+
     try {
       if (editingMatId) {
         await updateDoc(doc(db, 'materials', editingMatId), materialData);
       } else {
         const docRef = await addDoc(collection(db, 'materials'), { ...materialData, createdAt: serverTimestamp() });
-        // Log Initial Transaction
         await addDoc(collection(db, 'inventoryTransactions'), {
           materialId: docRef.id,
           qty: materialData.currentQty,
@@ -243,49 +273,67 @@ export default function MaterialsPage() {
       }
       toast({ title: isRtl ? "تم الحفظ بنجاح" : "Success" });
       resetForm();
-    } finally { setIsSubmitting(false); }
+    } finally { setIsSubmitting(false); forceUIUnlock(); }
   };
 
   const handleStockInSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!db || isSubmitting || !stockInForm.materialId || stockInForm.qty <= 0) return;
     
-    // حماية تنفيذية للتوريد
     if (!canCreate) {
       toast({ variant: "destructive", title: isRtl ? "غير مسموح بالتوريد" : "Permission Denied" });
       return;
     }
 
     setIsSubmitting(true);
+    const targetMatId = stockInForm.materialId;
+    const targetQty = stockInForm.qty;
+
+    // إغلاق المودال وتحرير الواجهة فوراً
+    setIsStockInDialogOpen(false);
+    forceUIUnlock();
+
     try {
-      await updateDoc(doc(db, 'materials', stockInForm.materialId), {
-        currentQty: increment(stockInForm.qty),
+      await updateDoc(doc(db, 'materials', targetMatId), {
+        currentQty: increment(targetQty),
         updatedAt: serverTimestamp()
       });
       await addDoc(collection(db, 'inventoryTransactions'), {
-        materialId: stockInForm.materialId,
-        qty: stockInForm.qty,
+        materialId: targetMatId,
+        qty: targetQty,
         type: 'supply',
         createdAt: serverTimestamp()
       });
       toast({ title: isRtl ? "تم توريد الكمية" : "Stock Supplied" });
-      setIsStockInDialogOpen(false);
       setStockInForm({ materialId: '', qty: 0 });
-    } finally { setIsSubmitting(false); }
+    } finally { setIsSubmitting(false); forceUIUnlock(); }
   };
 
   const handleArchiveMaterial = async () => {
-    if (!db || !deletingMatId || !canDelete) return;
-    await updateDoc(doc(db, 'materials', deletingMatId), { status: 'deleted', deletedAt: serverTimestamp() });
+    if (!db || !deletingMatId || !canDelete || isSubmitting) return;
+    
+    setIsSubmitting(true);
+    const targetId = deletingMatId;
+    
+    // إغلاق المودال وتحرير الواجهة فوراً
     setDeletingMatId(null);
-    toast({ title: isRtl ? "تم الأرشفة" : "Archived" });
+    forceUIUnlock();
+
+    try {
+      await updateDoc(doc(db, 'materials', targetId), { status: 'deleted', deletedAt: serverTimestamp() });
+      toast({ title: isRtl ? "تم الأرشفة" : "Archived" });
+    } finally {
+      setIsSubmitting(false);
+      forceUIUnlock();
+    }
   };
 
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setIsAddDialogOpen(false);
     setEditingMatId(null);
     setFormData({ code: '', nameAr: '', nameEn: '', category: 'yarn', unit: 'kg', currentQty: 0, minQty: 0, price: 0, currency: systemCurrency, photoUrl: '', status: 'active' });
-  };
+    forceUIUnlock();
+  }, [systemCurrency, forceUIUnlock]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -362,12 +410,12 @@ export default function MaterialsPage() {
       />
 
       <MaterialsStockInDialog 
-        isOpen={isStockInDialogOpen} onClose={() => setIsStockInDialogOpen(false)}
+        isOpen={isStockInDialogOpen} onClose={() => { setIsStockInDialogOpen(false); forceUIUnlock(); }}
         onSubmit={handleStockInSubmit} formData={stockInForm} setFormData={setSortBy as any}
         materials={materials || []} isSubmitting={isSubmitting} lang={lang}
       />
 
-      <AlertDialog open={!!deletingMatId} onOpenChange={(open) => !open && setDeletingMatId(null)}>
+      <AlertDialog open={!!deletingMatId} onOpenChange={(open) => { if(!open) { setDeletingMatId(null); forceUIUnlock(); } }}>
         <AlertDialogContent className="max-w-[400px] rounded-lg border-none shadow-2xl p-0 overflow-hidden text-right dark:bg-slate-900" dir={dir}>
           <div className="bg-slate-950 p-8 text-center relative overflow-hidden">
             <div className="absolute top-0 right-0 p-4 opacity-5"><History className="w-32 h-32 text-white" /></div>
@@ -380,10 +428,10 @@ export default function MaterialsPage() {
             </AlertDialogDescription>
           </div>
           <div className="bg-white dark:bg-slate-900 p-6 flex gap-3">
-            <AlertDialogAction onClick={handleArchiveMaterial} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-md font-black border-none shadow-lg transition-all active:scale-95">
-              {isRtl ? 'تأكيد' : 'Confirm'}
+            <AlertDialogAction onClick={handleArchiveMaterial} disabled={isSubmitting} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-md font-black border-none shadow-lg transition-all active:scale-95">
+              {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : (isRtl ? 'تأكيد' : 'Confirm')}
             </AlertDialogAction>
-            <AlertDialogCancel className="flex-1 h-11 bg-slate-50 dark:bg-slate-800 border-none text-slate-400 dark:text-slate-500 rounded-md font-black hover:bg-slate-100 transition-all">
+            <AlertDialogCancel onClick={() => { setDeletingMatId(null); forceUIUnlock(); }} className="flex-1 h-11 bg-slate-50 dark:bg-slate-800 border-none text-slate-400 dark:text-slate-500 rounded-md font-black hover:bg-slate-100 transition-all">
               {isRtl ? 'تراجع' : 'Cancel'}
             </AlertDialogCancel>
           </div>
