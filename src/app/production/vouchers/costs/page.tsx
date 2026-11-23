@@ -107,20 +107,26 @@ export default function OverheadCostsPage() {
   const canDelete = isAdmin || permissions.overhead?.delete;
 
   /**
-   * دالة حارس الأمان لفك تجمد الواجهة يدوياً (بروتوكول المطهر الشامل)
-   * تضمن تحرير المتصفح من كافة الأقفال فور إغلاق أي نافذة
+   * دالة حارس الأمان - المطهر العميق الفائق (Aggressive Cleanup)
+   * تضمن تحرير المتصفح من كافة الأقفال فور إغلاق أي نافذة عبر 3 مراحل زمنية
    */
   const forceUIUnlock = useCallback(() => {
-    setTimeout(() => {
+    const cleanup = () => {
+      // تحرير الـ Body
       document.body.style.pointerEvents = 'auto';
       document.body.style.overflow = 'auto';
       document.body.removeAttribute('data-scroll-locked');
       
+      // تحرير الـ HTML (القائمة الجانبية)
       const html = document.documentElement;
       html.style.pointerEvents = 'auto';
       html.style.overflow = 'auto';
       html.removeAttribute('data-scroll-locked');
-    }, 150);
+    };
+
+    cleanup(); // المرحلة 1: فورية
+    setTimeout(cleanup, 100); // المرحلة 2: بعد بدء حركة التلاشي
+    setTimeout(cleanup, 300); // المرحلة 3: بعد انتهاء حركة التلاشي تماماً
   }, []);
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -132,7 +138,6 @@ export default function OverheadCostsPage() {
   const [isCompressing, setIsCompressing] = useState(false);
   const [search, setSearch] = useState('');
   
-  // Filtering & Sorting State
   const [sortBy, setSortBy] = useState<'voucherNumber' | 'date' | 'totalAmount'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
@@ -143,7 +148,6 @@ export default function OverheadCostsPage() {
 
   /**
    * نظام المراقبة الذكي - يراقب حالة إغلاق النوافذ (بما فيها الضغط بالخارج)
-   * ويقوم باستدعاء المطهر البرمجي فوراً لضمان عدم تجمد الشاشة
    */
   useEffect(() => {
     if (!isAddDialogOpen && !deletingVoucher && !printingVoucher) {
@@ -151,12 +155,10 @@ export default function OverheadCostsPage() {
     }
   }, [isAddDialogOpen, deletingVoucher, printingVoucher, forceUIUnlock]);
 
-  // Fetch System Settings for Currency Lock
   const settingsRef = useMemo(() => !db ? null : doc(db, 'settings', 'global'), [db]);
   const { data: savedSettings } = useDoc<any>(settingsRef);
   const systemCurrency = savedSettings?.baseCurrency || 'YER';
 
-  // Unified Form State
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     category: 'other',
@@ -169,7 +171,6 @@ export default function OverheadCostsPage() {
     invoicePhotoUrl: ''
   });
 
-  // Sync currency with system settings
   useEffect(() => {
     if (!editingVoucherId && systemCurrency) {
       setFormData(prev => ({ ...prev, currency: systemCurrency }));
@@ -192,13 +193,10 @@ export default function OverheadCostsPage() {
     { value: 'other', labelAr: 'أخرى', labelEn: 'Other', icon: <Receipt className="w-3.5 h-3.5" /> },
   ];
 
-  // Fetch Data
   const ordersQuery = useMemo(() => !db ? null : collection(db, 'productionOrders'), [db]);
-  const workersQuery = useMemo(() => !db ? null : collection(db, 'workers'), [db]);
   const vouchersQuery = useMemo(() => !db ? null : query(collection(db, 'vouchers'), where('type', '==', 'overhead_cost')), [db]);
 
   const { data: allOrders } = useCollection<any>(ordersQuery);
-  const { data: allWorkers } = useCollection<any>(workersQuery);
   const { data: vouchers, loading: vouchersLoading } = useCollection<any>(vouchersQuery);
 
   const filteredVouchers = useMemo(() => {
@@ -318,17 +316,12 @@ export default function OverheadCostsPage() {
   }, [systemCurrency, forceUIUnlock]);
 
   const handleDownloadImage = async () => {
-    const element = document.getElementById('printable-voucher');
-    if (!element || !printingVoucher) return;
+    const el = document.getElementById('printable-voucher');
+    if (!el || !printingVoucher) return;
     setIsDownloading(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      const dataUrl = await toPng(element, { 
-        backgroundColor: '#ffffff', 
-        pixelRatio: 2, 
-        cacheBust: true,
-        fontEmbedCSS: '', 
-      });
+      await new Promise(r => setTimeout(r, 800));
+      const dataUrl = await toPng(el, { backgroundColor: '#ffffff', pixelRatio: 2, cacheBust: true, fontEmbedCSS: '' });
       const link = document.createElement('a');
       link.download = `Cost-${printingVoucher.voucherNumber}.png`;
       link.href = dataUrl;
@@ -643,7 +636,7 @@ export default function OverheadCostsPage() {
       </Dialog>
 
       {/* PRINT PREVIEW */}
-      <Dialog open={!!printingVoucher} onOpenChange={(open) => { if(!open) setPrintingVoucher(null); forceUIUnlock(); }}>
+      <Dialog open={!!printingVoucher} onOpenChange={(open) => { if(!open) { setPrintingVoucher(null); forceUIUnlock(); } }}>
         <DialogContent className="sm:max-w-[850px] p-0 overflow-hidden border-none bg-white shadow-2xl">
           <DialogHeader className="sr-only"><DialogTitle>{isRtl ? 'معاينة السند' : 'Print Preview'}</DialogTitle></DialogHeader>
           <ScrollArea className="max-h-[85vh]">
@@ -669,7 +662,7 @@ export default function OverheadCostsPage() {
       </Dialog>
 
       {/* DELETE CONFIRMATION */}
-      <AlertDialog open={!!deletingVoucher} onOpenChange={(open) => { if(!open) setDeletingVoucher(null); forceUIUnlock(); }}>
+      <AlertDialog open={!!deletingVoucher} onOpenChange={(open) => { if(!open) { setDeletingVoucher(null); forceUIUnlock(); } }}>
         <AlertDialogContent className="max-w-[400px] rounded-lg border-none shadow-2xl p-0 overflow-hidden dark:bg-slate-900 transition-colors duration-300">
           <div className="bg-slate-950 p-8 text-center relative overflow-hidden">
             <div className="absolute top-0 right-0 p-4 opacity-5"><History className="w-32 h-32 text-white" /></div>
