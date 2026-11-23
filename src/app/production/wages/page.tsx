@@ -137,7 +137,6 @@ export default function PayrollManagementPage() {
   const productsQuery = useMemo(() => !db ? null : collection(db, 'products'), [db]);
   const ordersQuery = useMemo(() => !db ? null : collection(db, 'productionOrders'), [db]);
   
-  // حماية: جلب السندات النشطة فقط من قاعدة البيانات (تجاهل السندات المحذوفة)
   const receiptsQuery = useMemo(() => !db ? null : query(
     collection(db, 'vouchers'), 
     where('type', '==', 'production_receipt'),
@@ -205,31 +204,22 @@ export default function PayrollManagementPage() {
 
   const flattenedBalances = useMemo(() => {
     if (!allWorkers || !allReceipts) return [];
-    
-    // فلترة صارمة: فقط السندات المعتمدة والغير مدفوعة
     const activeReceipts = (allReceipts || []).filter(r => r.status === 'posted' && r.paymentStatus !== 'paid');
     const list: any[] = [];
 
     allWorkers.filter(w => w.status !== 'deleted').forEach(worker => {
       const myUnpaid = activeReceipts.filter(r => r.workerId === worker.id);
-      
       const balanceByCurrency: Record<string, number> = {};
       myUnpaid.forEach(r => {
         const curr = r.currency || 'YER';
         balanceByCurrency[curr] = (balanceByCurrency[curr] || 0) + (Number(r.wageAmount) || 0);
       });
-
       Object.entries(balanceByCurrency).forEach(([currency, amount]) => {
         if (amount > 0) {
-          list.push({
-            ...worker,
-            displayCurrency: currency,
-            displayAmount: amount
-          });
+          list.push({ ...worker, displayCurrency: currency, displayAmount: amount });
         }
       });
     });
-
     return list;
   }, [allWorkers, allReceipts]);
 
@@ -244,11 +234,7 @@ export default function PayrollManagementPage() {
       const selectedVouchers = allReceipts?.filter(r => newSelection.includes(r.id)) || [];
       const total = selectedVouchers.reduce((sum, v) => sum + (Number(v.wageAmount) || 0), 0);
       
-      return { 
-        ...prev, 
-        linkedReceipts: newSelection, 
-        amount: total
-      };
+      return { ...prev, linkedReceipts: newSelection, amount: total };
     });
   }, [allReceipts]);
 
@@ -263,8 +249,6 @@ export default function PayrollManagementPage() {
       notes: '', 
       linkedReceipts: [] 
     });
-
-    // حارس الأمان لتنظيف الواجهة
     requestAnimationFrame(() => {
       document.body.style.pointerEvents = 'auto';
       document.body.style.removeProperty('overflow');
@@ -303,8 +287,6 @@ export default function PayrollManagementPage() {
     }
 
     setIsSubmitting(true);
-    
-    // إغلاق المودال مبكراً فك التجمد
     setIsPayDialogOpen(false);
 
     const batch = writeBatch(db);
@@ -323,7 +305,6 @@ export default function PayrollManagementPage() {
 
     try {
       let voucherId = editingVoucherId;
-      
       if (editingVoucherId) {
         const oldSnap = await getDoc(doc(db, 'vouchers', editingVoucherId));
         const oldV = oldSnap.data();
@@ -353,7 +334,7 @@ export default function PayrollManagementPage() {
     } catch (error) {
       console.error(error);
       toast({ variant: "destructive", title: "Accounting Lock Error" });
-      setIsPayDialogOpen(true); // إعادة الفتح في حال الفشل
+      setIsPayDialogOpen(true);
     } finally {
       setIsSubmitting(false);
       requestAnimationFrame(() => {
@@ -368,8 +349,6 @@ export default function PayrollManagementPage() {
     if (!db || !deletingVoucher || isSubmitting || !canDelete) return;
     setIsSubmitting(true);
     const targetVoucher = deletingVoucher;
-    
-    // إغلاق المودال مبكراً
     setDeletingVoucher(null);
 
     const batch = writeBatch(db);
@@ -377,12 +356,7 @@ export default function PayrollManagementPage() {
       targetVoucher.linkedReceipts?.forEach((rid: string) => {
         batch.update(doc(db, 'vouchers', rid), { paymentStatus: 'pending', paidAmount: 0, paymentVoucherId: null });
       });
-      
-      batch.update(doc(db, 'vouchers', targetVoucher.id), {
-        status: 'deleted',
-        deletedAt: serverTimestamp()
-      });
-      
+      batch.update(doc(db, 'vouchers', targetVoucher.id), { status: 'deleted', deletedAt: serverTimestamp() });
       await batch.commit();
       toast({ title: isRtl ? "تم إلغاء السند وإرجاع المستحقات" : "Voucher reversed successfully" });
     } catch (err) {
@@ -400,7 +374,6 @@ export default function PayrollManagementPage() {
   const filteredPayments = useMemo(() => {
     if (!allPayments) return [];
     let result = allPayments.filter(p => p.status === 'posted');
-    
     if (search) {
       const s = search.toLowerCase();
       result = result.filter(p => {
@@ -408,25 +381,15 @@ export default function PayrollManagementPage() {
         return p.voucherNumber?.toLowerCase().includes(s) || worker?.fullName?.toLowerCase().includes(s);
       });
     }
-
     if (workerFilter !== 'all') result = result.filter(p => p.workerId === workerFilter);
     if (currencyFilter !== 'all') result = result.filter(p => p.currency === currencyFilter);
     if (dateFrom) result = result.filter(p => p.date >= dateFrom);
     if (dateTo) result = result.filter(p => p.date <= dateTo);
-
     return result.sort((a, b) => {
-      let valA = a[sortBy] ?? '';
-      let valB = b[sortBy] ?? '';
-      if (sortBy === 'date') {
-        const timeA = new Date(valA).getTime();
-        const timeB = new Date(valB).getTime();
-        return sortOrder === 'asc' ? timeA - timeB : timeB - timeA;
-      }
-      if (sortBy === 'totalAmount') {
-        return sortOrder === 'asc' ? Number(valA) - Number(valB) : Number(valB) - Number(valA);
-      }
-      const comp = String(valA).localeCompare(String(valB), undefined, { numeric: true });
-      return sortOrder === 'asc' ? comp : -comp;
+      let valA = a[sortBy] ?? '', valB = b[sortBy] ?? '';
+      if (sortBy === 'date') return sortOrder === 'asc' ? new Date(valA).getTime() - new Date(valB).getTime() : new Date(valB).getTime() - new Date(valA).getTime();
+      if (sortBy === 'totalAmount') return sortOrder === 'asc' ? Number(valA) - Number(valB) : Number(valB) - Number(valA);
+      return sortOrder === 'asc' ? String(valA).localeCompare(String(valB)) : String(valB).localeCompare(String(valA));
     });
   }, [allPayments, allWorkers, search, sortBy, sortOrder, workerFilter, currencyFilter, dateFrom, dateTo]);
 
@@ -436,52 +399,35 @@ export default function PayrollManagementPage() {
     setIsDownloading(true);
     try {
       await new Promise(resolve => setTimeout(resolve, 1000));
-      const dataUrl = await toPng(element, { 
-        backgroundColor: '#ffffff', 
-        pixelRatio: 2, 
-        cacheBust: true,
-        fontEmbedCSS: '', 
-      });
+      const dataUrl = await toPng(element, { backgroundColor: '#ffffff', pixelRatio: 2, cacheBust: true, fontEmbedCSS: '' });
       const link = document.createElement('a');
       link.download = `Payment-${printingVoucher.voucherNumber}.png`;
       link.href = dataUrl;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      toast({ title: isRtl ? "تم تحميل السند" : "Voucher Downloaded" });
-    } catch (err) {
-      console.error('Image generation failed:', err);
-    } finally {
-      setIsDownloading(false);
-    }
-  }, [printingVoucher, lang, isRtl]);
+    } catch (err) { console.error(err); } finally { setIsDownloading(false); }
+  }, [printingVoucher]);
 
   const handleExportCSV = useCallback(() => {
     const headers = ['Voucher No', 'Date', 'Worker', 'Amount Paid', 'Currency'];
-    const rows = filteredPayments.map(p => {
-      const worker = allWorkers?.find(w => w.id === p.workerId);
-      return [p.voucherNumber, p.date, worker?.fullName || '---', p.totalAmount || 0, p.currency || 'YER'];
-    });
+    const rows = filteredPayments.map(p => [p.voucherNumber, p.date, allWorkers?.find(w => w.id === p.workerId)?.fullName || '---', p.totalAmount || 0, p.currency || 'YER']);
     const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
     const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
     link.setAttribute('download', `Payments_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    document.body.appendChild(link); link.click(); document.body.removeChild(link);
   }, [filteredPayments, allWorkers]);
 
   const toggleSort = (field: typeof sortBy) => {
-    if (sortBy === field) { setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }
+    if (sortBy === field) setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     else { setSortBy(field); setSortOrder('asc'); }
   };
 
   return (
     <div className="flex flex-col h-full bg-[#f8fafc] dark:bg-slate-950 overflow-hidden transition-colors duration-300" dir={dir}>
-      
-      {/* ERP HEADER */}
       <div className="flex-none bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 z-30 px-6 py-4 shadow-sm">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div className="flex items-center gap-4">
@@ -496,12 +442,11 @@ export default function PayrollManagementPage() {
             </div>
           </div>
           {canCreate && (
-            <Button onClick={() => setIsPayDialogOpen(true)} className="h-10 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 transition-all border-none">
+            <Button onClick={() => { resetDialog(); setIsPayDialogOpen(true); }} className="h-10 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 transition-all border-none">
               <Plus className="w-4 h-4" /> {isRtl ? 'سند صرف أجر جديد' : 'New Payment'}
             </Button>
           )}
         </div>
-
         <div className="mt-4 flex flex-col md:flex-row items-center gap-3 bg-slate-50 dark:bg-slate-800/50 p-2 rounded-xl border border-slate-200 dark:border-slate-700">
           <div className="relative flex-1 w-full">
             <Search className={cn("absolute top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500", isRtl ? "right-3" : "left-3")} />
@@ -720,11 +665,12 @@ export default function PayrollManagementPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
               <div className={cn("md:col-span-2 space-y-1.5", isRtl ? "text-right" : "text-left")}>
-                <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 block">TOTAL DISBURSEMENT</Label>
+                <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 block">TOTAL DISBURSEMENT (READ-ONLY)</Label>
                 <div className="relative">
-                  <Input type="number" step="any" value={formData.amount || ''} onChange={(e) => setFormData(prev => ({...prev, amount: Number(e.target.value)}))} className="h-14 font-black text-2xl text-center tabular-nums bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-900/30 text-emerald-700 dark:text-emerald-400" required />
+                  <Input type="number" step="any" value={formData.amount || ''} readOnly className="h-14 font-black text-2xl text-center tabular-nums bg-slate-100 dark:bg-slate-800 border-emerald-200 dark:border-slate-700 text-emerald-700 dark:text-emerald-400 cursor-not-allowed" />
                   <div className={cn("absolute top-1/2 -translate-y-1/2", isRtl ? "left-4" : "right-4")}><div className="h-9 px-3 bg-white dark:bg-slate-900 border border-emerald-100 dark:border-slate-700 rounded-lg flex items-center justify-center text-xs font-black dark:text-slate-100">{formData.currency}</div></div>
                 </div>
+                <p className="text-[9px] font-bold text-amber-600 mt-1">{isRtl ? '* المبلغ يُحسب آلياً من السندات المختارة لمنع التلاعب.' : '* Total is auto-calculated from selected receipts to prevent tampering.'}</p>
               </div>
               <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
                 <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 block">BATCH COUNT</Label>
@@ -743,7 +689,6 @@ export default function PayrollManagementPage() {
         </DialogContent>
       </Dialog>
 
-      {/* PRINT DIALOG */}
       <Dialog open={!!printingVoucher} onOpenChange={(open) => !open && setPrintingVoucher(null)}>
         <DialogContent className="sm:max-w-[850px] p-0 overflow-hidden border-none bg-white shadow-2xl">
           <DialogHeader className="sr-only"><DialogTitle>سند صرف مالي</DialogTitle></DialogHeader>
@@ -773,7 +718,6 @@ export default function PayrollManagementPage() {
         </DialogContent>
       </Dialog>
 
-      {/* REVERSE DIALOG */}
       <AlertDialog open={!!deletingVoucher} onOpenChange={() => setDeletingVoucher(null)}>
         <AlertDialogContent className="max-w-[400px] rounded-lg p-0 overflow-hidden border-none shadow-2xl dark:bg-slate-900 transition-colors duration-300">
           <div className="bg-slate-950 p-8 text-center relative overflow-hidden">
@@ -788,7 +732,7 @@ export default function PayrollManagementPage() {
             <AlertDialogAction onClick={handleDeletePayment} disabled={isSubmitting} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-md font-black border-none shadow-lg transition-all active:scale-95">
               {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : (isRtl ? 'تأكيد' : 'Confirm')}
             </AlertDialogAction>
-            <AlertDialogAction onClick={() => setDeletingVoucher(null)} className="flex-1 h-11 bg-slate-50 dark:bg-slate-800 border-none text-slate-400 dark:text-slate-500 rounded-md font-black hover:bg-slate-100 dark:hover:bg-slate-700 transition-all">{isRtl ? 'تراجع' : 'Cancel'}</AlertDialogAction>
+            <AlertDialogCancel onClick={() => setDeletingVoucher(null)} className="flex-1 h-11 bg-slate-50 dark:bg-slate-800 border-none text-slate-400 dark:text-slate-500 rounded-md font-black hover:bg-slate-100 dark:hover:bg-slate-700 transition-all">{isRtl ? 'تراجع' : 'Cancel'}</AlertDialogCancel>
           </div>
         </AlertDialogContent>
       </AlertDialog>
