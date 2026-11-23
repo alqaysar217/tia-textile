@@ -255,6 +255,13 @@ export default function PayrollManagementPage() {
       notes: '', 
       linkedReceipts: [] 
     });
+
+    // SAFETY GUARD: Clean up pointer events and scroll locks left by Radix UI
+    requestAnimationFrame(() => {
+      document.body.style.pointerEvents = 'auto';
+      document.body.style.removeProperty('overflow');
+      document.body.removeAttribute('data-scroll-locked');
+    });
   }, [systemCurrency]);
 
   const handleEditVoucher = (p: any) => {
@@ -289,8 +296,11 @@ export default function PayrollManagementPage() {
     }
 
     setIsSubmitting(true);
-    const batch = writeBatch(db);
     
+    // CLOSE EARLY: Prevent UI freeze
+    setIsPayDialogOpen(false);
+
+    const batch = writeBatch(db);
     const firstReceiptId = formData.linkedReceipts[0];
     const firstReceipt = allReceipts?.find(r => r.id === firstReceiptId);
     
@@ -336,30 +346,47 @@ export default function PayrollManagementPage() {
     } catch (error) {
       console.error(error);
       toast({ variant: "destructive", title: "Accounting Lock Error" });
+      setIsPayDialogOpen(true); // Re-open on error
     } finally {
       setIsSubmitting(false);
+      requestAnimationFrame(() => {
+        document.body.style.pointerEvents = 'auto';
+        document.body.style.removeProperty('overflow');
+        document.body.removeAttribute('data-scroll-locked');
+      });
     }
   };
 
   const handleDeletePayment = async () => {
     if (!db || !deletingVoucher || isSubmitting || !canDelete) return;
     setIsSubmitting(true);
+    
+    // CLOSE EARLY
+    const targetVoucher = deletingVoucher;
+    setDeletingVoucher(null);
+
     const batch = writeBatch(db);
     try {
-      deletingVoucher.linkedReceipts?.forEach((rid: string) => {
+      targetVoucher.linkedReceipts?.forEach((rid: string) => {
         batch.update(doc(db, 'vouchers', rid), { paymentStatus: 'pending', paidAmount: 0, paymentVoucherId: null });
       });
       
-      batch.update(doc(db, 'vouchers', deletingVoucher.id), {
+      batch.update(doc(db, 'vouchers', targetVoucher.id), {
         status: 'deleted',
         deletedAt: serverTimestamp()
       });
       
       await batch.commit();
       toast({ title: isRtl ? "تم إلغاء السند وإرجاع المستحقات" : "Voucher reversed successfully" });
+    } catch (err) {
+      console.error(err);
     } finally {
       setIsSubmitting(false);
-      setDeletingVoucher(null);
+      requestAnimationFrame(() => {
+        document.body.style.pointerEvents = 'auto';
+        document.body.style.removeProperty('overflow');
+        document.body.removeAttribute('data-scroll-locked');
+      });
     }
   };
 
@@ -737,8 +764,8 @@ export default function PayrollManagementPage() {
       </Dialog>
 
       {/* REVERSE DIALOG */}
-      <AlertDialog open={!!deletingVoucher} onOpenChange={(open) => !open && setDeletingVoucher(null)}>
-        <AlertDialogContent className="max-w-[400px] rounded-lg border-none shadow-2xl p-0 overflow-hidden dark:bg-slate-900">
+      <AlertDialog open={!!deletingVoucher} onOpenChange={() => setDeletingVoucher(null)}>
+        <AlertDialogContent className="max-w-[400px] rounded-lg p-0 overflow-hidden border-none shadow-2xl dark:bg-slate-900 transition-colors duration-300">
           <div className="bg-slate-950 p-8 text-center relative overflow-hidden">
             <div className="absolute top-0 right-0 p-4 opacity-5"><RefreshCcw className="w-32 h-32 text-white" /></div>
             <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20 shadow-inner"><RefreshCcw className="w-8 h-8 text-red-500" /></div>
@@ -751,7 +778,7 @@ export default function PayrollManagementPage() {
             <AlertDialogAction onClick={handleDeletePayment} disabled={isSubmitting} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-md font-black border-none shadow-lg transition-all active:scale-95">
               {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : (isRtl ? 'تأكيد' : 'Confirm')}
             </AlertDialogAction>
-            <AlertDialogCancel onClick={() => setDeletingVoucher(null)} className="flex-1 h-11 bg-slate-50 dark:bg-slate-800 border-none text-slate-400 dark:text-slate-500 rounded-md font-black hover:bg-slate-100 transition-all">{isRtl ? 'تراجع' : 'Cancel'}</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setDeletingVoucher(null)} className="flex-1 h-11 bg-slate-50 dark:bg-slate-800 border-none text-slate-400 dark:text-slate-500 rounded-md font-black hover:bg-slate-100 dark:hover:bg-slate-700 transition-all">{isRtl ? 'تراجع' : 'Cancel'}</AlertDialogCancel>
           </div>
         </AlertDialogContent>
       </AlertDialog>
