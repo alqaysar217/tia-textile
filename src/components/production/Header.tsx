@@ -76,7 +76,7 @@ export function Header() {
 
   /**
    * دالة حارس الأمان - المطهر العميق الفائق (Aggressive Cleanup)
-   * تضمن تحرير المتصفح من كافة الأقفال فور إغلاق أي نافذة عبر 3 مراحل زمنية
+   * تضمن تحرير المتصفح من كافة الأقفال فور إغلاق أي نافذة عبر 4 مراحل زمنية
    */
   const forceUIUnlock = useCallback(() => {
     const cleanup = () => {
@@ -289,7 +289,9 @@ export function Header() {
             <Button 
               variant="ghost" 
               size="icon" 
-              onClick={() => setIsAIOpen(true)}
+              onClick={() => {
+                setIsAIOpen(true);
+              }}
               className="text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-white dark:hover:bg-slate-800 rounded-lg h-9 w-9 transition-all group flex flex-col items-center justify-center"
             >
               <span className="font-black text-[11px] tracking-tighter leading-none group-hover:scale-110 transition-transform">AI</span>

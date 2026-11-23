@@ -105,7 +105,7 @@ export default function PayrollManagementPage() {
 
   /**
    * دالة حارس الأمان - المطهر العميق الفائق (Aggressive Cleanup)
-   * تضمن تحرير المتصفح من كافة الأقفال فور إغلاق أي نافذة عبر 3 مراحل زمنية
+   * تضمن تحرير المتصفح من كافة الأقفال فور إغلاق أي نافذة عبر 4 مراحل زمنية
    */
   const forceUIUnlock = useCallback(() => {
     const cleanup = () => {
@@ -190,33 +190,21 @@ export default function PayrollManagementPage() {
   const loading = workersLoading || receiptsLoading || paymentsLoading;
 
   /**
-   * إصلاح حلقة التكرار اللانهائي (Maximum update depth exceeded)
-   * يتم مزامنة المستحقات فقط عند تغيير "الموظف" أو "العملة" أو "فتح النافذة"
-   * مع التأكد من أن التبعيات لا تشمل القيم التي يتم تحديثها داخل الـ useEffect.
+   * دالة ذكية لمزامنة المستحقات - تعمل فقط عند الطلب اليدوي لمنع حلقات التكرار
    */
-  useEffect(() => {
-    // تشغيل المزامنة فقط في وضع الإضافة، وعندما تكون النافذة مفتوحة
-    if (!isPayDialogOpen || editingVoucherId || !allReceipts || !formData.workerId) return;
-
+  const syncDues = useCallback((workerId: string, currency: string) => {
+    if (!allReceipts || !workerId) return { ids: [], total: 0 };
     const myDues = allReceipts.filter(r => 
-      r.workerId === formData.workerId && 
+      r.workerId === workerId && 
       r.status === 'posted' && 
       r.paymentStatus !== 'paid' && 
-      (r.currency || 'YER') === formData.currency
+      (r.currency || 'YER') === currency
     );
-    
-    const ids = myDues.map(r => r.id);
-    const total = myDues.reduce((sum, r) => sum + (Number(r.wageAmount) || 0), 0);
-    
-    // مقارنة القيم الحالية بالقيم المستنتجة لمنع التحديث المتكرر غير الضروري
-    const currentIds = formData.linkedReceipts || [];
-    const isSame = ids.length === currentIds.length && ids.every(id => currentIds.includes(id));
-
-    if (!isSame || formData.amount !== total) {
-      setFormData(prev => ({ ...prev, linkedReceipts: ids, amount: total }));
-    }
-    // تم إزالة formData.linkedReceipts و formData.amount من التبعيات لكسر الحلقة اللانهائية
-  }, [formData.workerId, formData.currency, isPayDialogOpen, editingVoucherId, allReceipts]);
+    return {
+      ids: myDues.map(r => r.id),
+      total: myDues.reduce((sum, r) => sum + (Number(r.wageAmount) || 0), 0)
+    };
+  }, [allReceipts]);
 
   const flattenedBalances = useMemo(() => {
     if (!allWorkers || !allReceipts) return [];
@@ -270,6 +258,20 @@ export default function PayrollManagementPage() {
     );
   }, [formData.workerId, formData.currency, allReceipts]);
 
+  const resetDialog = useCallback(() => {
+    setIsPayDialogOpen(false);
+    setEditingVoucherId(null);
+    setFormData({ 
+      date: new Date().toISOString().split('T')[0], 
+      workerId: '', 
+      amount: 0, 
+      currency: systemCurrency, 
+      notes: '', 
+      linkedReceipts: [] 
+    });
+    forceUIUnlock();
+  }, [systemCurrency, forceUIUnlock]);
+
   const toggleReceiptSelection = useCallback((receiptId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setFormData(prev => {
@@ -284,20 +286,6 @@ export default function PayrollManagementPage() {
       return { ...prev, linkedReceipts: newSelection, amount: total };
     });
   }, [allReceipts]);
-
-  const resetDialog = useCallback(() => {
-    setIsPayDialogOpen(false);
-    setEditingVoucherId(null);
-    setFormData({ 
-      date: new Date().toISOString().split('T')[0], 
-      workerId: '', 
-      amount: 0, 
-      currency: systemCurrency, 
-      notes: '', 
-      linkedReceipts: [] 
-    });
-    forceUIUnlock();
-  }, [systemCurrency, forceUIUnlock]);
 
   const handleSavePayment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -429,7 +417,12 @@ export default function PayrollManagementPage() {
             </div>
           </div>
           {canCreate && (
-            <Button onClick={() => { resetDialog(); setIsPayDialogOpen(true); }} className="h-10 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 transition-all border-none">
+            <Button onClick={() => { 
+                resetDialog(); 
+                setIsPayDialogOpen(true); 
+              }} 
+              className="h-10 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 transition-all border-none"
+            >
               <Plus className="w-4 h-4" /> {isRtl ? 'سند صرف أجر جديد' : 'New Payment'}
             </Button>
           )}
@@ -527,14 +520,15 @@ export default function PayrollManagementPage() {
                           {canCreate && (
                             <Button 
                               onClick={() => { 
+                                const { ids, total } = syncDues(w.id, w.displayCurrency);
                                 setEditingVoucherId(null);
                                 setFormData({
                                   date: new Date().toISOString().split('T')[0],
                                   workerId: w.id,
                                   currency: w.displayCurrency,
-                                  amount: 0,
+                                  amount: total,
                                   notes: '',
-                                  linkedReceipts: []
+                                  linkedReceipts: ids
                                 });
                                 setIsPayDialogOpen(true); 
                               }} 
@@ -620,7 +614,16 @@ export default function PayrollManagementPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5 text-right">
                 <Label className="text-[10px] font-black uppercase text-slate-400 block">{isRtl ? 'الموظف المستحق' : 'WORKER'}</Label>
-                <select value={formData.workerId} onChange={(e) => setFormData(prev => ({...prev, workerId: e.target.value, linkedReceipts: [], amount: 0}))} className="w-full h-11 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-bold outline-none dark:text-slate-100 focus:ring-1 focus:ring-emerald-500" required>
+                <select 
+                  value={formData.workerId} 
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    const { ids, total } = syncDues(val, formData.currency);
+                    setFormData(prev => ({...prev, workerId: val, linkedReceipts: ids, amount: total }));
+                  }} 
+                  className="w-full h-11 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-bold outline-none dark:text-slate-100 focus:ring-1 focus:ring-emerald-500" 
+                  required
+                >
                    <option value="">-- {isRtl ? 'اختر الموظف' : 'Select'} --</option>
                    {allWorkers?.filter(w => w.status !== 'deleted' && w.active).map(w => <option key={w.id} value={w.id}>{w.fullName}</option>)}
                 </select>
@@ -634,7 +637,15 @@ export default function PayrollManagementPage() {
             <div className="p-4 bg-emerald-50/30 dark:bg-emerald-900/10 rounded-xl border border-emerald-100 dark:border-emerald-900/30 space-y-4">
               <div className="flex items-center justify-between">
                 <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2 justify-start"><Coins className="w-3.5 h-3.5 text-emerald-600" /> CURRENCY</Label>
-                <select value={formData.currency} onChange={(e) => setFormData({...formData, currency: e.target.value, linkedReceipts: [], amount: 0})} className="h-9 px-3 bg-white dark:bg-slate-900 border border-emerald-200 dark:border-slate-700 rounded-lg text-[10px] font-black shadow-sm outline-none dark:text-slate-100">
+                <select 
+                  value={formData.currency} 
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    const { ids, total } = syncDues(formData.workerId, val);
+                    setFormData(prev => ({...prev, currency: val, linkedReceipts: ids, amount: total }));
+                  }} 
+                  className="h-9 px-3 bg-white dark:bg-slate-900 border border-emerald-200 dark:border-slate-700 rounded-lg text-[10px] font-black shadow-sm outline-none dark:text-slate-100"
+                >
                   <option value="YER">YER</option><option value="SAR">SAR</option><option value="USD">USD</option>
                 </select>
               </div>
