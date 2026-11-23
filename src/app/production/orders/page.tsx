@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { 
   Plus, 
   Search, 
@@ -86,15 +86,31 @@ export default function ProductionOrdersPage() {
   const canDelete = isAdmin || permissions.orders?.delete;
 
   /**
-   * دالة حارس الأمان لفك تجمد الواجهة يدوياً
+   * دالة حارس الأمان لفك تجمد الواجهة يدوياً (بروتوكول المطهر الشامل)
+   * تضمن تحرير المتصفح من كافة الأقفال فور إغلاق أي نافذة
    */
   const forceUIUnlock = useCallback(() => {
-    requestAnimationFrame(() => {
+    setTimeout(() => {
       document.body.style.pointerEvents = 'auto';
       document.body.style.overflow = 'auto';
       document.body.removeAttribute('data-scroll-locked');
-    });
+      
+      const html = document.documentElement;
+      html.style.pointerEvents = 'auto';
+      html.style.overflow = 'auto';
+      html.removeAttribute('data-scroll-locked');
+    }, 200);
   }, []);
+
+  /**
+   * نظام المراقبة الذكي - يراقب حالة إغلاق النوافذ (بما فيها الضغط بالخارج)
+   * ويقوم باستدعاء المطهر البرمجي فوراً لضمان عدم تجمد الشاشة
+   */
+  useEffect(() => {
+    if (!isAddDialogOpen && !completingOrder && !deletingOrder) {
+      forceUIUnlock();
+    }
+  }, [isAddDialogOpen, completingOrder, deletingOrder, forceUIUnlock]);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -178,8 +194,9 @@ export default function ProductionOrdersPage() {
       updatedAt: serverTimestamp()
     };
 
-    // إغلاق المودال مبكراً
+    // إغلاق المودال وتحرير الواجهة فوراً
     setIsAddDialogOpen(false);
+    forceUIUnlock();
 
     try {
       if (editingOrderId) {
@@ -202,7 +219,6 @@ export default function ProductionOrdersPage() {
       resetForm();
     } catch (error) {
       console.error(error);
-      setIsAddDialogOpen(true);
     } finally {
       setIsSubmitting(false);
       forceUIUnlock();
@@ -213,10 +229,14 @@ export default function ProductionOrdersPage() {
     if (!db || !completingOrder || isSubmitting || !canEdit) return;
 
     setIsSubmitting(true);
-    setCompletingOrder(null); // إغلاق مبكر
+    const targetOrder = completingOrder;
+    
+    // إغلاق المودال وتحرير الواجهة فوراً
+    setCompletingOrder(null); 
+    forceUIUnlock();
 
     try {
-      await updateDoc(doc(db, 'productionOrders', completingOrder.id), {
+      await updateDoc(doc(db, 'productionOrders', targetOrder.id), {
         status: 'completed',
         completedAt: serverTimestamp(),
         updatedAt: serverTimestamp()
@@ -231,7 +251,7 @@ export default function ProductionOrdersPage() {
   };
 
   const handleDeleteOrder = async () => {
-    if (!db || !deletingOrder || !canDelete) return;
+    if (!db || !deletingOrder || !canDelete || isSubmitting) return;
     
     const hasVouchers = allReceipts?.some(r => r.orderId === deletingOrder.id && r.status !== 'deleted');
     if (hasVouchers) {
@@ -241,11 +261,16 @@ export default function ProductionOrdersPage() {
         description: lang === 'ar' ? "لا يمكن حذف أمر إنتاج بدأت فيه العمليات الميدانية." : "Cannot delete order with existing vouchers."
       });
       setDeletingOrder(null);
+      forceUIUnlock();
       return;
     }
 
+    setIsSubmitting(true);
     const targetId = deletingOrder.id;
-    setDeletingOrder(null); // إغلاق مبكر
+    
+    // إغلاق المودال وتحرير الواجهة فوراً
+    setDeletingOrder(null); 
+    forceUIUnlock();
 
     try {
       await updateDoc(doc(db, 'productionOrders', targetId), {
@@ -256,6 +281,7 @@ export default function ProductionOrdersPage() {
     } catch (error) {
       console.error(error);
     } finally {
+      setIsSubmitting(false);
       forceUIUnlock();
     }
   };
@@ -439,32 +465,32 @@ export default function ProductionOrdersPage() {
           </div>
 
           <form onSubmit={handleSaveOrder} className="p-6 space-y-4 bg-white dark:bg-slate-900">
-            <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2"><Type className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'عنوان الطلب المميز' : 'BATCH TITLE'}</Label>
-              <Input value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} className="h-11 rounded-lg bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 font-bold dark:text-slate-100" required />
+            <div className="space-y-1.5 text-right">
+              <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-end"><Type className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'عنوان الطلب المميز' : 'BATCH TITLE'}</Label>
+              <Input value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} className="h-11 rounded-lg bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 font-bold dark:text-slate-100 text-right" required />
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2"><ShoppingBag className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'نوع المعوز المستهدف' : 'PRODUCT'}</Label>
-              <select value={formData.productId} onChange={(e) => setFormData({...formData, productId: e.target.value})} className="w-full h-11 px-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold outline-none dark:text-slate-100" required>
-                <option value="">-- Select --</option>
+            <div className="space-y-1.5 text-right">
+              <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-end"><ShoppingBag className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'نوع المعوز المستهدف' : 'PRODUCT'}</Label>
+              <select value={formData.productId} onChange={(e) => setFormData({...formData, productId: e.target.value})} className="w-full h-11 px-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold outline-none dark:text-slate-100 text-right" dir={dir} required>
+                <option value="">-- {isRtl ? 'اختر المنتج' : 'Select'} --</option>
                 {products?.map(p => <option key={p.id} value={p.id}>{p.nameAr}</option>)}
               </select>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 text-right">
                 <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500">{lang === 'ar' ? 'الكمية المستهدفة' : 'TARGET QTY'}</Label>
-                <Input type="number" value={formData.targetQty} onChange={(e) => setFormData({...formData, targetQty: Number(e.target.value)})} className="h-11 font-bold tabular-nums bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 dark:text-slate-100" required />
+                <Input type="number" value={formData.targetQty} onChange={(e) => setFormData({...formData, targetQty: Number(e.target.value)})} className="h-11 font-bold tabular-nums bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 dark:text-slate-100 text-center" required />
               </div>
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 text-right">
                 <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500">{lang === 'ar' ? 'الأولوية' : 'PRIORITY'}</Label>
-                <select value={formData.priority} onChange={(e) => setFormData({...formData, priority: e.target.value})} className="w-full h-11 px-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold dark:text-slate-100">
+                <select value={formData.priority} onChange={(e) => setFormData({...formData, priority: e.target.value})} className="w-full h-11 px-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold dark:text-slate-100 text-right" dir={dir}>
                   <option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option>
                 </select>
               </div>
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 text-right">
               <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500">{lang === 'ar' ? 'ملاحظات إضافية' : 'NOTES'}</Label>
-              <Textarea value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} className="min-h-[80px] bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 resize-none text-xs font-medium dark:text-slate-300" />
+              <Textarea value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} className="min-h-[80px] bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 resize-none text-xs font-medium dark:text-slate-300 text-right" dir={dir} />
             </div>
             <div className="flex gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
               <Button type="submit" disabled={isSubmitting} className="flex-1 h-12 premium-gradient text-white font-black">{isSubmitting ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : <Save className="w-4 h-4 me-2" />}{lang === 'ar' ? 'حفظ البيانات' : 'Commit'}</Button>
@@ -510,7 +536,7 @@ export default function ProductionOrdersPage() {
               </AlertDialogDescription>
            </div>
            <div className="bg-white dark:bg-slate-900 p-6 flex gap-3">
-              <AlertDialogAction onClick={handleDeleteOrder} className="flex-1 h-11 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-xl border-none">أرشفة</AlertDialogAction>
+              <AlertDialogAction onClick={handleDeleteOrder} disabled={isSubmitting} className="flex-1 h-11 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-xl border-none">أرشفة</AlertDialogAction>
               <AlertDialogCancel className="flex-1 h-11 bg-slate-50 dark:bg-slate-800 font-black rounded-xl text-slate-400 dark:text-slate-500 border-none">تراجع</AlertDialogCancel>
            </div>
         </AlertDialogContent>

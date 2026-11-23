@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { 
   CheckCircle2, 
   ChevronRight, 
@@ -69,6 +69,27 @@ export default function CompletedOrdersPage() {
   const [dateTo, setDateTo] = useState('');
   const [sortBy, setSortBy] = useState<'orderNumber' | 'completedAt' | 'completedQty'>('completedAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  /**
+   * دالة حارس الأمان لفك تجمد الواجهة يدوياً (بروتوكول المطهر الشامل)
+   */
+  const forceUIUnlock = useCallback(() => {
+    setTimeout(() => {
+      document.body.style.pointerEvents = 'auto';
+      document.body.style.overflow = 'auto';
+      document.body.removeAttribute('data-scroll-locked');
+      
+      const html = document.documentElement;
+      html.style.pointerEvents = 'auto';
+      html.style.overflow = 'auto';
+      html.removeAttribute('data-scroll-locked');
+    }, 200);
+  }, []);
+
+  // المراقبة لضمان استقرار الواجهة بعد إغلاق أي قوائم منبثقة أو نوافذ
+  useEffect(() => {
+    forceUIUnlock();
+  }, [forceUIUnlock]);
 
   // Queries
   const ordersQuery = useMemo(() => !db ? null : query(
@@ -199,7 +220,7 @@ export default function CompletedOrdersPage() {
             </div>
 
             {/* Date Range Popover */}
-            <Popover>
+            <Popover onOpenChange={(open) => !open && forceUIUnlock()}>
               <PopoverTrigger asChild>
                 <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all", (dateFrom || dateTo) && "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20")}>
                   <CalendarDays className={cn("w-4 h-4", (dateFrom || dateTo) ? "text-emerald-600" : "text-slate-400")} />
@@ -222,7 +243,7 @@ export default function CompletedOrdersPage() {
                     </div>
                   </div>
                   {(dateFrom || dateTo) && (
-                    <Button variant="link" onClick={() => { setDateFrom(''); setDateTo(''); }} className="text-[9px] h-auto p-0 font-bold text-rose-500 underline uppercase w-full">
+                    <Button variant="link" onClick={() => { setDateFrom(''); setDateTo(''); forceUIUnlock(); }} className="text-[9px] h-auto p-0 font-bold text-rose-500 underline uppercase w-full">
                       {isRtl ? 'إعادة تعيين' : 'RESET'}
                     </Button>
                   )}
@@ -231,7 +252,7 @@ export default function CompletedOrdersPage() {
             </Popover>
 
             {/* Filter & Sort Dropdown */}
-            <DropdownMenu>
+            <DropdownMenu onOpenChange={(open) => !open && forceUIUnlock()}>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
                   <Filter className="w-4 h-4 text-slate-400 dark:text-slate-500" />
@@ -239,15 +260,15 @@ export default function CompletedOrdersPage() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align={isRtl ? "start" : "end"} className="w-56 rounded-xl shadow-xl border-slate-200 dark:border-slate-800 dark:bg-slate-900">
                 <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest">{isRtl ? 'ترتيب حسب' : 'SORT BY'}</DropdownMenuLabel>
-                <DropdownMenuItem onClick={() => toggleSort('completedAt')} className="flex justify-between text-xs font-bold cursor-pointer py-2.5 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
+                <DropdownMenuItem onClick={() => { toggleSort('completedAt'); forceUIUnlock(); }} className="flex justify-between text-xs font-bold cursor-pointer py-2.5 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
                   {isRtl ? 'تاريخ الإتمام' : 'Completion Date'}
                   {sortBy === 'completedAt' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />)}
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => toggleSort('completedQty')} className="flex justify-between text-xs font-bold cursor-pointer py-2.5 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
+                <DropdownMenuItem onClick={() => { toggleSort('completedQty'); forceUIUnlock(); }} className="flex justify-between text-xs font-bold cursor-pointer py-2.5 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
                   {isRtl ? 'الكمية النهائية' : 'Final Yield'}
                   {sortBy === 'completedQty' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />)}
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => toggleSort('orderNumber')} className="flex justify-between text-xs font-bold cursor-pointer py-2.5 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
+                <DropdownMenuItem onClick={() => { toggleSort('orderNumber'); forceUIUnlock(); }} className="flex justify-between text-xs font-bold cursor-pointer py-2.5 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
                   {isRtl ? 'رقم السجل' : 'Reference Number'}
                   {sortBy === 'orderNumber' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />)}
                 </DropdownMenuItem>
@@ -307,7 +328,7 @@ export default function CompletedOrdersPage() {
                       const completionDate = order.completedAt?.toDate?.().toLocaleDateString(isRtl ? 'ar-YE' : 'en-US');
                       
                       return (
-                        <TableRow key={order.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors border-b border-slate-100 dark:border-slate-800 group">
+                        <TableRow key={order.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 transition-colors group">
                            <TableCell className={cn("px-6 py-4", isRtl ? "text-right" : "text-left")}>
                               <Badge variant="outline" className="bg-slate-900 dark:bg-slate-950 text-white font-black tabular-nums border-none px-3 py-1 text-[10px]">{order.orderNumber}</Badge>
                            </TableCell>
@@ -352,7 +373,7 @@ export default function CompletedOrdersPage() {
       </div>
 
       {/* SYSTEM NOTE */}
-      <div className="flex-none p-3 bg-slate-900 dark:bg-slate-900/80 text-white/40 dark:text-slate-500 flex items-center justify-center gap-4 border-t border-white/5 shadow-2xl">
+      <div className="flex-none p-3 bg-slate-900 dark:bg-slate-900/80 text-white/40 dark:text-slate-500 flex items-center justify-center gap-4 border-t border-white/5 shadow-2xl transition-colors duration-300">
          <ShieldCheck className="w-4 h-4 text-emerald-500" />
          <p className="text-[10px] font-bold tracking-tight">
            {isRtl 
