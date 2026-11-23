@@ -65,6 +65,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useProduction } from '../../ProductionContext';
 
 export default function CompletedOrdersPage() {
@@ -73,11 +79,9 @@ export default function CompletedOrdersPage() {
   const router = useRouter();
   const isRtl = lang === 'ar';
 
-  // استيراد الصلاحيات للتأكد من هوية المستخدم
   const { isAdmin, permissions } = useProduction();
   const canEdit = isAdmin || permissions.orders?.edit;
 
-  // State Management
   const [search, setSearch] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -86,9 +90,6 @@ export default function CompletedOrdersPage() {
   const [reactivatingOrder, setReactivatingOrder] = useState<any | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  /**
-   * دالة حارس الأمان لفك تجمد الواجهة يدوياً (بروتوكول المطهر الشامل)
-   */
   const forceUIUnlock = useCallback(() => {
     setTimeout(() => {
       document.body.style.pointerEvents = 'auto';
@@ -102,14 +103,12 @@ export default function CompletedOrdersPage() {
     }, 200);
   }, []);
 
-  // المراقبة لضمان استقرار الواجهة دائماً
   useEffect(() => {
     if (!reactivatingOrder) {
       forceUIUnlock();
     }
   }, [reactivatingOrder, forceUIUnlock]);
 
-  // Queries
   const ordersQuery = useMemo(() => !db ? null : query(
     collection(db, 'productionOrders'), 
     where('status', '==', 'completed')
@@ -120,7 +119,6 @@ export default function CompletedOrdersPage() {
   const { data: orders, loading: ordersLoading } = useCollection<any>(ordersQuery);
   const { data: products } = useCollection<any>(productsQuery);
 
-  // Filtering Logic
   const filteredOrders = useMemo(() => {
     if (!orders) return [];
     
@@ -134,7 +132,6 @@ export default function CompletedOrdersPage() {
         product?.nameAr?.includes(s)
       );
 
-      // Date Range Filtering
       const completedDate = o.completedAt?.toDate?.().toISOString().split('T')[0] || '';
       const matchesDateFrom = dateFrom ? completedDate >= dateFrom : true;
       const matchesDateTo = dateTo ? completedDate <= dateTo : true;
@@ -142,7 +139,6 @@ export default function CompletedOrdersPage() {
       return matchesSearch && matchesDateFrom && matchesDateTo;
     });
 
-    // Manual Sort
     return list.sort((a, b) => {
       let valA: any, valB: any;
 
@@ -170,7 +166,6 @@ export default function CompletedOrdersPage() {
     setIsSubmitting(true);
     const targetId = reactivatingOrder.id;
     
-    // إغلاق المودال وتحرير الواجهة فوراً لضمان السرعة
     setReactivatingOrder(null);
     forceUIUnlock();
 
@@ -231,8 +226,6 @@ export default function CompletedOrdersPage() {
 
   return (
     <div className="flex flex-col h-full bg-[#f8fafc] dark:bg-slate-950 overflow-hidden transition-colors duration-300" dir={dir}>
-      
-      {/* UNIFIED TOOLBAR HEADER */}
       <div className="flex-none bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 z-30 px-6 py-4 shadow-sm">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div className="flex items-center gap-4">
@@ -322,17 +315,10 @@ export default function CompletedOrdersPage() {
             <Button onClick={handleExportCSV} variant="ghost" size="icon" className="h-9 w-9 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 shadow-md border-none">
               <FileDown className="w-4 h-4" />
             </Button>
-
-            <div className="h-9 w-px bg-slate-200 dark:bg-slate-700 mx-1 hidden sm:block" />
-            <div className="bg-slate-900 dark:bg-slate-950 text-white px-3 py-1 rounded-lg flex flex-col items-center justify-center min-w-[60px] hidden sm:flex">
-              <span className="text-[7px] font-black uppercase opacity-50 leading-none">{isRtl ? 'المجموع' : 'TOTAL'}</span>
-              <span className="text-xs font-black tabular-nums leading-none mt-0.5">{orders?.length || 0}</span>
-            </div>
           </div>
         </div>
       </div>
 
-      {/* DATA GRID */}
       <div className="flex-1 min-h-0 overflow-auto p-4 md:p-6 no-scrollbar">
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col h-full transition-colors duration-300">
            <div className="flex-1 overflow-auto no-scrollbar relative">
@@ -397,7 +383,6 @@ export default function CompletedOrdersPage() {
                            </TableCell>
                            <TableCell className="px-6 py-4 text-center">
                               <div className="flex items-center justify-center gap-2">
-                                 {/* ميزة إعادة التنشيط في حال الخطأ */}
                                  {canEdit && (
                                    <TooltipProvider>
                                      <Tooltip>
@@ -435,7 +420,6 @@ export default function CompletedOrdersPage() {
         </div>
       </div>
 
-      {/* RE-ACTIVATE CONFIRMATION DIALOG */}
       <AlertDialog open={!!reactivatingOrder} onOpenChange={(open) => { if(!open) setReactivatingOrder(null); forceUIUnlock(); }}>
         <AlertDialogContent className="max-w-[450px] rounded-[1.5rem] p-0 overflow-hidden border-none shadow-2xl dark:bg-slate-900">
            <div className="bg-amber-950 p-8 text-center relative overflow-hidden">
@@ -460,7 +444,6 @@ export default function CompletedOrdersPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* SYSTEM NOTE */}
       <div className="flex-none p-3 bg-slate-900 dark:bg-slate-900/80 text-white/40 dark:text-slate-500 flex items-center justify-center gap-4 border-t border-white/5 shadow-2xl transition-colors duration-300">
          <ShieldCheck className="w-4 h-4 text-emerald-500" />
          <p className="text-[10px] font-bold tracking-tight">
@@ -473,6 +456,3 @@ export default function CompletedOrdersPage() {
     </div>
   );
 }
-
-// استيراد أدوات التلميح الإضافية
-import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';

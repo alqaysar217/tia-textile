@@ -79,7 +79,6 @@ export default function ProductionOrdersPage() {
   const [deletingOrder, setDeletingOrder] = useState<any | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // استيراد الصلاحيات من المحرك المركزي
   const { permissions, isAdmin } = useProduction();
   const canCreate = isAdmin || permissions.orders?.create;
   const canEdit = isAdmin || permissions.orders?.edit;
@@ -87,10 +86,6 @@ export default function ProductionOrdersPage() {
 
   const isRtl = lang === 'ar';
 
-  /**
-   * دالة حارس الأمان لفك تجمد الواجهة يدوياً (بروتوكول المطهر الشامل)
-   * تضمن تحرير المتصفح من كافة الأقفال فور إغلاق أي نافذة
-   */
   const forceUIUnlock = useCallback(() => {
     setTimeout(() => {
       document.body.style.pointerEvents = 'auto';
@@ -104,17 +99,12 @@ export default function ProductionOrdersPage() {
     }, 200);
   }, []);
 
-  /**
-   * نظام المراقبة الذكي - يراقب حالة إغلاق النوافذ (بما فيها الضغط بالخارج)
-   * ويقوم باستدعاء المطهر البرمجي فوراً لضمان عدم تجمد الشاشة
-   */
   useEffect(() => {
     if (!isAddDialogOpen && !completingOrder && !deletingOrder) {
       forceUIUnlock();
     }
   }, [isAddDialogOpen, completingOrder, deletingOrder, forceUIUnlock]);
 
-  // Form State
   const [formData, setFormData] = useState({
     title: '',
     productId: '',
@@ -123,7 +113,6 @@ export default function ProductionOrdersPage() {
     notes: ''
   });
 
-  // Fetch Data
   const productsQuery = useMemo(() => !db ? null : collection(db, 'products'), [db]);
   const ordersQuery = useMemo(() => !db ? null : collection(db, 'productionOrders'), [db]);
   const deptsQuery = useMemo(() => !db ? null : collection(db, 'departments'), [db]);
@@ -141,7 +130,6 @@ export default function ProductionOrdersPage() {
 
   const filteredOrders = useMemo(() => {
     if (!orders) return [];
-    // تعديل الفلترة لتعرض فقط الأوامر النشطة
     const activeOrders = orders.filter(o => o.status === 'active');
     return activeOrders.filter(o => {
       const product = products?.find(p => p.id === o.productId);
@@ -197,7 +185,6 @@ export default function ProductionOrdersPage() {
       updatedAt: serverTimestamp()
     };
 
-    // إغلاق المودال وتحرير الواجهة فوراً
     setIsAddDialogOpen(false);
     forceUIUnlock();
 
@@ -234,7 +221,6 @@ export default function ProductionOrdersPage() {
     setIsSubmitting(true);
     const targetOrder = completingOrder;
     
-    // إغلاق المودال وتحرير الواجهة فوراً
     setCompletingOrder(null); 
     forceUIUnlock();
 
@@ -271,7 +257,6 @@ export default function ProductionOrdersPage() {
     setIsSubmitting(true);
     const targetId = deletingOrder.id;
     
-    // إغلاق المودال وتحرير الواجهة فوراً
     setDeletingOrder(null); 
     forceUIUnlock();
 
@@ -291,8 +276,6 @@ export default function ProductionOrdersPage() {
 
   return (
     <div className="flex flex-col h-full bg-[#f8fafc] dark:bg-slate-950 overflow-hidden transition-colors duration-300" dir={dir}>
-      
-      {/* ERP HUB - HEADER */}
       <div className="flex-none bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 z-30 px-6 py-4 shadow-sm">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div className="flex items-center gap-4">
@@ -334,7 +317,6 @@ export default function ProductionOrdersPage() {
         </div>
       </div>
 
-      {/* MAIN ORDERS LIST */}
       <div className="flex-1 min-h-0 overflow-auto p-4 md:p-6 space-y-2 no-scrollbar">
         {ordersLoading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-4">
@@ -349,17 +331,14 @@ export default function ProductionOrdersPage() {
           </div>
         ) : filteredOrders.map((order) => {
           const product = products?.find(p => p.id === order.productId);
-          
           const finalStage = sortedDepts[sortedDepts.length - 1];
           const orderReceipts = allReceipts?.filter(r => r.orderId === order.id && r.type === 'production_receipt') || [];
-          
           const finalCompletedQty = orderReceipts.reduce((acc, curr) => {
              const isFinalStage = curr.currentStageId === finalStage?.id;
              const isTransferred = curr.isTransferred === true;
              if (isFinalStage || isTransferred) return acc + (curr.qtyAccepted || 0);
              return acc;
           }, 0);
-
           const progress = Math.round((finalCompletedQty / (order.targetQty || 1)) * 100) || 0;
           
           return (
@@ -373,7 +352,6 @@ export default function ProductionOrdersPage() {
                   <span className="text-[10px] font-black text-emerald-700 dark:text-emerald-400 tabular-nums uppercase leading-none">{order.orderNumber}</span>
                   <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 tabular-nums mt-1">{order.startDate}</span>
                 </div>
-
                 <div className="flex-1 flex flex-col justify-center min-w-0">
                   <h3 className="text-xs font-black text-slate-900 dark:text-slate-100 group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors truncate">{order.title}</h3>
                   <div className="flex items-center gap-2 mt-0.5">
@@ -381,7 +359,6 @@ export default function ProductionOrdersPage() {
                     <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 truncate">{product?.nameAr || '---'}</span>
                   </div>
                 </div>
-
                 <div className="w-48 flex flex-col justify-center gap-1.5 px-4 border-x border-slate-100 dark:border-slate-800 h-full">
                   <div className="flex justify-between items-center text-[10px] font-black">
                     <span className="text-slate-400 dark:text-slate-500 uppercase tracking-tighter">{lang === 'ar' ? 'الإنجاز النهائي' : 'READY PROGRESS'}</span>
@@ -389,7 +366,6 @@ export default function ProductionOrdersPage() {
                   </div>
                   <Progress value={progress} className="h-1.5 bg-slate-100 dark:bg-slate-800" />
                 </div>
-
                 <div className="flex items-center gap-8 px-4">
                   <div className="text-center">
                     <p className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase leading-none">{lang === 'ar' ? 'المستهدف' : 'TARGET'}</p>
@@ -400,19 +376,12 @@ export default function ProductionOrdersPage() {
                     <p className="text-xs font-black text-emerald-700 dark:text-emerald-400 tabular-nums mt-1">{finalCompletedQty}</p>
                   </div>
                 </div>
-
                 <div className="hidden md:flex items-center gap-2 border-r border-slate-100 dark:border-slate-800 px-4 h-full">
-                  <div className={cn(
-                    "w-2 h-2 rounded-full",
-                    order.status === 'completed' || progress >= 100 ? "bg-emerald-500" : "bg-amber-500 animate-pulse"
-                  )} />
+                  <div className={cn("w-2 h-2 rounded-full", order.status === 'completed' || progress >= 100 ? "bg-emerald-500" : "bg-amber-500 animate-pulse")} />
                   <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-tight">
-                    {order.status === 'completed' || progress >= 100 
-                      ? (lang === 'ar' ? 'مكتمل' : 'COMPLETED') 
-                      : (lang === 'ar' ? 'قيد الإنتاج' : 'IN PROGRESS')}
+                    {order.status === 'completed' || progress >= 100 ? (lang === 'ar' ? 'مكتمل' : 'COMPLETED') : (lang === 'ar' ? 'قيد الإنتاج' : 'IN PROGRESS')}
                   </span>
                 </div>
-
                 <div className="flex items-center gap-2 border-r border-slate-100 dark:border-slate-800 h-full px-2">
                   <TooltipProvider>
                     <Tooltip>
@@ -421,7 +390,6 @@ export default function ProductionOrdersPage() {
                       </TooltipTrigger>
                       <TooltipContent className="dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700"><p className="text-[10px] font-bold">{lang === 'ar' ? 'عرض السجل الفني' : 'View Ledger'}</p></TooltipContent>
                     </Tooltip>
-                    
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800" onClick={(e) => e.stopPropagation()}><MoreVertical className="w-4 h-4 text-slate-400 dark:text-slate-500" /></Button>
@@ -438,7 +406,6 @@ export default function ProductionOrdersPage() {
                             </DropdownMenuItem>
                           </>
                         )}
-                        
                         {canDelete && (
                           <>
                             <DropdownMenuSeparator className="dark:bg-slate-800" />
@@ -455,7 +422,6 @@ export default function ProductionOrdersPage() {
         })}
       </div>
 
-      {/* NEW/EDIT ORDER DIALOG */}
       <Dialog open={isAddDialogOpen} onOpenChange={(open) => { if(!open) resetForm(); forceUIUnlock(); }}>
         <DialogContent className="sm:max-w-[500px] rounded-lg p-0 overflow-hidden border-none shadow-2xl dark:bg-slate-900">
           <div className="premium-gradient p-6 text-white">
@@ -466,7 +432,6 @@ export default function ProductionOrdersPage() {
               </DialogTitle>
             </DialogHeader>
           </div>
-
           <form onSubmit={handleSaveOrder} className="p-6 space-y-4 bg-white dark:bg-slate-900">
             <div className="space-y-1.5 text-right">
               <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-end"><Type className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'عنوان الطلب المميز' : 'BATCH TITLE'}</Label>
@@ -475,7 +440,7 @@ export default function ProductionOrdersPage() {
             <div className="space-y-1.5 text-right">
               <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-end"><ShoppingBag className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'نوع المعوز المستهدف' : 'PRODUCT'}</Label>
               <select value={formData.productId} onChange={(e) => setFormData({...formData, productId: e.target.value})} className="w-full h-11 px-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold outline-none dark:text-slate-100 text-right" dir={dir} required>
-                <option value="">-- {isRtl ? 'اختر المنتج' : 'Select'} --</option>
+                <option value="">-- {lang === 'ar' ? 'اختر المنتج' : 'Select'} --</option>
                 {products?.map(p => <option key={p.id} value={p.id}>{p.nameAr}</option>)}
               </select>
             </div>
@@ -503,7 +468,6 @@ export default function ProductionOrdersPage() {
         </DialogContent>
       </Dialog>
 
-      {/* COMPLETE ORDER CONFIRMATION */}
       <AlertDialog open={!!completingOrder} onOpenChange={(open) => { if(!open) setCompletingOrder(null); forceUIUnlock(); }}>
         <AlertDialogContent className="rounded-[1.5rem] p-0 overflow-hidden border-none shadow-2xl dark:bg-slate-900">
            <div className="bg-emerald-950 p-8 text-center relative overflow-hidden">
@@ -528,7 +492,6 @@ export default function ProductionOrdersPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* ARCHIVE DIALOG */}
       <AlertDialog open={!!deletingOrder} onOpenChange={(open) => { if(!open) setDeletingOrder(null); forceUIUnlock(); }}>
         <AlertDialogContent className="rounded-[1.5rem] p-0 overflow-hidden dark:bg-slate-900">
            <div className="bg-slate-950 p-6 text-center">
@@ -553,7 +516,6 @@ export default function ProductionOrdersPage() {
              : 'Audit Protocol: Final yield is calculated based on items reaching the last stage or transferred to warehouse.'}
          </p>
       </div>
-
     </div>
   );
 }
