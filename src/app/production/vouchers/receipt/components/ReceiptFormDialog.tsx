@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   ShieldCheck, 
   Calendar, 
@@ -224,7 +224,7 @@ export function ReceiptFormDialog({
                 </div>
                 <div className="space-y-1.5 text-right">
                   <Label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase">{isRtl ? 'ملاحظات الفحص' : 'QC NOTES'}</Label>
-                  <Input value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} className="h-14 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-xs font-bold dark:text-slate-100 text-right" dir={dir} />
+                  <Input value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} className="h-14 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold dark:text-slate-100 text-right" dir={dir} />
                 </div>
               </div>
               
@@ -246,7 +246,7 @@ export function ReceiptFormDialog({
             </div>
           </div>
 
-          <div className="p-4 bg-blue-50/30 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/20 rounded-[1.5rem] space-y-4">
+          <div className="p-4 bg-blue-50/30 dark:bg-blue-900/10 rounded-xl border border-blue-100 dark:border-blue-900/20 rounded-[1.5rem] space-y-4">
             <h3 className="text-[10px] font-black text-blue-700 dark:text-blue-400 uppercase flex items-center gap-2 justify-end">
                {isRtl ? 'استرجاع المواد المتبقية للمخزن' : 'RETURN RAW MATERIALS'} <RefreshCcw className="w-3.5 h-3.5" />
             </h3>

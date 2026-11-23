@@ -43,11 +43,27 @@ export default function ProductionReceiptPage() {
   const searchParams = useSearchParams();
   const isRtl = lang === 'ar';
 
-  // استيراد الصلاحيات من المحرك المركزي
   const { permissions, isAdmin } = useProduction();
   const canCreate = isAdmin || permissions.vouchers_receipt?.create;
   const canEdit = isAdmin || permissions.vouchers_receipt?.edit;
   const canDelete = isAdmin || permissions.vouchers_receipt?.delete;
+
+  /**
+   * دالة حارس الأمان لفك تجمد الواجهة يدوياً (بروتوكول المطهر الشامل)
+   * تضمن تحرير المتصفح من كافة الأقفال فور إغلاق أي نافذة
+   */
+  const forceUIUnlock = useCallback(() => {
+    setTimeout(() => {
+      document.body.style.pointerEvents = 'auto';
+      document.body.style.overflow = 'auto';
+      document.body.removeAttribute('data-scroll-locked');
+      
+      const html = document.documentElement;
+      html.style.pointerEvents = 'auto';
+      html.style.overflow = 'auto';
+      html.removeAttribute('data-scroll-locked');
+    }, 200);
+  }, []);
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingVoucherId, setEditingVoucherId] = useState<string | null>(null);
@@ -61,6 +77,16 @@ export default function ProductionReceiptPage() {
   const [sortBy, setSortBy] = useState<'voucherNumber' | 'date' | 'qtyAccepted'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [batchFilter, setBatchFilter] = useState('all');
+
+  /**
+   * نظام المراقبة الذكي - يراقب حالة إغلاق النوافذ (بما فيها الضغط بالخارج)
+   * ويقوم باستدعاء المطهر البرمجي فوراً لضمان عدم تجمد الشاشة
+   */
+  useEffect(() => {
+    if (!isAddDialogOpen && !deletingVoucher && !printingVoucher && !transferringVoucher) {
+      forceUIUnlock();
+    }
+  }, [isAddDialogOpen, deletingVoucher, printingVoucher, transferringVoucher, forceUIUnlock]);
 
   const settingsRef = useMemo(() => !db ? null : doc(db, 'settings', 'global'), [db]);
   const { data: savedSettings } = useDoc<any>(settingsRef);
@@ -123,13 +149,8 @@ export default function ProductionReceiptPage() {
     setIsAddDialogOpen(false);
     setEditingVoucherId(null);
     setFormData({ date: new Date().toISOString().split('T')[0], orderId: '', workerId: '', linkedMIVs: [], isFinalSettlement: true, notes: '', qtyAccepted: 0, wageRate: 0, currency: systemCurrency, returnedItems: [] });
-    
-    requestAnimationFrame(() => {
-      document.body.style.pointerEvents = 'auto';
-      document.body.style.removeProperty('overflow');
-      document.body.removeAttribute('data-scroll-locked');
-    });
-  }, [systemCurrency]);
+    forceUIUnlock();
+  }, [systemCurrency, forceUIUnlock]);
 
   const handleSaveVoucher = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -158,12 +179,14 @@ export default function ProductionReceiptPage() {
       totalQty: Number(formData.qtyAccepted),
       type: 'production_receipt',
       status: 'posted',
-      paymentStatus: editingId ? (vouchers?.find(v => v.id === editingId)?.paymentStatus || 'pending') : 'pending', 
-      paidAmount: editingId ? (vouchers?.find(v => v.id === editingId)?.paidAmount || 0) : 0,
+      paymentStatus: editingVoucherId ? (vouchers?.find(v => v.id === editingVoucherId)?.paymentStatus || 'pending') : 'pending', 
+      paidAmount: editingVoucherId ? (vouchers?.find(v => v.id === editingVoucherId)?.paidAmount || 0) : 0,
       updatedAt: serverTimestamp()
     };
 
+    // إغلاق المودال وتحرير الواجهة فوراً لضمان السرعة
     setIsAddDialogOpen(false);
+    forceUIUnlock();
 
     try {
       if (targetEditingId) {
@@ -187,19 +210,14 @@ export default function ProductionReceiptPage() {
       }
 
       await batch.commit();
-      toast({ title: isRtl ? "تم التوريد والترحيل بنجاح" : "Success" });
+      toast({ title: isRtl ? "تم الحفظ وتحديث المخازن بنجاح" : "Success" });
       resetDialog();
     } catch (err) { 
       console.error(err);
       toast({ variant: "destructive", title: "Internal Error" });
-      setIsAddDialogOpen(true);
     } finally { 
       setIsSubmitting(false); 
-      requestAnimationFrame(() => {
-        document.body.style.pointerEvents = 'auto';
-        document.body.style.removeProperty('overflow');
-        document.body.removeAttribute('data-scroll-locked');
-      });
+      forceUIUnlock();
     }
   };
 
@@ -212,7 +230,10 @@ export default function ProductionReceiptPage() {
 
     setIsSubmitting(true);
     const targetVoucher = transferringVoucher;
+    
+    // إغلاق المودال وتحرير الواجهة فوراً
     setTransferringVoucher(null);
+    forceUIUnlock();
 
     const batch = writeBatch(db);
     try {
@@ -252,18 +273,13 @@ export default function ProductionReceiptPage() {
       toast({ variant: "destructive", title: "Transfer Failed" });
     } finally {
       setIsSubmitting(false);
-      requestAnimationFrame(() => {
-        document.body.style.pointerEvents = 'auto';
-        document.body.style.removeProperty('overflow');
-        document.body.removeAttribute('data-scroll-locked');
-      });
+      forceUIUnlock();
     }
   };
 
   const handleDeleteRequest = async () => {
     if (!db || !deletingVoucher || !canDelete || isSubmitting) return;
     
-    // حماية محاسبية: منع حذف سند مستلم إذا تم صرف أجره
     if (deletingVoucher.paymentStatus === 'paid') {
       toast({ 
         variant: "destructive", 
@@ -271,12 +287,16 @@ export default function ProductionReceiptPage() {
         description: isRtl ? "هذا السند تم صرف أجره مسبقاً، يجب إلغاء سند الصرف أولاً." : "This receipt is already paid."
       });
       setDeletingVoucher(null);
+      forceUIUnlock();
       return;
     }
 
     setIsSubmitting(true);
     const targetVoucher = deletingVoucher;
+    
+    // إغلاق المودال وتحرير الواجهة فوراً
     setDeletingVoucher(null);
+    forceUIUnlock();
 
     const batch = writeBatch(db);
     try {
@@ -291,11 +311,7 @@ export default function ProductionReceiptPage() {
       console.error(err);
     } finally { 
       setIsSubmitting(false); 
-      requestAnimationFrame(() => {
-        document.body.style.pointerEvents = 'auto';
-        document.body.style.removeProperty('overflow');
-        document.body.removeAttribute('data-scroll-locked');
-      });
+      forceUIUnlock();
     }
   };
 
@@ -348,7 +364,7 @@ export default function ProductionReceiptPage() {
 
       <ReceiptDeleteDialog isOpen={!!deletingVoucher} onClose={() => setDeletingVoucher(null)} lang={lang} isSubmitting={isSubmitting} onDelete={handleDeleteRequest} />
 
-      <AlertDialog open={!!transferringVoucher} onOpenChange={(open) => !open && setTransferringVoucher(null)}>
+      <AlertDialog open={!!transferringVoucher} onOpenChange={(open) => { if(!open) setTransferringVoucher(null); forceUIUnlock(); }}>
         <AlertDialogContent className="max-w-[450px] rounded-[1.5rem] p-0 overflow-hidden border-none shadow-2xl dark:bg-slate-900">
           <div className="bg-slate-900 dark:bg-slate-950 p-8 text-center relative overflow-hidden">
              <div className="absolute top-0 right-0 p-4 opacity-5"><Truck className="w-32 h-32 text-white" /></div>
@@ -356,7 +372,7 @@ export default function ProductionReceiptPage() {
                 <Truck className="w-8 h-8 text-blue-400" />
              </div>
              <AlertDialogTitle className="text-white text-xl font-black">{isRtl ? 'تأكيد الترحيل للمستودع' : 'Confirm Warehouse Transfer'}</AlertDialogTitle>
-             <AlertDialogDescription className="text-slate-400 font-bold mt-2 text-xs leading-relaxed">
+             <AlertDialogDescription className="text-slate-400 font-bold mt-2 text-xs leading-relaxed text-center">
                 {isRtl 
                   ? `أنت على وشك ترحيل عدد (${transferringVoucher?.qtyAccepted}) قطعة من سند رقم (${transferringVoucher?.voucherNumber}) إلى مستودع المنجز الجاهز. هل هذا المنتج مكتمل وجاهز للبيع تماماً؟`
                   : `You are about to transfer (${transferringVoucher?.qtyAccepted}) items to the finished goods warehouse. Confirm?`}
