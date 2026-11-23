@@ -99,18 +99,42 @@ export default function MaterialReturnPage() {
     }
 
     setIsSubmitting(true);
+    
+    // إغلاق المودال مبكراً لتحرير الواجهة ومنع التجمد
+    setIsAddDialogOpen(false);
+
     const batch = writeBatch(db);
     try {
       const voucherData = { ...formData, type: 'material_return', status: 'posted', updatedAt: serverTimestamp() };
       const voucherNumber = `MRV-${Date.now().toString().slice(-6)}`;
       batch.set(doc(collection(db, 'vouchers')), { ...voucherData, voucherNumber, createdAt: serverTimestamp() });
-      if (formData.linkedReceiptId) batch.update(doc(db, 'vouchers', formData.linkedReceiptId), { returnStatus: 'verified' });
-      formData.items.forEach(item => { const mat = allMaterials?.find(m => m.id === item.id); if (mat) batch.update(doc(db, 'materials', item.id), { currentQty: (mat.currentQty || 0) + Number(item.qty) }); });
+      
+      if (formData.linkedReceiptId) {
+        batch.update(doc(db, 'vouchers', formData.linkedReceiptId), { returnStatus: 'verified' });
+      }
+
+      formData.items.forEach(item => { 
+        const mat = allMaterials?.find(m => m.id === item.id); 
+        if (mat) {
+          batch.update(doc(db, 'materials', item.id), { currentQty: (mat.currentQty || 0) + Number(item.qty) });
+        }
+      });
+
       await batch.commit();
       toast({ title: isRtl ? "تم التوثيق بنجاح" : "Success" });
-      setIsAddDialogOpen(false);
       setFormData({ date: new Date().toISOString().split('T')[0], orderId: '', workerId: '', linkedReceiptId: '', notes: '', items: [] });
-    } finally { setIsSubmitting(false); }
+    } catch (err: any) {
+      toast({ variant: "destructive", title: isRtl ? "فشلت العملية" : "Failed", description: err.message });
+      setIsAddDialogOpen(true); // إعادة فتح النافذة في حال فشل الاتصال لكي لا يفقد المستخدم ما كتبه
+    } finally { 
+      setIsSubmitting(false); 
+      // حارس الأمان لفك قفل الماوس والتمرير
+      requestAnimationFrame(() => {
+        document.body.style.pointerEvents = 'auto';
+        document.body.style.removeProperty('overflow');
+        document.body.removeAttribute('data-scroll-locked');
+      });
+    }
   };
 
   const handleDownloadImage = async () => {
