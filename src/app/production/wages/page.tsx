@@ -119,13 +119,32 @@ export default function PayrollManagementPage() {
   const [dateTo, setDateTo] = useState('');
   const [workerFilter, setWorkerFilter] = useState('all');
 
+  /**
+   * دالة حارس الأمان لفك تجمد الواجهة يدوياً (بروتوكول المطهر الشامل)
+   * تضمن تحرير المتصفح من كافة الأقفال فور إغلاق أي نافذة
+   */
   const forceUIUnlock = useCallback(() => {
     setTimeout(() => {
       document.body.style.pointerEvents = 'auto';
       document.body.style.overflow = 'auto';
       document.body.removeAttribute('data-scroll-locked');
-    }, 100);
+      
+      const html = document.documentElement;
+      html.style.pointerEvents = 'auto';
+      html.style.overflow = 'auto';
+      html.removeAttribute('data-scroll-locked');
+    }, 150);
   }, []);
+
+  /**
+   * نظام المراقبة الذكي - يراقب حالة إغلاق النوافذ (بما فيها الضغط بالخارج)
+   * ويقوم باستدعاء المطهر البرمجي فوراً لضمان عدم تجمد الشاشة
+   */
+  useEffect(() => {
+    if (!isPayDialogOpen && !deletingVoucher && !printingVoucher) {
+      forceUIUnlock();
+    }
+  }, [isPayDialogOpen, deletingVoucher, printingVoucher, forceUIUnlock]);
 
   const settingsRef = useMemo(() => !db ? null : doc(db, 'settings', 'global'), [db]);
   const { data: savedSettings } = useDoc<any>(settingsRef);
@@ -272,8 +291,14 @@ export default function PayrollManagementPage() {
     e.preventDefault();
     if (!db || isSubmitting || !formData.workerId || formData.amount <= 0 || formData.linkedReceipts.length === 0) return;
 
+    if (editingVoucherId && !canEdit) { toast({ variant: "destructive", title: isRtl ? "غير مسموح بالتعديل" : "Permission Denied" }); return; }
+    if (!editingVoucherId && !canCreate) { toast({ variant: "destructive", title: isRtl ? "غير مسموح بالتسجيل" : "Permission Denied" }); return; }
+
     setIsSubmitting(true);
+    
+    // إغلاق المودال وتحرير الواجهة فوراً لضمان السرعة
     setIsPayDialogOpen(false); 
+    forceUIUnlock();
 
     const batch = writeBatch(db);
     const firstReceiptId = formData.linkedReceipts[0];
@@ -319,7 +344,6 @@ export default function PayrollManagementPage() {
       resetDialog();
     } catch (error) {
       console.error(error);
-      setIsPayDialogOpen(true);
     } finally {
       setIsSubmitting(false);
       forceUIUnlock();
@@ -341,10 +365,14 @@ export default function PayrollManagementPage() {
   };
 
   const handleDeletePayment = async () => {
-    if (!db || !deletingVoucher || isSubmitting) return;
+    if (!db || !deletingVoucher || !canDelete || isSubmitting) return;
+    
     setIsSubmitting(true);
     const targetVoucher = deletingVoucher;
+    
+    // إغلاق المودال وتحرير الواجهة فوراً
     setDeletingVoucher(null);
+    forceUIUnlock();
 
     const batch = writeBatch(db);
     try {
@@ -413,7 +441,7 @@ export default function PayrollManagementPage() {
 
           <div className="flex items-center gap-2 shrink-0">
              <div className="flex items-center gap-1.5 px-1.5 border-x border-slate-200 dark:border-slate-700 h-10">
-                <Popover>
+                <Popover onOpenChange={(open) => !open && forceUIUnlock()}>
                   <PopoverTrigger asChild>
                     <Button variant="ghost" size="icon" className={cn("h-8 w-8 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 transition-all", (dateFrom || dateTo) && "border-emerald-500 bg-emerald-50 text-emerald-600")}>
                       <CalendarDays className="w-4 h-4" />
@@ -426,20 +454,21 @@ export default function PayrollManagementPage() {
                         <div className="space-y-1.5"><Label className="text-[9px] font-black text-slate-400">من</Label><Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-9 text-[10px] font-bold" /></div>
                         <div className="space-y-1.5"><Label className="text-[9px] font-black text-slate-400">إلى</Label><Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-9 text-[10px] font-bold" /></div>
                       </div>
+                      {(dateFrom || dateTo) && <Button variant="link" onClick={() => { setDateFrom(''); setDateTo(''); forceUIUnlock(); }} className="text-[9px] h-auto p-0 font-bold text-rose-500 underline uppercase w-full">إعادة تعيين</Button>}
                     </div>
                   </PopoverContent>
                 </Popover>
 
-                <DropdownMenu>
+                <DropdownMenu onOpenChange={(open) => !open && forceUIUnlock()}>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="h-8 px-3 rounded-lg text-xs font-bold gap-2 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 border border-transparent"><Filter className="w-3.5 h-3.5" /> {isRtl ? 'تصفية' : 'Filter'}</Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="w-64 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-900 shadow-xl">
                     <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest">PERSONNEL</DropdownMenuLabel>
                     <ScrollArea className="h-40">
-                       <DropdownMenuItem onClick={() => setWorkerFilter('all')} className="text-xs font-bold cursor-pointer">{isRtl ? 'الكل' : 'All'}</DropdownMenuItem>
+                       <DropdownMenuItem onClick={() => { setWorkerFilter('all'); forceUIUnlock(); }} className="text-xs font-bold cursor-pointer">{isRtl ? 'الكل' : 'All'}</DropdownMenuItem>
                        {allWorkers?.filter(w => w.status !== 'deleted').map(w => (
-                         <DropdownMenuItem key={w.id} onClick={() => setWorkerFilter(w.id)} className="text-xs font-bold cursor-pointer">{w.fullName}</DropdownMenuItem>
+                         <DropdownMenuItem key={w.id} onClick={() => { setWorkerFilter(w.id); forceUIUnlock(); }} className="text-xs font-bold cursor-pointer">{w.fullName}</DropdownMenuItem>
                        ))}
                     </ScrollArea>
                   </DropdownMenuContent>
@@ -527,11 +556,11 @@ export default function PayrollManagementPage() {
                         <TableCell className="px-6 py-3 text-center">
                            <div className="flex items-center justify-center gap-1">
                               <Button variant="ghost" size="icon" onClick={() => setPrintingVoucher(p)} className="h-8 w-8 text-slate-400 hover:text-emerald-600 rounded-lg transition-all"><Eye className="w-4 h-4" /></Button>
-                              <DropdownMenu>
+                              <DropdownMenu onOpenChange={(open) => !open && forceUIUnlock()}>
                                 <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-slate-100 rounded-lg transition-colors"><MoreVertical className="w-4 h-4 text-slate-400" /></Button></DropdownMenuTrigger>
                                 <DropdownMenuContent align={isRtl ? "end" : "start"} className="w-44 rounded-xl shadow-xl dark:bg-slate-900 dark:border-slate-800">
                                   {canEdit && <DropdownMenuItem onClick={() => handleEditVoucher(p)} className="gap-2 font-bold py-2 cursor-pointer text-xs"><Edit2 className="w-3.5 h-3.5 text-emerald-600" /> {isRtl ? 'تعديل السند' : 'Edit'}</DropdownMenuItem>}
-                                  {canDelete && <DropdownMenuItem onClick={() => setDeletingVoucher(p)} className="gap-2 font-bold py-2 text-rose-600 cursor-pointer text-xs"><Trash2 className="w-3.5 h-3.5" /> {isRtl ? 'إلغاء السند' : 'Reverse'}</DropdownMenuItem>}
+                                  {canDelete && <DropdownMenuItem onClick={() => setDeletingVoucher(p)} className="gap-2 font-bold py-2 text-rose-600 cursor-pointer text-xs focus:bg-rose-50"><Trash2 className="w-3.5 h-3.5" /> {isRtl ? 'إلغاء السند' : 'Reverse'}</DropdownMenuItem>}
                                 </DropdownMenuContent>
                               </DropdownMenu>
                            </div>
@@ -619,11 +648,11 @@ export default function PayrollManagementPage() {
             </div>
             
             <div className="flex gap-3 pt-4 border-t dark:border-slate-800">
-              <Button type="submit" disabled={isSubmitting || formData.amount <= 0} className="flex-1 h-14 premium-gradient text-white rounded-lg font-black text-base shadow-xl border-none transition-all active:scale-95">
+              <Button type="submit" disabled={isSubmitting || formData.amount <= 0} className="flex-1 h-14 premium-gradient text-white rounded-xl font-black text-base shadow-xl border-none transition-all active:scale-95">
                 {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin me-2" /> : <Save className="w-5 h-4 me-2" />}
                 {isRtl ? 'تأكيد ترحيل الصرف المالي' : 'Confirm Payment'}
               </Button>
-              <Button type="button" variant="outline" onClick={resetDialog} className="px-8 h-14 font-black text-slate-400 rounded-lg border-slate-200">إلغاء</Button>
+              <Button type="button" variant="outline" onClick={resetDialog} className="px-8 h-14 font-black text-slate-400 rounded-xl border-slate-200">إلغاء</Button>
             </div>
           </form>
         </DialogContent>
@@ -648,7 +677,7 @@ export default function PayrollManagementPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <Dialog open={!!printingVoucher} onOpenChange={(open) => { if (!open) setPrintingVoucher(null); forceUIUnlock(); }}>
+      <Dialog open={!!printingVoucher} onOpenChange={(open) => { if (!open) { setPrintingVoucher(null); forceUIUnlock(); } }}>
         <DialogContent className="sm:max-w-[850px] p-0 overflow-hidden border-none bg-white shadow-2xl">
           <DialogHeader className="sr-only"><DialogTitle>سند صرف مالي</DialogTitle></DialogHeader>
           <ScrollArea className="max-h-[85vh]">
@@ -670,7 +699,7 @@ export default function PayrollManagementPage() {
              <Button onClick={handleDownloadImage} disabled={isDownloading} className="premium-gradient font-black gap-2 h-12 px-10 rounded-xl shadow-xl hover:opacity-90 active:scale-95 transition-all">
                 {isDownloading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />} {isRtl ? 'تحميل كصورة PNG' : 'Download PNG'}
              </Button>
-             <Button variant="ghost" onClick={() => setPrintingVoucher(null)} className="h-12 px-8 rounded-xl border border-slate-200 text-slate-500 font-black hover:bg-slate-100">{isRtl ? 'إغلاق' : 'Close'}</Button>
+             <Button variant="ghost" onClick={() => { setPrintingVoucher(null); forceUIUnlock(); }} className="h-12 px-8 rounded-xl border border-slate-200 text-slate-500 font-black hover:bg-slate-100">{isRtl ? 'إغلاق' : 'Close'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
