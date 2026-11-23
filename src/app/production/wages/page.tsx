@@ -39,7 +39,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useTranslation } from '@/components/LanguageProvider';
-import { useFirestore, useCollection, useDoc } from '@/firebase';
+import { useAuth, useFirestore, useCollection, useDoc } from '@/firebase';
 import { collection, addDoc, updateDoc, doc, serverTimestamp, query, where, getDoc, writeBatch } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -158,7 +158,6 @@ export default function PayrollManagementPage() {
 
   const loading = workersLoading || receiptsLoading || paymentsLoading;
 
-  // حارس الأمان الشامل لفك أي تجمد في المتصفح يدوياً
   const forceUIUnlock = useCallback(() => {
     setTimeout(() => {
       document.body.style.pointerEvents = 'auto';
@@ -167,6 +166,17 @@ export default function PayrollManagementPage() {
     }, 100);
   }, []);
 
+  // Effect A: Sync currency with system currency when opening for NEW voucher
+  useEffect(() => {
+    if (isPayDialogOpen && !editingVoucherId && systemCurrency) {
+      setFormData(prev => {
+        if (prev.currency === systemCurrency) return prev;
+        return { ...prev, currency: systemCurrency };
+      });
+    }
+  }, [isPayDialogOpen, editingVoucherId, systemCurrency]);
+
+  // Effect B: Auto-calculate and select dues when worker changes in NEW voucher
   useEffect(() => {
     if (isPayDialogOpen && formData.workerId && !editingVoucherId && allReceipts) {
       const myDues = allReceipts.filter(r => 
@@ -176,30 +186,17 @@ export default function PayrollManagementPage() {
         (r.currency || 'YER') === formData.currency
       );
       
-      if (myDues.length > 0) {
-        const ids = myDues.map(r => r.id);
-        const total = myDues.reduce((sum, r) => sum + (Number(r.wageAmount) || 0), 0);
-        
-        setFormData(prev => ({
-          ...prev,
-          linkedReceipts: ids,
-          amount: total
-        }));
-      } else {
-        setFormData(prev => ({
-          ...prev,
-          linkedReceipts: [],
-          amount: 0
-        }));
-      }
+      const ids = myDues.map(r => r.id);
+      const total = myDues.reduce((sum, r) => sum + (Number(r.wageAmount) || 0), 0);
+      
+      setFormData(prev => {
+        const sameIds = prev.linkedReceipts.length === ids.length && prev.linkedReceipts.every((id, i) => id === ids[i]);
+        const sameAmount = prev.amount === total;
+        if (sameIds && sameAmount) return prev;
+        return { ...prev, linkedReceipts: ids, amount: total };
+      });
     }
   }, [formData.workerId, formData.currency, isPayDialogOpen, allReceipts, editingVoucherId]);
-
-  useEffect(() => {
-    if (isPayDialogOpen && !editingVoucherId && systemCurrency) {
-      setFormData(prev => ({ ...prev, currency: systemCurrency }));
-    }
-  }, [isPayDialogOpen, editingVoucherId, systemCurrency]);
 
   const unpaidReceipts = useMemo(() => {
     if (!formData.workerId || !allReceipts) return [];
@@ -277,10 +274,7 @@ export default function PayrollManagementPage() {
 
   const handleSavePayment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!db || isSubmitting || !formData.workerId || formData.amount <= 0 || formData.linkedReceipts.length === 0) {
-       toast({ variant: "destructive", title: isRtl ? "بيانات ناقصة" : "Missing Data" });
-       return;
-    }
+    if (!db || isSubmitting || !formData.workerId || formData.amount <= 0 || formData.linkedReceipts.length === 0) return;
 
     if (editingVoucherId && !canEdit) {
       toast({ variant: "destructive", title: isRtl ? "غير مسموح بالتعديل" : "Access Denied" });
@@ -292,7 +286,7 @@ export default function PayrollManagementPage() {
     }
 
     setIsSubmitting(true);
-    setIsPayDialogOpen(false); // إغلاق مبكر لضمان فك القفل
+    setIsPayDialogOpen(false); 
 
     const batch = writeBatch(db);
     const firstReceiptId = formData.linkedReceipts[0];
@@ -338,7 +332,6 @@ export default function PayrollManagementPage() {
       resetDialog();
     } catch (error) {
       console.error(error);
-      toast({ variant: "destructive", title: "Accounting Lock Error" });
       setIsPayDialogOpen(true);
     } finally {
       setIsSubmitting(false);
@@ -522,7 +515,7 @@ export default function PayrollManagementPage() {
                             </TableCell>
                             <TableCell className="px-6 py-3 text-center">
                               {canCreate && (
-                                <Button onClick={() => { setFormData(prev => ({...prev, workerId: w.id, currency: w.displayCurrency})); setIsPayDialogOpen(true); }} variant="outline" className="h-10 px-6 rounded-lg text-[10px] font-black uppercase text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/30 hover:bg-emerald-600 hover:text-white dark:hover:bg-emerald-600 transition-all gap-2 shadow-sm">
+                                <Button onClick={() => { resetDialog(); setFormData(prev => ({...prev, workerId: w.id, currency: w.displayCurrency})); setIsPayDialogOpen(true); }} variant="outline" className="h-10 px-6 rounded-lg text-[10px] font-black uppercase text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/30 hover:bg-emerald-600 hover:text-white dark:hover:bg-emerald-600 transition-all gap-2 shadow-sm">
                                   <Wallet className="w-3.5 h-3.5" />{isRtl ? 'صرف الآن' : 'Disburse'}
                                 </Button>
                               )}
@@ -576,11 +569,9 @@ export default function PayrollManagementPage() {
                                         {canEdit && (
                                           <DropdownMenuItem onClick={() => handleEditVoucher(p)} className="gap-2 font-bold py-2 cursor-pointer text-xs dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800"><Edit2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> {isRtl ? 'تعديل السند' : 'Edit Voucher'}</DropdownMenuItem>
                                         )}
+                                        <DropdownMenuSeparator className="dark:bg-slate-800" />
                                         {canDelete && (
-                                          <>
-                                            <DropdownMenuSeparator className="dark:bg-slate-800" />
-                                            <DropdownMenuItem onClick={() => setDeletingVoucher(p)} className="gap-2 font-bold py-2 text-rose-600 dark:text-rose-400 cursor-pointer text-xs focus:bg-rose-50 dark:focus:bg-rose-900/20"><Trash2 className="w-3.5 h-3.5" /> {isRtl ? 'إلغاء السند' : 'Reverse Voucher'}</DropdownMenuItem>
-                                          </>
+                                          <DropdownMenuItem onClick={() => setDeletingVoucher(p)} className="gap-2 font-bold py-2 text-rose-600 dark:text-rose-400 cursor-pointer text-xs focus:bg-rose-50 dark:focus:bg-rose-900/20"><Trash2 className="w-3.5 h-3.5" /> {isRtl ? 'إلغاء السند' : 'Reverse Voucher'}</DropdownMenuItem>
                                         )}
                                       </DropdownMenuContent>
                                     </DropdownMenu>
@@ -600,7 +591,7 @@ export default function PayrollManagementPage() {
       </div>
 
       {/* PAYMENT DIALOG */}
-      <Dialog open={isPayDialogOpen} onOpenChange={(open) => { if (!open) resetDialog(); }}>
+      <Dialog open={isPayDialogOpen} onOpenChange={(open) => { forceUIUnlock(); if (!open) resetDialog(); }}>
         <DialogContent className="sm:max-w-[800px] rounded-lg p-0 overflow-hidden border-none shadow-2xl dark:bg-slate-900">
           <div className="premium-gradient p-6 text-white">
             <DialogHeader className={cn("text-right rtl:text-right ltr:text-left")}>
@@ -644,7 +635,7 @@ export default function PayrollManagementPage() {
                       <TableBody>
                         {unpaidReceipts.map(r => (
                           <TableRow key={r.id} onClick={(e) => toggleReceiptSelection(r.id, e as any)} className={cn("bg-white dark:bg-slate-900 border-b border-slate-50 dark:border-slate-800 cursor-pointer transition-colors", formData.linkedReceipts.includes(r.id) && "bg-emerald-50/60 dark:bg-emerald-900/20")}>
-                            <TableCell className="px-4"><Checkbox checked={formData.linkedReceipts.includes(r.id)} onCheckedChange={(val) => toggleReceiptSelection(r.id, { stopPropagation: () => {} } as any)} /></TableCell>
+                            <TableCell className="px-4"><Checkbox checked={formData.linkedReceipts.includes(r.id)} onCheckedChange={() => toggleReceiptSelection(r.id, { stopPropagation: () => {} } as any)} /></TableCell>
                             <TableCell className={cn("px-4 py-2 text-xs font-black tabular-nums dark:text-slate-100", isRtl ? "text-right" : "text-left")}>{r.voucherNumber}</TableCell>
                             <TableCell className="px-4 py-2 text-center"><span className="text-sm font-black text-emerald-700 dark:text-emerald-400 tabular-nums">{(Number(r.wageAmount) || 0).toLocaleString('en-US')}</span><span className="text-[9px] font-black text-slate-400 dark:text-slate-500 ms-1 uppercase">{r.currency}</span></TableCell>
                           </TableRow>
@@ -686,7 +677,7 @@ export default function PayrollManagementPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!printingVoucher} onOpenChange={(open) => { if (!open) { setPrintingVoucher(null); forceUIUnlock(); } }}>
+      <Dialog open={!!printingVoucher} onOpenChange={(open) => { forceUIUnlock(); if (!open) setPrintingVoucher(null); }}>
         <DialogContent className="sm:max-w-[850px] p-0 overflow-hidden border-none bg-white shadow-2xl">
           <DialogHeader className="sr-only"><DialogTitle>سند صرف مالي</DialogTitle></DialogHeader>
           <ScrollArea className="max-h-[85vh]">
@@ -715,8 +706,8 @@ export default function PayrollManagementPage() {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={!!deletingVoucher} onOpenChange={(open) => { if (!open) { setDeletingVoucher(null); forceUIUnlock(); } }}>
-        <AlertDialogContent className="max-w-[400px] rounded-lg p-0 overflow-hidden border-none shadow-2xl dark:bg-slate-900 transition-colors duration-300">
+      <AlertDialog open={!!deletingVoucher} onOpenChange={(open) => { forceUIUnlock(); if (!open) setDeletingVoucher(null); }}>
+        <AlertDialogContent className="max-w-[400px] rounded-lg border-none shadow-2xl p-0 overflow-hidden dark:bg-slate-900 transition-colors duration-300">
           <div className="bg-slate-950 p-8 text-center relative overflow-hidden">
             <div className="absolute top-0 right-0 p-4 opacity-5"><RefreshCcw className="w-32 h-32 text-white" /></div>
             <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20 shadow-inner"><RefreshCcw className="w-8 h-8 text-red-500" /></div>
