@@ -87,14 +87,17 @@ export default function DepartmentsPage() {
   const canDelete = isAdmin || permissions.departments?.delete;
   
   /**
-   * دالة حارس الأمان لفك تجمد الواجهة يدوياً
-   * تضمن تنظيف المتصفح من أقفال الماوس بعد إغلاق أي نافذة
+   * دالة حارس الأمان لفك تجمد الواجهة يدوياً (بروتوكول المطهر الشامل)
+   * تضمن تنظيف المتصفح من أقفال الماوس والتمرير بعد إغلاق أي نافذة
    */
   const forceUIUnlock = useCallback(() => {
     setTimeout(() => {
       document.body.style.pointerEvents = 'auto';
       document.body.style.overflow = 'auto';
       document.body.removeAttribute('data-scroll-locked');
+      const html = document.documentElement;
+      html.style.pointerEvents = 'auto';
+      html.style.overflow = 'auto';
     }, 150);
   }, []);
 
