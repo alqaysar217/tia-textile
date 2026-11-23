@@ -98,12 +98,30 @@ export default function OverheadCostsPage() {
   const { lang, dir } = useTranslation();
   const db = useFirestore();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const isRtl = lang === 'ar';
 
   // استيراد الصلاحيات من المحرك المركزي
   const { permissions, isAdmin } = useProduction();
   const canCreate = isAdmin || permissions.overhead?.create;
   const canEdit = isAdmin || permissions.overhead?.edit;
   const canDelete = isAdmin || permissions.overhead?.delete;
+
+  /**
+   * دالة حارس الأمان لفك تجمد الواجهة يدوياً (بروتوكول المطهر الشامل)
+   * تضمن تحرير المتصفح من كافة الأقفال فور إغلاق أي نافذة
+   */
+  const forceUIUnlock = useCallback(() => {
+    setTimeout(() => {
+      document.body.style.pointerEvents = 'auto';
+      document.body.style.overflow = 'auto';
+      document.body.removeAttribute('data-scroll-locked');
+      
+      const html = document.documentElement;
+      html.style.pointerEvents = 'auto';
+      html.style.overflow = 'auto';
+      html.removeAttribute('data-scroll-locked');
+    }, 150);
+  }, []);
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingVoucherId, setEditingVoucherId] = useState<string | null>(null);
@@ -123,26 +141,9 @@ export default function OverheadCostsPage() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
 
-  const isRtl = lang === 'ar';
-
   /**
-   * دالة حارس الأمان لفك تجمد الواجهة يدوياً (بروتوكول المطهر الشامل)
-   */
-  const forceUIUnlock = useCallback(() => {
-    setTimeout(() => {
-      document.body.style.pointerEvents = 'auto';
-      document.body.style.overflow = 'auto';
-      document.body.removeAttribute('data-scroll-locked');
-      
-      const html = document.documentElement;
-      html.style.pointerEvents = 'auto';
-      html.style.overflow = 'auto';
-      html.removeAttribute('data-scroll-locked');
-    }, 150);
-  }, []);
-
-  /**
-   * نظام المراقبة الذكي - يراقب حالة إغلاق النوافذ والقوائم
+   * نظام المراقبة الذكي - يراقب حالة إغلاق النوافذ (بما فيها الضغط بالخارج)
+   * ويقوم باستدعاء المطهر البرمجي فوراً لضمان عدم تجمد الشاشة
    */
   useEffect(() => {
     if (!isAddDialogOpen && !deletingVoucher && !printingVoucher) {
@@ -269,7 +270,7 @@ export default function OverheadCostsPage() {
     setIsSubmitting(true);
     const targetId = editingVoucherId;
     
-    // إغلاق النافذة وتحرير الواجهة فوراً لضمان السرعة
+    // إغلاق النافذة وتحرير الواجهة فوراً لضمان السرعة ومنع التجمد
     setIsAddDialogOpen(false);
     forceUIUnlock();
 
@@ -291,6 +292,8 @@ export default function OverheadCostsPage() {
         toast({ title: isRtl ? "تم تسجيل السند بنجاح" : "Voucher Recorded" });
       }
       resetDialog();
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Error" });
     } finally {
       setIsSubmitting(false);
       forceUIUnlock();
@@ -371,7 +374,7 @@ export default function OverheadCostsPage() {
 
           <div className="flex items-center gap-3">
             {canCreate && (
-              <Button onClick={() => setIsAddDialogOpen(true)} className="h-10 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 transition-all border-none">
+              <Button onClick={() => { resetDialog(); setIsAddDialogOpen(true); }} className="h-10 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 transition-all border-none">
                 <Plus className="w-4 h-4" /> {isRtl ? 'سند تكاليف جديد' : 'New Cost Voucher'}
               </Button>
             )}
@@ -599,7 +602,7 @@ export default function OverheadCostsPage() {
                       <Input value={formData.recipient} onChange={(e) => setFormData({...formData, recipient: e.target.value})} className="h-10 bg-white dark:bg-slate-900 border-emerald-200 dark:border-emerald-900/50 font-bold text-xs dark:text-slate-100 text-right" placeholder={isRtl ? "مثال: شركة الكهرباء / اسم المورد" : "Example: Vendor Name"} required />
                     </div>
                     <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
-                      <Label className="text-[10px) font-black uppercase text-emerald-700 dark:text-emerald-400">{isRtl ? 'البيان' : 'EXPENDITURE DESCRIPTION'}</Label>
+                      <Label className="text-[10px] font-black uppercase text-emerald-700 dark:text-emerald-400">{isRtl ? 'البيان' : 'EXPENDITURE DESCRIPTION'}</Label>
                       <Input value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="h-10 bg-white dark:bg-slate-900 border-emerald-200 dark:border-emerald-900/50 font-bold text-xs dark:text-slate-100 text-right" placeholder={isRtl ? "مثال: قيمة فاتورة شهر أكتوبر" : "Example: October Invoice"} required />
                     </div>
                   </div>
@@ -682,8 +685,8 @@ export default function OverheadCostsPage() {
                onClick={async () => { 
                 if (!db || !deletingVoucher || isSubmitting) return; 
                 setIsSubmitting(true);
-                // إغلاق المودال وتحرير الواجهة فوراً
                 const targetId = deletingVoucher.id;
+                // إغلاق المودال وتحرير الواجهة فوراً
                 setDeletingVoucher(null);
                 forceUIUnlock();
                 try {
