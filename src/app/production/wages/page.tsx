@@ -84,6 +84,7 @@ import {
   TabsTrigger,
   TabsContent,
 } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -136,7 +137,7 @@ export default function PayrollManagementPage() {
   const productsQuery = useMemo(() => !db ? null : collection(db, 'products'), [db]);
   const ordersQuery = useMemo(() => !db ? null : collection(db, 'productionOrders'), [db]);
   
-  // حماية: جلب السندات النشطة فقط من قاعدة البيانات
+  // حماية: جلب السندات النشطة فقط من قاعدة البيانات (تجاهل السندات المحذوفة)
   const receiptsQuery = useMemo(() => !db ? null : query(
     collection(db, 'vouchers'), 
     where('type', '==', 'production_receipt'),
@@ -263,6 +264,7 @@ export default function PayrollManagementPage() {
       linkedReceipts: [] 
     });
 
+    // حارس الأمان لتنظيف الواجهة
     requestAnimationFrame(() => {
       document.body.style.pointerEvents = 'auto';
       document.body.style.removeProperty('overflow');
@@ -301,6 +303,8 @@ export default function PayrollManagementPage() {
     }
 
     setIsSubmitting(true);
+    
+    // إغلاق المودال مبكراً فك التجمد
     setIsPayDialogOpen(false);
 
     const batch = writeBatch(db);
@@ -349,7 +353,7 @@ export default function PayrollManagementPage() {
     } catch (error) {
       console.error(error);
       toast({ variant: "destructive", title: "Accounting Lock Error" });
-      setIsPayDialogOpen(true);
+      setIsPayDialogOpen(true); // إعادة الفتح في حال الفشل
     } finally {
       setIsSubmitting(false);
       requestAnimationFrame(() => {
@@ -364,6 +368,8 @@ export default function PayrollManagementPage() {
     if (!db || !deletingVoucher || isSubmitting || !canDelete) return;
     setIsSubmitting(true);
     const targetVoucher = deletingVoucher;
+    
+    // إغلاق المودال مبكراً
     setDeletingVoucher(null);
 
     const batch = writeBatch(db);
@@ -720,15 +726,18 @@ export default function PayrollManagementPage() {
                   <div className={cn("absolute top-1/2 -translate-y-1/2", isRtl ? "left-4" : "right-4")}><div className="h-9 px-3 bg-white dark:bg-slate-900 border border-emerald-100 dark:border-slate-700 rounded-lg flex items-center justify-center text-xs font-black dark:text-slate-100">{formData.currency}</div></div>
                 </div>
               </div>
-              <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}><Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 block">BATCH COUNT</Label><div className="h-14 flex items-center justify-center bg-slate-900 dark:bg-slate-800 text-white rounded-lg font-black text-xl tabular-nums border border-slate-700 shadow-inner">{formData.linkedReceipts.length}</div></div>
+              <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
+                <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 block">BATCH COUNT</Label>
+                <div className="h-14 flex items-center justify-center bg-slate-900 dark:bg-slate-800 text-white rounded-lg font-black text-xl tabular-nums border border-slate-700 shadow-inner">{formData.linkedReceipts.length}</div>
+              </div>
             </div>
             
             <div className="flex gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
-              <Button type="submit" disabled={isSubmitting || formData.amount <= 0 || formData.linkedReceipts.length === 0} className="flex-1 h-14 premium-gradient text-white rounded-lg font-black text-base shadow-xl border-none">
+              <Button type="submit" disabled={isSubmitting || formData.amount <= 0 || formData.linkedReceipts.length === 0} className="flex-1 h-14 premium-gradient text-white rounded-lg font-black text-base shadow-xl border-none transition-all active:scale-95">
                 {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin me-2" /> : <Save className="w-5 h-4 me-2" />}
                 {isRtl ? (editingVoucherId ? 'حفظ التعديلات' : 'تأكيد الترحيل المالي') : 'Confirm & Post Payment'}
               </Button>
-              <Button type="button" variant="outline" onClick={resetDialog} className="px-8 h-14 font-black text-slate-400 dark:text-slate-500 rounded-lg border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800">Cancel</Button>
+              <Button type="button" variant="outline" onClick={resetDialog} className="px-8 h-14 font-black text-slate-400 dark:text-slate-500 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800">Cancel</Button>
             </div>
           </form>
         </DialogContent>
@@ -777,9 +786,9 @@ export default function PayrollManagementPage() {
           </div>
           <div className="bg-white dark:bg-slate-900 p-6 flex gap-3">
             <AlertDialogAction onClick={handleDeletePayment} disabled={isSubmitting} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-md font-black border-none shadow-lg transition-all active:scale-95">
-              {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : (isRtl ? 'تأكيد' : 'Confirm')}
+              {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : (isRtl ? 'تأكيد' : 'Confirm')}
             </AlertDialogAction>
-            <AlertDialogCancel onClick={() => setDeletingVoucher(null)} className="flex-1 h-11 bg-slate-50 dark:bg-slate-800 border-none text-slate-400 dark:text-slate-500 rounded-md font-black hover:bg-slate-100 dark:hover:bg-slate-700 transition-all">{isRtl ? 'تراجع' : 'Cancel'}</AlertDialogCancel>
+            <AlertDialogAction onClick={() => setDeletingVoucher(null)} className="flex-1 h-11 bg-slate-50 dark:bg-slate-800 border-none text-slate-400 dark:text-slate-500 rounded-md font-black hover:bg-slate-100 dark:hover:bg-slate-700 transition-all">{isRtl ? 'تراجع' : 'Cancel'}</AlertDialogAction>
           </div>
         </AlertDialogContent>
       </AlertDialog>
