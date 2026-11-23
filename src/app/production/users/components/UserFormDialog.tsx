@@ -72,7 +72,8 @@ export function UserFormDialog({
   const handleTogglePermission = (moduleId: string, type: 'read' | 'create' | 'edit' | 'delete') => {
     setFormData((prev: any) => {
       const newPerms = { ...prev.permissions };
-      const current = { ...newPerms[moduleId] };
+      // حماية: التأكد من وجود الكائن
+      const current = { ...(newPerms[moduleId] || { read: false, create: false, edit: false, delete: false }) };
       current[type] = !current[type];
 
       // المنطق الذكي: إذا تم تفعيل (إضافة/تعديل/حذف) يجب تفعيل (قراءة) تلقائياً
@@ -88,12 +89,18 @@ export function UserFormDialog({
   const handleToggleRow = (moduleId: string, checked: boolean) => {
     setFormData((prev: any) => {
       const newPerms = { ...prev.permissions };
+      // حماية: التأكد من وجود الموديول في المصفوفة
+      if (!newPerms[moduleId]) {
+        newPerms[moduleId] = { read: false, create: false, edit: false, delete: false };
+      }
       const current = newPerms[moduleId];
       
       if (checked) {
+        // إذا كان السطر فارغاً تماماً، نكتفي بتفعيل القراءة
         if (!current.read && !current.create && !current.edit && !current.delete) {
           newPerms[moduleId] = { read: true, create: false, edit: false, delete: false };
         } else {
+          // وإلا نقوم بتفعيل الكل
           newPerms[moduleId] = { read: true, create: true, edit: true, delete: true };
         }
       } else {
@@ -108,7 +115,7 @@ export function UserFormDialog({
     setFormData((prev: any) => {
       const newPerms = { ...prev.permissions };
       Object.keys(newPerms).forEach(moduleId => {
-        newPerms[moduleId] = { ...newPerms[moduleId], [type]: checked };
+        newPerms[moduleId] = { ...(newPerms[moduleId] || {}), [type]: checked };
         if (checked && type !== 'read') {
           newPerms[moduleId].read = true;
         }

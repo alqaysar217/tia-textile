@@ -272,7 +272,7 @@ export default function UsersPermissionsPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={isRtl ? 'بحث باسم المستخدم أو البريد...' : 'Search users...'}
-                className={cn(dir === 'rtl' ? 'pr-9' : 'pl-9', "h-9 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold dark:text-slate-100")}
+                className={cn(dir === 'rtl' ? 'pr-10' : 'pl-10', "h-9 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold dark:text-slate-100")}
               />
             </div>
 
@@ -406,7 +406,8 @@ export default function UsersPermissionsPage() {
               if (w > h) { if (w > MAX_SIZE) { h *= MAX_SIZE / w; w = MAX_SIZE; } }
               else { if (h > MAX_SIZE) { w *= MAX_SIZE / h; h = MAX_SIZE; } }
               canvas.width = w; canvas.height = h;
-              canvas.getContext('2d')?.drawImage(img, 0, 0, w, h);
+              const ctx = canvas.getContext('2d');
+              ctx?.drawImage(img, 0, 0, w, h);
               setFormData(prev => ({ ...prev, photoUrl: canvas.toDataURL('image/jpeg', 0.8) }));
               setIsCompressing(false);
             };
