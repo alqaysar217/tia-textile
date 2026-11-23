@@ -189,8 +189,13 @@ export default function PayrollManagementPage() {
 
   const loading = workersLoading || receiptsLoading || paymentsLoading;
 
-  // تأثير المزامنة التلقائية للمستحقات - تم حل مشكلة الحلقة اللانهائية بحماية مضاعفة
+  /**
+   * إصلاح حلقة التكرار اللانهائي (Maximum update depth exceeded)
+   * يتم مزامنة المستحقات فقط عند تغيير "الموظف" أو "العملة" أو "فتح النافذة"
+   * مع التأكد من أن التبعيات لا تشمل القيم التي يتم تحديثها داخل الـ useEffect.
+   */
   useEffect(() => {
+    // تشغيل المزامنة فقط في وضع الإضافة، وعندما تكون النافذة مفتوحة
     if (!isPayDialogOpen || editingVoucherId || !allReceipts || !formData.workerId) return;
 
     const myDues = allReceipts.filter(r => 
@@ -203,29 +208,15 @@ export default function PayrollManagementPage() {
     const ids = myDues.map(r => r.id);
     const total = myDues.reduce((sum, r) => sum + (Number(r.wageAmount) || 0), 0);
     
+    // مقارنة القيم الحالية بالقيم المستنتجة لمنع التحديث المتكرر غير الضروري
     const currentIds = formData.linkedReceipts || [];
     const isSame = ids.length === currentIds.length && ids.every(id => currentIds.includes(id));
 
-    // حماية ضد التحديث المتكرر لمنع الـ Infinite Loop
     if (!isSame || formData.amount !== total) {
-      setFormData(prev => {
-        const prevIds = prev.linkedReceipts || [];
-        const isActuallySame = ids.length === prevIds.length && ids.every(id => prevIds.includes(id));
-        if (isActuallySame && prev.amount === total) return prev;
-        return { ...prev, linkedReceipts: ids, amount: total };
-      });
+      setFormData(prev => ({ ...prev, linkedReceipts: ids, amount: total }));
     }
-  }, [formData.workerId, formData.currency, isPayDialogOpen, editingVoucherId, allReceipts, formData.linkedReceipts, formData.amount]);
-
-  // مزامنة العملة الافتراضية عند تغيير الإعدادات العامة
-  useEffect(() => {
-    if (savedSettings && !editingVoucherId && formData.currency !== systemCurrency) {
-      setFormData(prev => ({
-        ...prev,
-        currency: systemCurrency
-      }));
-    }
-  }, [systemCurrency, editingVoucherId]);
+    // تم إزالة formData.linkedReceipts و formData.amount من التبعيات لكسر الحلقة اللانهائية
+  }, [formData.workerId, formData.currency, isPayDialogOpen, editingVoucherId, allReceipts]);
 
   const flattenedBalances = useMemo(() => {
     if (!allWorkers || !allReceipts) return [];

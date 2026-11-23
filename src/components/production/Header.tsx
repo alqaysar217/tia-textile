@@ -132,23 +132,17 @@ export function Header() {
 
   useEffect(() => {
     if (userProfile) {
-      setProfileForm(prev => {
-        if (prev.fullName === userProfile.fullName && prev.photoUrl === userProfile.photoUrl && prev.role === userProfile.role) return prev;
-        return {
-          fullName: userProfile.fullName || '',
-          photoUrl: userProfile.photoUrl || '',
-          role: userProfile.role || 'staff'
-        };
+      setProfileForm({
+        fullName: userProfile.fullName || '',
+        photoUrl: userProfile.photoUrl || '',
+        role: userProfile.role || 'staff'
       });
     } else if (authUser) {
-      setProfileForm(prev => {
-        if (prev.fullName === (authUser.displayName || '') && prev.photoUrl === (authUser.photoURL || '')) return prev;
-        return {
-          ...prev,
-          fullName: authUser.displayName || '',
-          photoUrl: authUser.photoURL || ''
-        };
-      });
+      setProfileForm(prev => ({
+        ...prev,
+        fullName: authUser.displayName || '',
+        photoUrl: authUser.photoURL || ''
+      }));
     }
   }, [userProfile, authUser]);
 
@@ -371,7 +365,7 @@ export function Header() {
         </div>
       </div>
 
-      <Dialog open={isProfileOpen} onOpenChange={(open) => { setIsProfileOpen(open); if(!open) forceUIUnlock(); }}>
+      <Dialog open={isProfileOpen} onOpenChange={(open) => { if(!open) { setIsProfileOpen(false); forceUIUnlock(); } }}>
         <DialogContent className="sm:max-w-[450px] p-0 overflow-hidden border-none rounded-[1.5rem] shadow-2xl dark:bg-slate-900">
            <DialogHeader className="sr-only">
               <DialogTitle>{isRtl ? 'الملف الشخصي للمستخدم' : 'User Profile'}</DialogTitle>
