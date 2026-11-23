@@ -238,6 +238,15 @@ export default function PayrollManagementPage() {
     });
   }, [allReceipts]);
 
+  // حارس الأمان لتنظيف الشاشة وفك القفل
+  const forceUIUnlock = () => {
+    requestAnimationFrame(() => {
+      document.body.style.pointerEvents = 'auto';
+      document.body.style.removeProperty('overflow');
+      document.body.removeAttribute('data-scroll-locked');
+    });
+  };
+
   const resetDialog = useCallback(() => {
     setIsPayDialogOpen(false);
     setEditingVoucherId(null);
@@ -249,11 +258,7 @@ export default function PayrollManagementPage() {
       notes: '', 
       linkedReceipts: [] 
     });
-    requestAnimationFrame(() => {
-      document.body.style.pointerEvents = 'auto';
-      document.body.style.removeProperty('overflow');
-      document.body.removeAttribute('data-scroll-locked');
-    });
+    forceUIUnlock();
   }, [systemCurrency]);
 
   const handleEditVoucher = (p: any) => {
@@ -287,6 +292,8 @@ export default function PayrollManagementPage() {
     }
 
     setIsSubmitting(true);
+    
+    // إغلاق المودال مبكراً لتحرير الواجهة
     setIsPayDialogOpen(false);
 
     const batch = writeBatch(db);
@@ -337,11 +344,7 @@ export default function PayrollManagementPage() {
       setIsPayDialogOpen(true);
     } finally {
       setIsSubmitting(false);
-      requestAnimationFrame(() => {
-        document.body.style.pointerEvents = 'auto';
-        document.body.style.removeProperty('overflow');
-        document.body.removeAttribute('data-scroll-locked');
-      });
+      forceUIUnlock();
     }
   };
 
@@ -363,11 +366,7 @@ export default function PayrollManagementPage() {
       console.error(err);
     } finally {
       setIsSubmitting(false);
-      requestAnimationFrame(() => {
-        document.body.style.pointerEvents = 'auto';
-        document.body.style.removeProperty('overflow');
-        document.body.removeAttribute('data-scroll-locked');
-      });
+      forceUIUnlock();
     }
   };
 
@@ -683,7 +682,7 @@ export default function PayrollManagementPage() {
                 {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin me-2" /> : <Save className="w-5 h-4 me-2" />}
                 {isRtl ? (editingVoucherId ? 'حفظ التعديلات' : 'تأكيد الترحيل المالي') : 'Confirm & Post Payment'}
               </Button>
-              <Button type="button" variant="outline" onClick={resetDialog} className="px-8 h-14 font-black text-slate-400 dark:text-slate-500 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800">Cancel</Button>
+              <Button type="button" variant="outline" onClick={resetDialog} className="px-8 h-14 font-black text-slate-400 dark:text-slate-500 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800">إلغاء</Button>
             </div>
           </form>
         </DialogContent>
@@ -718,7 +717,7 @@ export default function PayrollManagementPage() {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={!!deletingVoucher} onOpenChange={() => setDeletingVoucher(null)}>
+      <AlertDialog open={!!deletingVoucher} onOpenChange={(open) => !open && (setDeletingVoucher(null), forceUIUnlock())}>
         <AlertDialogContent className="max-w-[400px] rounded-lg p-0 overflow-hidden border-none shadow-2xl dark:bg-slate-900 transition-colors duration-300">
           <div className="bg-slate-950 p-8 text-center relative overflow-hidden">
             <div className="absolute top-0 right-0 p-4 opacity-5"><RefreshCcw className="w-32 h-32 text-white" /></div>
@@ -732,7 +731,7 @@ export default function PayrollManagementPage() {
             <AlertDialogAction onClick={handleDeletePayment} disabled={isSubmitting} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-md font-black border-none shadow-lg transition-all active:scale-95">
               {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : (isRtl ? 'تأكيد' : 'Confirm')}
             </AlertDialogAction>
-            <AlertDialogCancel onClick={() => setDeletingVoucher(null)} className="flex-1 h-11 bg-slate-50 dark:bg-slate-800 border-none text-slate-400 dark:text-slate-500 rounded-md font-black hover:bg-slate-100 dark:hover:bg-slate-700 transition-all">{isRtl ? 'تراجع' : 'Cancel'}</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => { setDeletingVoucher(null); forceUIUnlock(); }} className="flex-1 h-11 bg-slate-50 dark:bg-slate-800 border-none text-slate-400 dark:text-slate-500 rounded-md font-black hover:bg-slate-100 dark:hover:bg-slate-700 transition-all">{isRtl ? 'تراجع' : 'Cancel'}</AlertDialogCancel>
           </div>
         </AlertDialogContent>
       </AlertDialog>
