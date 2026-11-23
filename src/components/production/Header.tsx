@@ -132,17 +132,23 @@ export function Header() {
 
   useEffect(() => {
     if (userProfile) {
-      setProfileForm({
-        fullName: userProfile.fullName || '',
-        photoUrl: userProfile.photoUrl || '',
-        role: userProfile.role || 'staff'
+      setProfileForm(prev => {
+        if (prev.fullName === userProfile.fullName && prev.photoUrl === userProfile.photoUrl && prev.role === userProfile.role) return prev;
+        return {
+          fullName: userProfile.fullName || '',
+          photoUrl: userProfile.photoUrl || '',
+          role: userProfile.role || 'staff'
+        };
       });
     } else if (authUser) {
-      setProfileForm(prev => ({
-        ...prev,
-        fullName: authUser.displayName || '',
-        photoUrl: authUser.photoURL || ''
-      }));
+      setProfileForm(prev => {
+        if (prev.fullName === (authUser.displayName || '') && prev.photoUrl === (authUser.photoURL || '')) return prev;
+        return {
+          ...prev,
+          fullName: authUser.displayName || '',
+          photoUrl: authUser.photoURL || ''
+        };
+      });
     }
   }, [userProfile, authUser]);
 
@@ -199,7 +205,7 @@ export function Header() {
     if (!db || !authUser || isSaving) return;
     
     setIsSaving(true);
-    setIsProfileOpen(false); // إغلاق مبكر
+    setIsProfileOpen(false); 
     forceUIUnlock();
 
     try {

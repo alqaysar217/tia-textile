@@ -152,7 +152,7 @@ export default function PayrollManagementPage() {
 
   const settingsRef = useMemo(() => !db ? null : doc(db, 'settings', 'global'), [db]);
   const { data: savedSettings } = useDoc<any>(settingsRef);
-  const systemCurrency = savedSettings?.baseCurrency || 'YER';
+  const systemCurrency = useMemo(() => savedSettings?.baseCurrency || 'YER', [savedSettings]);
 
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -189,7 +189,7 @@ export default function PayrollManagementPage() {
 
   const loading = workersLoading || receiptsLoading || paymentsLoading;
 
-  // تأثير المزامنة التلقائية للمستحقات - تم حل مشكلة الحلقة اللانهائية هنا
+  // تأثير المزامنة التلقائية للمستحقات - تم حل مشكلة الحلقة اللانهائية بحماية مضاعفة
   useEffect(() => {
     if (!isPayDialogOpen || editingVoucherId || !allReceipts || !formData.workerId) return;
 
@@ -203,15 +203,29 @@ export default function PayrollManagementPage() {
     const ids = myDues.map(r => r.id);
     const total = myDues.reduce((sum, r) => sum + (Number(r.wageAmount) || 0), 0);
     
-    const currentIds = formData.linkedReceipts;
+    const currentIds = formData.linkedReceipts || [];
     const isSame = ids.length === currentIds.length && ids.every(id => currentIds.includes(id));
 
-    // حماية ضد التحديث غير الضروري لمنع الـ Infinite Loop
+    // حماية ضد التحديث المتكرر لمنع الـ Infinite Loop
     if (!isSame || formData.amount !== total) {
-      setFormData(prev => ({ ...prev, linkedReceipts: ids, amount: total }));
+      setFormData(prev => {
+        const prevIds = prev.linkedReceipts || [];
+        const isActuallySame = ids.length === prevIds.length && ids.every(id => prevIds.includes(id));
+        if (isActuallySame && prev.amount === total) return prev;
+        return { ...prev, linkedReceipts: ids, amount: total };
+      });
     }
-    // تم إزالة formData من التبعيات لأننا نقوم بتحديثه داخلياً
-  }, [formData.workerId, formData.currency, isPayDialogOpen, editingVoucherId, allReceipts]);
+  }, [formData.workerId, formData.currency, isPayDialogOpen, editingVoucherId, allReceipts, formData.linkedReceipts, formData.amount]);
+
+  // مزامنة العملة الافتراضية عند تغيير الإعدادات العامة
+  useEffect(() => {
+    if (savedSettings && !editingVoucherId && formData.currency !== systemCurrency) {
+      setFormData(prev => ({
+        ...prev,
+        currency: systemCurrency
+      }));
+    }
+  }, [systemCurrency, editingVoucherId]);
 
   const flattenedBalances = useMemo(() => {
     if (!allWorkers || !allReceipts) return [];
@@ -304,7 +318,6 @@ export default function PayrollManagementPage() {
     setIsSubmitting(true);
     const targetEditingId = editingVoucherId;
     
-    // إغلاق المودال وفك الأقفال فوراً
     setIsPayDialogOpen(false); 
     forceUIUnlock();
 
@@ -521,7 +534,22 @@ export default function PayrollManagementPage() {
                         </TableCell>
                         <TableCell className="px-6 py-3 text-center">
                           {canCreate && (
-                            <Button onClick={() => { resetDialog(); setFormData(prev => ({...prev, workerId: w.id, currency: w.displayCurrency})); setIsPayDialogOpen(true); }} variant="outline" className="h-10 px-6 rounded-lg text-[10px] font-black uppercase text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/30 hover:bg-emerald-600 hover:text-white dark:hover:bg-emerald-600 transition-all gap-2 shadow-sm">
+                            <Button 
+                              onClick={() => { 
+                                setEditingVoucherId(null);
+                                setFormData({
+                                  date: new Date().toISOString().split('T')[0],
+                                  workerId: w.id,
+                                  currency: w.displayCurrency,
+                                  amount: 0,
+                                  notes: '',
+                                  linkedReceipts: []
+                                });
+                                setIsPayDialogOpen(true); 
+                              }} 
+                              variant="outline" 
+                              className="h-10 px-6 rounded-lg text-[10px] font-black uppercase text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/30 hover:bg-emerald-600 hover:text-white dark:hover:bg-emerald-600 transition-all gap-2 shadow-sm"
+                            >
                               <Wallet className="w-3.5 h-3.5" />{isRtl ? 'صرف الآن' : 'Disburse'}
                             </Button>
                           )}
