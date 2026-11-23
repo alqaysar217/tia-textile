@@ -81,7 +81,6 @@ export default function DepartmentsPage() {
   const [search, setSearch] = useState('');
   const isRtl = lang === 'ar';
 
-  // استيراد الصلاحيات من المحرك المركزي
   const { permissions, isAdmin } = useProduction();
   const canCreate = isAdmin || permissions.departments?.create;
   const canEdit = isAdmin || permissions.departments?.edit;
@@ -99,7 +98,6 @@ export default function DepartmentsPage() {
     }, 150);
   }, []);
 
-  // Filtering & Sorting State
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [sortBy, setSortBy] = useState<'code' | 'nameAr' | 'actualWorkerCount'>('code');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
@@ -204,7 +202,8 @@ export default function DepartmentsPage() {
 
     setIsSubmitting(true);
     const targetEditingId = editingDeptId;
-    setIsAddDialogOpen(false); // إغلاق مبكر لمنع التجمد
+    setIsAddDialogOpen(false); 
+    forceUIUnlock();
 
     try {
       const deptData = {
@@ -251,7 +250,8 @@ export default function DepartmentsPage() {
     if (!db || !deletingDeptId || !canDelete || isSubmitting) return;
     setIsSubmitting(true);
     const targetId = deletingDeptId;
-    setDeletingDeptId(null); // إغلاق مبكر لمنع التجمد
+    setDeletingDeptId(null); 
+    forceUIUnlock();
 
     try {
       await updateDoc(doc(db, 'departments', targetId), {
@@ -613,7 +613,7 @@ export default function DepartmentsPage() {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={!!deletingDeptId} onOpenChange={(open) => { if(!open) setDeletingDeptId(null); forceUIUnlock(); }}>
+      <AlertDialog open={!!deletingDeptId} onOpenChange={(open) => { if(!open) { setDeletingDeptId(null); forceUIUnlock(); } }}>
         <AlertDialogContent className="max-w-[400px] rounded-lg border-none shadow-2xl p-0 overflow-hidden dark:bg-slate-900 transition-colors duration-300">
           <div className="bg-slate-950 p-8 text-center relative overflow-hidden">
             <div className="absolute top-0 right-0 p-4 opacity-5"><Layers className="w-32 h-32 text-white" /></div>
