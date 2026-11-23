@@ -103,6 +103,28 @@ export default function PayrollManagementPage() {
   const canEdit = isAdmin || permissions.wages?.edit;
   const canDelete = isAdmin || permissions.wages?.delete;
 
+  /**
+   * دالة حارس الأمان - المطهر العميق الفائق (Aggressive Cleanup)
+   * تضمن تحرير المتصفح من كافة الأقفال فور إغلاق أي نافذة عبر 3 مراحل زمنية
+   */
+  const forceUIUnlock = useCallback(() => {
+    const cleanup = () => {
+      document.body.style.pointerEvents = 'auto';
+      document.body.style.overflow = 'auto';
+      document.body.removeAttribute('data-scroll-locked');
+      
+      const html = document.documentElement;
+      html.style.pointerEvents = 'auto';
+      html.style.overflow = 'auto';
+      html.removeAttribute('data-scroll-locked');
+    };
+
+    cleanup();
+    setTimeout(cleanup, 100);
+    setTimeout(cleanup, 300);
+    setTimeout(cleanup, 600);
+  }, []);
+
   const [activeTab, setActiveTab] = useState('balances');
   const [isPayDialogOpen, setIsPayDialogOpen] = useState(false);
   const [editingVoucherId, setEditingVoucherId] = useState<string | null>(null);
@@ -120,25 +142,7 @@ export default function PayrollManagementPage() {
   const [workerFilter, setWorkerFilter] = useState('all');
 
   /**
-   * دالة حارس الأمان لفك تجمد الواجهة يدوياً (بروتوكول المطهر الشامل)
-   * تضمن تحرير المتصفح من كافة الأقفال فور إغلاق أي نافذة
-   */
-  const forceUIUnlock = useCallback(() => {
-    setTimeout(() => {
-      document.body.style.pointerEvents = 'auto';
-      document.body.style.overflow = 'auto';
-      document.body.removeAttribute('data-scroll-locked');
-      
-      const html = document.documentElement;
-      html.style.pointerEvents = 'auto';
-      html.style.overflow = 'auto';
-      html.removeAttribute('data-scroll-locked');
-    }, 150);
-  }, []);
-
-  /**
-   * نظام المراقبة الذكي - يراقب حالة إغلاق النوافذ (بما فيها الضغط بالخارج)
-   * ويقوم باستدعاء المطهر البرمجي فوراً لضمان عدم تجمد الشاشة
+   * نظام المراقبة الذكي - يراقب حالة إغلاق النوافذ والقوائم
    */
   useEffect(() => {
     if (!isPayDialogOpen && !deletingVoucher && !printingVoucher) {
@@ -295,8 +299,9 @@ export default function PayrollManagementPage() {
     if (!editingVoucherId && !canCreate) { toast({ variant: "destructive", title: isRtl ? "غير مسموح بالتسجيل" : "Permission Denied" }); return; }
 
     setIsSubmitting(true);
+    const targetEditingId = editingVoucherId;
     
-    // إغلاق المودال وتحرير الواجهة فوراً لضمان السرعة
+    // إغلاق المودال وفك الأقفال فوراً
     setIsPayDialogOpen(false); 
     forceUIUnlock();
 
@@ -315,14 +320,14 @@ export default function PayrollManagementPage() {
     };
 
     try {
-      let voucherId = editingVoucherId;
-      if (editingVoucherId) {
-        const oldSnap = await getDoc(doc(db, 'vouchers', editingVoucherId));
+      let voucherId = targetEditingId;
+      if (targetEditingId) {
+        const oldSnap = await getDoc(doc(db, 'vouchers', targetEditingId));
         const oldV = oldSnap.data();
         oldV?.linkedReceipts?.forEach((rid: string) => {
            batch.update(doc(db, 'vouchers', rid), { paymentStatus: 'pending', paidAmount: 0 });
         });
-        batch.update(doc(db, 'vouchers', editingVoucherId), paymentData);
+        batch.update(doc(db, 'vouchers', targetEditingId), paymentData);
       } else {
         const voucherNumber = `PAY-${Date.now().toString().slice(-6)}`;
         const newVoucherRef = doc(collection(db, 'vouchers'));
@@ -370,7 +375,6 @@ export default function PayrollManagementPage() {
     setIsSubmitting(true);
     const targetVoucher = deletingVoucher;
     
-    // إغلاق المودال وتحرير الواجهة فوراً
     setDeletingVoucher(null);
     forceUIUnlock();
 
@@ -473,8 +477,6 @@ export default function PayrollManagementPage() {
                     </ScrollArea>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                
-                <Button onClick={() => {}} variant="ghost" className="h-8 px-3 rounded-lg text-xs font-bold gap-2 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 border border-transparent"><FileDown className="w-3.5 h-3.5 text-emerald-600" /> {isRtl ? 'تصدير' : 'Export'}</Button>
              </div>
           </div>
         </div>
@@ -559,8 +561,8 @@ export default function PayrollManagementPage() {
                               <DropdownMenu onOpenChange={(open) => !open && forceUIUnlock()}>
                                 <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-slate-100 rounded-lg transition-colors"><MoreVertical className="w-4 h-4 text-slate-400" /></Button></DropdownMenuTrigger>
                                 <DropdownMenuContent align={isRtl ? "end" : "start"} className="w-44 rounded-xl shadow-xl dark:bg-slate-900 dark:border-slate-800">
-                                  {canEdit && <DropdownMenuItem onClick={() => handleEditVoucher(p)} className="gap-2 font-bold py-2 cursor-pointer text-xs"><Edit2 className="w-3.5 h-3.5 text-emerald-600" /> {isRtl ? 'تعديل السند' : 'Edit'}</DropdownMenuItem>}
-                                  {canDelete && <DropdownMenuItem onClick={() => setDeletingVoucher(p)} className="gap-2 font-bold py-2 text-rose-600 cursor-pointer text-xs focus:bg-rose-50"><Trash2 className="w-3.5 h-3.5" /> {isRtl ? 'إلغاء السند' : 'Reverse'}</DropdownMenuItem>}
+                                  {canEdit && <DropdownMenuItem onClick={() => handleEditVoucher(p)} className="gap-2 font-bold py-2 cursor-pointer text-xs focus:bg-emerald-50 dark:focus:bg-emerald-900/20"><Edit2 className="w-3.5 h-3.5 text-emerald-600" /> {isRtl ? 'تعديل السند' : 'Edit'}</DropdownMenuItem>}
+                                  {canDelete && <DropdownMenuItem onClick={() => setDeletingVoucher(p)} className="gap-2 font-bold py-2 text-rose-600 cursor-pointer text-xs focus:bg-rose-50 dark:focus:bg-rose-900/20"><Trash2 className="w-3.5 h-3.5" /> {isRtl ? 'إلغاء السند' : 'Reverse'}</DropdownMenuItem>}
                                 </DropdownMenuContent>
                               </DropdownMenu>
                            </div>
@@ -659,7 +661,7 @@ export default function PayrollManagementPage() {
       </Dialog>
 
       <AlertDialog open={!!deletingVoucher} onOpenChange={(open) => { if(!open) setDeletingVoucher(null); forceUIUnlock(); }}>
-        <AlertDialogContent className="max-w-[400px] rounded-lg border-none shadow-2xl p-0 overflow-hidden dark:bg-slate-900 transition-colors duration-300">
+        <AlertDialogContent className="max-w-[400px] rounded-lg p-0 overflow-hidden border-none shadow-2xl dark:bg-slate-900 transition-colors duration-300">
           <div className="bg-slate-950 p-8 text-center relative overflow-hidden">
             <div className="absolute top-0 right-0 p-4 opacity-5"><RefreshCcw className="w-32 h-32 text-white" /></div>
             <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20 shadow-inner"><RefreshCcw className="w-8 h-8 text-red-500" /></div>
