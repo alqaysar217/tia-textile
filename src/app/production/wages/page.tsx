@@ -158,6 +158,15 @@ export default function PayrollManagementPage() {
 
   const loading = workersLoading || receiptsLoading || paymentsLoading;
 
+  // حارس الأمان الشامل لفك أي تجمد في المتصفح يدوياً
+  const forceUIUnlock = useCallback(() => {
+    setTimeout(() => {
+      document.body.style.pointerEvents = 'auto';
+      document.body.style.overflow = 'auto';
+      document.body.removeAttribute('data-scroll-locked');
+    }, 100);
+  }, []);
+
   useEffect(() => {
     if (isPayDialogOpen && formData.workerId && !editingVoucherId && allReceipts) {
       const myDues = allReceipts.filter(r => 
@@ -238,15 +247,6 @@ export default function PayrollManagementPage() {
     });
   }, [allReceipts]);
 
-  // حارس الأمان لتنظيف الشاشة وفك القفل
-  const forceUIUnlock = () => {
-    requestAnimationFrame(() => {
-      document.body.style.pointerEvents = 'auto';
-      document.body.style.removeProperty('overflow');
-      document.body.removeAttribute('data-scroll-locked');
-    });
-  };
-
   const resetDialog = useCallback(() => {
     setIsPayDialogOpen(false);
     setEditingVoucherId(null);
@@ -259,7 +259,7 @@ export default function PayrollManagementPage() {
       linkedReceipts: [] 
     });
     forceUIUnlock();
-  }, [systemCurrency]);
+  }, [systemCurrency, forceUIUnlock]);
 
   const handleEditVoucher = (p: any) => {
     if(!canEdit) return;
@@ -292,9 +292,7 @@ export default function PayrollManagementPage() {
     }
 
     setIsSubmitting(true);
-    
-    // إغلاق المودال مبكراً لتحرير الواجهة
-    setIsPayDialogOpen(false);
+    setIsPayDialogOpen(false); // إغلاق مبكر لضمان فك القفل
 
     const batch = writeBatch(db);
     const firstReceiptId = formData.linkedReceipts[0];
@@ -602,7 +600,7 @@ export default function PayrollManagementPage() {
       </div>
 
       {/* PAYMENT DIALOG */}
-      <Dialog open={isPayDialogOpen} onOpenChange={(open) => !open && resetDialog()}>
+      <Dialog open={isPayDialogOpen} onOpenChange={(open) => { if (!open) resetDialog(); }}>
         <DialogContent className="sm:max-w-[800px] rounded-lg p-0 overflow-hidden border-none shadow-2xl dark:bg-slate-900">
           <div className="premium-gradient p-6 text-white">
             <DialogHeader className={cn("text-right rtl:text-right ltr:text-left")}>
@@ -688,7 +686,7 @@ export default function PayrollManagementPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!printingVoucher} onOpenChange={(open) => !open && setPrintingVoucher(null)}>
+      <Dialog open={!!printingVoucher} onOpenChange={(open) => { if (!open) { setPrintingVoucher(null); forceUIUnlock(); } }}>
         <DialogContent className="sm:max-w-[850px] p-0 overflow-hidden border-none bg-white shadow-2xl">
           <DialogHeader className="sr-only"><DialogTitle>سند صرف مالي</DialogTitle></DialogHeader>
           <ScrollArea className="max-h-[85vh]">
@@ -717,7 +715,7 @@ export default function PayrollManagementPage() {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={!!deletingVoucher} onOpenChange={(open) => !open && (setDeletingVoucher(null), forceUIUnlock())}>
+      <AlertDialog open={!!deletingVoucher} onOpenChange={(open) => { if (!open) { setDeletingVoucher(null); forceUIUnlock(); } }}>
         <AlertDialogContent className="max-w-[400px] rounded-lg p-0 overflow-hidden border-none shadow-2xl dark:bg-slate-900 transition-colors duration-300">
           <div className="bg-slate-950 p-8 text-center relative overflow-hidden">
             <div className="absolute top-0 right-0 p-4 opacity-5"><RefreshCcw className="w-32 h-32 text-white" /></div>
@@ -731,7 +729,7 @@ export default function PayrollManagementPage() {
             <AlertDialogAction onClick={handleDeletePayment} disabled={isSubmitting} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-md font-black border-none shadow-lg transition-all active:scale-95">
               {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : (isRtl ? 'تأكيد' : 'Confirm')}
             </AlertDialogAction>
-            <AlertDialogCancel onClick={() => { setDeletingVoucher(null); forceUIUnlock(); }} className="flex-1 h-11 bg-slate-50 dark:bg-slate-800 border-none text-slate-400 dark:text-slate-500 rounded-md font-black hover:bg-slate-100 dark:hover:bg-slate-700 transition-all">{isRtl ? 'تراجع' : 'Cancel'}</AlertDialogCancel>
+            <AlertDialogCancel className="flex-1 h-11 bg-slate-50 dark:bg-slate-800 border-none text-slate-400 dark:text-slate-500 rounded-md font-black hover:bg-slate-100 dark:hover:bg-slate-700 transition-all">{isRtl ? 'تراجع' : 'Cancel'}</AlertDialogCancel>
           </div>
         </AlertDialogContent>
       </AlertDialog>
