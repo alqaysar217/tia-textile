@@ -126,15 +126,29 @@ export default function OverheadCostsPage() {
   const isRtl = lang === 'ar';
 
   /**
-   * دالة حارس الأمان لفك تجمد الواجهة يدوياً
+   * دالة حارس الأمان لفك تجمد الواجهة يدوياً (بروتوكول المطهر الشامل)
    */
   const forceUIUnlock = useCallback(() => {
     setTimeout(() => {
       document.body.style.pointerEvents = 'auto';
       document.body.style.overflow = 'auto';
       document.body.removeAttribute('data-scroll-locked');
-    }, 100);
+      
+      const html = document.documentElement;
+      html.style.pointerEvents = 'auto';
+      html.style.overflow = 'auto';
+      html.removeAttribute('data-scroll-locked');
+    }, 150);
   }, []);
+
+  /**
+   * نظام المراقبة الذكي - يراقب حالة إغلاق النوافذ والقوائم
+   */
+  useEffect(() => {
+    if (!isAddDialogOpen && !deletingVoucher && !printingVoucher) {
+      forceUIUnlock();
+    }
+  }, [isAddDialogOpen, deletingVoucher, printingVoucher, forceUIUnlock]);
 
   // Fetch System Settings for Currency Lock
   const settingsRef = useMemo(() => !db ? null : doc(db, 'settings', 'global'), [db]);
@@ -243,7 +257,6 @@ export default function OverheadCostsPage() {
     e.preventDefault();
     if (!db || isSubmitting || !formData.recipient || !formData.description || formData.totalAmount <= 0) return;
 
-    // حماية برمجية للصلاحيات
     if (editingVoucherId && !canEdit) {
       toast({ variant: "destructive", title: isRtl ? "غير مسموح بالتعديل" : "Permission Denied" });
       return;
@@ -254,9 +267,11 @@ export default function OverheadCostsPage() {
     }
 
     setIsSubmitting(true);
+    const targetId = editingVoucherId;
     
-    // إغلاق النافذة فوراً لفك قفل الواجهة
+    // إغلاق النافذة وتحرير الواجهة فوراً لضمان السرعة
     setIsAddDialogOpen(false);
+    forceUIUnlock();
 
     try {
       const voucherData = {
@@ -267,8 +282,8 @@ export default function OverheadCostsPage() {
         updatedAt: serverTimestamp()
       };
 
-      if (editingVoucherId) {
-        await updateDoc(doc(db, 'vouchers', editingVoucherId), voucherData);
+      if (targetId) {
+        await updateDoc(doc(db, 'vouchers', targetId), voucherData);
         toast({ title: isRtl ? "تم التحديث بنجاح" : "Updated Successfully" });
       } else {
         const voucherNumber = `CST-${Date.now().toString().slice(-6)}`;
@@ -398,7 +413,7 @@ export default function OverheadCostsPage() {
                   {isRtl ? 'تصدير' : 'Export'}
                 </Button>
 
-                <DropdownMenu>
+                <DropdownMenu onOpenChange={(open) => !open && forceUIUnlock()}>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="h-10 px-3 rounded-lg text-xs font-bold gap-2 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 border border-transparent">
                       <Filter className="w-4 h-4 text-slate-400 dark:text-slate-500" />
@@ -407,11 +422,11 @@ export default function OverheadCostsPage() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="w-64 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-900 shadow-xl">
                     <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest">{isRtl ? 'ترتيب النتائج' : 'SORTING'}</DropdownMenuLabel>
-                    <DropdownMenuItem onClick={() => toggleSort('date')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2.5 dark:text-slate-200">
+                    <DropdownMenuItem onClick={() => { toggleSort('date'); forceUIUnlock(); }} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2.5 dark:text-slate-200">
                       <div className="flex items-center gap-2"><Calendar className="w-3.5 h-3.5 text-slate-400 dark:text-slate-600" /> {isRtl ? 'حسب التاريخ' : 'By Date'}</div>
                       {sortBy === 'date' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />)}
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => toggleSort('totalAmount')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2.5 dark:text-slate-200">
+                    <DropdownMenuItem onClick={() => { toggleSort('totalAmount'); forceUIUnlock(); }} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2.5 dark:text-slate-200">
                       <div className="flex items-center gap-2"><Wallet className="w-3.5 h-3.5 text-slate-400 dark:text-slate-600" /> {isRtl ? 'حسب المبلغ' : 'By Amount'}</div>
                       {sortBy === 'totalAmount' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />)}
                     </DropdownMenuItem>
@@ -419,12 +434,12 @@ export default function OverheadCostsPage() {
                     <DropdownMenuSeparator className="dark:bg-slate-800" />
                     <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest">{isRtl ? 'حسب التصنيف' : 'BY CATEGORY'}</DropdownMenuLabel>
                     <ScrollArea className="h-40">
-                      <DropdownMenuItem onClick={() => setCategoryFilter('all')} className="flex items-center justify-between text-xs font-bold cursor-pointer dark:text-slate-200">
+                      <DropdownMenuItem onClick={() => { setCategoryFilter('all'); forceUIUnlock(); }} className="flex items-center justify-between text-xs font-bold cursor-pointer dark:text-slate-200">
                         {isRtl ? 'الكل' : 'All'}
                         {categoryFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />}
                       </DropdownMenuItem>
                       {costCategories.map(c => (
-                        <DropdownMenuItem key={c.value} onClick={() => setCategoryFilter(c.value)} className="flex items-center justify-between text-xs font-bold cursor-pointer dark:text-slate-200">
+                        <DropdownMenuItem key={c.value} onClick={() => { setCategoryFilter(c.value); forceUIUnlock(); }} className="flex items-center justify-between text-xs font-bold cursor-pointer dark:text-slate-200">
                           {isRtl ? c.labelAr : c.labelEn}
                           {categoryFilter === c.value && <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />}
                         </DropdownMenuItem>
@@ -434,9 +449,9 @@ export default function OverheadCostsPage() {
                     <DropdownMenuSeparator className="dark:bg-slate-800" />
                     <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest">{isRtl ? 'حسب الدفعة' : 'BY BATCH'}</DropdownMenuLabel>
                     <ScrollArea className="h-32">
-                       <DropdownMenuItem onClick={() => setOrderFilter('all')} className="flex items-center justify-between text-xs font-bold cursor-pointer dark:text-slate-200">{isRtl ? 'الكل' : 'All'}{orderFilter === 'all' && <Check className="w-3 h-3 text-emerald-600" />}</DropdownMenuItem>
+                       <DropdownMenuItem onClick={() => { setOrderFilter('all'); forceUIUnlock(); }} className="flex items-center justify-between text-xs font-bold cursor-pointer dark:text-slate-200">{isRtl ? 'الكل' : 'All'}{orderFilter === 'all' && <Check className="w-3 h-3 text-emerald-600" />}</DropdownMenuItem>
                        {allOrders?.map(o => (
-                         <DropdownMenuItem key={o.id} onClick={() => setOrderFilter(o.id)} className="flex items-center justify-between text-xs font-bold cursor-pointer dark:text-slate-200">
+                         <DropdownMenuItem key={o.id} onClick={() => { setOrderFilter(o.id); forceUIUnlock(); }} className="flex items-center justify-between text-xs font-bold cursor-pointer dark:text-slate-200">
                             <span className="truncate max-w-[150px]">{o.orderNumber} - {o.title}</span>
                             {orderFilter === o.id && <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />}
                          </DropdownMenuItem>
@@ -489,15 +504,15 @@ export default function OverheadCostsPage() {
                   <TableCell className="px-6 py-3 text-center">
                     <div className="flex items-center justify-center gap-1">
                       <Button variant="ghost" size="icon" onClick={() => setPrintingVoucher(v)} className="h-8 w-8 rounded-lg text-slate-400 dark:text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"><Eye className="w-4 h-4" /></Button>
-                      <DropdownMenu>
+                      <DropdownMenu onOpenChange={(open) => !open && forceUIUnlock()}>
                         <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"><MoreVertical className="w-4 h-4 text-slate-400 dark:text-slate-500" /></Button></DropdownMenuTrigger>
                         <DropdownMenuContent align={isRtl ? "end" : "start"} className="w-44 rounded-xl shadow-xl dark:bg-slate-900 dark:border-slate-800">
                           {canEdit && (
-                            <DropdownMenuItem onClick={() => handleEditVoucher(v)} className="gap-2 font-bold py-2 cursor-pointer text-xs dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800"><Edit2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> {isRtl ? 'تعديل السند' : 'Edit Voucher'}</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => { handleEditVoucher(v); forceUIUnlock(); }} className="gap-2 font-bold py-2 cursor-pointer text-xs dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800"><Edit2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> {isRtl ? 'تعديل السند' : 'Edit Voucher'}</DropdownMenuItem>
                           )}
                           <DropdownMenuSeparator className="dark:bg-slate-800" />
                           {canDelete && (
-                            <DropdownMenuItem onClick={async () => setDeletingVoucher(v)} className="gap-2 font-bold py-2 text-rose-600 dark:text-rose-400 cursor-pointer text-xs focus:bg-rose-50 dark:focus:bg-rose-900/20"><Trash2 className="w-3.5 h-3.5" /> {isRtl ? 'نقل للمهملات' : 'Move to Trash'}</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => { setDeletingVoucher(v); forceUIUnlock(); }} className="gap-2 font-bold py-2 text-rose-600 dark:text-rose-400 cursor-pointer text-xs focus:bg-rose-50 dark:focus:bg-rose-900/20"><Trash2 className="w-3.5 h-3.5" /> {isRtl ? 'نقل للمهملات' : 'Move to Trash'}</DropdownMenuItem>
                           )}
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -512,7 +527,7 @@ export default function OverheadCostsPage() {
 
       {/* ADD/EDIT DIALOG */}
       <Dialog open={isAddDialogOpen} onOpenChange={(open) => { if(!open) resetDialog(); forceUIUnlock(); }}>
-        <DialogContent className="sm:max-w-[700px] rounded-lg p-0 overflow-hidden border-none shadow-2xl dark:bg-slate-900">
+        <DialogContent className="sm:max-w-[700px] rounded-lg p-0 overflow-hidden border-none shadow-2xl dark:bg-slate-900 transition-colors duration-300">
           <div className="premium-gradient p-5 text-white">
             <DialogHeader className={cn("text-right", !isRtl && "text-left")}>
               <DialogTitle className="text-lg font-black flex items-center gap-3">
@@ -584,7 +599,7 @@ export default function OverheadCostsPage() {
                       <Input value={formData.recipient} onChange={(e) => setFormData({...formData, recipient: e.target.value})} className="h-10 bg-white dark:bg-slate-900 border-emerald-200 dark:border-emerald-900/50 font-bold text-xs dark:text-slate-100 text-right" placeholder={isRtl ? "مثال: شركة الكهرباء / اسم المورد" : "Example: Vendor Name"} required />
                     </div>
                     <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
-                      <Label className="text-[10px] font-black uppercase text-emerald-700 dark:text-emerald-400">{isRtl ? 'البيان' : 'EXPENDITURE DESCRIPTION'}</Label>
+                      <Label className="text-[10px) font-black uppercase text-emerald-700 dark:text-emerald-400">{isRtl ? 'البيان' : 'EXPENDITURE DESCRIPTION'}</Label>
                       <Input value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="h-10 bg-white dark:bg-slate-900 border-emerald-200 dark:border-emerald-900/50 font-bold text-xs dark:text-slate-100 text-right" placeholder={isRtl ? "مثال: قيمة فاتورة شهر أكتوبر" : "Example: October Invoice"} required />
                     </div>
                   </div>
@@ -645,14 +660,14 @@ export default function OverheadCostsPage() {
                {isDownloading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />} 
                {isRtl ? 'تحميل كصورة PNG' : 'Download PNG'}
              </Button>
-             <Button variant="ghost" onClick={() => setPrintingVoucher(null)} className="font-black h-12 px-8 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">{isRtl ? 'إغلاق' : 'Close'}</Button>
+             <Button variant="ghost" onClick={() => { setPrintingVoucher(null); forceUIUnlock(); }} className="font-black h-12 px-8 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">{isRtl ? 'إغلاق' : 'Close'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* DELETE CONFIRMATION */}
       <AlertDialog open={!!deletingVoucher} onOpenChange={(open) => { if(!open) setDeletingVoucher(null); forceUIUnlock(); }}>
-        <AlertDialogContent className="max-w-[400px] rounded-lg border-none shadow-2xl p-0 overflow-hidden dark:bg-slate-900">
+        <AlertDialogContent className="max-w-[400px] rounded-lg border-none shadow-2xl p-0 overflow-hidden dark:bg-slate-900 transition-colors duration-300">
           <div className="bg-slate-950 p-8 text-center relative overflow-hidden">
             <div className="absolute top-0 right-0 p-4 opacity-5"><History className="w-32 h-32 text-white" /></div>
             <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20 shadow-inner"><History className="w-8 h-8 text-red-500" /></div>
@@ -667,10 +682,12 @@ export default function OverheadCostsPage() {
                onClick={async () => { 
                 if (!db || !deletingVoucher || isSubmitting) return; 
                 setIsSubmitting(true);
-                // إغلاق المودال فوراً
+                // إغلاق المودال وتحرير الواجهة فوراً
+                const targetId = deletingVoucher.id;
                 setDeletingVoucher(null);
+                forceUIUnlock();
                 try {
-                  await updateDoc(doc(db, 'vouchers', deletingVoucher.id), { status: 'deleted', deletedAt: serverTimestamp() }); 
+                  await updateDoc(doc(db, 'vouchers', targetId), { status: 'deleted', deletedAt: serverTimestamp() }); 
                   toast({ title: isRtl ? "تم الإلغاء" : "Reversed" }); 
                 } finally {
                   setIsSubmitting(false);
@@ -681,7 +698,7 @@ export default function OverheadCostsPage() {
              >
                 {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : (isRtl ? 'تأكيد' : 'Confirm')}
              </AlertDialogAction>
-             <AlertDialogCancel className="flex-1 h-11 bg-slate-50 dark:bg-slate-800 border-none text-slate-400 dark:text-slate-500 rounded-md font-black hover:bg-slate-100 dark:hover:bg-slate-700 transition-all">{isRtl ? 'تراجع' : 'Cancel'}</AlertDialogCancel>
+             <AlertDialogCancel onClick={() => { setDeletingVoucher(null); forceUIUnlock(); }} className="flex-1 h-11 bg-slate-50 dark:bg-slate-800 border-none text-slate-400 dark:text-slate-500 rounded-md font-black hover:bg-slate-100 dark:hover:bg-slate-700 transition-all">{isRtl ? 'تراجع' : 'Cancel'}</AlertDialogCancel>
           </div>
         </AlertDialogContent>
       </AlertDialog>
