@@ -1,10 +1,10 @@
 'use client';
 
-import React, { createContext, useContext, ReactNode, useMemo } from 'react';
+import React, { createContext, useContext, ReactNode } from 'react';
 
 /**
- * @fileOverview ProductionContext - محرك الصلاحيات المركزي المطور
- * تم إضافة منطق الـ Super Admin لضمان صلاحيات المطور.
+ * @fileOverview ProductionContext - المركز العصبي لصلاحيات النظام
+ * تم تحسين الأنواع لضمان استقرار التقارير والعمليات المحاسبية.
  */
 
 interface Permission {
@@ -34,7 +34,7 @@ interface ProductionContextType {
 
 const ProductionContext = createContext<ProductionContextType | undefined>(undefined);
 
-// البريد الإلكتروني الرسمي للمطور (صلاحيات مطلقة)
+// البريد الإلكتروني للمطور (صلاحيات مطلقة لأغراض الصيانة)
 const DEV_EMAIL = 'alqaysarpc219@gmail.com';
 
 export function ProductionProvider({ 
@@ -50,7 +50,7 @@ export function ProductionProvider({
   const isDeveloper = userProfile?.email === DEV_EMAIL;
   const isAdmin = userProfile?.role === 'admin' || isDeveloper;
   
-  // جلب الصلاحيات من البروفايل
+  // جلب الصلاحيات مع حماية ضد القيم الفارغة
   const rawPermissions = userProfile?.permissions || {};
 
   const value = {
