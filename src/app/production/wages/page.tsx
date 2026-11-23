@@ -189,6 +189,7 @@ export default function PayrollManagementPage() {
 
   const loading = workersLoading || receiptsLoading || paymentsLoading;
 
+  // تأثير المزامنة التلقائية للمستحقات - تم حل مشكلة الحلقة اللانهائية هنا
   useEffect(() => {
     if (!isPayDialogOpen || editingVoucherId || !allReceipts || !formData.workerId) return;
 
@@ -205,10 +206,12 @@ export default function PayrollManagementPage() {
     const currentIds = formData.linkedReceipts;
     const isSame = ids.length === currentIds.length && ids.every(id => currentIds.includes(id));
 
+    // حماية ضد التحديث غير الضروري لمنع الـ Infinite Loop
     if (!isSame || formData.amount !== total) {
       setFormData(prev => ({ ...prev, linkedReceipts: ids, amount: total }));
     }
-  }, [formData.workerId, formData.currency, isPayDialogOpen, editingVoucherId, allReceipts, formData.linkedReceipts, formData.amount]);
+    // تم إزالة formData من التبعيات لأننا نقوم بتحديثه داخلياً
+  }, [formData.workerId, formData.currency, isPayDialogOpen, editingVoucherId, allReceipts]);
 
   const flattenedBalances = useMemo(() => {
     if (!allWorkers || !allReceipts) return [];
@@ -650,7 +653,7 @@ export default function PayrollManagementPage() {
             </div>
             
             <div className="flex gap-3 pt-4 border-t dark:border-slate-800">
-              <Button type="submit" disabled={isSubmitting || formData.amount <= 0} className="flex-1 h-14 premium-gradient text-white rounded-xl font-black text-base shadow-xl border-none transition-all active:scale-95">
+              <Button type="submit" disabled={isSubmitting || formData.amount <= 0} className="flex-1 h-14 premium-gradient text-white rounded-xl font-black text-base shadow-xl border-none transition-all active:scale-[0.98]">
                 {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin me-2" /> : <Save className="w-5 h-4 me-2" />}
                 {isRtl ? 'تأكيد ترحيل الصرف المالي' : 'Confirm Payment'}
               </Button>

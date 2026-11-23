@@ -93,6 +93,7 @@ export function Header() {
     cleanup();
     setTimeout(cleanup, 100);
     setTimeout(cleanup, 300);
+    setTimeout(cleanup, 600);
   }, []);
 
   /**
