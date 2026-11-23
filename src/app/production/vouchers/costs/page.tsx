@@ -82,6 +82,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -119,6 +124,17 @@ export default function OverheadCostsPage() {
   const [dateTo, setDateTo] = useState('');
 
   const isRtl = lang === 'ar';
+
+  /**
+   * دالة حارس الأمان لفك تجمد الواجهة يدوياً
+   */
+  const forceUIUnlock = useCallback(() => {
+    setTimeout(() => {
+      document.body.style.pointerEvents = 'auto';
+      document.body.style.overflow = 'auto';
+      document.body.removeAttribute('data-scroll-locked');
+    }, 100);
+  }, []);
 
   // Fetch System Settings for Currency Lock
   const settingsRef = useMemo(() => !db ? null : doc(db, 'settings', 'global'), [db]);
@@ -238,6 +254,10 @@ export default function OverheadCostsPage() {
     }
 
     setIsSubmitting(true);
+    
+    // إغلاق النافذة فوراً لفك قفل الواجهة
+    setIsAddDialogOpen(false);
+
     try {
       const voucherData = {
         ...formData,
@@ -258,10 +278,11 @@ export default function OverheadCostsPage() {
       resetDialog();
     } finally {
       setIsSubmitting(false);
+      forceUIUnlock();
     }
   };
 
-  const resetDialog = () => {
+  const resetDialog = useCallback(() => {
     setIsAddDialogOpen(false);
     setEditingVoucherId(null);
     setFormData({ 
@@ -275,7 +296,8 @@ export default function OverheadCostsPage() {
       notes: '', 
       invoicePhotoUrl: '' 
     });
-  };
+    forceUIUnlock();
+  }, [systemCurrency, forceUIUnlock]);
 
   const handleDownloadImage = async () => {
     const element = document.getElementById('printable-voucher');
@@ -489,7 +511,7 @@ export default function OverheadCostsPage() {
       </div>
 
       {/* ADD/EDIT DIALOG */}
-      <Dialog open={isAddDialogOpen} onOpenChange={(open) => !open && resetDialog()}>
+      <Dialog open={isAddDialogOpen} onOpenChange={(open) => { if(!open) resetDialog(); forceUIUnlock(); }}>
         <DialogContent className="sm:max-w-[700px] rounded-lg p-0 overflow-hidden border-none shadow-2xl dark:bg-slate-900">
           <div className="premium-gradient p-5 text-white">
             <DialogHeader className={cn("text-right", !isRtl && "text-left")}>
@@ -539,7 +561,7 @@ export default function OverheadCostsPage() {
                       </div>
                       <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
                         <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-1.5"><Tag className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> {isRtl ? 'نوع المصروف' : 'COST CATEGORY'}</Label>
-                        <select value={formData.category} onChange={(e) => setFormData({...formData, category: e.target.value})} className="w-full h-10 px-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-[11px] font-bold outline-none dark:text-slate-100">
+                        <select value={formData.category} onChange={(e) => setFormData({...formData, category: e.target.value})} className="w-full h-10 px-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-[11px] font-bold outline-none dark:text-slate-100 text-right">
                            {costCategories.map(c => <option key={c.value} value={c.value}>{isRtl ? c.labelAr : c.labelEn}</option>)}
                         </select>
                       </div>
@@ -547,7 +569,7 @@ export default function OverheadCostsPage() {
 
                     <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
                       <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-1.5"><Workflow className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> {isRtl ? 'الدفعة المرتبطة (اختياري)' : 'LINKED BATCH (OPTIONAL)'}</Label>
-                      <select value={formData.orderId} onChange={(e) => setFormData({...formData, orderId: e.target.value})} className="w-full h-10 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-[11px] font-bold outline-none dark:text-slate-100">
+                      <select value={formData.orderId} onChange={(e) => setFormData({...formData, orderId: e.target.value})} className="w-full h-10 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-[11px] font-bold outline-none dark:text-slate-100 text-right">
                         <option value="">{isRtl ? '-- عام (غير مرتبط بطلب) --' : '-- General (Unlinked) --'}</option>
                         {allOrders?.filter(o => o.status !== 'deleted').map(o => <option key={o.id} value={o.id}>{o.orderNumber} - {o.title}</option>)}
                       </select>
@@ -559,11 +581,11 @@ export default function OverheadCostsPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
                       <Label className="text-[10px] font-black uppercase text-emerald-700 dark:text-emerald-400">{isRtl ? 'المستفيد' : 'PAID TO'}</Label>
-                      <Input value={formData.recipient} onChange={(e) => setFormData({...formData, recipient: e.target.value})} className="h-10 bg-white dark:bg-slate-900 border-emerald-200 dark:border-emerald-900/50 font-bold text-xs dark:text-slate-100" placeholder={isRtl ? "مثال: شركة الكهرباء / اسم المورد" : "Example: Vendor Name"} required />
+                      <Input value={formData.recipient} onChange={(e) => setFormData({...formData, recipient: e.target.value})} className="h-10 bg-white dark:bg-slate-900 border-emerald-200 dark:border-emerald-900/50 font-bold text-xs dark:text-slate-100 text-right" placeholder={isRtl ? "مثال: شركة الكهرباء / اسم المورد" : "Example: Vendor Name"} required />
                     </div>
                     <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
                       <Label className="text-[10px] font-black uppercase text-emerald-700 dark:text-emerald-400">{isRtl ? 'البيان' : 'EXPENDITURE DESCRIPTION'}</Label>
-                      <Input value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="h-10 bg-white dark:bg-slate-900 border-emerald-200 dark:border-emerald-900/50 font-bold text-xs dark:text-slate-100" placeholder={isRtl ? "مثال: قيمة فاتورة شهر أكتوبر" : "Example: October Invoice"} required />
+                      <Input value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="h-10 bg-white dark:bg-slate-900 border-emerald-200 dark:border-emerald-900/50 font-bold text-xs dark:text-slate-100 text-right" placeholder={isRtl ? "مثال: قيمة فاتورة شهر أكتوبر" : "Example: October Invoice"} required />
                     </div>
                   </div>
 
@@ -583,7 +605,7 @@ export default function OverheadCostsPage() {
                     </div>
                     <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
                        <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500">{isRtl ? 'ملاحظات إضافية' : 'ADDITIONAL NOTES'}</Label>
-                       <Input value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} className="h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-[11px] font-bold dark:text-slate-100" />
+                       <Input value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} className="h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-[11px] font-bold dark:text-slate-100 text-right" />
                     </div>
                   </div>
                 </div>
@@ -603,7 +625,7 @@ export default function OverheadCostsPage() {
       </Dialog>
 
       {/* PRINT PREVIEW */}
-      <Dialog open={!!printingVoucher} onOpenChange={(open) => !open && setPrintingVoucher(null)}>
+      <Dialog open={!!printingVoucher} onOpenChange={(open) => { if(!open) setPrintingVoucher(null); forceUIUnlock(); }}>
         <DialogContent className="sm:max-w-[850px] p-0 overflow-hidden border-none bg-white shadow-2xl">
           <DialogHeader className="sr-only"><DialogTitle>{isRtl ? 'معاينة السند' : 'Print Preview'}</DialogTitle></DialogHeader>
           <ScrollArea className="max-h-[85vh]">
@@ -629,7 +651,7 @@ export default function OverheadCostsPage() {
       </Dialog>
 
       {/* DELETE CONFIRMATION */}
-      <AlertDialog open={!!deletingVoucher} onOpenChange={() => setDeletingVoucher(null)}>
+      <AlertDialog open={!!deletingVoucher} onOpenChange={(open) => { if(!open) setDeletingVoucher(null); forceUIUnlock(); }}>
         <AlertDialogContent className="max-w-[400px] rounded-lg border-none shadow-2xl p-0 overflow-hidden dark:bg-slate-900">
           <div className="bg-slate-950 p-8 text-center relative overflow-hidden">
             <div className="absolute top-0 right-0 p-4 opacity-5"><History className="w-32 h-32 text-white" /></div>
@@ -640,7 +662,25 @@ export default function OverheadCostsPage() {
             </AlertDialogDescription>
           </div>
           <div className="bg-white dark:bg-slate-900 p-6 flex gap-3">
-             <AlertDialogAction onClick={async () => { if (!db || !deletingVoucher) return; await updateDoc(doc(db, 'vouchers', deletingVoucher.id), { status: 'deleted', deletedAt: serverTimestamp() }); setDeletingVoucher(null); toast({ title: isRtl ? "تم الإلغاء" : "Reversed" }); }} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-md font-black border-none shadow-lg transition-all active:scale-95">{isRtl ? 'تأكيد' : 'Confirm'}</AlertDialogAction>
+             <AlertDialogAction 
+               disabled={isSubmitting}
+               onClick={async () => { 
+                if (!db || !deletingVoucher || isSubmitting) return; 
+                setIsSubmitting(true);
+                // إغلاق المودال فوراً
+                setDeletingVoucher(null);
+                try {
+                  await updateDoc(doc(db, 'vouchers', deletingVoucher.id), { status: 'deleted', deletedAt: serverTimestamp() }); 
+                  toast({ title: isRtl ? "تم الإلغاء" : "Reversed" }); 
+                } finally {
+                  setIsSubmitting(false);
+                  forceUIUnlock();
+                }
+               }} 
+               className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-md font-black border-none shadow-lg transition-all active:scale-95"
+             >
+                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : (isRtl ? 'تأكيد' : 'Confirm')}
+             </AlertDialogAction>
              <AlertDialogCancel className="flex-1 h-11 bg-slate-50 dark:bg-slate-800 border-none text-slate-400 dark:text-slate-500 rounded-md font-black hover:bg-slate-100 dark:hover:bg-slate-700 transition-all">{isRtl ? 'تراجع' : 'Cancel'}</AlertDialogCancel>
           </div>
         </AlertDialogContent>
