@@ -100,7 +100,6 @@ export default function OverheadCostsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isRtl = lang === 'ar';
 
-  // استيراد الصلاحيات من المحرك المركزي
   const { permissions, isAdmin } = useProduction();
   const canCreate = isAdmin || permissions.overhead?.create;
   const canEdit = isAdmin || permissions.overhead?.edit;
@@ -112,21 +111,19 @@ export default function OverheadCostsPage() {
    */
   const forceUIUnlock = useCallback(() => {
     const cleanup = () => {
-      // تحرير الـ Body
       document.body.style.pointerEvents = 'auto';
       document.body.style.overflow = 'auto';
       document.body.removeAttribute('data-scroll-locked');
       
-      // تحرير الـ HTML (القائمة الجانبية)
       const html = document.documentElement;
       html.style.pointerEvents = 'auto';
       html.style.overflow = 'auto';
       html.removeAttribute('data-scroll-locked');
     };
 
-    cleanup(); // المرحلة 1: فورية
-    setTimeout(cleanup, 100); // المرحلة 2: بعد بدء حركة التلاشي
-    setTimeout(cleanup, 300); // المرحلة 3: بعد انتهاء حركة التلاشي تماماً
+    cleanup();
+    setTimeout(cleanup, 100);
+    setTimeout(cleanup, 300);
   }, []);
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -147,7 +144,7 @@ export default function OverheadCostsPage() {
   const [dateTo, setDateTo] = useState('');
 
   /**
-   * نظام المراقبة الذكي - يراقب حالة إغلاق النوافذ (بما فيها الضغط بالخارج)
+   * نظام المراقبة الذكي - يراقب حالة إغلاق النوافذ والقوائم
    */
   useEffect(() => {
     if (!isAddDialogOpen && !deletingVoucher && !printingVoucher) {
@@ -194,9 +191,11 @@ export default function OverheadCostsPage() {
   ];
 
   const ordersQuery = useMemo(() => !db ? null : collection(db, 'productionOrders'), [db]);
+  const workersQuery = useMemo(() => !db ? null : collection(db, 'workers'), [db]);
   const vouchersQuery = useMemo(() => !db ? null : query(collection(db, 'vouchers'), where('type', '==', 'overhead_cost')), [db]);
 
   const { data: allOrders } = useCollection<any>(ordersQuery);
+  const { data: allWorkers } = useCollection<any>(workersQuery);
   const { data: vouchers, loading: vouchersLoading } = useCollection<any>(vouchersQuery);
 
   const filteredVouchers = useMemo(() => {
@@ -256,19 +255,12 @@ export default function OverheadCostsPage() {
     e.preventDefault();
     if (!db || isSubmitting || !formData.recipient || !formData.description || formData.totalAmount <= 0) return;
 
-    if (editingVoucherId && !canEdit) {
-      toast({ variant: "destructive", title: isRtl ? "غير مسموح بالتعديل" : "Permission Denied" });
-      return;
-    }
-    if (!editingVoucherId && !canCreate) {
-      toast({ variant: "destructive", title: isRtl ? "غير مسموح بالتسجيل" : "Permission Denied" });
-      return;
-    }
+    if (editingVoucherId && !canEdit) { toast({ variant: "destructive", title: isRtl ? "غير مسموح بالتعديل" : "Permission Denied" }); return; }
+    if (!editingVoucherId && !canCreate) { toast({ variant: "destructive", title: isRtl ? "غير مسموح بالتسجيل" : "Permission Denied" }); return; }
 
     setIsSubmitting(true);
     const targetId = editingVoucherId;
     
-    // إغلاق النافذة وتحرير الواجهة فوراً لضمان السرعة ومنع التجمد
     setIsAddDialogOpen(false);
     forceUIUnlock();
 
@@ -539,7 +531,6 @@ export default function OverheadCostsPage() {
           <form onSubmit={handleSaveVoucher} className="bg-white dark:bg-slate-900 flex flex-col max-h-[85vh]">
             <ScrollArea className="flex-1 p-6" dir={dir}>
               <div className="space-y-6">
-                
                 <div className="flex flex-col md:flex-row gap-8 items-start">
                   <div className="w-full md:w-32 space-y-2 flex flex-col items-center shrink-0">
                     <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 block text-center">{isRtl ? 'صورة السند' : 'ATTACHMENT'}</Label>
@@ -620,7 +611,6 @@ export default function OverheadCostsPage() {
                     </div>
                   </div>
                 </div>
-
               </div>
             </ScrollArea>
 
@@ -679,7 +669,6 @@ export default function OverheadCostsPage() {
                 if (!db || !deletingVoucher || isSubmitting) return; 
                 setIsSubmitting(true);
                 const targetId = deletingVoucher.id;
-                // إغلاق المودال وتحرير الواجهة فوراً
                 setDeletingVoucher(null);
                 forceUIUnlock();
                 try {
