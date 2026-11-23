@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { 
   User, 
   LogOut, 
@@ -73,6 +73,36 @@ export function Header() {
   const { user: authUser } = useUser();
 
   const { permissions, isAdmin } = useProduction();
+
+  /**
+   * دالة حارس الأمان - المطهر العميق الفائق (Aggressive Cleanup)
+   * تضمن تحرير المتصفح من كافة الأقفال فور إغلاق أي نافذة عبر 3 مراحل زمنية
+   */
+  const forceUIUnlock = useCallback(() => {
+    const cleanup = () => {
+      document.body.style.pointerEvents = 'auto';
+      document.body.style.overflow = 'auto';
+      document.body.removeAttribute('data-scroll-locked');
+      
+      const html = document.documentElement;
+      html.style.pointerEvents = 'auto';
+      html.style.overflow = 'auto';
+      html.removeAttribute('data-scroll-locked');
+    };
+
+    cleanup();
+    setTimeout(cleanup, 100);
+    setTimeout(cleanup, 300);
+  }, []);
+
+  /**
+   * نظام المراقبة الذكي - يراقب حالة إغلاق النوافذ والقوائم
+   */
+  useEffect(() => {
+    if (!isProfileOpen && !isAIOpen) {
+      forceUIUnlock();
+    }
+  }, [isProfileOpen, isAIOpen, forceUIUnlock]);
 
   const userDocRef = useMemo(() => 
     (!db || !authUser) ? null : doc(db, 'users', authUser.uid), 
@@ -166,9 +196,12 @@ export function Header() {
 
   const handleSaveProfile = async () => {
     if (!db || !authUser || isSaving) return;
+    
     setIsSaving(true);
+    setIsProfileOpen(false); // إغلاق مبكر
+    forceUIUnlock();
+
     try {
-      // حماية المطور ليكون دائماً أدمن
       const isDeveloper = authUser.email === 'alqaysarpc219@gmail.com';
       
       const updatedData = {
@@ -182,7 +215,6 @@ export function Header() {
         ...updatedData,
         createdAt: userProfile?.createdAt || serverTimestamp(),
         active: true,
-        // منح كافة الصلاحيات فوراً للمطور
         ...(isDeveloper && {
           permissions: {
             dashboard: { read: true, create: true, edit: true, delete: true },
@@ -217,6 +249,7 @@ export function Header() {
       console.error(err);
     } finally {
       setIsSaving(false);
+      forceUIUnlock();
     }
   };
 
@@ -284,7 +317,7 @@ export function Header() {
         <div className="h-8 w-px bg-slate-100 dark:bg-slate-800 mx-1" />
 
         <div className="flex items-center gap-4">
-          <DropdownMenu>
+          <DropdownMenu onOpenChange={(open) => !open && forceUIUnlock()}>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className={cn(
                 "flex items-center gap-3 p-1 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-xl border border-transparent hover:border-slate-100 dark:hover:border-slate-800 transition-all group",
@@ -331,7 +364,7 @@ export function Header() {
         </div>
       </div>
 
-      <Dialog open={isProfileOpen} onOpenChange={setIsProfileOpen}>
+      <Dialog open={isProfileOpen} onOpenChange={(open) => { setIsProfileOpen(open); if(!open) forceUIUnlock(); }}>
         <DialogContent className="sm:max-w-[450px] p-0 overflow-hidden border-none rounded-[1.5rem] shadow-2xl dark:bg-slate-900">
            <DialogHeader className="sr-only">
               <DialogTitle>{isRtl ? 'الملف الشخصي للمستخدم' : 'User Profile'}</DialogTitle>
@@ -371,7 +404,7 @@ export function Header() {
                       {isSaving ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : <Save className="w-4 h-4 me-2" />}
                       {isRtl ? 'حفظ التغييرات' : 'Save Changes'}
                     </Button>
-                    <Button variant="outline" onClick={() => setIsEditing(false)} className="h-12 px-6 font-black text-slate-400">إلغاء</Button>
+                    <Button variant="outline" onClick={() => { setIsEditing(false); forceUIUnlock(); }} className="h-12 px-6 font-black text-slate-400">إلغاء</Button>
                   </div>
                </div>
              </div>
@@ -430,7 +463,7 @@ export function Header() {
                         <Edit2 className="w-4 h-4" />
                         {isRtl ? 'تحديث البيانات والصورة' : 'Update Profile'}
                      </Button>
-                     <Button variant="ghost" onClick={() => setIsProfileOpen(false)} className="h-14 px-6 font-black text-slate-400 dark:text-slate-500 rounded-xl">{isRtl ? 'إغلاق' : 'Close'}</Button>
+                     <Button variant="ghost" onClick={() => { setIsProfileOpen(false); forceUIUnlock(); }} className="h-14 px-6 font-black text-slate-400 dark:text-slate-500 rounded-xl">{isRtl ? 'إغلاق' : 'Close'}</Button>
                   </div>
                </div>
              </>
@@ -438,7 +471,7 @@ export function Header() {
         </DialogContent>
       </Dialog>
 
-      <ProductionAI isOpen={isAIOpen} onClose={() => setIsAIOpen(false)} />
+      <ProductionAI isOpen={isAIOpen} onClose={() => { setIsAIOpen(false); forceUIUnlock(); }} />
     </header>
   );
 }
