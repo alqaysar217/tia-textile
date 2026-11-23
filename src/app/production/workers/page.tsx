@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { 
   Plus, 
   Search, 
@@ -111,15 +111,31 @@ export default function WorkersPage() {
   const [validationError, setValidationError] = useState<string | null>(null);
   
   /**
-   * دالة حارس الأمان لفك تجمد الواجهة يدوياً
+   * دالة حارس الأمان لفك تجمد الواجهة يدوياً (بروتوكول المطهر الشامل)
+   * تضمن تحرير المتصفح من كافة الأقفال فور إغلاق أي نافذة
    */
   const forceUIUnlock = useCallback(() => {
-    requestAnimationFrame(() => {
+    setTimeout(() => {
       document.body.style.pointerEvents = 'auto';
       document.body.style.overflow = 'auto';
       document.body.removeAttribute('data-scroll-locked');
-    });
+      
+      const html = document.documentElement;
+      html.style.pointerEvents = 'auto';
+      html.style.overflow = 'auto';
+      html.removeAttribute('data-scroll-locked');
+    }, 200);
   }, []);
+
+  /**
+   * نظام المراقبة الذكي - يراقب حالة إغلاق النوافذ (بما فيها الضغط بالخارج)
+   * ويقوم باستدعاء المطهر البرمجي فوراً
+   */
+  useEffect(() => {
+    if (!isAddDialogOpen && !deletingWorkerId) {
+      forceUIUnlock();
+    }
+  }, [isAddDialogOpen, deletingWorkerId, forceUIUnlock]);
 
   const [formData, setFormData] = useState({
     fullName: '',
@@ -258,7 +274,9 @@ export default function WorkersPage() {
     setIsSubmitting(true);
     const currentId = editingWorkerId;
     
+    // إغلاق المودال وتحرير الواجهة فوراً قبل انتظار رد السحابة
     setIsAddDialogOpen(false);
+    forceUIUnlock();
 
     try {
       const workerData = {
@@ -286,7 +304,6 @@ export default function WorkersPage() {
     } catch (err: any) {
       console.error(err);
       toast({ variant: "destructive", title: "Error Saving Data" });
-      setIsAddDialogOpen(true);
     } finally {
       setIsSubmitting(false);
       forceUIUnlock();
@@ -307,7 +324,10 @@ export default function WorkersPage() {
     
     setIsSubmitting(true);
     const targetId = deletingWorkerId;
+    
+    // إغلاق المودال وتحرير الواجهة فوراً
     setDeletingWorkerId(null);
+    forceUIUnlock();
 
     try {
       const docRef = doc(db, 'workers', targetId);
@@ -340,7 +360,7 @@ export default function WorkersPage() {
     setIsAddDialogOpen(true);
   };
 
-  const stats = useMemo(() => {
+  const statsValue = useMemo(() => {
     const list = workers || [];
     const activeOnes = list.filter(w => w.active && w.status !== 'deleted');
     return {
@@ -404,12 +424,12 @@ export default function WorkersPage() {
             <div className="flex gap-2 bg-slate-50 dark:bg-slate-800/50 p-1 rounded-lg border border-slate-100 dark:border-slate-800">
               <div className="px-3 py-1 text-center">
                 <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">{lang === 'ar' ? 'مشرفين' : 'Sups'}</p>
-                <p className="text-sm font-black text-emerald-600 dark:text-emerald-400 tabular-nums">{workersLoading ? '..' : stats.supervisors}</p>
+                <p className="text-sm font-black text-emerald-600 dark:text-emerald-400 tabular-nums">{workersLoading ? '..' : statsValue.supervisors}</p>
               </div>
               <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 self-center" />
               <div className="px-3 py-1 text-center">
                 <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">{lang === 'ar' ? 'عمال' : 'Workers'}</p>
-                <p className="text-sm font-black text-slate-700 dark:text-slate-300 tabular-nums">{workersLoading ? '..' : stats.active - stats.supervisors}</p>
+                <p className="text-sm font-black text-slate-700 dark:text-slate-300 tabular-nums">{workersLoading ? '..' : statsValue.active - statsValue.supervisors}</p>
               </div>
             </div>
             
@@ -491,7 +511,7 @@ export default function WorkersPage() {
                   <TableHead className={cn("h-10 font-bold text-[11px] uppercase text-slate-500 dark:text-slate-400 px-6 whitespace-nowrap bg-inherit", isRtl ? "text-right" : "text-left")}>
                     <button onClick={() => toggleSort('fullName')} className="flex items-center gap-2 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors uppercase">
                       {lang === 'ar' ? 'الموظف' : 'PERSONNEL'}
-                      {sortBy === 'fullName' ? (sortOrder === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-30" />}
+                      {sortBy === 'fullName' ? (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5" /> : <SortDesc className="w-3.5 h-3.5" />) : <ArrowUpDown className="w-3.5 h-3.5 opacity-30" />}
                     </button>
                   </TableHead>
                   <TableHead className={cn("h-10 font-bold text-[11px] uppercase text-slate-500 dark:text-slate-400 px-6 whitespace-nowrap bg-inherit", isRtl ? "text-right" : "text-left")}>{lang === 'ar' ? 'الرتبة' : 'RANK'}</TableHead>
@@ -676,7 +696,7 @@ export default function WorkersPage() {
 
               {!formData.isSupervisor && (
                 <div className="space-y-1.5 pt-2 border-t border-slate-200 dark:border-slate-700">
-                  <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start">
+                  <Label className={cn("text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start")}>
                     <UserCheck className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'المشرف المباشر المسؤول عن العامل' : 'ASSIGN DIRECT SUPERVISOR'}
                   </Label>
                   <select 
@@ -735,7 +755,7 @@ export default function WorkersPage() {
                 {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : <Save className="w-4 h-4 me-2" />}
                 {lang === 'ar' ? (isSubmitting ? 'جاري الحفظ...' : 'حفظ البيانات') : 'Commit Record'}
               </Button>
-              <Button type="button" variant="outline" onClick={resetForm} className="px-6 h-11 font-black text-slate-400 dark:text-slate-500 rounded-md border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all">
+              <Button type="button" variant="outline" onClick={resetForm} className="px-6 h-11 font-black text-slate-400 dark:text-slate-500 rounded-md border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all">
                 {lang === 'ar' ? 'إلغاء' : 'Cancel'}
               </Button>
             </div>
@@ -762,7 +782,7 @@ export default function WorkersPage() {
             <AlertDialogAction onClick={handleArchiveWorker} disabled={isSubmitting} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-md font-black border-none shadow-lg transition-all active:scale-95">
               {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : (isRtl ? "تأكيد" : "Confirm")}
             </AlertDialogAction>
-            <AlertDialogCancel onClick={() => setDeletingWorkerId(null)} className="flex-1 h-11 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500 rounded-md font-black hover:bg-slate-100 dark:hover:bg-slate-700 transition-all">
+            <AlertDialogCancel onClick={() => { setDeletingWorkerId(null); forceUIUnlock(); }} className="flex-1 h-11 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500 rounded-md font-black hover:bg-slate-100 dark:hover:bg-slate-700 transition-all">
               {lang === 'ar' ? 'تراجع' : 'Cancel'}
             </AlertDialogCancel>
           </div>
