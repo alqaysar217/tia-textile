@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { 
   TrendingUp, 
   ChevronRight, 
@@ -23,7 +23,8 @@ import {
   Layers,
   Receipt,
   Activity,
-  Target
+  Target,
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -59,6 +60,27 @@ export default function FinancialGrowthReport() {
   // استيراد الصلاحيات من المحرك المركزي
   const { permissions, isAdmin } = useProduction();
   const canReadReports = isAdmin || permissions.reports?.read;
+
+  /**
+   * دالة حارس الأمان لفك تجمد الواجهة يدوياً (بروتوكول المطهر الشامل)
+   */
+  const forceUIUnlock = useCallback(() => {
+    setTimeout(() => {
+      document.body.style.pointerEvents = 'auto';
+      document.body.style.overflow = 'auto';
+      document.body.removeAttribute('data-scroll-locked');
+      
+      const html = document.documentElement;
+      html.style.pointerEvents = 'auto';
+      html.style.overflow = 'auto';
+      html.removeAttribute('data-scroll-locked');
+    }, 150);
+  }, []);
+
+  // المراقبة لضمان استقرار الواجهة دائماً
+  useEffect(() => {
+    forceUIUnlock();
+  }, [forceUIUnlock]);
 
   const [search, setSearch] = useState('');
   const [dateFrom, setDateFrom] = useState('');
@@ -201,36 +223,36 @@ export default function FinancialGrowthReport() {
             </div>
 
             <div className="flex items-center gap-1 px-1 border-x border-slate-200 dark:border-slate-700">
-               <Popover>
+               <Popover onOpenChange={(open) => !open && forceUIUnlock()}>
                   <PopoverTrigger asChild>
                     <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all", (dateFrom || dateTo) && "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20")}>
                        <CalendarDays className={cn("w-4 h-4", (dateFrom || dateTo) ? "text-emerald-600" : "text-slate-400 dark:text-slate-600")} />
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent align={isRtl ? "start" : "end"} className="w-72 p-4 rounded-xl shadow-2xl border-slate-200 dark:border-slate-800 dark:bg-slate-900">
-                     <div className="space-y-4 text-right">
+                  <PopoverContent align={isRtl ? "start" : "end"} className="w-72 p-4 rounded-xl shadow-2xl border-slate-200 dark:border-slate-800 dark:bg-slate-900 text-right">
+                     <div className="space-y-4">
                         <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest border-b dark:border-slate-800 pb-2"><CalendarDays className="w-3.5 h-3.5" />{isRtl ? 'النطاق الزمني' : 'DATE RANGE'}</div>
                         <div className="grid grid-cols-2 gap-3">
-                           <div className="space-y-1.5"><Label className="text-[9px] font-black text-slate-400 dark:text-slate-500">من</Label><Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-9 text-[10px] font-bold dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100" /></div>
-                           <div className="space-y-1.5"><Label className="text-[9px] font-black text-slate-400 dark:text-slate-500">إلى</Label><Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-9 text-[10px] font-bold dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100" /></div>
+                           <div className="space-y-1.5"><Label className="text-[9px] font-black text-slate-400 dark:text-slate-500">{isRtl ? 'من' : 'FROM'}</Label><Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-9 text-[10px] font-bold dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100" /></div>
+                           <div className="space-y-1.5"><Label className="text-[9px] font-black text-slate-400 dark:text-slate-500">{isRtl ? 'إلى' : 'TO'}</Label><Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-9 text-[10px] font-bold dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100" /></div>
                         </div>
-                        {(dateFrom || dateTo) && <Button variant="link" onClick={() => { setDateFrom(''); setDateTo(''); }} className="text-[9px] h-auto p-0 font-bold text-rose-500 underline uppercase w-full">إعادة تعيين</Button>}
+                        {(dateFrom || dateTo) && <Button variant="link" onClick={() => { setDateFrom(''); setDateTo(''); forceUIUnlock(); }} className="text-[9px] h-auto p-0 font-bold text-rose-500 underline uppercase w-full">{isRtl ? 'إعادة تعيين' : 'RESET'}</Button>}
                      </div>
                   </PopoverContent>
                </Popover>
 
-               <DropdownMenu>
+               <DropdownMenu onOpenChange={(open) => !open && forceUIUnlock()}>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all", productFilter !== 'all' && "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20")}>
-                       <ShoppingBag className={cn("w-4 h-4", productFilter !== 'all' ? "text-emerald-600" : "text-slate-400 dark:text-slate-500")} />
+                       <ShoppingBag className={cn("w-4 h-4", productFilter !== 'all' ? "text-emerald-600" : "text-slate-400 dark:text-slate-600")} />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align={isRtl ? "start" : "end"} className="w-64 rounded-xl shadow-xl border-slate-200 dark:border-slate-800 dark:bg-slate-900">
                      <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest">{isRtl ? 'حسب الصنف' : 'BY PRODUCT'}</DropdownMenuLabel>
                      <ScrollArea className="h-48">
-                        <DropdownMenuItem onClick={() => setProductFilter('all')} className="flex justify-between text-xs font-bold cursor-pointer dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">{isRtl ? 'جميع المنتجات' : 'All Products'}{productFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => { setProductFilter('all'); forceUIUnlock(); }} className="flex justify-between text-xs font-bold cursor-pointer dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">{isRtl ? 'جميع المنتجات' : 'All Products'}{productFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}</DropdownMenuItem>
                         {allProducts?.map(p => (
-                          <DropdownMenuItem key={p.id} onClick={() => setProductFilter(p.id)} className="flex justify-between text-xs font-bold cursor-pointer dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
+                          <DropdownMenuItem key={p.id} onClick={() => { setProductFilter(p.id); forceUIUnlock(); }} className="flex justify-between text-xs font-bold cursor-pointer dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
                             {p.nameAr}
                             {productFilter === p.id && <Check className="w-3.5 h-3.5 text-emerald-600" />}
                           </DropdownMenuItem>

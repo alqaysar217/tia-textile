@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { 
   Calculator, 
   ChevronRight, 
@@ -60,6 +60,27 @@ export default function OrderCostAnalysisReport() {
   // استيراد الصلاحيات من المحرك المركزي
   const { permissions, isAdmin } = useProduction();
   const canReadReports = isAdmin || permissions.reports?.read;
+
+  /**
+   * دالة حارس الأمان لفك تجمد الواجهة يدوياً (بروتوكول المطهر الشامل)
+   */
+  const forceUIUnlock = useCallback(() => {
+    setTimeout(() => {
+      document.body.style.pointerEvents = 'auto';
+      document.body.style.overflow = 'auto';
+      document.body.removeAttribute('data-scroll-locked');
+      
+      const html = document.documentElement;
+      html.style.pointerEvents = 'auto';
+      html.style.overflow = 'auto';
+      html.removeAttribute('data-scroll-locked');
+    }, 150);
+  }, []);
+
+  // المراقبة لضمان استقرار الواجهة دائماً
+  useEffect(() => {
+    forceUIUnlock();
+  }, [forceUIUnlock]);
 
   const [search, setSearch] = useState('');
   const [dateFrom, setDateFrom] = useState('');
@@ -217,12 +238,12 @@ export default function OrderCostAnalysisReport() {
                 value={search} 
                 onChange={(e) => setSearch(e.target.value)} 
                 placeholder={isRtl ? 'بحث بالأمر أو المنتج...' : 'Search...'} 
-                className={cn("h-9 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-[10px] font-bold dark:text-slate-100", isRtl ? "pr-9" : "pl-9")} 
+                className={cn("h-9 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-[10px] font-bold dark:text-slate-100", isRtl ? "pr-9" : "pl-9")} 
               />
             </div>
 
             <div className="flex items-center gap-1 px-1 border-x border-slate-200 dark:border-slate-700">
-               <Popover>
+               <Popover onOpenChange={(open) => !open && forceUIUnlock()}>
                   <PopoverTrigger asChild>
                     <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all", (dateFrom || dateTo) && "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20")}>
                        <CalendarDays className={cn("w-4 h-4", (dateFrom || dateTo) ? "text-emerald-600" : "text-slate-400 dark:text-slate-600")} />
@@ -235,12 +256,12 @@ export default function OrderCostAnalysisReport() {
                            <div className="space-y-1.5"><Label className="text-[9px] font-black text-slate-400 dark:text-slate-500">{isRtl ? 'من' : 'FROM'}</Label><Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-9 text-[10px] font-bold dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100" /></div>
                            <div className="space-y-1.5"><Label className="text-[9px] font-black text-slate-400 dark:text-slate-500">{isRtl ? 'إلى' : 'TO'}</Label><Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-9 text-[10px] font-bold dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100" /></div>
                         </div>
-                        {(dateFrom || dateTo) && <Button variant="link" onClick={() => { setDateFrom(''); setDateTo(''); }} className="text-[9px] h-auto p-0 font-bold text-rose-500 underline uppercase w-full">{isRtl ? 'إعادة تعيين' : 'RESET'}</Button>}
+                        {(dateFrom || dateTo) && <Button variant="link" onClick={() => { setDateFrom(''); setDateTo(''); forceUIUnlock(); }} className="text-[9px] h-auto p-0 font-bold text-rose-500 underline uppercase w-full">{isRtl ? 'إعادة تعيين' : 'RESET'}</Button>}
                      </div>
                   </PopoverContent>
                </Popover>
 
-               <DropdownMenu>
+               <DropdownMenu onOpenChange={(open) => !open && forceUIUnlock()}>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all", productFilter !== 'all' && "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20")}>
                        <ShoppingBag className={cn("w-4 h-4", productFilter !== 'all' ? "text-emerald-600" : "text-slate-400 dark:text-slate-500")} />
@@ -249,9 +270,9 @@ export default function OrderCostAnalysisReport() {
                   <DropdownMenuContent align={isRtl ? "start" : "end"} className="w-64 rounded-xl shadow-xl border-slate-200 dark:border-slate-800 dark:bg-slate-900">
                      <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest">{isRtl ? 'حسب نوع المنتج' : 'BY PRODUCT'}</DropdownMenuLabel>
                      <ScrollArea className="h-48">
-                        <DropdownMenuItem onClick={() => setProductFilter('all')} className="flex justify-between text-xs font-bold cursor-pointer dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">{isRtl ? 'جميع المنتجات' : 'All Products'}{productFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => { setProductFilter('all'); forceUIUnlock(); }} className="flex justify-between text-xs font-bold cursor-pointer dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">{isRtl ? 'جميع المنتجات' : 'All Products'}{productFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600" />}</DropdownMenuItem>
                         {allProducts?.map(p => (
-                          <DropdownMenuItem key={p.id} onClick={() => setProductFilter(p.id)} className="flex justify-between text-xs font-bold cursor-pointer dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
+                          <DropdownMenuItem key={p.id} onClick={() => { setProductFilter(p.id); forceUIUnlock(); }} className="flex justify-between text-xs font-bold cursor-pointer dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
                             {p.nameAr}
                             {productFilter === p.id && <Check className="w-3.5 h-3.5 text-emerald-600" />}
                           </DropdownMenuItem>
@@ -260,7 +281,7 @@ export default function OrderCostAnalysisReport() {
                   </DropdownMenuContent>
                </DropdownMenu>
 
-               <DropdownMenu>
+               <DropdownMenu onOpenChange={(open) => !open && forceUIUnlock()}>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all")}>
                        <Filter className="w-4 h-4 text-slate-400 dark:text-slate-500" />
@@ -268,15 +289,15 @@ export default function OrderCostAnalysisReport() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align={isRtl ? "start" : "end"} className="w-56 rounded-xl shadow-xl border-slate-200 dark:border-slate-800 dark:bg-slate-900">
                      <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest">{isRtl ? 'ترتيب حسب' : 'SORT BY'}</DropdownMenuLabel>
-                     <DropdownMenuItem onClick={() => toggleSort('totalCost')} className="flex justify-between text-xs font-bold cursor-pointer py-2.5 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
+                     <DropdownMenuItem onClick={() => { toggleSort('totalCost'); forceUIUnlock(); }} className="flex justify-between text-xs font-bold cursor-pointer py-2.5 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
                         {isRtl ? 'إجمالي التكلفة' : 'Total Cost'}
                         {sortBy === 'totalCost' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />)}
                      </DropdownMenuItem>
-                     <DropdownMenuItem onClick={() => toggleSort('avgCost')} className="flex justify-between text-xs font-bold cursor-pointer py-2.5 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
+                     <DropdownMenuItem onClick={() => { toggleSort('avgCost'); forceUIUnlock(); }} className="flex justify-between text-xs font-bold cursor-pointer py-2.5 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
                         {isRtl ? 'تكلفة القطعة' : 'Unit Cost'}
                         {sortBy === 'avgCost' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />)}
                      </DropdownMenuItem>
-                     <DropdownMenuItem onClick={() => toggleSort('progress')} className="flex justify-between text-xs font-bold cursor-pointer py-2.5 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
+                     <DropdownMenuItem onClick={() => { toggleSort('progress'); forceUIUnlock(); }} className="flex justify-between text-xs font-bold cursor-pointer py-2.5 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
                         {isRtl ? 'نسبة الإنجاز' : 'Progress'}
                         {sortBy === 'progress' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />)}
                      </DropdownMenuItem>
