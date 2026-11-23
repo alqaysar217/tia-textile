@@ -89,13 +89,14 @@ export default function DepartmentsPage() {
   
   /**
    * دالة حارس الأمان لفك تجمد الواجهة يدوياً
+   * تضمن تنظيف المتصفح من أقفال الماوس بعد إغلاق أي نافذة
    */
   const forceUIUnlock = useCallback(() => {
-    requestAnimationFrame(() => {
+    setTimeout(() => {
       document.body.style.pointerEvents = 'auto';
       document.body.style.overflow = 'auto';
       document.body.removeAttribute('data-scroll-locked');
-    });
+    }, 150);
   }, []);
 
   // Filtering & Sorting State
@@ -203,7 +204,7 @@ export default function DepartmentsPage() {
 
     setIsSubmitting(true);
     const targetEditingId = editingDeptId;
-    setIsAddDialogOpen(false); // إغلاق مبكر
+    setIsAddDialogOpen(false); // إغلاق مبكر لمنع التجمد
 
     try {
       const deptData = {
@@ -250,7 +251,7 @@ export default function DepartmentsPage() {
     if (!db || !deletingDeptId || !canDelete || isSubmitting) return;
     setIsSubmitting(true);
     const targetId = deletingDeptId;
-    setDeletingDeptId(null); 
+    setDeletingDeptId(null); // إغلاق مبكر لمنع التجمد
 
     try {
       await updateDoc(doc(db, 'departments', targetId), {
@@ -630,7 +631,7 @@ export default function DepartmentsPage() {
             <AlertDialogAction onClick={handleArchiveDepartment} disabled={isSubmitting} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-md font-black border-none shadow-lg transition-all active:scale-95">
               {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : (isRtl ? 'تأكيد' : 'Confirm')}
             </AlertDialogAction>
-            <AlertDialogCancel onClick={() => setDeletingDeptId(null)} className="flex-1 h-11 bg-slate-50 dark:bg-slate-800 border-none text-slate-400 dark:text-slate-500 rounded-md font-black hover:bg-slate-100 dark:hover:bg-slate-700 transition-all">
+            <AlertDialogCancel onClick={() => { setDeletingDeptId(null); forceUIUnlock(); }} className="flex-1 h-11 bg-slate-50 dark:bg-slate-800 border-none text-slate-400 dark:text-slate-500 rounded-md font-black hover:bg-slate-100 dark:hover:bg-slate-700 transition-all">
               {isRtl ? 'تراجع' : 'Cancel'}
             </AlertDialogCancel>
           </div>
