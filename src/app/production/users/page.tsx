@@ -70,9 +70,9 @@ export default function UsersPermissionsPage() {
 
   // استيراد الصلاحيات من المحرك المركزي
   const { permissions, isAdmin } = useProduction();
-  const canCreate = isAdmin || permissions.settings?.create;
-  const canEdit = isAdmin || permissions.settings?.edit;
-  const canDelete = isAdmin || permissions.settings?.delete;
+  const canCreate = isAdmin || permissions.users?.create;
+  const canEdit = isAdmin || permissions.users?.edit;
+  const canDelete = isAdmin || permissions.users?.delete;
 
   /**
    * دالة حارس الأمان لفك تجمد الواجهة يدوياً
@@ -222,7 +222,7 @@ export default function UsersPermissionsPage() {
   };
 
   const handleExportCSV = () => {
-    if (!isAdmin && !permissions.reports?.read) {
+    if (!isAdmin && !permissions.users?.read) {
        toast({ variant: "destructive", title: isRtl ? "غير مسموح بالتصدير" : "Export Denied" });
        return;
     }
@@ -302,7 +302,7 @@ export default function UsersPermissionsPage() {
 
             <div className="h-9 w-px bg-slate-200 dark:bg-slate-700 mx-1 hidden sm:block" />
             <div className="bg-slate-900 dark:bg-slate-950 text-white px-3 py-1 rounded-lg flex flex-col items-center justify-center min-w-[80px] hidden sm:flex">
-              <span className="text-[7px] font-black uppercase opacity-50 leading-none">{isRtl ? 'إجمالي المستخدمين' : 'TOTAL USERS'}</span>
+              <span className="text-[7px] font-black uppercase opacity-50 leading-none">{isRtl ? 'المجموع' : 'TOTAL'}</span>
               <span className="text-xs font-black tabular-nums leading-none mt-0.5">{filteredUsers.length}</span>
             </div>
 
@@ -419,7 +419,7 @@ export default function UsersPermissionsPage() {
         <AlertDialogContent className="max-w-[400px] rounded-[1.5rem] p-0 overflow-hidden border-none shadow-2xl dark:bg-slate-900 transition-colors duration-300">
            <div className="bg-rose-950 p-8 text-center relative overflow-hidden">
               <div className="absolute top-0 right-0 p-4 opacity-5"><ShieldAlert className="w-32 h-32 text-white" /></div>
-              <div className="w-16 h-16 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-rose-500/20 shadow-inner">
+              <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20 shadow-inner">
                 <ShieldAlert className="w-8 h-8 text-rose-500" />
               </div>
               <AlertDialogTitle className="text-white text-xl font-black">{isRtl ? 'سحب صلاحيات المستخدم' : 'Revoke Account'}</AlertDialogTitle>

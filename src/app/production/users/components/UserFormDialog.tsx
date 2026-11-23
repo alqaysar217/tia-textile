@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef } from 'react';
+import React, { useRef, useCallback } from 'react';
 import { 
   Dialog, 
   DialogContent, 
@@ -37,7 +37,7 @@ interface UserFormDialogProps {
   isSubmitting: boolean;
   isCompressing: boolean;
   formData: any;
-  setFormData: (val: any) => void;
+  setFormData: (val: any | ((prev: any) => any)) => void;
   onImageUpload: (e: any) => void;
   onSave: (e: any) => void;
 }
@@ -57,6 +57,17 @@ export function UserFormDialog({
 }: UserFormDialogProps) {
   const isRtl = lang === 'ar';
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  /**
+   * دالة حارس الأمان لفك تجمد الواجهة يدوياً عند الإغلاق
+   */
+  const forceUIUnlock = useCallback(() => {
+    requestAnimationFrame(() => {
+      document.body.style.pointerEvents = 'auto';
+      document.body.style.overflow = 'auto';
+      document.body.removeAttribute('data-scroll-locked');
+    });
+  }, []);
 
   const handleTogglePermission = (moduleId: string, type: 'read' | 'create' | 'edit' | 'delete') => {
     setFormData((prev: any) => {
@@ -80,7 +91,6 @@ export function UserFormDialog({
       const current = newPerms[moduleId];
       
       if (checked) {
-        // إذا كان السطر فارغاً، نبدأ بالقراءة فقط. إذا كان فيه قراءة، نفعل الكل.
         if (!current.read && !current.create && !current.edit && !current.delete) {
           newPerms[moduleId] = { read: true, create: false, edit: false, delete: false };
         } else {
@@ -99,7 +109,6 @@ export function UserFormDialog({
       const newPerms = { ...prev.permissions };
       Object.keys(newPerms).forEach(moduleId => {
         newPerms[moduleId] = { ...newPerms[moduleId], [type]: checked };
-        // عند تفعيل أي صلاحية تنفيذية، نفعل القراءة تلقائياً
         if (checked && type !== 'read') {
           newPerms[moduleId].read = true;
         }
@@ -119,7 +128,7 @@ export function UserFormDialog({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={(open) => { if(!open) { onClose(); forceUIUnlock(); } }}>
       <DialogContent className="sm:max-w-[950px] rounded-[1.5rem] p-0 overflow-hidden border-none shadow-2xl dark:bg-slate-900 transition-colors duration-300">
         <div className="premium-gradient p-6 text-white relative">
           <div className="absolute top-0 right-0 p-4 opacity-5"><ShieldCheck className="w-32 h-32 text-white" /></div>
@@ -136,7 +145,6 @@ export function UserFormDialog({
           <ScrollArea className="flex-1 p-6" dir={dir}>
             <div className="space-y-10">
               <div className="flex flex-col md:flex-row gap-8 items-start">
-                {/* Profile Photo */}
                 <div className="w-full md:w-32 space-y-2 flex flex-col items-center shrink-0">
                    <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 text-center">PROFILE PHOTO</Label>
                    <div onClick={() => !isCompressing && fileInputRef.current?.click()} className="w-32 h-32 rounded-2xl border-4 border-slate-100 dark:border-slate-800 shadow-md bg-slate-50 dark:bg-slate-800 flex items-center justify-center cursor-pointer group overflow-hidden relative transition-all">
@@ -153,16 +161,15 @@ export function UserFormDialog({
                    <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={onImageUpload} />
                 </div>
 
-                {/* Form Fields */}
                 <div className="flex-1 space-y-6 w-full">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2 text-right">
                       <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2 justify-start"><UserIcon className="w-3 h-3 text-emerald-600" /> {isRtl ? 'الاسم الكامل' : 'NAME'}</Label>
-                      <Input value={formData.fullName} onChange={(e) => setFormData({...formData, fullName: e.target.value})} className="h-11 font-bold text-xs bg-slate-50 dark:bg-slate-800 dark:text-white" required />
+                      <Input value={formData.fullName} onChange={(e) => setFormData((prev:any) => ({...prev, fullName: e.target.value}))} className="h-11 font-bold text-xs bg-slate-50 dark:bg-slate-800 dark:text-white" required />
                     </div>
                     <div className="space-y-2 text-right">
                       <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2 justify-start"><Mail className="w-3 h-3 text-emerald-600" /> {isRtl ? 'البريد الإلكتروني' : 'EMAIL'}</Label>
-                      <Input type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="h-11 font-bold text-xs bg-slate-50 dark:bg-slate-800 dark:text-white" required />
+                      <Input type="email" value={formData.email} onChange={(e) => setFormData((prev:any) => ({...prev, email: e.target.value}))} className="h-11 font-bold text-xs bg-slate-50 dark:bg-slate-800 dark:text-white" required />
                     </div>
                   </div>
 
@@ -175,12 +182,12 @@ export function UserFormDialog({
                            <p className="text-[10px] font-bold text-amber-700">{isRtl ? 'كلمة المرور مدارة أمنياً ولا يمكن تعديلها من هنا.' : 'Encrypted field.'}</p>
                         </div>
                       ) : (
-                        <Input type="password" value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} className="h-11 font-bold text-xs bg-slate-50 dark:bg-slate-800 dark:text-white" required />
+                        <Input type="password" value={formData.password} onChange={(e) => setFormData((prev:any) => ({...prev, password: e.target.value}))} className="h-11 font-bold text-xs bg-slate-50 dark:bg-slate-800 dark:text-white" required />
                       )}
                     </div>
                     <div className="space-y-2 text-right">
                       <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2 justify-start"><Briefcase className="w-3 h-3 text-emerald-600" /> {isRtl ? 'الدور الوظيفي' : 'ROLE'}</Label>
-                      <select value={formData.role} onChange={(e) => setFormData({...formData, role: e.target.value})} className="w-full h-11 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-bold outline-none dark:text-white" dir={dir}>
+                      <select value={formData.role} onChange={(e) => setFormData((prev:any) => ({...prev, role: e.target.value}))} className="w-full h-11 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-bold outline-none dark:text-white" dir={dir}>
                         <option value="staff">{isRtl ? 'موظف تشغيل' : 'Staff'}</option>
                         <option value="manager">{isRtl ? 'مدير قسم' : 'Manager'}</option>
                         <option value="admin">{isRtl ? 'مدير نظام' : 'Admin'}</option>
@@ -190,7 +197,6 @@ export function UserFormDialog({
                 </div>
               </div>
 
-              {/* Permissions Grid Component */}
               <div className="space-y-4">
                 <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800 pb-2">
                   <Shield className="w-5 h-5 text-emerald-600" />
@@ -214,7 +220,7 @@ export function UserFormDialog({
               {isSubmitting ? <Loader2 className="animate-spin me-2" /> : <ShieldCheck className="w-5 h-5 me-2" />}
               {isRtl ? (editingId ? 'تحديث السجل والصلاحيات' : 'تفعيل الحساب والصلاحيات') : 'Commit Profile'}
             </Button>
-            <Button type="button" variant="outline" onClick={onClose} className="px-8 h-14 font-black text-slate-400 rounded-xl border-slate-200 hover:bg-white dark:hover:bg-slate-700 transition-all">إلغاء</Button>
+            <Button type="button" variant="outline" onClick={() => { onClose(); forceUIUnlock(); }} className="px-8 h-14 font-black text-slate-400 rounded-xl border-slate-200 hover:bg-white dark:hover:bg-slate-700 transition-all">إلغاء</Button>
           </div>
         </form>
       </DialogContent>
