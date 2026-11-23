@@ -88,7 +88,6 @@ export default function ProductsManagementPage() {
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const [search, setSearch] = useState('');
   
-  // استيراد الصلاحيات من المحرك المركزي
   const { permissions, isAdmin } = useProduction();
   const canCreate = isAdmin || permissions.products?.create;
   const canEdit = isAdmin || permissions.products?.edit;
@@ -106,17 +105,30 @@ export default function ProductsManagementPage() {
   const [isCompressing, setIsCompressing] = useState(false);
   
   /**
-   * دالة حارس الأمان لفك تجمد الواجهة يدوياً
+   * دالة حارس الأمان لفك تجمد الواجهة يدوياً (بروتوكول المطهر الشامل)
    */
   const forceUIUnlock = useCallback(() => {
-    requestAnimationFrame(() => {
+    setTimeout(() => {
       document.body.style.pointerEvents = 'auto';
       document.body.style.overflow = 'auto';
       document.body.removeAttribute('data-scroll-locked');
-    });
+      
+      const html = document.documentElement;
+      html.style.pointerEvents = 'auto';
+      html.style.overflow = 'auto';
+      html.removeAttribute('data-scroll-locked');
+    }, 200);
   }, []);
 
-  // Fetch System Settings for Currency Lock
+  /**
+   * نظام المراقبة الذكي - يراقب حالة إغلاق النوافذ
+   */
+  useEffect(() => {
+    if (!isAddDialogOpen && !deletingProdId) {
+      forceUIUnlock();
+    }
+  }, [isAddDialogOpen, deletingProdId, forceUIUnlock]);
+
   const settingsRef = useMemo(() => !db ? null : doc(db, 'settings', 'global'), [db]);
   const { data: savedSettings } = useDoc<any>(settingsRef);
   const systemCurrency = savedSettings?.baseCurrency || 'YER';
@@ -318,7 +330,9 @@ export default function ProductsManagementPage() {
       updatedAt: serverTimestamp(),
     };
 
+    // إغلاق المودال وتحرير الواجهة فوراً لضمان السرعة ومنع التجمد
     setIsAddDialogOpen(false);
+    forceUIUnlock();
 
     try {
       if (targetId) {
@@ -344,7 +358,10 @@ export default function ProductsManagementPage() {
     
     setIsSubmitting(true);
     const targetId = deletingProdId;
-    setDeletingProdId(null); // إغلاق مبكر
+    
+    // إغلاق المودال وتحرير الواجهة فوراً
+    setDeletingProdId(null); 
+    forceUIUnlock();
 
     try {
       await updateDoc(doc(db, 'products', targetId), { 
@@ -388,6 +405,7 @@ export default function ProductsManagementPage() {
   return (
     <div className="flex flex-col h-full bg-[#f1f5f9] dark:bg-slate-950 overflow-hidden transition-colors duration-300">
       
+      {/* ERP HUB - HEADER */}
       <div className="flex-none bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 z-30 px-6 py-4 shadow-sm">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div className="flex items-center gap-4">
@@ -441,7 +459,7 @@ export default function ProductsManagementPage() {
           <div className="flex items-center gap-1.5 px-1.5">
             <Button onClick={handleExportCSV} variant="ghost" className="h-9 px-4 rounded-md text-xs font-bold gap-2 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition-colors">
               <FileDown className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-              {lang === 'ar' ? 'تصدير CSV' : 'Export CSV'}
+              {lang === 'ar' ? 'تصدير' : 'Export'}
             </Button>
 
             <DropdownMenu>
@@ -513,7 +531,7 @@ export default function ProductsManagementPage() {
                         </Avatar>
                         <div className="flex flex-col">
                           <span className="font-black text-slate-900 dark:text-slate-100 text-xs">{prod.nameAr}</span>
-                          <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold tabular-nums tracking-wider uppercase">{prod.sku}</span>
+                          <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold tabular-nums tracking-widest uppercase">{prod.sku}</span>
                         </div>
                       </div>
                     </TableCell>
@@ -546,7 +564,7 @@ export default function ProductsManagementPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="rounded-lg border-slate-200 dark:border-slate-800 dark:bg-slate-900 shadow-xl min-w-[180px]">
                           {canEdit && (
-                            <DropdownMenuItem onClick={() => handleEditClick(prod)} className="gap-3 font-bold text-xs py-2.5 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
+                            <DropdownMenuItem onClick={() => { setEditingProdId(prod.id); setFormData({...prod}); setIsAddDialogOpen(true); }} className="gap-3 font-bold text-xs py-2.5 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
                               <Edit2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'تعديل المنتج' : 'Edit Product'}
                             </DropdownMenuItem>
                           )}
@@ -597,12 +615,11 @@ export default function ProductsManagementPage() {
             
             {/* IMAGE SECTION */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-              {/* Main Image */}
               <div className="space-y-3">
                 <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 block text-center">الصورة الرئيسية</Label>
                 <div 
                   onClick={() => !isCompressing && fileInputRef.current?.click()}
-                  className="relative group cursor-pointer aspect-square rounded-2xl border-4 border-slate-100 dark:border-slate-800 shadow-md bg-slate-50 dark:bg-slate-800 flex items-center justify-center"
+                  className="relative group cursor-pointer aspect-square rounded-2xl border-4 border-slate-100 dark:border-slate-800 shadow-md bg-slate-50 dark:bg-slate-800 flex items-center justify-center overflow-hidden"
                 >
                   <Avatar className="w-full h-full rounded-none">
                     <AvatarImage src={formData.image || undefined} className="object-cover w-full h-full" />
@@ -620,9 +637,8 @@ export default function ProductsManagementPage() {
                 <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleMainImageUpload} />
               </div>
 
-              {/* Gallery Images */}
               <div className="space-y-3">
-                <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 block text-center">صور التشكيلات والألوان (الكتالوج)</Label>
+                <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 block text-center">صور التشكيلات (الكتالوج)</Label>
                 <div className="grid grid-cols-3 gap-2">
                   {formData.gallery.map((img, idx) => (
                     <div key={idx} className="relative aspect-square rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden group/item">
@@ -643,7 +659,7 @@ export default function ProductsManagementPage() {
                     <button 
                       type="button"
                       onClick={() => !isCompressing && galleryInputRef.current?.click()}
-                      className="aspect-square rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center text-slate-300 dark:text-slate-600 hover:border-emerald-300 dark:hover:border-emerald-500 hover:text-emerald-400 dark:hover:text-emerald-400 transition-all"
+                      className="aspect-square rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center text-slate-300 dark:text-slate-600 hover:border-emerald-300 dark:hover:border-emerald-500 hover:text-emerald-400 transition-all"
                     >
                       <PlusCircle className="w-8 h-8" />
                       <span className="text-[8px] font-black mt-1 uppercase">إضافة</span>
@@ -651,7 +667,6 @@ export default function ProductsManagementPage() {
                   )}
                 </div>
                 <input type="file" ref={galleryInputRef} className="hidden" accept="image/*" multiple onChange={handleGalleryUpload} />
-                <p className="text-[8px] text-slate-400 dark:text-slate-500 font-bold text-center mt-2 italic">* يمكنك إضافة حتى 10 صور لاستعراض الألوان والنقشات المختلفة.</p>
               </div>
             </div>
 
@@ -660,13 +675,13 @@ export default function ProductsManagementPage() {
                 <Label className={cn("text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start")}>
                   <Hash className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'كود التخزين' : 'AUTO SKU'}
                 </Label>
-                <Input value={editingProdId ? formData.sku : 'AUTO-GENERATE'} disabled className="h-10 font-bold text-xs bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 tabular-nums border-slate-200 dark:border-slate-700" />
+                <Input value={editingProdId ? formData.sku : 'AUTO-GENERATE'} disabled className="h-10 font-bold text-xs bg-slate-100 dark:bg-slate-800 tabular-nums border-slate-200 dark:border-slate-700" />
               </div>
               <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
                 <Label className={cn("text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start")}>
                   <Activity className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'فئة المعوز' : 'CATEGORY'}
                 </Label>
-                <select value={formData.category} onChange={(e) => setFormData({...formData, category: e.target.value})} className="w-full h-10 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-bold outline-none dark:text-slate-100">
+                <select value={formData.category} onChange={(e) => setFormData({...formData, category: e.target.value})} className="w-full h-10 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-bold outline-none">
                   {categories.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
@@ -677,22 +692,20 @@ export default function ProductsManagementPage() {
                 <Label className={cn("text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start")}>
                   <Languages className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'الاسم بالعربي' : 'ARABIC NAME'}
                 </Label>
-                <Input value={formData.nameAr} onChange={(e) => setFormData({...formData, nameAr: e.target.value})} className="h-10 font-bold text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 dark:text-slate-100" required />
+                <Input value={formData.nameAr} onChange={(e) => setFormData({...formData, nameAr: e.target.value})} className="h-10 font-bold text-xs bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 dark:text-slate-100" required />
               </div>
               <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
                 <Label className={cn("text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start")}>
                   <Wallet className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'سعر البيع' : 'UNIT PRICE'}
                 </Label>
                 <div className="flex gap-2">
-                  <Input type="number" value={formData.price || ''} onChange={(e) => setFormData({...formData, price: Number(e.target.value)})} className="h-10 font-bold text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 tabular-nums flex-1 dark:text-slate-100" required />
+                  <Input type="number" value={formData.price || ''} onChange={(e) => setFormData({...formData, price: Number(e.target.value)})} className="h-10 font-bold text-xs bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 tabular-nums flex-1 dark:text-slate-100" required />
                   <select 
                     value={formData.currency} 
                     disabled 
-                    className="w-24 h-10 px-2 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-[10px] font-bold outline-none cursor-not-allowed text-slate-500 dark:text-slate-400"
+                    className="w-24 h-10 px-2 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-[10px] font-bold outline-none cursor-not-allowed"
                   >
                     <option value="YER">YER</option>
-                    <option value="SAR">SAR</option>
-                    <option value="USD">USD</option>
                   </select>
                 </div>
               </div>
@@ -703,7 +716,7 @@ export default function ProductsManagementPage() {
                 <Label className={cn("text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start")}>
                   <Activity className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'حالة التوفر' : 'AVAILABILITY'}
                 </Label>
-                <select value={formData.status} onChange={(e) => setFormData({...formData, status: e.target.value})} className="w-full h-10 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-bold outline-none dark:text-slate-100">
+                <select value={formData.status} onChange={(e) => setFormData({...formData, status: e.target.value})} className="w-full h-10 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-bold outline-none">
                   {statuses.map(s => <option key={s.value} value={s.value}>{lang === 'ar' ? s.labelAr : s.labelEn}</option>)}
                 </select>
               </div>
@@ -711,10 +724,10 @@ export default function ProductsManagementPage() {
               <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
                 <div className="flex items-center justify-between">
                   <Label className={cn("text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start")}>
-                    <ArrowUpRight className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'رقم الترتيب في الموقع' : 'DISPLAY ORDER'}
+                    <ArrowUpRight className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'رقم الترتيب' : 'ORDER'}
                   </Label>
                   <button type="button" onClick={suggestNextOrder} className="text-[8px] font-black text-emerald-600 underline flex items-center gap-1 hover:text-emerald-700">
-                    <Sparkles className="w-2.5 h-2.5" /> {isRtl ? 'اقتراح متاح' : 'Suggest'}
+                    <Sparkles className="w-2.5 h-2.5" /> {isRtl ? 'اقتراح' : 'Suggest'}
                   </button>
                 </div>
                 <div className="relative">
@@ -728,14 +741,6 @@ export default function ProductsManagementPage() {
                     )} 
                     min="1"
                   />
-                  {orderConflict && (
-                    <div className="absolute top-1/2 -translate-y-1/2 left-3 flex items-center gap-1.5 animate-in fade-in slide-in-from-left-2">
-                       <Badge variant="outline" className="bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 text-[8px] font-black py-0 px-1">
-                         {isRtl ? `مستخدم: ${orderConflict}` : `Occupied by: ${orderConflict}`}
-                       </Badge>
-                       <AlertCircle className="w-3.5 h-3.5 text-amber-500" />
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
@@ -774,14 +779,14 @@ export default function ProductsManagementPage() {
             </div>
             <AlertDialogTitle className="text-white text-xl font-black">{lang === 'ar' ? 'أرشفة المنتج' : 'Archive Product'}</AlertDialogTitle>
             <AlertDialogDescription className="text-slate-400 font-bold mt-2 text-xs leading-relaxed text-center">
-              {lang === 'ar' ? 'سيتم إخفاء هذا المنتج من المتجر العام ونقله لسلة المهملات. يمكنك استعادته خلال 30 يوماً.' : 'Product will be hidden from public store and moved to trash.'}
+              {lang === 'ar' ? 'سيتم إخفاء هذا المنتج من المتجر العام ونقله لسلة المهملات. يمكنك استعادته خلال 30 يوماً.' : 'Product will be moved to trash.'}
             </AlertDialogDescription>
           </div>
           <div className="bg-white dark:bg-slate-900 p-6 flex gap-3">
             <AlertDialogAction onClick={handleArchiveProduct} disabled={isSubmitting} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-md font-black border-none shadow-lg transition-all active:scale-95">
               {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : (isRtl ? "تأكيد" : "Confirm")}
             </AlertDialogAction>
-            <AlertDialogCancel onClick={() => setDeletingProdId(null)} className="flex-1 h-11 bg-slate-50 dark:bg-slate-800 border-none text-slate-400 dark:text-slate-500 rounded-md font-black hover:bg-slate-100 transition-all">
+            <AlertDialogCancel onClick={() => setDeletingProdId(null)} className="flex-1 h-11 bg-slate-50 dark:bg-slate-800 border-none text-slate-400 dark:text-slate-500 rounded-md font-black hover:bg-slate-100">
               {lang === 'ar' ? 'تراجع' : 'Cancel'}
             </AlertDialogCancel>
           </div>
