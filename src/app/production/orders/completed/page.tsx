@@ -343,7 +343,7 @@ export default function CompletedOrdersPage() {
                            </TableCell>
                            <TableCell className="px-6 py-4 text-center">
                               <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 rounded-lg text-[10px] font-black border border-emerald-100 dark:border-emerald-900/30">
-                                 <Calendar className="w-3 h-3" />
+                                 <Calendar className="w-3 3" />
                                  <span className="tabular-nums">{completionDate || '---'}</span>
                               </div>
                            </TableCell>

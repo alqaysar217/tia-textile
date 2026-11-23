@@ -85,6 +85,8 @@ export default function ProductionOrdersPage() {
   const canEdit = isAdmin || permissions.orders?.edit;
   const canDelete = isAdmin || permissions.orders?.delete;
 
+  const isRtl = lang === 'ar';
+
   /**
    * دالة حارس الأمان لفك تجمد الواجهة يدوياً (بروتوكول المطهر الشامل)
    * تضمن تحرير المتصفح من كافة الأقفال فور إغلاق أي نافذة
@@ -300,7 +302,7 @@ export default function ProductionOrdersPage() {
               <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                 <span>{lang === 'ar' ? 'وحدة العمليات' : 'Operations'}</span>
                 <ChevronRight className={cn("w-3 h-3", dir === 'rtl' ? "rotate-180" : "")} />
-                <span className="text-emerald-600 dark:text-emerald-400">{lang === 'ar' ? 'أوامر الإنتاج النشطة' : 'Active Work Orders'}</span>
+                <span className="text-emerald-600 dark:text-emerald-400">{lang === 'ar' ? 'أوامر الإنتاج النشطة (WIP)' : 'Active Work Orders'}</span>
               </div>
               <h1 className="text-xl font-black text-slate-900 dark:text-slate-100 leading-tight">
                 {lang === 'ar' ? 'إدارة ومتابعة طلبات الإنتاج' : 'Work Order Management'}
