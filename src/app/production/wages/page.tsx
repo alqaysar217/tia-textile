@@ -86,7 +86,6 @@ import {
 } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toPng } from 'html-to-image';
 import { VoucherTemplate } from '@/components/production/VoucherTemplate';
@@ -97,7 +96,6 @@ export default function PayrollManagementPage() {
   const db = useFirestore();
   const isRtl = lang === 'ar';
 
-  // استيراد الصلاحيات من المحرك المركزي
   const { permissions, isAdmin } = useProduction();
   const canCreate = isAdmin || permissions.wages?.create;
   const canEdit = isAdmin || permissions.wages?.edit;
@@ -120,7 +118,6 @@ export default function PayrollManagementPage() {
   const [workerFilter, setWorkerFilter] = useState('all');
   const [currencyFilter, setCurrencyFilter] = useState('all');
 
-  // Fetch Global Settings for Currency Lock
   const settingsRef = useMemo(() => !db ? null : doc(db, 'settings', 'global'), [db]);
   const { data: savedSettings } = useDoc<any>(settingsRef);
   const systemCurrency = savedSettings?.baseCurrency || 'YER';
@@ -138,8 +135,19 @@ export default function PayrollManagementPage() {
   const deptsQuery = useMemo(() => !db ? null : collection(db, 'departments'), [db]);
   const productsQuery = useMemo(() => !db ? null : collection(db, 'products'), [db]);
   const ordersQuery = useMemo(() => !db ? null : collection(db, 'productionOrders'), [db]);
-  const receiptsQuery = useMemo(() => !db ? null : query(collection(db, 'vouchers'), where('type', '==', 'production_receipt')), [db]);
-  const paymentsQuery = useMemo(() => !db ? null : query(collection(db, 'vouchers'), where('type', '==', 'wage_payment')), [db]);
+  
+  // حماية: جلب السندات النشطة فقط من قاعدة البيانات
+  const receiptsQuery = useMemo(() => !db ? null : query(
+    collection(db, 'vouchers'), 
+    where('type', '==', 'production_receipt'),
+    where('status', '==', 'posted')
+  ), [db]);
+
+  const paymentsQuery = useMemo(() => !db ? null : query(
+    collection(db, 'vouchers'), 
+    where('type', '==', 'wage_payment'),
+    where('status', '==', 'posted')
+  ), [db]);
 
   const { data: allWorkers, loading: workersLoading } = useCollection<any>(workersQuery);
   const { data: allDepartments, loading: deptsLoading } = useCollection<any>(deptsQuery);
@@ -150,12 +158,11 @@ export default function PayrollManagementPage() {
 
   const loading = workersLoading || receiptsLoading || paymentsLoading;
 
-  // Auto-Select Logic: Detect when a worker is selected and grab all their dues
   useEffect(() => {
     if (isPayDialogOpen && formData.workerId && !editingVoucherId && allReceipts) {
       const myDues = allReceipts.filter(r => 
         r.workerId === formData.workerId && 
-        r.status !== 'deleted' && 
+        r.status === 'posted' && 
         r.paymentStatus !== 'paid' && 
         (r.currency || 'YER') === formData.currency
       );
@@ -179,7 +186,6 @@ export default function PayrollManagementPage() {
     }
   }, [formData.workerId, formData.currency, isPayDialogOpen, allReceipts, editingVoucherId]);
 
-  // Sync currency with system settings when opening dialog
   useEffect(() => {
     if (isPayDialogOpen && !editingVoucherId && systemCurrency) {
       setFormData(prev => ({ ...prev, currency: systemCurrency }));
@@ -190,7 +196,7 @@ export default function PayrollManagementPage() {
     if (!formData.workerId || !allReceipts) return [];
     return allReceipts.filter(r => 
       r.workerId === formData.workerId && 
-      r.status !== 'deleted' &&
+      r.status === 'posted' &&
       r.paymentStatus !== 'paid' && 
       (r.currency || 'YER') === formData.currency
     );
@@ -199,7 +205,8 @@ export default function PayrollManagementPage() {
   const flattenedBalances = useMemo(() => {
     if (!allWorkers || !allReceipts) return [];
     
-    const activeReceipts = (allReceipts || []).filter(r => r.status !== 'deleted' && r.paymentStatus !== 'paid');
+    // فلترة صارمة: فقط السندات المعتمدة والغير مدفوعة
+    const activeReceipts = (allReceipts || []).filter(r => r.status === 'posted' && r.paymentStatus !== 'paid');
     const list: any[] = [];
 
     allWorkers.filter(w => w.status !== 'deleted').forEach(worker => {
@@ -256,7 +263,6 @@ export default function PayrollManagementPage() {
       linkedReceipts: [] 
     });
 
-    // SAFETY GUARD: Clean up pointer events and scroll locks left by Radix UI
     requestAnimationFrame(() => {
       document.body.style.pointerEvents = 'auto';
       document.body.style.removeProperty('overflow');
@@ -285,7 +291,6 @@ export default function PayrollManagementPage() {
        return;
     }
 
-    // منع الحفظ بدون صلاحية
     if (editingVoucherId && !canEdit) {
       toast({ variant: "destructive", title: isRtl ? "غير مسموح بالتعديل" : "Access Denied" });
       return;
@@ -296,8 +301,6 @@ export default function PayrollManagementPage() {
     }
 
     setIsSubmitting(true);
-    
-    // CLOSE EARLY: Prevent UI freeze
     setIsPayDialogOpen(false);
 
     const batch = writeBatch(db);
@@ -346,7 +349,7 @@ export default function PayrollManagementPage() {
     } catch (error) {
       console.error(error);
       toast({ variant: "destructive", title: "Accounting Lock Error" });
-      setIsPayDialogOpen(true); // Re-open on error
+      setIsPayDialogOpen(true);
     } finally {
       setIsSubmitting(false);
       requestAnimationFrame(() => {
@@ -360,8 +363,6 @@ export default function PayrollManagementPage() {
   const handleDeletePayment = async () => {
     if (!db || !deletingVoucher || isSubmitting || !canDelete) return;
     setIsSubmitting(true);
-    
-    // CLOSE EARLY
     const targetVoucher = deletingVoucher;
     setDeletingVoucher(null);
 
@@ -392,7 +393,7 @@ export default function PayrollManagementPage() {
 
   const filteredPayments = useMemo(() => {
     if (!allPayments) return [];
-    let result = allPayments.filter(p => p.status !== 'deleted');
+    let result = allPayments.filter(p => p.status === 'posted');
     
     if (search) {
       const s = search.toLowerCase();

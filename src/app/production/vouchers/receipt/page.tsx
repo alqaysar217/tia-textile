@@ -119,25 +119,11 @@ export default function ProductionReceiptPage() {
     });
   }, [vouchers, allOrders, allWorkers, search, batchFilter, sortBy, sortOrder]);
 
-  const availableOrderProducts = useMemo(() => {
-    if (!formData.orderId || !allProducts) return [];
-    const order = allOrders?.find(o => o.id === formData.orderId);
-    const product = allProducts?.find(p => p.id === order?.productId);
-    if (!product) return [];
-
-    const totalReceived = vouchers?.filter(r => r.orderId === formData.orderId && r.status !== 'deleted').reduce((sum, r) => sum + (r.qtyAccepted || 0), 0) || 0;
-    
-    // ملاحظة: هذا المنطق يعتمد على بنية النظام في صرف المنتجات المرحلة. 
-    // للحفاظ على الاستقرار، سنكتفي بعرض المنتج المستهدف للطلب.
-    return [{ id: product.id, nameAr: product.nameAr, image: product.image, sku: product.sku, availableQty: 9999, unit: 'Pcs' }];
-  }, [formData.orderId, vouchers, allOrders, allProducts]);
-
   const resetDialog = useCallback(() => {
     setIsAddDialogOpen(false);
     setEditingVoucherId(null);
     setFormData({ date: new Date().toISOString().split('T')[0], orderId: '', workerId: '', linkedMIVs: [], isFinalSettlement: true, notes: '', qtyAccepted: 0, wageRate: 0, currency: systemCurrency, returnedItems: [] });
     
-    // حارس الأمان لتنظيف قفل الشاشة والماوس
     requestAnimationFrame(() => {
       document.body.style.pointerEvents = 'auto';
       document.body.style.removeProperty('overflow');
@@ -172,12 +158,11 @@ export default function ProductionReceiptPage() {
       totalQty: Number(formData.qtyAccepted),
       type: 'production_receipt',
       status: 'posted',
-      paymentStatus: 'pending', 
-      paidAmount: 0,
+      paymentStatus: editingId ? (vouchers?.find(v => v.id === editingId)?.paymentStatus || 'pending') : 'pending', 
+      paidAmount: editingId ? (vouchers?.find(v => v.id === editingId)?.paidAmount || 0) : 0,
       updatedAt: serverTimestamp()
     };
 
-    // إغلاق المودال مبكراً جداً لمنع التجمد
     setIsAddDialogOpen(false);
 
     try {
@@ -207,7 +192,7 @@ export default function ProductionReceiptPage() {
     } catch (err) { 
       console.error(err);
       toast({ variant: "destructive", title: "Internal Error" });
-      setIsAddDialogOpen(true); // إعادة الفتح في حال الخطأ
+      setIsAddDialogOpen(true);
     } finally { 
       setIsSubmitting(false); 
       requestAnimationFrame(() => {
@@ -227,7 +212,7 @@ export default function ProductionReceiptPage() {
 
     setIsSubmitting(true);
     const targetVoucher = transferringVoucher;
-    setTransferringVoucher(null); // إغلاق مبكر
+    setTransferringVoucher(null);
 
     const batch = writeBatch(db);
     try {
@@ -277,9 +262,21 @@ export default function ProductionReceiptPage() {
 
   const handleDeleteRequest = async () => {
     if (!db || !deletingVoucher || !canDelete || isSubmitting) return;
+    
+    // حماية محاسبية: منع حذف سند مستلم إذا تم صرف أجره
+    if (deletingVoucher.paymentStatus === 'paid') {
+      toast({ 
+        variant: "destructive", 
+        title: isRtl ? "لا يمكن الحذف" : "Cannot Delete",
+        description: isRtl ? "هذا السند تم صرف أجره مسبقاً، يجب إلغاء سند الصرف أولاً." : "This receipt is already paid."
+      });
+      setDeletingVoucher(null);
+      return;
+    }
+
     setIsSubmitting(true);
     const targetVoucher = deletingVoucher;
-    setDeletingVoucher(null); // إغلاق مبكر
+    setDeletingVoucher(null);
 
     const batch = writeBatch(db);
     try {
