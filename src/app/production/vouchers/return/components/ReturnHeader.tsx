@@ -56,24 +56,31 @@ export function ReturnHeader({
           </div>
         </div>
         
-        <div className="flex flex-col md:flex-row items-center gap-2 bg-slate-50 dark:bg-slate-800/50 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 w-full lg:w-auto">
-           <div className="flex bg-white dark:bg-slate-900 p-1 rounded-lg border border-slate-200 dark:border-slate-700 w-full md:w-auto">
+        <div className="flex flex-col md:flex-row items-center gap-3 bg-slate-50 dark:bg-slate-800/50 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 w-full lg:w-auto">
+           {/* التبويبات المحسنة والمتجاوبة */}
+           <div className="flex bg-white dark:bg-slate-900 p-1 rounded-lg border border-slate-200 dark:border-slate-700 w-full md:w-auto min-w-[240px] shadow-inner shrink-0">
               <button 
                 onClick={() => setActiveTab('pending')} 
                 className={cn(
-                  "flex-1 md:flex-none px-3 py-1.5 rounded-md text-[10px] font-black uppercase transition-all", 
-                  activeTab === 'pending' ? "bg-amber-600 text-white shadow-sm" : "text-slate-400 dark:text-slate-600 hover:text-slate-600 dark:hover:text-slate-400"
+                  "flex-1 px-4 py-2 rounded-md text-[10px] font-black uppercase transition-all flex items-center justify-center gap-2", 
+                  activeTab === 'pending' 
+                    ? "bg-amber-600 text-white shadow-md scale-[1.02]" 
+                    : "text-slate-400 dark:text-slate-600 hover:text-slate-600 dark:hover:text-slate-300"
                 )}
               >
+                <div className={cn("w-1.5 h-1.5 rounded-full", activeTab === 'pending' ? "bg-white animate-pulse" : "bg-amber-500")} />
                 {isRtl ? 'بانتظار التوثيق' : 'PENDING'}
               </button>
               <button 
                 onClick={() => setActiveTab('verified')} 
                 className={cn(
-                  "flex-1 md:flex-none px-3 py-1.5 rounded-md text-[10px] font-black uppercase transition-all", 
-                  activeTab === 'verified' ? "bg-emerald-600 text-white shadow-sm" : "text-slate-400 dark:text-slate-600 hover:text-slate-600 dark:hover:text-slate-400"
+                  "flex-1 px-4 py-2 rounded-md text-[10px] font-black uppercase transition-all flex items-center justify-center gap-2", 
+                  activeTab === 'verified' 
+                    ? "bg-emerald-600 text-white shadow-md scale-[1.02]" 
+                    : "text-slate-400 dark:text-slate-600 hover:text-slate-600 dark:hover:text-slate-300"
                 )}
               >
+                <div className={cn("w-1.5 h-1.5 rounded-full", activeTab === 'verified' ? "bg-white animate-pulse" : "bg-emerald-500")} />
                 {isRtl ? 'الأرشيف الموثق' : 'VERIFIED'}
               </button>
            </div>
@@ -85,14 +92,14 @@ export function ReturnHeader({
                     value={search} 
                     onChange={(e) => setSearch(e.target.value)} 
                     placeholder={isRtl ? 'بحث...' : 'Search...'} 
-                    className={cn("h-9 w-full text-[10px] font-bold bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 dark:text-slate-100", dir === 'rtl' ? "pr-8" : "pl-8")} 
+                    className={cn("h-10 w-full text-xs font-bold bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 dark:text-slate-100", dir === 'rtl' ? "pr-9" : "pl-9")} 
                   />
               </div>
 
               <div className="flex items-center gap-1 shrink-0">
                   <Popover>
                       <PopoverTrigger asChild>
-                          <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all", (dateFrom || dateTo) && "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20")}>
+                          <Button variant="ghost" size="icon" className={cn("h-10 w-10 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all", (dateFrom || dateTo) && "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20")}>
                               <CalendarDays className={cn("w-4 h-4", (dateFrom || dateTo) ? "text-emerald-600" : "text-slate-400 dark:text-slate-600")} />
                           </Button>
                       </PopoverTrigger>
@@ -115,7 +122,7 @@ export function ReturnHeader({
 
                   <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all", (workerFilter !== 'all' || orderFilter !== 'all') && "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20")}>
+                          <Button variant="ghost" size="icon" className={cn("h-10 w-10 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all", (workerFilter !== 'all' || orderFilter !== 'all') && "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20")}>
                               <Filter className={cn("w-4 h-4", (workerFilter !== 'all' || orderFilter !== 'all') ? "text-emerald-600" : "text-slate-400 dark:text-slate-600")} />
                           </Button>
                       </DropdownMenuTrigger>
@@ -136,7 +143,7 @@ export function ReturnHeader({
                       </DropdownMenuContent>
                   </DropdownMenu>
 
-                  <Button onClick={onExport} variant="ghost" size="icon" className="h-9 w-9 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
+                  <Button onClick={onExport} variant="ghost" size="icon" className="h-10 w-10 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
                       <FileDown className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                   </Button>
               </div>
