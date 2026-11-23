@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { 
   Plus, 
   Search, 
@@ -88,17 +88,19 @@ export default function DepartmentsPage() {
   
   /**
    * دالة حارس الأمان لفك تجمد الواجهة يدوياً (بروتوكول المطهر الشامل)
-   * تضمن تنظيف المتصفح من أقفال الماوس والتمرير بعد إغلاق أي نافذة
+   * تضمن تحرير المتصفح من كافة الأقفال فور إغلاق أي نافذة
    */
   const forceUIUnlock = useCallback(() => {
     setTimeout(() => {
       document.body.style.pointerEvents = 'auto';
       document.body.style.overflow = 'auto';
       document.body.removeAttribute('data-scroll-locked');
+      
       const html = document.documentElement;
       html.style.pointerEvents = 'auto';
       html.style.overflow = 'auto';
-    }, 150);
+      html.removeAttribute('data-scroll-locked');
+    }, 200);
   }, []);
 
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
@@ -118,6 +120,16 @@ export default function DepartmentsPage() {
     descAr: '',
     status: 'active'
   });
+
+  /**
+   * نظام المراقبة الذكي - يراقب حالة إغلاق النوافذ (بما فيها الضغط بالخارج)
+   * ويقوم باستدعاء المطهر البرمجي فوراً
+   */
+  useEffect(() => {
+    if (!isAddDialogOpen && !deletingDeptId) {
+      forceUIUnlock();
+    }
+  }, [isAddDialogOpen, deletingDeptId, forceUIUnlock]);
 
   const departmentsQuery = useMemo(() => {
     if (!db) return null;
@@ -205,6 +217,8 @@ export default function DepartmentsPage() {
 
     setIsSubmitting(true);
     const targetEditingId = editingDeptId;
+    
+    // إغلاق المودال فوراً وتحرير الواجهة قبل بدء الاتصال بالخادم
     setIsAddDialogOpen(false); 
     forceUIUnlock();
 
@@ -228,7 +242,6 @@ export default function DepartmentsPage() {
       resetForm();
     } catch (err: any) {
       toast({ variant: "destructive", title: isRtl ? "فشلت العملية" : "Failed", description: err.message });
-      setIsAddDialogOpen(true); 
     } finally {
       setIsSubmitting(false);
       forceUIUnlock();
@@ -253,6 +266,8 @@ export default function DepartmentsPage() {
     if (!db || !deletingDeptId || !canDelete || isSubmitting) return;
     setIsSubmitting(true);
     const targetId = deletingDeptId;
+    
+    // إغلاق المودال فوراً
     setDeletingDeptId(null); 
     forceUIUnlock();
 
@@ -357,7 +372,7 @@ export default function DepartmentsPage() {
             </div>
             
             {canCreate && (
-              <Button onClick={() => setIsAddDialogOpen(true)} className="h-10 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 transition-all border-none">
+              <Button onClick={() => { resetForm(); setIsAddDialogOpen(true); }} className="h-10 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 transition-all border-none">
                 <Plus className="w-4 h-4" />
                 {isRtl ? 'إضافة قسم' : 'New Dept'}
               </Button>
