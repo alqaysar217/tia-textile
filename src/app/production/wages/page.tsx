@@ -39,7 +39,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useTranslation } from '@/components/LanguageProvider';
-import { useFirestore, useCollection, useDoc, useUser } from '@/firebase';
+import { useFirestore, useCollection, useDoc } from '@/firebase';
 import { collection, addDoc, updateDoc, doc, serverTimestamp, query, where, getDoc, writeBatch } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -88,6 +88,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toPng } from 'html-to-image';
 import { VoucherTemplate } from '@/components/production/VoucherTemplate';
 import { useProduction } from '../ProductionContext';
@@ -118,7 +119,6 @@ export default function PayrollManagementPage() {
   const [dateTo, setDateTo] = useState('');
   const [workerFilter, setWorkerFilter] = useState('all');
 
-  // حارس الأمان الشامل لفك قفل الواجهة يدوياً
   const forceUIUnlock = useCallback(() => {
     setTimeout(() => {
       document.body.style.pointerEvents = 'auto';
@@ -140,11 +140,10 @@ export default function PayrollManagementPage() {
     linkedReceipts: [] as string[]
   });
 
-  // Fetch Data Queries
   const workersQuery = useMemo(() => !db ? null : collection(db, 'workers'), [db]);
   const deptsQuery = useMemo(() => !db ? null : collection(db, 'departments'), [db]);
-  const productsQuery = useMemo(() => !db ? null : collection(db, 'products'), [db]);
   const ordersQuery = useMemo(() => !db ? null : collection(db, 'productionOrders'), [db]);
+  const productsQuery = useMemo(() => !db ? null : collection(db, 'products'), [db]);
   
   const receiptsQuery = useMemo(() => !db ? null : query(
     collection(db, 'vouchers'), 
@@ -160,18 +159,16 @@ export default function PayrollManagementPage() {
 
   const { data: allWorkers, loading: workersLoading } = useCollection<any>(workersQuery);
   const { data: allDepartments } = useCollection<any>(deptsQuery);
-  const { data: allProducts } = useCollection<any>(productsQuery);
   const { data: allOrders } = useCollection<any>(ordersQuery);
+  const { data: allProducts } = useCollection<any>(productsQuery);
   const { data: allReceipts, loading: receiptsLoading } = useCollection<any>(receiptsQuery);
   const { data: allPayments, loading: paymentsLoading } = useCollection<any>(paymentsQuery);
 
   const loading = workersLoading || receiptsLoading || paymentsLoading;
 
-  // الحماية من حلقة التكرار اللانهائية - مزامنة البيانات فقط عند الحاجة
   useEffect(() => {
     if (!isPayDialogOpen || editingVoucherId || !allReceipts || !formData.workerId) return;
 
-    // المزامنة فقط إذا تغير العامل أو لم يتم اختيار مستحقات بعد
     const myDues = allReceipts.filter(r => 
       r.workerId === formData.workerId && 
       r.status === 'posted' && 
@@ -182,13 +179,14 @@ export default function PayrollManagementPage() {
     const ids = myDues.map(r => r.id);
     const total = myDues.reduce((sum, r) => sum + (Number(r.wageAmount) || 0), 0);
     
-    // فحص صارم قبل التحديث
-    if (formData.linkedReceipts.length !== ids.length || formData.amount !== total) {
+    const currentIds = formData.linkedReceipts;
+    const isSame = ids.length === currentIds.length && ids.every(id => currentIds.includes(id));
+
+    if (!isSame || formData.amount !== total) {
       setFormData(prev => ({ ...prev, linkedReceipts: ids, amount: total }));
     }
-  }, [formData.workerId, formData.currency, isPayDialogOpen, editingVoucherId, allReceipts]);
+  }, [formData.workerId, formData.currency, isPayDialogOpen, editingVoucherId, allReceipts, formData.linkedReceipts, formData.amount]);
 
-  // حساب الأرصدة المستحقة (تجاهل السندات المحذوفة)
   const flattenedBalances = useMemo(() => {
     if (!allWorkers || !allReceipts) return [];
     const activeReceipts = (allReceipts || []).filter(r => r.status === 'posted' && r.paymentStatus !== 'paid');
@@ -210,7 +208,6 @@ export default function PayrollManagementPage() {
     return list;
   }, [allWorkers, allReceipts]);
 
-  // تصفية الأرشيف (السندات المصروفة فعلاً)
   const filteredPayments = useMemo(() => {
     if (!allPayments) return [];
     let result = allPayments.filter(p => p.status === 'posted');
@@ -329,6 +326,20 @@ export default function PayrollManagementPage() {
     }
   };
 
+  const handleEditVoucher = (p: any) => {
+    if (!canEdit) return;
+    setEditingVoucherId(p.id);
+    setFormData({
+      date: p.date,
+      workerId: p.workerId,
+      amount: p.totalAmount,
+      currency: p.currency,
+      notes: p.notes || '',
+      linkedReceipts: p.linkedReceipts || []
+    });
+    setIsPayDialogOpen(true);
+  };
+
   const handleDeletePayment = async () => {
     if (!db || !deletingVoucher || isSubmitting) return;
     setIsSubmitting(true);
@@ -363,15 +374,8 @@ export default function PayrollManagementPage() {
     } finally { setIsDownloading(false); }
   };
 
-  const toggleSort = (field: typeof sortBy) => {
-    if (sortBy === field) setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-    else { setSortBy(field); setSortOrder('asc'); }
-  };
-
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} dir={dir} className="flex flex-col h-full bg-[#f8fafc] dark:bg-slate-950 overflow-hidden transition-colors duration-300">
-      
-      {/* IMPROVED RESPONSIVE HEADER WITH INTEGRATED TABS */}
       <div className="flex-none bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 z-30 px-6 py-4 shadow-sm">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div className="flex items-center gap-4">
@@ -392,10 +396,7 @@ export default function PayrollManagementPage() {
           )}
         </div>
 
-        {/* UNIFIED TOOLBAR: TABS + SEARCH + FILTERS */}
         <div className="mt-4 flex flex-col md:flex-row items-center gap-3 bg-slate-50 dark:bg-slate-800/50 p-2 rounded-xl border border-slate-200 dark:border-slate-700">
-          
-          {/* THE NEW TABS POSITION */}
           <TabsList className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-1 h-10 w-full md:w-auto shrink-0 shadow-sm">
             <TabsTrigger value="balances" className="font-black text-[10px] uppercase px-4 h-8 data-[state=active]:bg-emerald-600 data-[state=active]:text-white">
                <Users2 className="w-3 h-3 me-2" /> {isRtl ? 'الأرصدة' : 'BALANCES'}
@@ -514,7 +515,7 @@ export default function PayrollManagementPage() {
                   </TableHeader>
                   <TableBody>
                     {filteredPayments.map(p => (
-                      <TableRow key={p.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 transition-colors">
+                      <TableRow key={p.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 transition-colors group">
                         <TableCell className={cn("px-6 py-3 font-black text-slate-900 dark:text-slate-100 text-xs tabular-nums", isRtl ? "text-right" : "text-left")}>{p.voucherNumber}</TableCell>
                         <TableCell className={cn("px-6 py-3 font-bold text-slate-500 dark:text-slate-500 text-xs tabular-nums", isRtl ? "text-right" : "text-left")}>{p.date}</TableCell>
                         <TableCell className={cn("px-6 py-3 font-bold text-slate-700 dark:text-slate-300 text-xs", isRtl ? "text-right" : "text-left")}>{allWorkers?.find(w => w.id === p.workerId)?.fullName || '---'}</TableCell>
@@ -554,7 +555,6 @@ export default function PayrollManagementPage() {
         </div>
       </div>
 
-      {/* DIALOGS WITH UNLOCK PROTECTION */}
       <Dialog open={isPayDialogOpen} onOpenChange={(open) => { if(!open) resetDialog(); forceUIUnlock(); }}>
         <DialogContent className="sm:max-w-[800px] rounded-lg p-0 overflow-hidden border-none shadow-2xl dark:bg-slate-900">
           <div className="premium-gradient p-6 text-white text-right">
@@ -574,7 +574,7 @@ export default function PayrollManagementPage() {
               </div>
               <div className="space-y-1.5 text-right">
                 <Label className="text-[10px] font-black uppercase text-slate-400 block">DATE</Label>
-                <Input type="date" value={formData.date} onChange={(e) => setFormData(prev => ({...prev, date: e.target.value}))} className="h-11 font-bold bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 tabular-nums" required />
+                <Input type="date" value={formData.date} onChange={(e) => setFormData(prev => ({...prev, date: e.target.value}))} className="h-11 font-bold bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 tabular-nums" required />
               </div>
             </div>
             
@@ -648,7 +648,6 @@ export default function PayrollManagementPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* VOUCHER PRINT VIEW */}
       <Dialog open={!!printingVoucher} onOpenChange={(open) => { if (!open) setPrintingVoucher(null); forceUIUnlock(); }}>
         <DialogContent className="sm:max-w-[850px] p-0 overflow-hidden border-none bg-white shadow-2xl">
           <DialogHeader className="sr-only"><DialogTitle>سند صرف مالي</DialogTitle></DialogHeader>
