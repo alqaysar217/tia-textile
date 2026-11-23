@@ -68,7 +68,6 @@ export default function UsersPermissionsPage() {
   const db = useFirestore();
   const isRtl = lang === 'ar';
 
-  // استيراد الصلاحيات من المحرك المركزي
   const { permissions, isAdmin } = useProduction();
   const canCreate = isAdmin || permissions.users?.create;
   const canEdit = isAdmin || permissions.users?.edit;
@@ -76,13 +75,14 @@ export default function UsersPermissionsPage() {
 
   /**
    * دالة حارس الأمان لفك تجمد الواجهة يدوياً
+   * تضمن تنظيف المتصفح من أقفال الماوس بعد إغلاق أي نافذة
    */
   const forceUIUnlock = useCallback(() => {
-    requestAnimationFrame(() => {
+    setTimeout(() => {
       document.body.style.pointerEvents = 'auto';
       document.body.style.overflow = 'auto';
       document.body.removeAttribute('data-scroll-locked');
-    });
+    }, 150);
   }, []);
 
   const [search, setSearch] = useState('');
@@ -119,7 +119,7 @@ export default function UsersPermissionsPage() {
   const filteredUsers = useMemo(() => {
     if (!users) return [];
     
-    // إخفاء حساب المطور الجذري دائماً للحماية
+    // حماية حساب المطور
     let list = users.filter(u => 
       u.status !== 'deleted' && 
       u.email !== 'alqaysarpc219@gmail.com'
@@ -135,11 +135,23 @@ export default function UsersPermissionsPage() {
     return list.sort((a, b) => (a.fullName || '').localeCompare(b.fullName || ''));
   }, [users, search, roleFilter, statusFilter]);
 
+  const resetDialog = useCallback(() => {
+    setIsAddDialogOpen(false);
+    setEditingUserId(null);
+    setFormData({
+      fullName: '',
+      email: '',
+      password: '',
+      photoUrl: '',
+      role: 'staff',
+      active: true,
+      permissions: initPermissions()
+    });
+    forceUIUnlock();
+  }, [forceUIUnlock]);
+
   const handleEditClick = (user: any) => {
-    if (!canEdit) {
-      toast({ variant: "destructive", title: isRtl ? "غير مسموح بتعديل الصلاحيات" : "Access Denied" });
-      return;
-    }
+    if (!canEdit) return;
     setEditingUserId(user.id);
     setFormData({
       fullName: user.fullName || '',
@@ -157,17 +169,8 @@ export default function UsersPermissionsPage() {
     e.preventDefault();
     if (!db || isSubmitting || isCompressing) return;
 
-    if (editingUserId && !canEdit) {
-      toast({ variant: "destructive", title: isRtl ? "غير مسموح بالتعديل" : "Permission Denied" });
-      return;
-    }
-    if (!editingUserId && !canCreate) {
-      toast({ variant: "destructive", title: isRtl ? "غير مسموح بإنشاء مستخدمين" : "Permission Denied" });
-      return;
-    }
-
     setIsSubmitting(true);
-    setIsAddDialogOpen(false); // إغلاق مبكر
+    setIsAddDialogOpen(false); // إغلاق مبكر لمنع التجمد
 
     let tempApp = null;
     try {
@@ -183,14 +186,11 @@ export default function UsersPermissionsPage() {
           if (authErr.code === 'auth/email-already-in-use') {
             toast({ variant: "destructive", title: isRtl ? "البريد مستخدم بالفعل" : "Email exists" });
             setIsSubmitting(false); 
-            setIsAddDialogOpen(true);
             return;
           }
           throw authErr;
         }
       }
-
-      if (!uid) throw new Error("UID missing");
 
       const userData = {
         fullName: formData.fullName.trim(),
@@ -203,17 +203,15 @@ export default function UsersPermissionsPage() {
         updatedAt: serverTimestamp()
       };
 
-      await setDoc(doc(db, 'users', uid), {
+      await setDoc(doc(db, 'users', uid!), {
         ...userData,
         createdAt: editingUserId ? (users?.find(u => u.id === uid)?.createdAt || serverTimestamp()) : serverTimestamp()
       }, { merge: true });
 
-      toast({ title: isRtl ? "تم تفعيل الحساب والصلاحيات بنجاح" : "User Provisioned Successfully" });
-      setEditingUserId(null);
+      toast({ title: isRtl ? "تم الحفظ بنجاح" : "User Saved" });
     } catch (err) {
       console.error(err);
       toast({ variant: "destructive", title: "Error" });
-      setIsAddDialogOpen(true);
     } finally {
       if (tempApp) await deleteApp(tempApp);
       setIsSubmitting(false);
@@ -222,26 +220,15 @@ export default function UsersPermissionsPage() {
   };
 
   const handleExportCSV = () => {
-    if (!isAdmin && !permissions.users?.read) {
-       toast({ variant: "destructive", title: isRtl ? "غير مسموح بالتصدير" : "Export Denied" });
-       return;
-    }
-    const headers = ['Full Name', 'Email', 'Role', 'Status'];
+    const headers = ['Name', 'Email', 'Role', 'Status'];
     const rows = filteredUsers.map(u => [u.fullName, u.email, u.role, u.active ? 'Active' : 'Inactive']);
     const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
     const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.href = url; link.setAttribute('download', `UsersList_${Date.now()}.csv`);
-    document.body.appendChild(link); link.click();
-    document.body.removeChild(link);
+    link.href = url; link.setAttribute('download', `Users_${Date.now()}.csv`);
+    link.click();
   };
-
-  const resetDialog = useCallback(() => {
-    setIsAddDialogOpen(false);
-    setEditingUserId(null);
-    forceUIUnlock();
-  }, [forceUIUnlock]);
 
   return (
     <div className="flex flex-col h-full bg-[#f8fafc] dark:bg-slate-950 overflow-hidden transition-colors duration-300" dir={dir}>
@@ -257,10 +244,10 @@ export default function UsersPermissionsPage() {
               <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                 <span>{isRtl ? 'الإدارة' : 'MANAGEMENT'}</span>
                 <ChevronRight className={cn("w-3 h-3", isRtl ? "rotate-180" : "")} />
-                <span className="text-emerald-600 dark:text-emerald-400">{isRtl ? 'المستخدمين والصلاحيات' : 'ACCESS CONTROL'}</span>
+                <span className="text-emerald-600 dark:text-emerald-400">{isRtl ? 'المستخدمين' : 'USERS'}</span>
               </div>
               <h1 className="text-xl font-black text-slate-900 dark:text-slate-100 leading-tight">
-                {isRtl ? 'إدارة الأدوار وصلاحيات الوصول' : 'Identity & Access Management'}
+                {isRtl ? 'إدارة الأدوار والصلاحيات' : 'Identity & Access Control'}
               </h1>
             </div>
           </div>
@@ -271,45 +258,19 @@ export default function UsersPermissionsPage() {
               <Input 
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder={isRtl ? 'بحث باسم المستخدم أو البريد...' : 'Search users...'}
-                className={cn(dir === 'rtl' ? 'pr-10' : 'pl-10', "h-9 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold dark:text-slate-100")}
+                placeholder={isRtl ? 'بحث...' : 'Search...'}
+                className={cn(isRtl ? 'pr-9' : 'pl-9', "h-9 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold dark:text-slate-100")}
               />
             </div>
 
-            <div className="flex items-center gap-1.5 px-1.5 border-x border-slate-200 dark:border-slate-700">
-               <Button onClick={handleExportCSV} variant="ghost" className="h-9 px-3 rounded-lg text-xs font-bold gap-2 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 transition-colors">
-                  <FileDown className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                  {isRtl ? 'تصدير' : 'Export'}
-               </Button>
-               <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="h-9 px-3 rounded-lg text-xs font-bold gap-2 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 transition-colors">
-                      <Filter className="w-4 h-4 text-slate-400" />
-                      {isRtl ? 'تصفية' : 'Filter'}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align={isRtl ? 'start' : 'end'} className="w-56 rounded-xl shadow-xl dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-                     <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest">{isRtl ? 'حسب الدور الوظيفي' : 'BY ROLE'}</DropdownMenuLabel>
-                     <DropdownMenuItem onClick={() => setRoleFilter('all')} className="flex justify-between text-xs font-bold dark:text-slate-200">الكل{roleFilter === 'all' && <Check className="w-3 h-3 text-emerald-600" />}</DropdownMenuItem>
-                     <DropdownMenuItem onClick={() => setRoleFilter('admin')} className="flex justify-between text-xs font-bold dark:text-slate-200">Admin{roleFilter === 'admin' && <Check className="w-3 h-3 text-emerald-600" />}</DropdownMenuItem>
-                     <DropdownMenuItem onClick={() => setRoleFilter('manager')} className="flex justify-between text-xs font-bold dark:text-slate-200">Manager{roleFilter === 'manager' && <Check className="w-3 h-3 text-emerald-600" />}</DropdownMenuItem>
-                     <DropdownMenuItem onClick={() => setRoleFilter('staff')} className="flex justify-between text-xs font-bold dark:text-slate-200">Staff{roleFilter === 'staff' && <Check className="w-3 h-3 text-emerald-600" />}</DropdownMenuItem>
-                     <DropdownMenuSeparator className="dark:bg-slate-800" />
-                     <DropdownMenuItem onClick={() => setStatusFilter(statusFilter === 'active' ? 'all' : 'active')} className="flex justify-between text-xs font-bold dark:text-slate-200">{isRtl ? 'نشط فقط' : 'Active Only'}{statusFilter === 'active' && <Check className="w-3 h-3 text-emerald-600" />}</DropdownMenuItem>
-                  </DropdownMenuContent>
-               </DropdownMenu>
-            </div>
-
-            <div className="h-9 w-px bg-slate-200 dark:bg-slate-700 mx-1 hidden sm:block" />
-            <div className="bg-slate-900 dark:bg-slate-950 text-white px-3 py-1 rounded-lg flex flex-col items-center justify-center min-w-[80px] hidden sm:flex">
-              <span className="text-[7px] font-black uppercase opacity-50 leading-none">{isRtl ? 'المجموع' : 'TOTAL'}</span>
-              <span className="text-xs font-black tabular-nums leading-none mt-0.5">{filteredUsers.length}</span>
-            </div>
+            <Button onClick={handleExportCSV} variant="ghost" className="h-9 px-3 rounded-lg text-xs font-bold gap-2 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 transition-colors">
+              <FileDown className="w-4 h-4 text-emerald-600" />
+            </Button>
 
             {canCreate && (
               <Button onClick={() => { setFormData({...formData, permissions: initPermissions()}); setIsAddDialogOpen(true); }} className="h-9 px-6 premium-gradient hover:opacity-90 text-white rounded-lg shadow-md font-black gap-2 transition-all border-none text-[11px]">
                 <UserPlus className="w-4 h-4" />
-                {isRtl ? 'حساب جديد' : 'Provision User'}
+                {isRtl ? 'مستخدم جديد' : 'New User'}
               </Button>
             )}
           </div>
@@ -332,23 +293,23 @@ export default function UsersPermissionsPage() {
                  </TableHeader>
                  <TableBody>
                     {usersLoading ? (
-                      <TableRow><TableCell colSpan={5} className="text-center py-20 font-bold text-slate-400 animate-pulse">Loading Workforce Data...</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={5} className="text-center py-20 font-bold text-slate-400 animate-pulse">Loading...</TableCell></TableRow>
                     ) : filteredUsers.length === 0 ? (
-                      <TableRow><TableCell colSpan={5} className="text-center py-20 text-slate-300 font-bold">No matching personnel found</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={5} className="text-center py-20 text-slate-300 font-bold">No results</TableCell></TableRow>
                     ) : filteredUsers.map((user) => (
                       <TableRow key={user.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 transition-colors group">
                          <TableCell className="px-6 py-4">
                             <div className="flex items-center gap-3">
-                               <Avatar className="h-10 w-10 rounded-lg border-2 border-white dark:border-slate-800 shadow-sm overflow-hidden">
+                               <Avatar className="h-10 w-10 rounded-lg border shadow-sm overflow-hidden">
                                   <AvatarImage src={user.photoUrl} className="object-cover" />
-                                  <AvatarFallback className="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 font-black text-[10px]">{user.fullName?.charAt(0)}</AvatarFallback>
+                                  <AvatarFallback className="bg-emerald-50 text-emerald-600 font-black text-[10px]">{user.fullName?.charAt(0)}</AvatarFallback>
                                </Avatar>
                                <span className="font-black text-slate-900 dark:text-slate-100 text-xs">{user.fullName}</span>
                             </div>
                          </TableCell>
                          <TableCell className="px-6 py-4 text-xs font-bold text-slate-500 tabular-nums">{user.email}</TableCell>
                          <TableCell className="px-6 py-4 text-center">
-                            <Badge variant="outline" className={cn("text-[9px] font-black uppercase", user.role === 'admin' ? "bg-emerald-50 text-emerald-700 border-emerald-200" : user.role === 'manager' ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-slate-50 text-slate-600 border-slate-200")}>{user.role}</Badge>
+                            <Badge variant="outline" className={cn("text-[9px] font-black uppercase", user.role === 'admin' ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-slate-50 text-slate-600 border-slate-200")}>{user.role}</Badge>
                          </TableCell>
                          <TableCell className="px-6 py-4 text-center">
                             <div className={cn("inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[9px] font-black uppercase border", user.active ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-rose-50 text-rose-700 border-rose-100")}>
@@ -363,11 +324,11 @@ export default function UsersPermissionsPage() {
                                </DropdownMenuTrigger>
                                <DropdownMenuContent align={isRtl ? 'start' : 'end'} className="w-56 rounded-xl shadow-xl dark:bg-slate-900 border-slate-200 dark:border-slate-800">
                                   {canEdit && (
-                                    <DropdownMenuItem onClick={() => handleEditClick(user)} className="gap-2 font-bold py-2 cursor-pointer text-xs dark:text-slate-200"><SettingsIcon className="w-3.5 h-3.5 text-emerald-600" /> {isRtl ? 'إدارة الصلاحيات' : 'Manage Access'}</DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleEditClick(user)} className="gap-2 font-bold py-2 cursor-pointer text-xs dark:text-slate-200"><SettingsIcon className="w-3.5 h-3.5 text-emerald-600" /> {isRtl ? 'تعديل الصلاحيات' : 'Manage Access'}</DropdownMenuItem>
                                   )}
                                   <DropdownMenuSeparator className="dark:bg-slate-800" />
                                   {canDelete && (
-                                    <DropdownMenuItem onClick={() => setDeletingUserId(user.id)} className="gap-2 font-bold py-2 text-rose-600 cursor-pointer text-xs focus:bg-rose-50"><Trash2 className="w-3.5 h-3.5" /> {isRtl ? 'حذف الحساب' : 'Revoke Access'}</DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => setDeletingUserId(user.id)} className="gap-2 font-bold py-2 text-rose-600 cursor-pointer text-xs focus:bg-rose-50"><Trash2 className="w-3.5 h-3.5" /> {isRtl ? 'سحب الصلاحيات' : 'Revoke Access'}</DropdownMenuItem>
                                   )}
                                </DropdownMenuContent>
                             </DropdownMenu>
@@ -414,6 +375,7 @@ export default function UsersPermissionsPage() {
           };
         }}
         onSave={handleSaveUser}
+        forceUIUnlock={forceUIUnlock}
       />
 
       <AlertDialog open={!!deletingUserId} onOpenChange={(open) => { if(!open) setDeletingUserId(null); forceUIUnlock(); }}>
@@ -421,19 +383,25 @@ export default function UsersPermissionsPage() {
            <div className="bg-rose-950 p-8 text-center relative overflow-hidden">
               <div className="absolute top-0 right-0 p-4 opacity-5"><ShieldAlert className="w-32 h-32 text-white" /></div>
               <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20 shadow-inner">
-                <ShieldAlert className="w-8 h-8 text-rose-500" />
+                <ShieldAlert className="w-8 h-8 text-red-500" />
               </div>
               <AlertDialogTitle className="text-white text-xl font-black">{isRtl ? 'سحب صلاحيات المستخدم' : 'Revoke Account'}</AlertDialogTitle>
               <AlertDialogDescription className="text-rose-200/50 font-bold mt-2 text-xs leading-relaxed text-center">
-                {isRtl ? 'هل أنت متأكد من سحب صلاحيات هذا المستخدم تماماً؟ لن يتمكن من تسجيل الدخول للنظام مرة أخرى.' : 'Are you sure? This user will no longer be able to log in.'}
+                {isRtl ? 'هل أنت متأكد من سحب صلاحيات هذا المستخدم تماماً؟' : 'Are you sure?'}
               </AlertDialogDescription>
            </div>
            <div className="bg-white dark:bg-slate-900 p-6 flex gap-3">
-              <AlertDialogAction onClick={async () => { if (!db || !deletingUserId) return; await updateDoc(doc(db, 'users', deletingUserId), { active: false, status: 'deleted', deletedAt: serverTimestamp() }); setDeletingUserId(null); toast({ title: isRtl ? "تم سحب الصلاحيات" : "Access Revoked" }); forceUIUnlock(); }} className="flex-1 h-12 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-xl border-none shadow-lg transition-all active:scale-95">تأكيد الحذف</AlertDialogAction>
-              <AlertDialogCancel className="flex-1 h-12 bg-slate-50 dark:bg-slate-800 font-black rounded-xl text-slate-400 border-none">تراجع</AlertDialogCancel>
+              <AlertDialogAction onClick={async () => { if (!db || !deletingUserId) return; await updateDoc(doc(db, 'users', deletingUserId), { active: false, status: 'deleted', deletedAt: serverTimestamp() }); setDeletingUserId(null); toast({ title: "Revoked" }); forceUIUnlock(); }} className="flex-1 h-12 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-xl border-none shadow-lg">تأكيد</AlertDialogAction>
+              <AlertDialogCancel className="flex-1 h-12 bg-slate-50 dark:bg-slate-800 font-black rounded-xl text-slate-400 border-none">إلغاء</AlertDialogCancel>
            </div>
         </AlertDialogContent>
       </AlertDialog>
+
+      <div className="flex-none p-3 bg-slate-900 dark:bg-slate-900/80 text-white/40 flex items-center justify-center gap-4 border-t border-white/5 shadow-2xl transition-colors duration-300">
+         <ShieldCheck className="w-4 h-4 text-emerald-500" />
+         <p className="text-[10px] font-bold tracking-tight">TIA Data Governance Protocol • Sovereign Records Management</p>
+      </div>
+
     </div>
   );
 }

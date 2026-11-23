@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useCallback } from 'react';
+import React, { useRef, useCallback, useEffect } from 'react';
 import { 
   Dialog, 
   DialogContent, 
@@ -22,7 +22,6 @@ import {
   UploadCloud, 
   Loader2,
   Shield,
-  BadgeCheck,
   AlertCircle
 } from 'lucide-react';
 import { PermissionsTable } from './PermissionsTable';
@@ -40,6 +39,7 @@ interface UserFormDialogProps {
   setFormData: (val: any | ((prev: any) => any)) => void;
   onImageUpload: (e: any) => void;
   onSave: (e: any) => void;
+  forceUIUnlock: () => void;
 }
 
 export function UserFormDialog({
@@ -53,26 +53,24 @@ export function UserFormDialog({
   formData,
   setFormData,
   onImageUpload,
-  onSave
+  onSave,
+  forceUIUnlock
 }: UserFormDialogProps) {
   const isRtl = lang === 'ar';
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   /**
-   * دالة حارس الأمان لفك تجمد الواجهة يدوياً عند الإغلاق
+   * تأمين تنظيف المتصفح فور إغلاق المودال بأي طريقة
    */
-  const forceUIUnlock = useCallback(() => {
-    requestAnimationFrame(() => {
-      document.body.style.pointerEvents = 'auto';
-      document.body.style.overflow = 'auto';
-      document.body.removeAttribute('data-scroll-locked');
-    });
-  }, []);
+  useEffect(() => {
+    if (!isOpen) {
+      forceUIUnlock();
+    }
+  }, [isOpen, forceUIUnlock]);
 
   const handleTogglePermission = (moduleId: string, type: 'read' | 'create' | 'edit' | 'delete') => {
     setFormData((prev: any) => {
       const newPerms = { ...prev.permissions };
-      // حماية صارمة ضد undefined
       if (!newPerms[moduleId]) {
         newPerms[moduleId] = { read: false, create: false, edit: false, delete: false };
       }
@@ -80,7 +78,6 @@ export function UserFormDialog({
       const current = { ...newPerms[moduleId] };
       current[type] = !current[type];
 
-      // المنطق الذكي: إذا تم تفعيل (إضافة/تعديل/حذف) يجب تفعيل (قراءة) تلقائياً
       if ((current.create || current.edit || current.delete) && !current.read) {
         current.read = true;
       }
@@ -93,11 +90,7 @@ export function UserFormDialog({
   const handleToggleRow = (moduleId: string, checked: boolean) => {
     setFormData((prev: any) => {
       const newPerms = { ...prev.permissions };
-      if (checked) {
-        newPerms[moduleId] = { read: true, create: true, edit: true, delete: true };
-      } else {
-        newPerms[moduleId] = { read: false, create: false, edit: false, delete: false };
-      }
+      newPerms[moduleId] = { read: checked, create: checked, edit: checked, delete: checked };
       return { ...prev, permissions: newPerms };
     });
   };
@@ -131,7 +124,7 @@ export function UserFormDialog({
         <div className="premium-gradient p-6 text-white relative">
           <div className="absolute top-0 right-0 p-4 opacity-5"><ShieldCheck className="w-32 h-32 text-white" /></div>
           <DialogHeader className={cn("text-right rtl:text-right ltr:text-left relative z-10")}>
-            <DialogTitle className="text-xl font-black flex items-center gap-3">
+            <DialogTitle className="text-xl font-black flex items-center gap-3 text-white">
               <Key className="w-5 h-5 text-emerald-300" />
               {editingId ? (isRtl ? 'تعديل صلاحيات الوصول' : 'Access Permissions') : (isRtl ? 'بروتوكول تفعيل مستخدم جديد' : 'New User Provisioning')}
             </DialogTitle>
@@ -177,7 +170,7 @@ export function UserFormDialog({
                       {editingId ? (
                         <div className="p-3 bg-amber-50 dark:bg-amber-900/10 border border-amber-100 rounded-lg flex items-center gap-2">
                            <AlertCircle className="w-4 h-4 text-amber-600" />
-                           <p className="text-[10px] font-bold text-amber-700">{isRtl ? 'كلمة المرور مدارة أمنياً ولا يمكن تعديلها من هنا.' : 'Encrypted field.'}</p>
+                           <p className="text-[10px] font-bold text-amber-700">{isRtl ? 'كلمة المرور مدارة أمنياً.' : 'Encrypted field.'}</p>
                         </div>
                       ) : (
                         <Input type="password" value={formData.password} onChange={(e) => setFormData((prev:any) => ({...prev, password: e.target.value}))} className="h-11 font-bold text-xs bg-slate-50 dark:bg-slate-800 dark:text-white" required />
@@ -198,7 +191,7 @@ export function UserFormDialog({
               <div className="space-y-4">
                 <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800 pb-2">
                   <Shield className="w-5 h-5 text-emerald-600" />
-                  <h3 className="text-sm font-black text-slate-900 dark:text-slate-100">{isRtl ? 'شبكة صلاحيات الواجهات والعمليات المتقدمة' : 'Advanced Access Matrix'}</h3>
+                  <h3 className="text-sm font-black text-slate-900 dark:text-slate-100">{isRtl ? 'مصفوفة الصلاحيات' : 'Access Matrix'}</h3>
                 </div>
                 
                 <PermissionsTable 
@@ -216,7 +209,7 @@ export function UserFormDialog({
           <div className="flex-none p-6 bg-slate-50 dark:bg-slate-800 border-t border-slate-100 dark:border-slate-800 flex gap-3">
             <Button type="submit" disabled={isSubmitting || isCompressing} className="flex-1 h-14 premium-gradient text-white rounded-xl font-black text-base shadow-xl border-none transition-all active:scale-95">
               {isSubmitting ? <Loader2 className="animate-spin me-2" /> : <ShieldCheck className="w-5 h-5 me-2" />}
-              {isRtl ? (editingId ? 'تحديث السجل والصلاحيات' : 'تفعيل الحساب والصلاحيات') : 'Commit Profile'}
+              {isRtl ? 'حفظ البيانات' : 'Commit Profile'}
             </Button>
             <Button type="button" variant="outline" onClick={() => { onClose(); forceUIUnlock(); }} className="px-8 h-14 font-black text-slate-400 rounded-xl border-slate-200 hover:bg-white dark:hover:bg-slate-700 transition-all">إلغاء</Button>
           </div>
