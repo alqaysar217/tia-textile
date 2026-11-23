@@ -43,7 +43,7 @@ export default function ProductionReceiptPage() {
   const searchParams = useSearchParams();
   const isRtl = lang === 'ar';
 
-  // استيراد الصلاحيات من المحرك المركزي للمرحلة الثالثة
+  // استيراد الصلاحيات من المحرك المركزي
   const { permissions, isAdmin } = useProduction();
   const canCreate = isAdmin || permissions.vouchers_receipt?.create;
   const canEdit = isAdmin || permissions.vouchers_receipt?.edit;
@@ -119,6 +119,32 @@ export default function ProductionReceiptPage() {
     });
   }, [vouchers, allOrders, allWorkers, search, batchFilter, sortBy, sortOrder]);
 
+  const availableOrderProducts = useMemo(() => {
+    if (!formData.orderId || !allProducts) return [];
+    const order = allOrders?.find(o => o.id === formData.orderId);
+    const product = allProducts?.find(p => p.id === order?.productId);
+    if (!product) return [];
+
+    const totalReceived = vouchers?.filter(r => r.orderId === formData.orderId && r.status !== 'deleted').reduce((sum, r) => sum + (r.qtyAccepted || 0), 0) || 0;
+    
+    // ملاحظة: هذا المنطق يعتمد على بنية النظام في صرف المنتجات المرحلة. 
+    // للحفاظ على الاستقرار، سنكتفي بعرض المنتج المستهدف للطلب.
+    return [{ id: product.id, nameAr: product.nameAr, image: product.image, sku: product.sku, availableQty: 9999, unit: 'Pcs' }];
+  }, [formData.orderId, vouchers, allOrders, allProducts]);
+
+  const resetDialog = useCallback(() => {
+    setIsAddDialogOpen(false);
+    setEditingVoucherId(null);
+    setFormData({ date: new Date().toISOString().split('T')[0], orderId: '', workerId: '', linkedMIVs: [], isFinalSettlement: true, notes: '', qtyAccepted: 0, wageRate: 0, currency: systemCurrency, returnedItems: [] });
+    
+    // حارس الأمان لتنظيف قفل الشاشة والماوس
+    requestAnimationFrame(() => {
+      document.body.style.pointerEvents = 'auto';
+      document.body.style.removeProperty('overflow');
+      document.body.removeAttribute('data-scroll-locked');
+    });
+  }, [systemCurrency]);
+
   const handleSaveVoucher = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!db || isSubmitting || !formData.workerId || !formData.orderId || formData.linkedMIVs.length === 0 || formData.qtyAccepted <= 0) return;
@@ -136,6 +162,7 @@ export default function ProductionReceiptPage() {
     const batch = writeBatch(db);
     const wageAmount = Number(formData.qtyAccepted) * Number(formData.wageRate);
     const selectedOrder = allOrders?.find(o => o.id === formData.orderId);
+    const targetEditingId = editingVoucherId;
 
     const voucherData = {
       ...formData,
@@ -150,15 +177,18 @@ export default function ProductionReceiptPage() {
       updatedAt: serverTimestamp()
     };
 
+    // إغلاق المودال مبكراً جداً لمنع التجمد
+    setIsAddDialogOpen(false);
+
     try {
-      if (editingVoucherId) {
-        const oldSnap = await getDoc(doc(db, 'vouchers', editingVoucherId));
+      if (targetEditingId) {
+        const oldSnap = await getDoc(doc(db, 'vouchers', targetEditingId));
         const oldV = oldSnap.data();
         if (oldV) {
           batch.update(doc(db, 'productionOrders', oldV.orderId), { completedQty: increment(-oldV.qtyAccepted) });
           oldV.returnedItems?.forEach((item: any) => batch.update(doc(db, 'materials', item.id), { currentQty: increment(-item.qty) }));
         }
-        batch.update(doc(db, 'vouchers', editingVoucherId), voucherData);
+        batch.update(doc(db, 'vouchers', targetEditingId), voucherData);
       } else {
         const voucherNumber = `PRV-${Date.now().toString().slice(-6)}`;
         batch.set(doc(collection(db, 'vouchers')), { ...voucherData, voucherNumber, createdAt: serverTimestamp() });
@@ -167,14 +197,25 @@ export default function ProductionReceiptPage() {
       batch.update(doc(db, 'productionOrders', formData.orderId), { completedQty: increment(Number(formData.qtyAccepted)) });
       formData.returnedItems.forEach(item => batch.update(doc(db, 'materials', item.id), { currentQty: increment(Number(item.qty)) }));
 
-      if (formData.isFinalSettlement) formData.linkedMIVs.forEach(id => batch.update(doc(db, 'vouchers', id), { status: 'settled', updatedAt: serverTimestamp() }));
+      if (formData.isFinalSettlement) {
+        formData.linkedMIVs.forEach(id => batch.update(doc(db, 'vouchers', id), { status: 'settled', updatedAt: serverTimestamp() }));
+      }
 
       await batch.commit();
       toast({ title: isRtl ? "تم التوريد والترحيل بنجاح" : "Success" });
-      setIsAddDialogOpen(false);
-      setEditingVoucherId(null);
-      setFormData({ date: new Date().toISOString().split('T')[0], orderId: '', workerId: '', linkedMIVs: [], isFinalSettlement: true, notes: '', qtyAccepted: 0, wageRate: 0, currency: systemCurrency, returnedItems: [] });
-    } catch (err) { console.error(err); } finally { setIsSubmitting(false); }
+      resetDialog();
+    } catch (err) { 
+      console.error(err);
+      toast({ variant: "destructive", title: "Internal Error" });
+      setIsAddDialogOpen(true); // إعادة الفتح في حال الخطأ
+    } finally { 
+      setIsSubmitting(false); 
+      requestAnimationFrame(() => {
+        document.body.style.pointerEvents = 'auto';
+        document.body.style.removeProperty('overflow');
+        document.body.removeAttribute('data-scroll-locked');
+      });
+    }
   };
 
   const handleTransferToWarehouse = async () => {
@@ -185,10 +226,12 @@ export default function ProductionReceiptPage() {
     }
 
     setIsSubmitting(true);
+    const targetVoucher = transferringVoucher;
+    setTransferringVoucher(null); // إغلاق مبكر
+
     const batch = writeBatch(db);
-    
     try {
-      const selectedOrder = allOrders?.find(o => o.id === transferringVoucher.orderId);
+      const selectedOrder = allOrders?.find(o => o.id === targetVoucher.orderId);
       const productId = selectedOrder?.productId;
       if (!productId) throw new Error("Order has no product ID");
 
@@ -196,50 +239,67 @@ export default function ProductionReceiptPage() {
       const logRef = doc(collection(db, 'warehouseTransactions'));
 
       batch.set(whRef, { 
-        totalQty: increment(Number(transferringVoucher.qtyAccepted)),
+        totalQty: increment(Number(targetVoucher.qtyAccepted)),
         updatedAt: serverTimestamp()
       }, { merge: true });
 
       batch.set(logRef, {
         type: 'in',
-        voucherId: transferringVoucher.id,
-        voucherNumber: transferringVoucher.voucherNumber,
-        orderId: transferringVoucher.orderId,
+        voucherId: targetVoucher.id,
+        voucherNumber: targetVoucher.voucherNumber,
+        orderId: targetVoucher.orderId,
         productId: productId,
-        qty: transferringVoucher.qtyAccepted,
-        date: transferringVoucher.date,
+        qty: targetVoucher.qtyAccepted,
+        date: targetVoucher.date,
         createdAt: serverTimestamp(),
         status: 'posted'
       });
 
-      batch.update(doc(db, 'vouchers', transferringVoucher.id), { 
+      batch.update(doc(db, 'vouchers', targetVoucher.id), { 
         isTransferred: true,
         warehouseTransactionId: logRef.id 
       });
 
       await batch.commit();
       toast({ title: isRtl ? "تم ترحيل الكمية للمستودع" : "Transferred to Warehouse" });
-      setTransferringVoucher(null);
     } catch (err) {
       console.error(err);
-      toast({ variant: "destructive", title: isRtl ? "خطأ في الترحيل" : "Transfer Error" });
+      toast({ variant: "destructive", title: "Transfer Failed" });
     } finally {
       setIsSubmitting(false);
+      requestAnimationFrame(() => {
+        document.body.style.pointerEvents = 'auto';
+        document.body.style.removeProperty('overflow');
+        document.body.removeAttribute('data-scroll-locked');
+      });
     }
   };
 
   const handleDeleteRequest = async () => {
-    if (!db || !deletingVoucher || !canDelete) return;
+    if (!db || !deletingVoucher || !canDelete || isSubmitting) return;
     setIsSubmitting(true);
+    const targetVoucher = deletingVoucher;
+    setDeletingVoucher(null); // إغلاق مبكر
+
     const batch = writeBatch(db);
     try {
-      batch.update(doc(db, 'productionOrders', deletingVoucher.orderId), { completedQty: increment(-deletingVoucher.qtyAccepted) });
-      deletingVoucher.returnedItems?.forEach((item: any) => batch.update(doc(db, 'materials', item.id), { currentQty: increment(-item.qty) }));
-      deletingVoucher.linkedMIVs?.forEach((id: string) => batch.update(doc(db, 'vouchers', id), { status: 'posted' }));
-      batch.update(doc(db, 'vouchers', deletingVoucher.id), { status: 'deleted', deletedAt: serverTimestamp() });
+      batch.update(doc(db, 'productionOrders', targetVoucher.orderId), { completedQty: increment(-targetVoucher.qtyAccepted) });
+      targetVoucher.returnedItems?.forEach((item: any) => batch.update(doc(db, 'materials', item.id), { currentQty: increment(-item.qty) }));
+      targetVoucher.linkedMIVs?.forEach((id: string) => batch.update(doc(db, 'vouchers', id), { status: 'posted' }));
+      batch.update(doc(db, 'vouchers', targetVoucher.id), { status: 'deleted', deletedAt: serverTimestamp() });
+      
       await batch.commit();
       toast({ title: isRtl ? "تم الإلغاء وعكس التأثير" : "Archived & Reversed" });
-    } finally { setIsSubmitting(false); setDeletingVoucher(null); }
+    } catch (err) {
+      console.error(err);
+    } finally { 
+      setIsSubmitting(false); 
+      requestAnimationFrame(() => {
+        document.body.style.pointerEvents = 'auto';
+        document.body.style.removeProperty('overflow');
+        document.body.removeAttribute('data-scroll-locked');
+      });
+    }
   };
 
   return (
@@ -248,14 +308,16 @@ export default function ProductionReceiptPage() {
         lang={lang} dir={dir} search={search} setSearch={setSearch} batchFilter={batchFilter} setBatchFilter={setBatchFilter}
         sortBy={sortBy} setSortBy={setSortBy} sortOrder={sortOrder} setSortOrder={setSortOrder}
         activeOrders={allOrders || []} 
-        onAdd={() => setIsAddDialogOpen(true)} 
+        onAdd={() => { resetDialog(); setIsAddDialogOpen(true); }} 
         onExport={() => {}}
         canCreate={canCreate}
       />
+      
       <div className="flex-1 min-h-0 overflow-auto p-4 md:p-6 no-scrollbar">
         <ReceiptTable 
           loading={vouchersLoading} vouchers={filteredVouchers} allWorkers={allWorkers || []} allOrders={allOrders || []}
-          lang={lang} dir={dir} onPrint={(v) => setPrintingVoucher(v)} onEdit={(v) => { if(!canEdit) return; setEditingVoucherId(v.id); setFormData({ ...v }); setIsAddDialogOpen(true); }}
+          lang={lang} dir={dir} onPrint={(v) => setPrintingVoucher(v)} 
+          onEdit={(v) => { if(!canEdit) return; setEditingVoucherId(v.id); setFormData({ ...v }); setIsAddDialogOpen(true); }}
           onDelete={(v) => setDeletingVoucher(v)}
           onTransfer={(v) => setTransferringVoucher(v)}
           canEdit={canEdit}
@@ -264,7 +326,7 @@ export default function ProductionReceiptPage() {
       </div>
 
       <ReceiptFormDialog 
-        isOpen={isAddDialogOpen} onClose={() => { setIsAddDialogOpen(false); setEditingVoucherId(null); }}
+        isOpen={isAddDialogOpen} onClose={resetDialog}
         editingId={editingVoucherId} lang={lang} dir={dir} isSubmitting={isSubmitting} formData={formData} setFormData={setFormData}
         allOrders={allOrders || []} allWorkers={allWorkers || []} allDepartments={allDepartments || []} allMIVs={allMIVs || []}
         allProducts={allProducts || []} vouchers={vouchers || []} systemCurrency={systemCurrency} onSubmit={handleSaveVoucher}
@@ -279,16 +341,10 @@ export default function ProductionReceiptPage() {
           setIsDownloading(true);
           try { 
             await new Promise(r => setTimeout(r, 800)); 
-            const dataUrl = await toPng(el, { 
-              backgroundColor: '#ffffff', 
-              pixelRatio: 2,
-              cacheBust: true,
-              fontEmbedCSS: '' 
-            }); 
+            const dataUrl = await toPng(el, { backgroundColor: '#ffffff', pixelRatio: 2, cacheBust: true, fontEmbedCSS: '' }); 
             const link = document.createElement('a'); 
             link.download = `Settlement-${printingVoucher.voucherNumber}.png`; 
-            link.href = dataUrl; 
-            link.click(); 
+            link.href = dataUrl; link.click(); 
           } finally { setIsDownloading(false); }
         }}
       />
@@ -306,11 +362,11 @@ export default function ProductionReceiptPage() {
              <AlertDialogDescription className="text-slate-400 font-bold mt-2 text-xs leading-relaxed">
                 {isRtl 
                   ? `أنت على وشك ترحيل عدد (${transferringVoucher?.qtyAccepted}) قطعة من سند رقم (${transferringVoucher?.voucherNumber}) إلى مستودع المنجز الجاهز. هل هذا المنتج مكتمل وجاهز للبيع تماماً؟`
-                  : `You are about to transfer (${transferringVoucher?.qtyAccepted}) items to the finished goods warehouse. Is this product fully completed and ready for sale?`}
+                  : `You are about to transfer (${transferringVoucher?.qtyAccepted}) items to the finished goods warehouse. Confirm?`}
              </AlertDialogDescription>
           </div>
           <div className="bg-white dark:bg-slate-900 p-6 flex gap-3">
-             <AlertDialogAction onClick={handleTransferToWarehouse} disabled={isSubmitting} className="flex-1 h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black shadow-lg border-none">
+             <AlertDialogAction onClick={handleTransferToWarehouse} disabled={isSubmitting} className="flex-1 h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black shadow-lg border-none transition-all active:scale-95">
                 {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : <Truck className="w-4 h-4 me-2" />}
                 {isRtl ? 'نعم، ترحيل الآن' : 'Yes, Transfer Now'}
              </AlertDialogAction>
@@ -319,7 +375,7 @@ export default function ProductionReceiptPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <div className="flex-none p-2.5 bg-slate-900 dark:bg-slate-900/80 text-white/50 flex items-center justify-center gap-3 border-t border-white/5 shadow-2xl">
+      <div className="flex-none p-2.5 bg-slate-900 dark:bg-slate-900/80 text-white/50 flex items-center justify-center gap-3 border-t border-white/5 shadow-2xl transition-colors duration-300">
         <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
         <p className="text-[10px] font-bold tracking-tight">{isRtl ? 'نظام الرقابة الميدانية: تصفية العهد المفتوحة وتوريد المنجز للمستودع النهائي.' : 'Production Control Active.'}</p>
       </div>
