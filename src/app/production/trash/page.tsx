@@ -1,7 +1,6 @@
-
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { 
   Trash2, 
   RotateCcw, 
@@ -56,10 +55,21 @@ export default function TrashPage() {
   const db = useFirestore();
   const [search, setSearch] = useState('');
   
-  // استيراد الصلاحيات من المحرك المركزي للمرحلة السادسة
+  // استيراد الصلاحيات من المحرك المركزي
   const { permissions, isAdmin } = useProduction();
   const canRestore = isAdmin || permissions.trash?.edit;
   const canPurge = isAdmin || permissions.trash?.delete;
+
+  /**
+   * دالة حارس الأمان لفك تجمد الواجهة يدوياً
+   */
+  const forceUIUnlock = useCallback(() => {
+    requestAnimationFrame(() => {
+      document.body.style.pointerEvents = 'auto';
+      document.body.style.overflow = 'auto';
+      document.body.removeAttribute('data-scroll-locked');
+    });
+  }, []);
 
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
   const [actionType, setActionType] = useState<'restore' | 'purge' | null>(null);
@@ -104,7 +114,6 @@ export default function TrashPage() {
   const handleAction = async () => {
     if (!db || !selectedItem || !actionType || isSubmitting) return;
 
-    // حماية تنفيذية برمجية
     if (actionType === 'restore' && !canRestore) {
       toast({ variant: "destructive", title: lang === 'ar' ? "غير مسموح بالاستعادة" : "Permission Denied" });
       return;
@@ -124,6 +133,8 @@ export default function TrashPage() {
     if (selectedItem.type === 'order') col = 'productionOrders';
     if (selectedItem.type === 'voucher') col = 'vouchers';
     
+    setActionType(null); // إغلاق مبكر
+
     try {
       if (actionType === 'restore') {
         if (selectedItem.type === 'voucher' && selectedItem.type === 'production_receipt') {
@@ -149,7 +160,7 @@ export default function TrashPage() {
     } finally {
       setIsSubmitting(false);
       setSelectedItem(null);
-      setActionType(null);
+      forceUIUnlock();
     }
   };
 
@@ -282,7 +293,7 @@ export default function TrashPage() {
         </div>
       </div>
 
-      <AlertDialog open={!!actionType} onOpenChange={() => !isSubmitting && setActionType(null)}>
+      <AlertDialog open={!!actionType} onOpenChange={(open) => { if(!open) setActionType(null); forceUIUnlock(); }}>
         <AlertDialogContent className="max-w-[400px] rounded-lg p-0 overflow-hidden border-none shadow-2xl dark:bg-slate-900 transition-colors duration-300">
           <div className={cn("p-8 text-center relative overflow-hidden", actionType === 'restore' ? "premium-gradient" : "bg-rose-950")}>
             <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-white/20 relative z-10">

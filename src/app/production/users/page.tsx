@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useCallback } from 'react';
@@ -69,11 +68,22 @@ export default function UsersPermissionsPage() {
   const db = useFirestore();
   const isRtl = lang === 'ar';
 
-  // استيراد الصلاحيات من المحرك المركزي للمرحلة السادسة
+  // استيراد الصلاحيات من المحرك المركزي
   const { permissions, isAdmin } = useProduction();
   const canCreate = isAdmin || permissions.settings?.create;
   const canEdit = isAdmin || permissions.settings?.edit;
   const canDelete = isAdmin || permissions.settings?.delete;
+
+  /**
+   * دالة حارس الأمان لفك تجمد الواجهة يدوياً
+   */
+  const forceUIUnlock = useCallback(() => {
+    requestAnimationFrame(() => {
+      document.body.style.pointerEvents = 'auto';
+      document.body.style.overflow = 'auto';
+      document.body.removeAttribute('data-scroll-locked');
+    });
+  }, []);
 
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
@@ -147,7 +157,6 @@ export default function UsersPermissionsPage() {
     e.preventDefault();
     if (!db || isSubmitting || isCompressing) return;
 
-    // حماية تنفيذية برمجية
     if (editingUserId && !canEdit) {
       toast({ variant: "destructive", title: isRtl ? "غير مسموح بالتعديل" : "Permission Denied" });
       return;
@@ -158,11 +167,12 @@ export default function UsersPermissionsPage() {
     }
 
     setIsSubmitting(true);
+    setIsAddDialogOpen(false); // إغلاق مبكر
+
     let tempApp = null;
     try {
       let uid = editingUserId;
       if (!editingUserId) {
-        // إنشاء حساب في Firebase Auth عبر نسخة مؤقتة من التطبيق
         const tempAppName = `temp-auth-${Date.now()}`;
         tempApp = initializeApp(firebaseConfig, tempAppName);
         const tempAuth = getAuth(tempApp);
@@ -172,7 +182,9 @@ export default function UsersPermissionsPage() {
         } catch (authErr: any) {
           if (authErr.code === 'auth/email-already-in-use') {
             toast({ variant: "destructive", title: isRtl ? "البريد مستخدم بالفعل" : "Email exists" });
-            setIsSubmitting(false); return;
+            setIsSubmitting(false); 
+            setIsAddDialogOpen(true);
+            return;
           }
           throw authErr;
         }
@@ -197,14 +209,15 @@ export default function UsersPermissionsPage() {
       }, { merge: true });
 
       toast({ title: isRtl ? "تم تفعيل الحساب والصلاحيات بنجاح" : "User Provisioned Successfully" });
-      setIsAddDialogOpen(false);
       setEditingUserId(null);
     } catch (err) {
       console.error(err);
       toast({ variant: "destructive", title: "Error" });
+      setIsAddDialogOpen(true);
     } finally {
       if (tempApp) await deleteApp(tempApp);
       setIsSubmitting(false);
+      forceUIUnlock();
     }
   };
 
@@ -223,6 +236,12 @@ export default function UsersPermissionsPage() {
     document.body.appendChild(link); link.click();
     document.body.removeChild(link);
   };
+
+  const resetDialog = useCallback(() => {
+    setIsAddDialogOpen(false);
+    setEditingUserId(null);
+    forceUIUnlock();
+  }, [forceUIUnlock]);
 
   return (
     <div className="flex flex-col h-full bg-[#f8fafc] dark:bg-slate-950 overflow-hidden transition-colors duration-300" dir={dir}>
@@ -363,7 +382,7 @@ export default function UsersPermissionsPage() {
 
       <UserFormDialog 
         isOpen={isAddDialogOpen} 
-        onClose={() => setIsAddDialogOpen(false)} 
+        onClose={resetDialog} 
         editingId={editingUserId}
         lang={lang}
         dir={dir}
@@ -396,8 +415,8 @@ export default function UsersPermissionsPage() {
         onSave={handleSaveUser}
       />
 
-      <AlertDialog open={!!deletingUserId} onOpenChange={() => setDeletingUserId(null)}>
-        <AlertDialogContent className="max-w-[400px] rounded-[1.5rem] p-0 overflow-hidden border-none shadow-2xl dark:bg-slate-900">
+      <AlertDialog open={!!deletingUserId} onOpenChange={(open) => { if(!open) setDeletingUserId(null); forceUIUnlock(); }}>
+        <AlertDialogContent className="max-w-[400px] rounded-[1.5rem] p-0 overflow-hidden border-none shadow-2xl dark:bg-slate-900 transition-colors duration-300">
            <div className="bg-rose-950 p-8 text-center relative overflow-hidden">
               <div className="absolute top-0 right-0 p-4 opacity-5"><ShieldAlert className="w-32 h-32 text-white" /></div>
               <div className="w-16 h-16 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-rose-500/20 shadow-inner">
@@ -409,7 +428,7 @@ export default function UsersPermissionsPage() {
               </AlertDialogDescription>
            </div>
            <div className="bg-white dark:bg-slate-900 p-6 flex gap-3">
-              <AlertDialogAction onClick={async () => { if (!db || !deletingUserId) return; await updateDoc(doc(db, 'users', deletingUserId), { active: false, status: 'deleted', deletedAt: serverTimestamp() }); setDeletingUserId(null); toast({ title: isRtl ? "تم سحب الصلاحيات" : "Access Revoked" }); }} className="flex-1 h-12 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-xl border-none shadow-lg transition-all active:scale-95">تأكيد الحذف</AlertDialogAction>
+              <AlertDialogAction onClick={async () => { if (!db || !deletingUserId) return; await updateDoc(doc(db, 'users', deletingUserId), { active: false, status: 'deleted', deletedAt: serverTimestamp() }); setDeletingUserId(null); toast({ title: isRtl ? "تم سحب الصلاحيات" : "Access Revoked" }); forceUIUnlock(); }} className="flex-1 h-12 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-xl border-none shadow-lg transition-all active:scale-95">تأكيد الحذف</AlertDialogAction>
               <AlertDialogCancel className="flex-1 h-12 bg-slate-50 dark:bg-slate-800 font-black rounded-xl text-slate-400 border-none">تراجع</AlertDialogCancel>
            </div>
         </AlertDialogContent>

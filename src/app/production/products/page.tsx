@@ -105,6 +105,17 @@ export default function ProductsManagementPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCompressing, setIsCompressing] = useState(false);
   
+  /**
+   * دالة حارس الأمان لفك تجمد الواجهة يدوياً
+   */
+  const forceUIUnlock = useCallback(() => {
+    requestAnimationFrame(() => {
+      document.body.style.pointerEvents = 'auto';
+      document.body.style.overflow = 'auto';
+      document.body.removeAttribute('data-scroll-locked');
+    });
+  }, []);
+
   // Fetch System Settings for Currency Lock
   const settingsRef = useMemo(() => !db ? null : doc(db, 'settings', 'global'), [db]);
   const { data: savedSettings } = useDoc<any>(settingsRef);
@@ -218,16 +229,9 @@ export default function ProductsManagementPage() {
       displayOrder: (products?.filter(p => p.status !== 'deleted').length || 0) + 1,
       gallery: []
     });
+    forceUIUnlock();
+  }, [systemCurrency, products, forceUIUnlock]);
 
-    // تنظيف فوري لأي قفل واجهة
-    requestAnimationFrame(() => {
-      document.body.style.pointerEvents = 'auto';
-      document.body.style.removeProperty('overflow');
-      document.body.removeAttribute('data-scroll-locked');
-    });
-  }, [systemCurrency, products]);
-
-  // Sync currency with system settings when adding new product
   useEffect(() => {
     if (!editingProdId && systemCurrency) {
       setFormData(prev => ({ ...prev, currency: systemCurrency }));
@@ -288,26 +292,6 @@ export default function ProductsManagementPage() {
     }));
   };
 
-  const handleEditClick = (prod: any) => {
-    if (!canEdit) return;
-    setEditingProdId(prod.id);
-    setFormData({
-      sku: prod.sku || '',
-      nameAr: prod.nameAr || '',
-      nameEn: prod.nameEn || '',
-      descriptionAr: prod.descriptionAr || '',
-      descriptionEn: prod.descriptionEn || '',
-      category: prod.category || 'شبواني',
-      price: prod.price || 0,
-      currency: prod.currency || systemCurrency,
-      status: prod.status || 'available',
-      image: prod.image || '',
-      displayOrder: prod.displayOrder || 1,
-      gallery: prod.gallery || []
-    });
-    setIsAddDialogOpen(true);
-  };
-
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!db || isSubmitting || isCompressing) return;
@@ -334,7 +318,6 @@ export default function ProductsManagementPage() {
       updatedAt: serverTimestamp(),
     };
 
-    // إغلاق المودال مبكراً
     setIsAddDialogOpen(false);
 
     try {
@@ -349,14 +332,10 @@ export default function ProductsManagementPage() {
     } catch (err: any) {
       console.error(err);
       toast({ variant: "destructive", title: "Failed to save" });
-      setIsAddDialogOpen(true); // إعادة الفتح في حال الخطأ
+      setIsAddDialogOpen(true);
     } finally {
       setIsSubmitting(false);
-      requestAnimationFrame(() => {
-        document.body.style.pointerEvents = 'auto';
-        document.body.style.removeProperty('overflow');
-        document.body.removeAttribute('data-scroll-locked');
-      });
+      forceUIUnlock();
     }
   };
 
@@ -365,7 +344,7 @@ export default function ProductsManagementPage() {
     
     setIsSubmitting(true);
     const targetId = deletingProdId;
-    setDeletingProdId(null);
+    setDeletingProdId(null); // إغلاق مبكر
 
     try {
       await updateDoc(doc(db, 'products', targetId), { 
@@ -377,20 +356,7 @@ export default function ProductsManagementPage() {
       console.error(err);
     } finally {
       setIsSubmitting(false);
-      requestAnimationFrame(() => {
-        document.body.style.pointerEvents = 'auto';
-        document.body.style.removeProperty('overflow');
-        document.body.removeAttribute('data-scroll-locked');
-      });
-    }
-  };
-
-  const toggleSort = (key: 'sku' | 'nameAr' | 'price' | 'displayOrder') => {
-    if (sortBy === key) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortBy(key);
-      setSortOrder('asc');
+      forceUIUnlock();
     }
   };
 
@@ -422,7 +388,6 @@ export default function ProductsManagementPage() {
   return (
     <div className="flex flex-col h-full bg-[#f1f5f9] dark:bg-slate-950 overflow-hidden transition-colors duration-300">
       
-      {/* ERP HUB - HEADER */}
       <div className="flex-none bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 z-30 px-6 py-4 shadow-sm">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div className="flex items-center gap-4">
@@ -468,7 +433,7 @@ export default function ProductsManagementPage() {
               placeholder={lang === 'ar' ? 'بحث بالكود أو اسم المنتج...' : 'Quick search catalog...'}
               className={cn(
                 dir === 'rtl' ? 'pr-10' : 'pl-10',
-                "h-9 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold dark:text-slate-100"
+                "h-9 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold dark:text-slate-100"
               )}
             />
           </div>
@@ -577,7 +542,7 @@ export default function ProductsManagementPage() {
                     <TableCell className="px-6 py-3 sticky right-0 bg-white dark:bg-slate-900 group-hover:bg-slate-50/50 dark:group-hover:bg-slate-800/50 shadow-[-10px_0_10px_-5px_rgba(0,0,0,0.05)] dark:shadow-none border-l dark:border-slate-800">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-md hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"><MoreVertical className="w-4 h-4 text-slate-400 dark:text-slate-500" /></Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"><MoreVertical className="w-4 h-4 text-slate-400 dark:text-slate-500" /></Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="rounded-lg border-slate-200 dark:border-slate-800 dark:bg-slate-900 shadow-xl min-w-[180px]">
                           {canEdit && (
@@ -616,7 +581,7 @@ export default function ProductsManagementPage() {
       </div>
 
       {/* ADD/EDIT DIALOG */}
-      <Dialog open={isAddDialogOpen} onOpenChange={(open) => !open && resetForm()}>
+      <Dialog open={isAddDialogOpen} onOpenChange={(open) => { if(!open) resetForm(); forceUIUnlock(); }}>
         <DialogContent className="sm:max-w-[700px] rounded-lg p-0 overflow-hidden border-none shadow-2xl dark:bg-slate-900">
           <div className="premium-gradient p-6 text-white">
             <DialogHeader className={cn("text-right", !isRtl && "text-left")}>
@@ -800,7 +765,7 @@ export default function ProductsManagementPage() {
       </Dialog>
 
       {/* ARCHIVE DIALOG */}
-      <AlertDialog open={!!deletingProdId} onOpenChange={(open) => !open && setDeletingProdId(null)}>
+      <AlertDialog open={!!deletingProdId} onOpenChange={(open) => { if(!open) setDeletingProdId(null); forceUIUnlock(); }}>
         <AlertDialogContent className="max-w-[400px] rounded-lg border-none shadow-2xl p-0 overflow-hidden dark:bg-slate-900">
           <div className="bg-slate-950 p-8 text-center relative overflow-hidden">
             <div className="absolute top-0 right-0 p-4 opacity-5"><History className="w-32 h-32 text-white" /></div>

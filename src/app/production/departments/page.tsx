@@ -87,6 +87,17 @@ export default function DepartmentsPage() {
   const canEdit = isAdmin || permissions.departments?.edit;
   const canDelete = isAdmin || permissions.departments?.delete;
   
+  /**
+   * دالة حارس الأمان لفك تجمد الواجهة يدوياً
+   */
+  const forceUIUnlock = useCallback(() => {
+    requestAnimationFrame(() => {
+      document.body.style.pointerEvents = 'auto';
+      document.body.style.overflow = 'auto';
+      document.body.removeAttribute('data-scroll-locked');
+    });
+  }, []);
+
   // Filtering & Sorting State
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [sortBy, setSortBy] = useState<'code' | 'nameAr' | 'actualWorkerCount'>('code');
@@ -122,16 +133,13 @@ export default function DepartmentsPage() {
   const loading = deptsLoading || workersLoading;
 
   const filtered = useMemo(() => {
-    // 1. Get raw depts and calculate live worker count for each
     let rawData = (departments || []).map(dept => {
       const actualWorkerCount = (workers || []).filter(w => w.departmentId === dept.id && w.status !== 'deleted').length;
       return { ...dept, actualWorkerCount };
     });
     
-    // 2. Filter out deleted
     rawData = rawData.filter(d => d.status !== 'deleted');
 
-    // 3. Search Filter
     if (search) {
       const s = search.toLowerCase();
       rawData = rawData.filter(d => 
@@ -141,12 +149,10 @@ export default function DepartmentsPage() {
       );
     }
 
-    // 4. Status Filter
     if (statusFilter !== 'all') {
       rawData = rawData.filter(d => d.status === statusFilter);
     }
 
-    // 5. Sorting
     return rawData.sort((a, b) => {
       let valA = a[sortBy] ?? '';
       let valB = b[sortBy] ?? '';
@@ -168,20 +174,13 @@ export default function DepartmentsPage() {
     setIsSubmitting(false);
     setCodeError(null);
     setFormData({ code: '', nameAr: '', nameEn: '', descAr: '', status: 'active' });
-
-    // تنظيف فوري لأي قفل واجهة قد تتركه نافذة التعديل (Dialog)
-    requestAnimationFrame(() => {
-      document.body.style.pointerEvents = 'auto';
-      document.body.style.removeProperty('overflow');
-      document.body.removeAttribute('data-scroll-locked');
-    });
-  }, []);
+    forceUIUnlock();
+  }, [forceUIUnlock]);
 
   const handleSaveDepartment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!db || isSubmitting) return;
 
-    // فحص الصلاحية برمجياً
     if (editingDeptId && !canEdit) {
       toast({ variant: "destructive", title: isRtl ? "غير مسموح بالتعديل" : "Permission Denied" });
       return;
@@ -203,10 +202,8 @@ export default function DepartmentsPage() {
     }
 
     setIsSubmitting(true);
-    
-    // إغلاق الـ Dialog مبكراً وقبل تنفيذ الـ Await لمنع تعارض مكدس الاتصال مع Radix UI
     const targetEditingId = editingDeptId;
-    setIsAddDialogOpen(false); 
+    setIsAddDialogOpen(false); // إغلاق مبكر
 
     try {
       const deptData = {
@@ -228,16 +225,10 @@ export default function DepartmentsPage() {
       resetForm();
     } catch (err: any) {
       toast({ variant: "destructive", title: isRtl ? "فشلت العملية" : "Failed", description: err.message });
-      setIsAddDialogOpen(true); // إعادة فتح النافذة في حال فشل الاتصال لكي لا يفقد المستخدم ما كتبه
+      setIsAddDialogOpen(true); 
     } finally {
       setIsSubmitting(false);
-      
-      // ضمان تدمير أي قفل pointer-events نهائياً
-      requestAnimationFrame(() => {
-        document.body.style.pointerEvents = 'auto';
-        document.body.style.removeProperty('overflow');
-        document.body.removeAttribute('data-scroll-locked');
-      });
+      forceUIUnlock();
     }
   };
 
@@ -258,8 +249,6 @@ export default function DepartmentsPage() {
   const handleArchiveDepartment = async () => {
     if (!db || !deletingDeptId || !canDelete || isSubmitting) return;
     setIsSubmitting(true);
-    
-    // حفظ الـ ID ثم تصفير الـ State لإغلاق المودال فوراً ومنع تعارض Radix UI
     const targetId = deletingDeptId;
     setDeletingDeptId(null); 
 
@@ -273,13 +262,7 @@ export default function DepartmentsPage() {
       toast({ variant: "destructive", title: "Archive Failed", description: err.message });
     } finally {
       setIsSubmitting(false);
-      
-      // ضمان تحرير الشاشة
-      requestAnimationFrame(() => {
-        document.body.style.pointerEvents = 'auto';
-        document.body.style.removeProperty('overflow');
-        document.body.removeAttribute('data-scroll-locked');
-      });
+      forceUIUnlock();
     }
   };
 
@@ -321,23 +304,7 @@ export default function DepartmentsPage() {
       lang === 'ar' ? 'عدد العمال' : 'Staff Count',
       lang === 'ar' ? 'الحالة' : 'Status'
     ];
-
-    const escapeCSV = (val: any) => {
-      const str = String(val || '');
-      if (str.includes(',') || str.includes('\n') || str.includes('"')) {
-        return `"${str.replace(/"/g, '""')}"`;
-      }
-      return str;
-    };
-
-    const rows = filtered.map(d => [
-      escapeCSV(d.code),
-      escapeCSV(d.nameAr),
-      escapeCSV(d.nameEn),
-      d.actualWorkerCount || 0,
-      d.status === 'active' ? (lang === 'ar' ? 'نشط' : 'Active') : (lang === 'ar' ? 'متوقف' : 'Inactive')
-    ]);
-
+    const rows = filtered.map(d => [d.code, d.nameAr, d.nameEn, d.actualWorkerCount || 0, d.status]);
     const csvContent = [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
     const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -446,21 +413,6 @@ export default function DepartmentsPage() {
                   </div>
                   {sortBy === 'actualWorkerCount' && (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <SortDesc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />)}
                 </DropdownMenuItem>
-                
-                <DropdownMenuSeparator className="dark:bg-slate-800" />
-                <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest">{isRtl ? 'عرض الحالة' : 'STATUS'}</DropdownMenuLabel>
-                <DropdownMenuItem onClick={() => setStatusFilter('all')} className="flex items-center justify-between text-xs font-bold cursor-pointer dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
-                  {isRtl ? 'الكل' : 'All'}
-                  {statusFilter === 'all' && <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setStatusFilter('active')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
-                  {isRtl ? 'نشط فقط' : 'Active Only'}
-                  {statusFilter === 'active' && <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setStatusFilter('inactive')} className="flex items-center justify-between text-xs font-bold cursor-pointer py-2 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
-                  {isRtl ? 'متوقف فقط' : 'Inactive Only'}
-                  {statusFilter === 'inactive' && <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />}
-                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -480,25 +432,10 @@ export default function DepartmentsPage() {
             <Table className="text-right border-separate border-spacing-0 w-full">
               <TableHeader className="sticky top-0 z-20 bg-slate-100/95 dark:bg-slate-800/95 backdrop-blur-sm shadow-sm">
                 <TableRow className="border-b border-slate-200 dark:border-slate-700">
-                  <TableHead className={cn("h-10 font-bold text-[11px] uppercase text-slate-500 dark:text-slate-400 px-6 whitespace-nowrap bg-inherit", isRtl ? "text-right" : "text-left")}>
-                    <button onClick={() => toggleSort('code')} className="flex items-center gap-2 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors uppercase">
-                      {isRtl ? 'الكود' : 'CODE'}
-                      {sortBy === 'code' ? (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5" /> : <SortDesc className="w-3.5 h-3.5" />) : <ArrowUpDown className="w-3.5 h-3.5 opacity-30" />}
-                    </button>
-                  </TableHead>
-                  <TableHead className={cn("h-10 font-bold text-[11px] uppercase text-slate-500 dark:text-slate-400 px-6 whitespace-nowrap bg-inherit", isRtl ? "text-right" : "text-left")}>
-                    <button onClick={() => toggleSort('nameAr')} className="flex items-center gap-2 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors uppercase">
-                      {isRtl ? 'الاسم' : 'NAME'}
-                      {sortBy === 'nameAr' ? (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5" /> : <SortDesc className="w-3.5 h-3.5" />) : <ArrowUpDown className="w-3.5 h-3.5 opacity-30" />}
-                    </button>
-                  </TableHead>
+                  <TableHead className={cn("h-10 font-bold text-[11px] uppercase text-slate-500 dark:text-slate-400 px-6 whitespace-nowrap bg-inherit", isRtl ? "text-right" : "text-left")}>{isRtl ? 'الكود' : 'CODE'}</TableHead>
+                  <TableHead className={cn("h-10 font-bold text-[11px] uppercase text-slate-500 dark:text-slate-400 px-6 whitespace-nowrap bg-inherit", isRtl ? "text-right" : "text-left")}>{isRtl ? 'الاسم' : 'NAME'}</TableHead>
                   <TableHead className={cn("h-10 font-bold text-[11px] uppercase text-slate-500 dark:text-slate-400 px-6 whitespace-nowrap bg-inherit", isRtl ? "text-right" : "text-left")}>{isRtl ? 'وصف العمليات' : 'OPERATIONS'}</TableHead>
-                  <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 dark:text-slate-400 px-6 text-center whitespace-nowrap bg-inherit">
-                    <button onClick={() => toggleSort('actualWorkerCount')} className="flex items-center gap-2 mx-auto hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors uppercase">
-                      {isRtl ? 'العمال' : 'STAFF'}
-                      {sortBy === 'actualWorkerCount' ? (sortOrder === 'asc' ? <SortAsc className="w-3.5 h-3.5" /> : <SortDesc className="w-3.5 h-3.5" />) : <ArrowUpDown className="w-3.5 h-3.5 opacity-30" />}
-                    </button>
-                  </TableHead>
+                  <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 dark:text-slate-400 px-6 text-center whitespace-nowrap bg-inherit">{isRtl ? 'العمال' : 'STAFF'}</TableHead>
                   <TableHead className="h-10 font-bold text-[11px] uppercase text-slate-500 dark:text-slate-400 px-6 text-center whitespace-nowrap bg-inherit">{isRtl ? 'الحالة' : 'STATUS'}</TableHead>
                   <TableHead className="h-10 w-[60px] sticky right-0 bg-inherit shadow-[-2px_0_5px_rgba(0,0,0,0.05)] dark:shadow-none"></TableHead>
                 </TableRow>
@@ -585,7 +522,7 @@ export default function DepartmentsPage() {
       </div>
 
       {/* DIALOGS */}
-      <Dialog open={isAddDialogOpen} onOpenChange={(open) => !open && resetForm()}>
+      <Dialog open={isAddDialogOpen} onOpenChange={(open) => { if(!open) resetForm(); forceUIUnlock(); }}>
         <DialogContent className="sm:max-w-[500px] rounded-lg border-none shadow-2xl p-0 overflow-hidden dark:bg-slate-900 transition-colors duration-300">
           <div className="premium-gradient p-6 text-white relative">
             <DialogHeader className={cn("text-right rtl:text-right ltr:text-left")}>
@@ -675,7 +612,7 @@ export default function DepartmentsPage() {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={!!deletingDeptId} onOpenChange={(open) => !open && setDeletingDeptId(null)}>
+      <AlertDialog open={!!deletingDeptId} onOpenChange={(open) => { if(!open) setDeletingDeptId(null); forceUIUnlock(); }}>
         <AlertDialogContent className="max-w-[400px] rounded-lg border-none shadow-2xl p-0 overflow-hidden dark:bg-slate-900 transition-colors duration-300">
           <div className="bg-slate-950 p-8 text-center relative overflow-hidden">
             <div className="absolute top-0 right-0 p-4 opacity-5"><Layers className="w-32 h-32 text-white" /></div>

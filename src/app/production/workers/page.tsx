@@ -77,8 +77,6 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, addDoc, updateDoc, doc, serverTimestamp, query, where } from 'firebase/firestore';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -112,6 +110,17 @@ export default function WorkersPage() {
   const [isCompressing, setIsCompressing] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   
+  /**
+   * دالة حارس الأمان لفك تجمد الواجهة يدوياً
+   */
+  const forceUIUnlock = useCallback(() => {
+    requestAnimationFrame(() => {
+      document.body.style.pointerEvents = 'auto';
+      document.body.style.overflow = 'auto';
+      document.body.removeAttribute('data-scroll-locked');
+    });
+  }, []);
+
   const [formData, setFormData] = useState({
     fullName: '',
     departmentId: '',
@@ -192,14 +201,8 @@ export default function WorkersPage() {
       isSupervisor: false,
       supervisorId: ''
     });
-
-    // تنظيف فوري لأي قفل واجهة ناتج عن المودالات
-    requestAnimationFrame(() => {
-      document.body.style.pointerEvents = 'auto';
-      document.body.style.removeProperty('overflow');
-      document.body.removeAttribute('data-scroll-locked');
-    });
-  }, []);
+    forceUIUnlock();
+  }, [forceUIUnlock]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -232,7 +235,6 @@ export default function WorkersPage() {
     e.preventDefault();
     if (!db || isSubmitting || isCompressing) return;
     
-    // فحص الصلاحية برمجياً
     if (editingWorkerId && !canEdit) {
       toast({ variant: "destructive", title: isRtl ? "غير مسموح بالتعديل" : "Permission Denied" });
       return;
@@ -256,7 +258,6 @@ export default function WorkersPage() {
     setIsSubmitting(true);
     const currentId = editingWorkerId;
     
-    // إغلاق المودال مبكراً لفك قفل الواجهة
     setIsAddDialogOpen(false);
 
     try {
@@ -285,14 +286,10 @@ export default function WorkersPage() {
     } catch (err: any) {
       console.error(err);
       toast({ variant: "destructive", title: "Error Saving Data" });
-      setIsAddDialogOpen(true); // إعادة الفتح في حال الخطأ
+      setIsAddDialogOpen(true);
     } finally {
       setIsSubmitting(false);
-      requestAnimationFrame(() => {
-        document.body.style.pointerEvents = 'auto';
-        document.body.style.removeProperty('overflow');
-        document.body.removeAttribute('data-scroll-locked');
-      });
+      forceUIUnlock();
     }
   };
 
@@ -310,8 +307,6 @@ export default function WorkersPage() {
     
     setIsSubmitting(true);
     const targetId = deletingWorkerId;
-    
-    // إغلاق المودال فوراً
     setDeletingWorkerId(null);
 
     try {
@@ -325,11 +320,7 @@ export default function WorkersPage() {
       console.error(err);
     } finally {
       setIsSubmitting(false);
-      requestAnimationFrame(() => {
-        document.body.style.pointerEvents = 'auto';
-        document.body.style.removeProperty('overflow');
-        document.body.removeAttribute('data-scroll-locked');
-      });
+      forceUIUnlock();
     }
   };
 
@@ -480,7 +471,7 @@ export default function WorkersPage() {
                   {departments?.map(d => (
                     <DropdownMenuItem key={d.id} onClick={() => setDeptFilter(d.id)} className="flex items-center justify-between text-xs font-bold cursor-pointer dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-slate-800">
                       {lang === 'ar' ? d.nameAr : d.nameEn}
-                      {deptFilter === d.id && <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />}
+                      {deptFilter === d.id && <Check className="w-3 text-emerald-600 dark:text-emerald-400" />}
                     </DropdownMenuItem>
                   ))}
                 </ScrollArea>
@@ -614,7 +605,7 @@ export default function WorkersPage() {
       </div>
 
       {/* ADD/EDIT DIALOG SECTION */}
-      <Dialog open={isAddDialogOpen} onOpenChange={(open) => !open && resetForm()}>
+      <Dialog open={isAddDialogOpen} onOpenChange={(open) => { if(!open) resetForm(); forceUIUnlock(); }}>
         <DialogContent className="sm:max-w-[550px] rounded-lg border-none shadow-2xl p-0 overflow-hidden dark:bg-slate-900 transition-colors duration-300">
           <div className="premium-gradient p-6 text-white relative">
             <DialogHeader className={cn("text-right rtl:text-right ltr:text-left")}>
@@ -650,13 +641,13 @@ export default function WorkersPage() {
 
               <div className="md:col-span-8 space-y-4">
                 <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
-                  <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start">
+                  <Label className={cn("text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start")}>
                     <UserIcon className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'الاسم الكامل' : 'FULL NAME'}
                   </Label>
                   <Input value={formData.fullName} onChange={(e) => setFormData({...formData, fullName: e.target.value})} className="h-10 font-bold text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 dark:text-slate-100" dir={dir} required />
                 </div>
                 <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
-                  <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start">
+                  <Label className={cn("text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start")}>
                     <Phone className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'رقم الهاتف' : 'PHONE NUMBER'}
                   </Label>
                   <Input value={formData.phoneNumber} onChange={(e) => setFormData({...formData, phoneNumber: e.target.value})} placeholder="7XXXXXXXX" className="h-10 font-bold text-xs bg-slate-50 dark:bg-slate-800 tabular-nums border border-slate-200 dark:border-slate-700 dark:text-slate-100" dir="ltr" />
@@ -706,7 +697,7 @@ export default function WorkersPage() {
             {/* ORGANIZATION SECTION */}
             <div className="grid grid-cols-2 gap-4">
               <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
-                <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start">
+                <Label className={cn("text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start")}>
                   <Building2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'القسم / المسار' : 'DEPARTMENT'}
                 </Label>
                 <select value={formData.departmentId} onChange={(e) => setFormData({...formData, departmentId: e.target.value})} className="w-full h-10 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-bold outline-none dark:text-slate-100 transition-colors" dir={dir} required>
@@ -715,7 +706,7 @@ export default function WorkersPage() {
                 </select>
               </div>
               <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
-                <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start">
+                <Label className={cn("text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start")}>
                   <Calendar className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'تاريخ الانضمام' : 'JOIN DATE'}
                 </Label>
                 <Input type="date" value={formData.joinDate} onChange={(e) => setFormData({...formData, joinDate: e.target.value})} className="h-10 font-bold text-xs bg-slate-50 dark:bg-slate-800 tabular-nums border border-slate-200 dark:border-slate-700 dark:text-slate-100" dir="ltr" required />
@@ -723,7 +714,7 @@ export default function WorkersPage() {
             </div>
 
             <div className={cn("space-y-1.5", isRtl ? "text-right" : "text-left")}>
-              <Label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start">
+              <Label className={cn("text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 flex items-center gap-2 justify-start")}>
                 <Activity className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> {lang === 'ar' ? 'حالة الموظف' : 'EMPLOYMENT STATUS'}
               </Label>
               <select value={formData.active ? 'true' : 'false'} onChange={(e) => setFormData({...formData, active: e.target.value === 'true'})} className="w-full h-10 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-bold outline-none dark:text-slate-100 transition-colors" dir={dir}>
@@ -744,7 +735,7 @@ export default function WorkersPage() {
                 {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : <Save className="w-4 h-4 me-2" />}
                 {lang === 'ar' ? (isSubmitting ? 'جاري الحفظ...' : 'حفظ البيانات') : 'Commit Record'}
               </Button>
-              <Button type="button" variant="outline" onClick={resetForm} className="px-6 h-11 font-black text-slate-400 dark:text-slate-500 rounded-md border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
+              <Button type="button" variant="outline" onClick={resetForm} className="px-6 h-11 font-black text-slate-400 dark:text-slate-500 rounded-md border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all">
                 {lang === 'ar' ? 'إلغاء' : 'Cancel'}
               </Button>
             </div>
@@ -753,7 +744,7 @@ export default function WorkersPage() {
       </Dialog>
 
       {/* ARCHIVE DIALOG */}
-      <AlertDialog open={!!deletingWorkerId} onOpenChange={(open) => !open && setDeletingWorkerId(null)}>
+      <AlertDialog open={!!deletingWorkerId} onOpenChange={(open) => { if(!open) setDeletingWorkerId(null); forceUIUnlock(); }}>
         <AlertDialogContent className="max-w-[400px] rounded-lg border-none shadow-2xl p-0 overflow-hidden dark:bg-slate-900 transition-colors duration-300">
           <div className="bg-slate-950 p-8 text-center relative overflow-hidden">
             <div className="absolute top-0 right-0 p-4 opacity-5"><Users2 className="w-32 h-32 text-white" /></div>

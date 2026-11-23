@@ -85,6 +85,17 @@ export default function ProductionOrdersPage() {
   const canEdit = isAdmin || permissions.orders?.edit;
   const canDelete = isAdmin || permissions.orders?.delete;
 
+  /**
+   * دالة حارس الأمان لفك تجمد الواجهة يدوياً
+   */
+  const forceUIUnlock = useCallback(() => {
+    requestAnimationFrame(() => {
+      document.body.style.pointerEvents = 'auto';
+      document.body.style.overflow = 'auto';
+      document.body.removeAttribute('data-scroll-locked');
+    });
+  }, []);
+
   // Form State
   const [formData, setFormData] = useState({
     title: '',
@@ -127,7 +138,8 @@ export default function ProductionOrdersPage() {
     setIsAddDialogOpen(false);
     setEditingOrderId(null);
     setFormData({ title: '', productId: '', targetQty: 300, priority: 'normal', notes: '' });
-  }, []);
+    forceUIUnlock();
+  }, [forceUIUnlock]);
 
   const handleEditClick = (order: any, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -166,6 +178,9 @@ export default function ProductionOrdersPage() {
       updatedAt: serverTimestamp()
     };
 
+    // إغلاق المودال مبكراً
+    setIsAddDialogOpen(false);
+
     try {
       if (editingOrderId) {
         await updateDoc(doc(db, 'productionOrders', editingOrderId), orderData);
@@ -187,8 +202,10 @@ export default function ProductionOrdersPage() {
       resetForm();
     } catch (error) {
       console.error(error);
+      setIsAddDialogOpen(true);
     } finally {
       setIsSubmitting(false);
+      forceUIUnlock();
     }
   };
 
@@ -196,6 +213,8 @@ export default function ProductionOrdersPage() {
     if (!db || !completingOrder || isSubmitting || !canEdit) return;
 
     setIsSubmitting(true);
+    setCompletingOrder(null); // إغلاق مبكر
+
     try {
       await updateDoc(doc(db, 'productionOrders', completingOrder.id), {
         status: 'completed',
@@ -207,7 +226,7 @@ export default function ProductionOrdersPage() {
       console.error(error);
     } finally {
       setIsSubmitting(false);
-      setCompletingOrder(null);
+      forceUIUnlock();
     }
   };
 
@@ -225,8 +244,11 @@ export default function ProductionOrdersPage() {
       return;
     }
 
+    const targetId = deletingOrder.id;
+    setDeletingOrder(null); // إغلاق مبكر
+
     try {
-      await updateDoc(doc(db, 'productionOrders', deletingOrder.id), {
+      await updateDoc(doc(db, 'productionOrders', targetId), {
         status: 'deleted',
         deletedAt: serverTimestamp()
       });
@@ -234,7 +256,7 @@ export default function ProductionOrdersPage() {
     } catch (error) {
       console.error(error);
     } finally {
-      setDeletingOrder(null);
+      forceUIUnlock();
     }
   };
 
@@ -405,7 +427,7 @@ export default function ProductionOrdersPage() {
       </div>
 
       {/* NEW/EDIT ORDER DIALOG */}
-      <Dialog open={isAddDialogOpen} onOpenChange={(open) => !open && resetForm()}>
+      <Dialog open={isAddDialogOpen} onOpenChange={(open) => { if(!open) resetForm(); forceUIUnlock(); }}>
         <DialogContent className="sm:max-w-[500px] rounded-lg p-0 overflow-hidden border-none shadow-2xl dark:bg-slate-900">
           <div className="premium-gradient p-6 text-white">
             <DialogHeader className="text-right rtl:text-right ltr:text-left">
@@ -453,7 +475,7 @@ export default function ProductionOrdersPage() {
       </Dialog>
 
       {/* COMPLETE ORDER CONFIRMATION */}
-      <AlertDialog open={!!completingOrder} onOpenChange={() => setCompletingOrder(null)}>
+      <AlertDialog open={!!completingOrder} onOpenChange={(open) => { if(!open) setCompletingOrder(null); forceUIUnlock(); }}>
         <AlertDialogContent className="rounded-[1.5rem] p-0 overflow-hidden border-none shadow-2xl dark:bg-slate-900">
            <div className="bg-emerald-950 p-8 text-center relative overflow-hidden">
               <div className="absolute top-0 right-0 p-4 opacity-5"><CheckCircle2 className="w-32 h-32 text-white" /></div>
@@ -478,7 +500,7 @@ export default function ProductionOrdersPage() {
       </AlertDialog>
 
       {/* ARCHIVE DIALOG */}
-      <AlertDialog open={!!deletingOrder} onOpenChange={() => setDeletingOrder(null)}>
+      <AlertDialog open={!!deletingOrder} onOpenChange={(open) => { if(!open) setDeletingOrder(null); forceUIUnlock(); }}>
         <AlertDialogContent className="rounded-[1.5rem] p-0 overflow-hidden dark:bg-slate-900">
            <div className="bg-slate-950 p-6 text-center">
               <div className="w-16 h-16 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-rose-500/20"><Trash2 className="w-8 h-8 text-rose-500" /></div>

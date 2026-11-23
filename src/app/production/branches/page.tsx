@@ -76,6 +76,17 @@ export default function BranchesManagementPage() {
   const canEdit = isAdmin || permissions.branches?.edit;
   const canDelete = isAdmin || permissions.branches?.delete;
 
+  /**
+   * دالة حارس الأمان لفك تجمد الواجهة يدوياً
+   */
+  const forceUIUnlock = useCallback(() => {
+    requestAnimationFrame(() => {
+      document.body.style.pointerEvents = 'auto';
+      document.body.style.overflow = 'auto';
+      document.body.removeAttribute('data-scroll-locked');
+    });
+  }, []);
+
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -134,6 +145,8 @@ export default function BranchesManagementPage() {
     if (!editingId && !canCreate) { toast({ variant: "destructive", title: isRtl ? "غير مسموح بالإضافة" : "Access Denied" }); return; }
 
     setIsSubmitting(true);
+    setIsAddDialogOpen(false); // إغلاق مبكر
+
     try {
       const data = { ...formData, updatedAt: serverTimestamp() };
       if (editingId) {
@@ -146,14 +159,16 @@ export default function BranchesManagementPage() {
       resetForm();
     } finally {
       setIsSubmitting(false);
+      forceUIUnlock();
     }
   };
 
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setIsAddDialogOpen(false);
     setEditingId(null);
     setFormData({ nameAr: '', addressAr: '', phoneNumber: '', photoUrl: '', status: 'active' });
-  };
+    forceUIUnlock();
+  }, [forceUIUnlock]);
 
   return (
     <div className="flex flex-col h-full bg-[#f8fafc] dark:bg-slate-950 overflow-hidden transition-colors duration-300" dir={dir}>
@@ -245,7 +260,7 @@ export default function BranchesManagementPage() {
       </div>
 
       {/* FORM DIALOG */}
-      <Dialog open={isAddDialogOpen} onOpenChange={(open) => !open && resetForm()}>
+      <Dialog open={isAddDialogOpen} onOpenChange={(open) => { if(!open) resetForm(); forceUIUnlock(); }}>
         <DialogContent className="sm:max-w-[500px] rounded-[1.5rem] p-0 overflow-hidden border-none shadow-2xl dark:bg-slate-900">
           <div className="premium-gradient p-6 text-white text-right">
             <DialogHeader className={cn("text-right", !isRtl && "text-left")}>
@@ -308,8 +323,8 @@ export default function BranchesManagementPage() {
       </Dialog>
 
       {/* DELETE CONFIRMATION */}
-      <AlertDialog open={!!deletingId} onOpenChange={() => setDeletingId(null)}>
-        <AlertDialogContent className="max-w-[400px] rounded-2xl border-none shadow-2xl p-0 overflow-hidden dark:bg-slate-900">
+      <AlertDialog open={!!deletingId} onOpenChange={(open) => { if(!open) setDeletingId(null); forceUIUnlock(); }}>
+        <AlertDialogContent className="max-w-[400px] rounded-2xl border-none shadow-2xl p-0 overflow-hidden dark:bg-slate-900 transition-colors duration-300">
            <div className="bg-slate-950 p-8 text-center relative overflow-hidden">
               <div className="absolute top-0 right-0 p-4 opacity-5"><MapPin className="w-32 h-32 text-white" /></div>
               <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20 shadow-inner">
@@ -321,13 +336,13 @@ export default function BranchesManagementPage() {
               </AlertDialogDescription>
            </div>
            <div className="bg-white dark:bg-slate-900 p-6 flex gap-3">
-              <AlertDialogAction onClick={async () => { if (!db || !deletingId) return; await updateDoc(doc(db, 'branches', deletingId), { status: 'deleted', updatedAt: serverTimestamp() }); setDeletingId(null); toast({ title: "Archived" }); }} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white font-black rounded-xl border-none shadow-lg">تأكيد الأرشفة</AlertDialogAction>
+              <AlertDialogAction onClick={async () => { if (!db || !deletingId) return; await updateDoc(doc(db, 'branches', deletingId), { status: 'deleted', updatedAt: serverTimestamp() }); setDeletingId(null); toast({ title: "Archived" }); forceUIUnlock(); }} className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white font-black rounded-xl border-none shadow-lg">تأكيد الأرشفة</AlertDialogAction>
               <AlertDialogCancel className="flex-1 h-11 bg-slate-50 dark:bg-slate-800 border-none text-slate-400 font-black rounded-xl">تراجع</AlertDialogCancel>
            </div>
         </AlertDialogContent>
       </AlertDialog>
 
-      <div className="flex-none p-3 bg-slate-900 dark:bg-slate-900/80 text-white/40 dark:text-slate-500 flex items-center justify-center gap-4 border-t border-white/5 shadow-2xl">
+      <div className="flex-none p-3 bg-slate-900 dark:bg-slate-900/80 text-white/40 dark:text-slate-500 flex items-center justify-center gap-4 border-t border-white/5 shadow-2xl transition-colors duration-300">
          <ShieldCheck className="w-4 h-4 text-emerald-500" />
          <p className="text-[10px] font-bold tracking-tight">
            {isRtl 
