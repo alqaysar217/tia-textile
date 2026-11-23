@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { 
   Factory, 
   PlayCircle, 
@@ -26,8 +26,8 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useTranslation } from '@/components/LanguageProvider';
-import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { useFirestore, useCollection, useDoc } from '@/firebase';
+import { collection, query, where, doc } from 'firebase/firestore';
 import { 
   Area, 
   AreaChart, 
@@ -52,11 +52,22 @@ export default function ProductionDashboard() {
   const { lang, t, dir } = useTranslation();
   const db = useFirestore();
   const isRtl = lang === 'ar';
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // استيراد الصلاحيات للتأكد من هوية المستخدم في لوحة التحكم
   const { isAdmin, permissions } = useProduction();
 
   // Data Fetching
+  const settingsRef = useMemo(() => !db ? null : doc(db, 'settings', 'global'), [db]);
+  const { data: savedSettings } = useDoc<any>(settingsRef);
+  
+  // تعريف حالة الوضع الداكن بشكل آمن
+  const isDarkMode = mounted && (savedSettings?.themeMode === 'dark' || (typeof document !== 'undefined' && document.documentElement.classList.contains('dark')));
+
   const ordersQuery = useMemo(() => !db ? null : collection(db, 'productionOrders'), [db]);
   const materialsQuery = useMemo(() => !db ? null : collection(db, 'materials'), [db]);
   const workersQuery = useMemo(() => !db ? null : query(collection(db, 'workers'), where('status', '!=', 'deleted')), [db]);
@@ -84,20 +95,18 @@ export default function ProductionDashboard() {
     return Number(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
-  // 1. Stats Processing - دقة متناهية في الحساب
+  // 1. Stats Processing
   const stats = useMemo(() => {
     if (!allOrders || !allMaterials || !allWorkers || !allVouchers || !whData) return null;
     
     const active = allOrders.filter(o => o.status === 'active').length;
     const lowStock = allMaterials.filter(m => (m.currentQty || 0) <= (m.minQty || 0)).length;
     
-    // حساب الإنتاج اليومي الحقيقي (من سندات الاستلام بتاريخ اليوم)
     const todayStr = new Date().toISOString().split('T')[0];
     const todayProduction = allVouchers
       .filter(v => v.type === 'production_receipt' && v.date === todayStr && v.status !== 'deleted')
       .reduce((acc, curr) => acc + (curr.qtyAccepted || 0), 0);
 
-    // حساب إجمالي المنجز النهائي الجاهز للبيع (من واقع رصيد المستودع)
     const totalFinishedGoods = whData.reduce((acc, curr) => acc + (curr.totalQty || 0), 0);
 
     return [
@@ -161,7 +170,7 @@ export default function ProductionDashboard() {
     }).filter(o => o.workers.length > 0);
   }, [allVouchers, allWorkers, allOrders, allDepartments]);
 
-  // 4. Financial Cost Architecture for Active Orders (Pie Structure)
+  // 4. Financial Cost Architecture for Active Orders
   const orderCostBreakdown = useMemo(() => {
     if (!allOrders || !allVouchers || !allProducts) return [];
     
@@ -196,9 +205,9 @@ export default function ProductionDashboard() {
         laborCost,
         overheadCost,
         data: [
-          { name: isRtl ? 'مواد' : 'Materials', value: materialCost, fill: '#F59E0B' }, // Amber-500
-          { name: isRtl ? 'أجور' : 'Wages', value: laborCost, fill: '#8B5CF6' }, // Violet-500
-          { name: isRtl ? 'مصاريف' : 'Expenses', value: overheadCost, fill: '#EF4444' } // Red-500
+          { name: isRtl ? 'مواد' : 'Materials', value: materialCost, fill: '#F59E0B' }, 
+          { name: isRtl ? 'أجور' : 'Wages', value: laborCost, fill: '#8B5CF6' }, 
+          { name: isRtl ? 'مصاريف' : 'Expenses', value: overheadCost, fill: '#EF4444' }
         ].filter(d => d.value > 0)
       };
     });
@@ -225,7 +234,7 @@ export default function ProductionDashboard() {
               <div className="p-1.5 bg-slate-900 dark:bg-emerald-900/20 rounded-lg text-emerald-400 shadow-md"><Sparkles className="w-5 h-5" /></div>
               <h1 className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">{t.production.dashboard}</h1>
            </div>
-           <p className="text-[11px] text-slate-500 dark:text-slate-400 font-bold opacity-80 ps-9">
+           <p className="text-[11px] text-slate-500 dark:text-slate-400 font-bold ps-9">
              {isRtl ? 'الرقابة المباشرة على جودة الإنتاج وهيكل التكاليف.' : 'Real-time oversight of production quality and cost structure.'}
            </p>
         </div>
@@ -235,7 +244,7 @@ export default function ProductionDashboard() {
         </div>
       </div>
 
-      {/* TOP STATS CARDS - MORE COMPACT */}
+      {/* TOP STATS CARDS */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         {stats?.map((stat, idx) => (
           <Card key={idx} className="p-4 border-none shadow-lg bg-white dark:bg-slate-900 relative overflow-hidden group hover:-translate-y-0.5 transition-all duration-300">
@@ -252,7 +261,7 @@ export default function ProductionDashboard() {
         ))}
       </div>
 
-      {/* ROW 1: GROWTH CHART - REDUCED HEIGHT & PADDING */}
+      {/* ROW 1: GROWTH CHART */}
       <Card className="p-6 border-none shadow-xl bg-white dark:bg-slate-900 rounded-2xl relative overflow-hidden">
         <div className="flex items-center justify-between mb-6">
           <div className="space-y-0.5">
@@ -287,7 +296,7 @@ export default function ProductionDashboard() {
         </div>
       </Card>
 
-      {/* ROW 2: WORKER OUTPUT - REDUCED CARD HEIGHT */}
+      {/* ROW 2: WORKER OUTPUT */}
       <div className="space-y-4">
         <div className="flex items-center gap-3">
           <div className="p-1.5 bg-violet-600 rounded-md text-white"><UserCheck className="w-4 h-4" /></div>
@@ -334,7 +343,7 @@ export default function ProductionDashboard() {
         </div>
       </div>
 
-      {/* ROW 3: COST ARCHITECTURE - MORE COMPACT DONUTS */}
+      {/* ROW 3: COST ARCHITECTURE */}
       <div className="space-y-4">
         <div className="flex items-center gap-3">
           <div className="p-1.5 bg-amber-500 rounded-md text-white"><PieChartIcon className="w-4 h-4" /></div>
@@ -410,7 +419,7 @@ export default function ProductionDashboard() {
         </div>
       </div>
 
-      {/* SYSTEM NOTE - COMPACT */}
+      {/* SYSTEM NOTE */}
       <div className="p-3 bg-slate-900 dark:bg-slate-900/50 text-white/40 rounded-xl flex items-center justify-between gap-4 border border-slate-800 shadow-xl mt-4">
         <div className="flex items-center gap-3">
           <div className="p-1.5 bg-emerald-500/10 rounded-lg text-emerald-500 shadow-inner">
