@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -220,6 +219,7 @@ export function VoucherTemplate({
                   <TableHead className={cn("font-black text-xs py-4 text-emerald-900", isRtl ? "text-right" : "text-left")}>{isRtl ? 'رقم سند الاستلام' : 'Receipt #'}</TableHead>
                   <TableHead className={cn("font-black text-xs py-4 text-emerald-900", isRtl ? "text-right" : "text-left")}>{isRtl ? 'المنتج / البيان' : 'Product'}</TableHead>
                   <TableHead className="text-center font-black text-xs py-4 text-emerald-900">{isRtl ? 'الكمية' : 'Qty'}</TableHead>
+                  <TableHead className="text-center font-black text-xs py-4 text-emerald-900">{isRtl ? 'أجر القطعة' : 'Rate'}</TableHead>
                   <TableHead className="text-center font-black text-xs py-4 text-emerald-900">{isRtl ? 'المبلغ المستحق' : 'Amount'}</TableHead>
                 </TableRow>
               </TableHeader>
@@ -233,12 +233,13 @@ export function VoucherTemplate({
                       <TableCell className={cn("font-bold text-sm tabular-nums", isRtl ? "text-right" : "text-left")}>{receipt?.voucherNumber || '---'}</TableCell>
                       <TableCell className={cn("font-bold text-sm text-slate-700", isRtl ? "text-right" : "text-left")}>{product?.nameAr || (isRtl ? 'مستحق إنتاج' : 'Production Due')}</TableCell>
                       <TableCell className="text-center font-black text-sm tabular-nums">{(receipt?.qtyAccepted || 0).toLocaleString('en-US')}</TableCell>
+                      <TableCell className="text-center font-bold text-sm tabular-nums">{(receipt?.wageRate || 0).toLocaleString('en-US')}</TableCell>
                       <TableCell className="text-center font-black text-sm tabular-nums text-emerald-700">{(receipt?.wageAmount || 0).toLocaleString('en-US')}</TableCell>
                     </TableRow>
                   );
                 })}
                 <TableRow className="bg-emerald-900 text-white">
-                  <TableCell colSpan={3} className={cn("font-black text-sm px-6 py-4 uppercase tracking-widest", isRtl ? "text-left" : "text-right")}>
+                  <TableCell colSpan={4} className={cn("font-black text-sm px-6 py-4 uppercase tracking-widest", isRtl ? "text-left" : "text-right")}>
                     {isRtl ? 'إجمالي المبلغ المصروف نقداً' : 'TOTAL DISBURSED AMOUNT'}
                   </TableCell>
                   <TableCell className="text-center font-black text-2xl tabular-nums">
