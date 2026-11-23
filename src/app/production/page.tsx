@@ -22,7 +22,8 @@ import {
   Sparkles, 
   PieChart as PieChartIcon, 
   UserCheck,
-  Package
+  Package,
+  Info
 } from 'lucide-react';
 import Link from 'next/link';
 import { useTranslation } from '@/components/LanguageProvider';
@@ -58,14 +59,11 @@ export default function ProductionDashboard() {
     setMounted(true);
   }, []);
 
-  // استيراد الصلاحيات للتأكد من هوية المستخدم في لوحة التحكم
   const { isAdmin, permissions } = useProduction();
 
-  // Data Fetching
   const settingsRef = useMemo(() => !db ? null : doc(db, 'settings', 'global'), [db]);
   const { data: savedSettings } = useDoc<any>(settingsRef);
   
-  // تعريف حالة الوضع الداكن بشكل آمن
   const isDarkMode = mounted && (savedSettings?.themeMode === 'dark' || (typeof document !== 'undefined' && document.documentElement.classList.contains('dark')));
 
   const ordersQuery = useMemo(() => !db ? null : collection(db, 'productionOrders'), [db]);
@@ -86,7 +84,6 @@ export default function ProductionDashboard() {
 
   const loading = ordersLoading || materialsLoading || workersLoading || vouchersLoading || whLoading;
 
-  // Formatting helper to force English numbers
   const formatNum = (val: number | string) => {
     return Number(val).toLocaleString('en-US');
   };
@@ -95,7 +92,6 @@ export default function ProductionDashboard() {
     return Number(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
-  // 1. Stats Processing
   const stats = useMemo(() => {
     if (!allOrders || !allMaterials || !allWorkers || !allVouchers || !whData) return null;
     
@@ -118,25 +114,33 @@ export default function ProductionDashboard() {
     ];
   }, [allOrders, allMaterials, allWorkers, allVouchers, whData, t.production.stats]);
 
-  // 2. Production Growth Chart Data
   const growthChartData = useMemo(() => {
     if (!allVouchers) return [];
     const receipts = allVouchers.filter(v => v.type === 'production_receipt' && v.status !== 'deleted');
+    
     const months: Record<string, number> = {};
     const now = new Date();
+    
+    // توليد مفاتيح لآخر 6 أشهر لضمان دقة الرسم
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
       months[key] = 0;
     }
+
+    // تجميع الكميات من السندات الحقيقية
     receipts.forEach(v => {
-      const date = v.date?.slice(0, 7);
-      if (months[date] !== undefined) months[date] += (v.qtyAccepted || 0);
+      if (v.date) {
+        const dateKey = v.date.slice(0, 7); // YYYY-MM
+        if (months[dateKey] !== undefined) {
+          months[dateKey] += (Number(v.qtyAccepted) || 0);
+        }
+      }
     });
+
     return Object.entries(months).map(([name, qty]) => ({ name, qty }));
   }, [allVouchers]);
 
-  // 3. Dynamic Labor Productivity by Order
   const laborByOrder = useMemo(() => {
     if (!allVouchers || !allWorkers || !allOrders) return [];
     const receipts = allVouchers.filter(v => v.type === 'production_receipt' && v.status !== 'deleted');
@@ -170,7 +174,6 @@ export default function ProductionDashboard() {
     }).filter(o => o.workers.length > 0);
   }, [allVouchers, allWorkers, allOrders, allDepartments]);
 
-  // 4. Financial Cost Architecture for Active Orders
   const orderCostBreakdown = useMemo(() => {
     if (!allOrders || !allVouchers || !allProducts) return [];
     
@@ -227,7 +230,6 @@ export default function ProductionDashboard() {
   return (
     <div className="h-full overflow-y-auto p-4 md:p-6 space-y-6 bg-slate-50 dark:bg-slate-950 transition-colors duration-300 no-scrollbar">
       
-      {/* HEADER SECTION - COMPACT */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
         <div className="space-y-0.5">
            <div className="flex items-center gap-2">
@@ -244,7 +246,6 @@ export default function ProductionDashboard() {
         </div>
       </div>
 
-      {/* TOP STATS CARDS */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         {stats?.map((stat, idx) => (
           <Card key={idx} className="p-4 border-none shadow-lg bg-white dark:bg-slate-900 relative overflow-hidden group hover:-translate-y-0.5 transition-all duration-300">
@@ -261,7 +262,6 @@ export default function ProductionDashboard() {
         ))}
       </div>
 
-      {/* ROW 1: GROWTH CHART */}
       <Card className="p-6 border-none shadow-xl bg-white dark:bg-slate-900 rounded-2xl relative overflow-hidden">
         <div className="flex items-center justify-between mb-6">
           <div className="space-y-0.5">
@@ -269,11 +269,25 @@ export default function ProductionDashboard() {
               <div className="w-1.5 h-6 bg-emerald-500 rounded-full" />
               {isRtl ? 'منحنى نمو الإنتاج الشهري' : 'Production Growth Pulse'}
             </h3>
-            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold ps-4 uppercase tracking-widest">{isRtl ? 'إجمالي القطع الجاهزة النهائية' : 'Completed pieces stats'}</p>
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold ps-4 uppercase tracking-widest">{isRtl ? 'إجمالي القطع الجاهزة النهائية بناءً على سندات الاستلام' : 'Completed pieces stats from real vouchers'}</p>
           </div>
-          <div className="p-2.5 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl text-emerald-600 dark:text-emerald-400"><TrendingUp className="w-5 h-5" /></div>
+          <div className="flex items-center gap-2">
+             <TooltipProvider>
+                <UITooltip>
+                  <TooltipTrigger asChild>
+                    <div className="p-2.5 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl text-emerald-600 dark:text-emerald-400 cursor-help"><Info className="w-5 h-5" /></div>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs text-[10px] font-bold p-3 dark:bg-slate-800">
+                    {isRtl 
+                      ? 'لاختبار المنحنى: قم بإضافة "سندات استلام" لشهور سابقة. سيقوم النظام تلقائياً بتجميعها هنا لرسم خط الإنتاج التاريخي.' 
+                      : 'To test: Add "Production Receipts" for past months. The system will auto-aggregate them to plot the trend line.'}
+                  </TooltipContent>
+                </UITooltip>
+             </TooltipProvider>
+             <div className="p-2.5 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl text-emerald-600 dark:text-emerald-400"><TrendingUp className="w-5 h-5" /></div>
+          </div>
         </div>
-        <div className="h-[250px] w-full">
+        <div className="h-[220px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={growthChartData}>
               <defs>
@@ -296,7 +310,6 @@ export default function ProductionDashboard() {
         </div>
       </Card>
 
-      {/* ROW 2: WORKER OUTPUT */}
       <div className="space-y-4">
         <div className="flex items-center gap-3">
           <div className="p-1.5 bg-violet-600 rounded-md text-white"><UserCheck className="w-4 h-4" /></div>
@@ -343,7 +356,6 @@ export default function ProductionDashboard() {
         </div>
       </div>
 
-      {/* ROW 3: COST ARCHITECTURE */}
       <div className="space-y-4">
         <div className="flex items-center gap-3">
           <div className="p-1.5 bg-amber-500 rounded-md text-white"><PieChartIcon className="w-4 h-4" /></div>
@@ -419,7 +431,6 @@ export default function ProductionDashboard() {
         </div>
       </div>
 
-      {/* SYSTEM NOTE */}
       <div className="p-3 bg-slate-900 dark:bg-slate-900/50 text-white/40 rounded-xl flex items-center justify-between gap-4 border border-slate-800 shadow-xl mt-4">
         <div className="flex items-center gap-3">
           <div className="p-1.5 bg-emerald-500/10 rounded-lg text-emerald-500 shadow-inner">
@@ -441,3 +452,6 @@ export default function ProductionDashboard() {
     </div>
   );
 }
+
+// استيراد أدوات التلميح الإضافية لتحسين تجربة الاختبار للمدير
+import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
