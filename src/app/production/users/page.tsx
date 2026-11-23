@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { 
   ShieldCheck, 
   ChevronRight, 
@@ -74,15 +74,20 @@ export default function UsersPermissionsPage() {
   const canDelete = isAdmin || permissions.users?.delete;
 
   /**
-   * دالة حارس الأمان لفك تجمد الواجهة يدوياً
-   * تضمن تنظيف المتصفح من أقفال الماوس بعد إغلاق أي نافذة
+   * دالة حارس الأمان لفك تجمد الواجهة يدوياً (بروتوكول المطهر الشامل)
+   * تضمن تحرير المتصفح من كافة الأقفال فور إغلاق أي نافذة
    */
   const forceUIUnlock = useCallback(() => {
     setTimeout(() => {
       document.body.style.pointerEvents = 'auto';
       document.body.style.overflow = 'auto';
       document.body.removeAttribute('data-scroll-locked');
-    }, 150);
+      
+      const html = document.documentElement;
+      html.style.pointerEvents = 'auto';
+      html.style.overflow = 'auto';
+      html.removeAttribute('data-scroll-locked');
+    }, 200);
   }, []);
 
   const [search, setSearch] = useState('');
@@ -94,6 +99,16 @@ export default function UsersPermissionsPage() {
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCompressing, setIsCompressing] = useState(false);
+
+  /**
+   * نظام المراقبة الذكي - يراقب حالة إغلاق النوافذ (بما فيها الضغط بالخارج)
+   * ويقوم باستدعاء المطهر البرمجي فوراً لضمان عدم تجمد الشاشة
+   */
+  useEffect(() => {
+    if (!isAddDialogOpen && !deletingUserId) {
+      forceUIUnlock();
+    }
+  }, [isAddDialogOpen, deletingUserId, forceUIUnlock]);
 
   const initPermissions = () => {
     const perms: any = {};
@@ -119,7 +134,7 @@ export default function UsersPermissionsPage() {
   const filteredUsers = useMemo(() => {
     if (!users) return [];
     
-    // حماية حساب المطور
+    // حماية حساب المطور من التعديل أو الحذف من قبل مستخدمين آخرين
     let list = users.filter(u => 
       u.status !== 'deleted' && 
       u.email !== 'alqaysarpc219@gmail.com'
@@ -169,13 +184,17 @@ export default function UsersPermissionsPage() {
     e.preventDefault();
     if (!db || isSubmitting || isCompressing) return;
 
+    // إغلاق النافذة وفك قفل المتصفح فوراً قبل انتظار رد السحابة
+    setIsAddDialogOpen(false); 
+    forceUIUnlock();
+    
     setIsSubmitting(true);
-    setIsAddDialogOpen(false); // إغلاق مبكر لمنع التجمد
 
     let tempApp = null;
     try {
       let uid = editingUserId;
       if (!editingUserId) {
+        // إنشاء حساب جديد في Firebase Auth باستخدام تطبيق مؤقت
         const tempAppName = `temp-auth-${Date.now()}`;
         tempApp = initializeApp(firebaseConfig, tempAppName);
         const tempAuth = getAuth(tempApp);
@@ -209,9 +228,10 @@ export default function UsersPermissionsPage() {
       }, { merge: true });
 
       toast({ title: isRtl ? "تم الحفظ بنجاح" : "User Saved" });
+      resetDialog();
     } catch (err) {
       console.error(err);
-      toast({ variant: "destructive", title: "Error" });
+      toast({ variant: "destructive", title: "Error Saving Profile" });
     } finally {
       if (tempApp) await deleteApp(tempApp);
       setIsSubmitting(false);
@@ -226,7 +246,7 @@ export default function UsersPermissionsPage() {
     const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.href = url; link.setAttribute('download', `Users_${Date.now()}.csv`);
+    link.href = url; link.setAttribute('download', `Users_Archive_${new Date().toISOString().split('T')[0]}.csv`);
     link.click();
   };
 
@@ -258,7 +278,7 @@ export default function UsersPermissionsPage() {
               <Input 
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder={isRtl ? 'بحث...' : 'Search...'}
+                placeholder={isRtl ? 'بحث باسم الموظف أو البريد...' : 'Search users...'}
                 className={cn(isRtl ? 'pr-9' : 'pl-9', "h-9 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold dark:text-slate-100")}
               />
             </div>
@@ -293,9 +313,9 @@ export default function UsersPermissionsPage() {
                  </TableHeader>
                  <TableBody>
                     {usersLoading ? (
-                      <TableRow><TableCell colSpan={5} className="text-center py-20 font-bold text-slate-400 animate-pulse">Loading...</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={5} className="text-center py-20 font-bold text-slate-400 animate-pulse">جاري سحب السجلات...</TableCell></TableRow>
                     ) : filteredUsers.length === 0 ? (
-                      <TableRow><TableCell colSpan={5} className="text-center py-20 text-slate-300 font-bold">No results</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={5} className="text-center py-20 font-bold text-slate-300">لا توجد نتائج مطابقة</TableCell></TableRow>
                     ) : filteredUsers.map((user) => (
                       <TableRow key={user.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 transition-colors group">
                          <TableCell className="px-6 py-4">
@@ -330,7 +350,7 @@ export default function UsersPermissionsPage() {
                                   {canDelete && (
                                     <DropdownMenuItem onClick={() => setDeletingUserId(user.id)} className="gap-2 font-bold py-2 text-rose-600 cursor-pointer text-xs focus:bg-rose-50"><Trash2 className="w-3.5 h-3.5" /> {isRtl ? 'سحب الصلاحيات' : 'Revoke Access'}</DropdownMenuItem>
                                   )}
-                               </DropdownMenuContent>
+                                </DropdownMenuContent>
                             </DropdownMenu>
                          </TableCell>
                       </TableRow>
@@ -341,6 +361,7 @@ export default function UsersPermissionsPage() {
         </div>
       </div>
 
+      {/* MODALS */}
       <UserFormDialog 
         isOpen={isAddDialogOpen} 
         onClose={resetDialog} 
@@ -378,7 +399,7 @@ export default function UsersPermissionsPage() {
         forceUIUnlock={forceUIUnlock}
       />
 
-      <AlertDialog open={!!deletingUserId} onOpenChange={(open) => { if(!open) setDeletingUserId(null); forceUIUnlock(); }}>
+      <AlertDialog open={!!deletingUserId} onOpenChange={(open) => { if(!open) { setDeletingUserId(null); forceUIUnlock(); } }}>
         <AlertDialogContent className="max-w-[400px] rounded-[1.5rem] p-0 overflow-hidden border-none shadow-2xl dark:bg-slate-900 transition-colors duration-300">
            <div className="bg-rose-950 p-8 text-center relative overflow-hidden">
               <div className="absolute top-0 right-0 p-4 opacity-5"><ShieldAlert className="w-32 h-32 text-white" /></div>
@@ -387,12 +408,24 @@ export default function UsersPermissionsPage() {
               </div>
               <AlertDialogTitle className="text-white text-xl font-black">{isRtl ? 'سحب صلاحيات المستخدم' : 'Revoke Account'}</AlertDialogTitle>
               <AlertDialogDescription className="text-rose-200/50 font-bold mt-2 text-xs leading-relaxed text-center">
-                {isRtl ? 'هل أنت متأكد من سحب صلاحيات هذا المستخدم تماماً؟' : 'Are you sure?'}
+                {isRtl ? 'هل أنت متأكد من سحب صلاحيات هذا المستخدم تماماً؟ سيتم نقله للأرشيف وتعطيل دخوله فوراً.' : 'Are you sure you want to revoke this user account?'}
               </AlertDialogDescription>
            </div>
            <div className="bg-white dark:bg-slate-900 p-6 flex gap-3">
-              <AlertDialogAction onClick={async () => { if (!db || !deletingUserId) return; await updateDoc(doc(db, 'users', deletingUserId), { active: false, status: 'deleted', deletedAt: serverTimestamp() }); setDeletingUserId(null); toast({ title: "Revoked" }); forceUIUnlock(); }} className="flex-1 h-12 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-xl border-none shadow-lg">تأكيد</AlertDialogAction>
-              <AlertDialogCancel className="flex-1 h-12 bg-slate-50 dark:bg-slate-800 font-black rounded-xl text-slate-400 border-none">إلغاء</AlertDialogCancel>
+              <AlertDialogAction onClick={async () => { 
+                if (!db || !deletingUserId || isSubmitting) return; 
+                setIsSubmitting(true);
+                const targetId = deletingUserId;
+                setDeletingUserId(null);
+                forceUIUnlock();
+                try {
+                  await updateDoc(doc(db, 'users', targetId), { active: false, status: 'deleted', deletedAt: serverTimestamp() }); 
+                  toast({ title: isRtl ? "تم السحب بنجاح" : "Revoked" }); 
+                } finally {
+                  setIsSubmitting(false);
+                }
+              }} className="flex-1 h-12 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-xl border-none shadow-lg">تأكيد</AlertDialogAction>
+              <AlertDialogCancel onClick={() => { setDeletingUserId(null); forceUIUnlock(); }} className="flex-1 h-12 bg-slate-50 dark:bg-slate-800 font-black rounded-xl text-slate-400 border-none">إلغاء</AlertDialogCancel>
            </div>
         </AlertDialogContent>
       </AlertDialog>

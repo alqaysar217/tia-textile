@@ -71,6 +71,7 @@ export function UserFormDialog({
   const handleTogglePermission = (moduleId: string, type: 'read' | 'create' | 'edit' | 'delete') => {
     setFormData((prev: any) => {
       const newPerms = { ...prev.permissions };
+      // حماية من القيم الفارغة لمنع خطأ TypeError
       if (!newPerms[moduleId]) {
         newPerms[moduleId] = { read: false, create: false, edit: false, delete: false };
       }
@@ -78,6 +79,7 @@ export function UserFormDialog({
       const current = { ...newPerms[moduleId] };
       current[type] = !current[type];
 
+      // ذكاء برمجي: إذا تم تفعيل أي صلاحية، يجب تفعيل صلاحية القراءة تلقائياً
       if ((current.create || current.edit || current.delete) && !current.read) {
         current.read = true;
       }
@@ -90,7 +92,20 @@ export function UserFormDialog({
   const handleToggleRow = (moduleId: string, checked: boolean) => {
     setFormData((prev: any) => {
       const newPerms = { ...prev.permissions };
-      newPerms[moduleId] = { read: checked, create: checked, edit: checked, delete: checked };
+      // حماية إضافية من undefined
+      const current = newPerms[moduleId] || { read: false, create: false, edit: false, delete: false };
+      
+      // منطق ذكي: إذا كان السطر غير مفعل بالكامل، نقوم بتفعيله بالكامل، والعكس صحيح
+      if (checked) {
+        if (!current.read && !current.create && !current.edit && !current.delete) {
+          newPerms[moduleId] = { read: true, create: false, edit: false, delete: false };
+        } else {
+          newPerms[moduleId] = { read: true, create: true, edit: true, delete: true };
+        }
+      } else {
+        newPerms[moduleId] = { read: false, create: false, edit: false, delete: false };
+      }
+      
       return { ...prev, permissions: newPerms };
     });
   };
