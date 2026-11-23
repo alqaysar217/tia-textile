@@ -286,7 +286,7 @@ export function IssueFormDialog({
 
           {formData.items.length > 0 && (
             <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
-              <Table className={cn("text-right", !isRtl && "text-left")}>
+              <Table className={cn("text-right w-full", !isRtl && "text-left")}>
                 <TableHeader className="bg-slate-50 dark:bg-slate-800">
                   <TableRow className="border-b dark:border-slate-700">
                     <TableHead className={cn("px-4 py-2 text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase", isRtl ? "text-right" : "text-left")}>ITEM</TableHead>

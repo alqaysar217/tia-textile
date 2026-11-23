@@ -33,11 +33,27 @@ export default function MaterialIssuePage() {
   const filterOrderId = searchParams.get('orderId');
   const isRtl = lang === 'ar';
 
-  // استيراد الصلاحيات من المحرك المركزي للمرحلة الثالثة
   const { permissions, isAdmin } = useProduction();
   const canCreate = isAdmin || permissions.vouchers_issue?.create;
   const canEdit = isAdmin || permissions.vouchers_issue?.edit;
   const canDelete = isAdmin || permissions.vouchers_issue?.delete;
+
+  /**
+   * دالة حارس الأمان لفك تجمد الواجهة يدوياً (بروتوكول المطهر الشامل)
+   * تضمن تحرير المتصفح من كافة الأقفال فور إغلاق أي نافذة
+   */
+  const forceUIUnlock = useCallback(() => {
+    setTimeout(() => {
+      document.body.style.pointerEvents = 'auto';
+      document.body.style.overflow = 'auto';
+      document.body.removeAttribute('data-scroll-locked');
+      
+      const html = document.documentElement;
+      html.style.pointerEvents = 'auto';
+      html.style.overflow = 'auto';
+      html.removeAttribute('data-scroll-locked');
+    }, 200);
+  }, []);
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingVoucherId, setEditingVoucherId] = useState<string | null>(null);
@@ -54,6 +70,16 @@ export default function MaterialIssuePage() {
 
   const [systemCurrency, setSystemCurrency] = useState('YER');
   
+  /**
+   * نظام المراقبة الذكي - يراقب حالة إغلاق النوافذ (بما فيها الضغط بالخارج)
+   * ويقوم باستدعاء المطهر البرمجي فوراً لضمان عدم تجمد الشاشة
+   */
+  useEffect(() => {
+    if (!isAddDialogOpen && !deletingVoucher && !printingVoucher) {
+      forceUIUnlock();
+    }
+  }, [isAddDialogOpen, deletingVoucher, printingVoucher, forceUIUnlock]);
+
   useEffect(() => {
     if (!db) return;
     getDoc(doc(db, 'settings', 'global')).then(snap => {
@@ -100,11 +126,10 @@ export default function MaterialIssuePage() {
       return matchesSearch && matchesBatch && matchesDept;
     });
     return result.sort((a, b) => {
-      let valA = a[sortBy] ?? '';
-      let valB = b[sortBy] ?? '';
-      if (sortBy === 'date') return sortOrder === 'asc' ? new Date(valA).getTime() - new Date(valB).getTime() : new Date(valB).getTime() - new Date(valA).getTime();
-      if (sortBy === 'totalAmount') return sortOrder === 'asc' ? Number(valA) - Number(valB) : Number(valB) - Number(valA);
-      return sortOrder === 'asc' ? String(valA).localeCompare(String(valB)) : String(valB).localeCompare(String(valA));
+      let vA = a[sortBy] ?? '', vB = b[sortBy] ?? '';
+      if (sortBy === 'date') return sortOrder === 'asc' ? new Date(vA).getTime() - new Date(vB).getTime() : new Date(vB).getTime() - new Date(vA).getTime();
+      if (sortBy === 'totalAmount') return sortOrder === 'asc' ? Number(vA) - Number(vB) : Number(vB) - Number(vA);
+      return sortOrder === 'asc' ? String(vA).localeCompare(String(vB)) : String(vB).localeCompare(String(vA));
     });
   }, [vouchers, allOrders, allWorkers, search, batchFilter, deptFilter, sortBy, sortOrder]);
 
@@ -128,33 +153,27 @@ export default function MaterialIssuePage() {
     setIsAddDialogOpen(false);
     setEditingVoucherId(null);
     setFormData({ date: new Date().toISOString().split('T')[0], orderId: '', workerId: '', notes: '', items: [] });
-    
-    // تنظيف فوري لأي قفل واجهة
-    requestAnimationFrame(() => {
-      document.body.style.pointerEvents = 'auto';
-      document.body.style.removeProperty('overflow');
-      document.body.removeAttribute('data-scroll-locked');
-    });
-  }, []);
+    forceUIUnlock();
+  }, [forceUIUnlock]);
 
   const handleSaveVoucher = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!db || isSubmitting || formData.items.length === 0 || !formData.workerId) return;
 
-    // منع الحفظ بدون صلاحية
-    if (editingVoucherId && !canEdit) {
-      toast({ variant: "destructive", title: isRtl ? "غير مسموح بالتعديل" : "Access Denied" });
-      return;
-    }
-    if (!editingVoucherId && !canCreate) {
-      toast({ variant: "destructive", title: isRtl ? "غير مسموح بالصرف" : "Access Denied" });
-      return;
-    }
+    if (editingVoucherId && !canEdit) { toast({ variant: "destructive", title: isRtl ? "غير مسموح بالتعديل" : "Access Denied" }); return; }
+    if (!editingVoucherId && !canCreate) { toast({ variant: "destructive", title: isRtl ? "غير مسموح بالصرف" : "Access Denied" }); return; }
 
     setIsSubmitting(true);
+    const targetEditingId = editingVoucherId;
+    
+    // إغلاق المودال وتحرير الواجهة فوراً
+    setIsAddDialogOpen(false);
+    forceUIUnlock();
+
     const batch = writeBatch(db);
     const totalAmount = formData.items.filter(i => i.itemType === 'material').reduce((acc, i) => acc + (i.qty * (i.price || 0)), 0);
     const worker = allWorkers?.find(w => w.id === formData.workerId);
+    
     const voucherData = {
       ...formData,
       supervisorId: worker?.supervisorId || '',
@@ -165,12 +184,9 @@ export default function MaterialIssuePage() {
       updatedAt: serverTimestamp()
     };
 
-    // إغلاق المودال مبكراً
-    setIsAddDialogOpen(false);
-
     try {
-      if (editingVoucherId) {
-        const oldSnap = await getDoc(doc(db, 'vouchers', editingVoucherId));
+      if (targetEditingId) {
+        const oldSnap = await getDoc(doc(db, 'vouchers', targetEditingId));
         const oldV = oldSnap.data();
         oldV?.items.forEach((item: any) => {
           if (item.itemType === 'material') {
@@ -178,7 +194,7 @@ export default function MaterialIssuePage() {
             if (m) batch.update(doc(db, 'materials', item.id), { currentQty: (m.currentQty || 0) + item.qty });
           }
         });
-        batch.update(doc(db, 'vouchers', editingVoucherId), voucherData);
+        batch.update(doc(db, 'vouchers', targetEditingId), voucherData);
       } else {
         const voucherNumber = `MIV-${Date.now().toString().slice(-6)}`;
         batch.set(doc(collection(db, 'vouchers')), { ...voucherData, voucherNumber, createdAt: serverTimestamp() });
@@ -197,14 +213,9 @@ export default function MaterialIssuePage() {
     } catch (err) { 
       console.error(err);
       toast({ variant: "destructive", title: "Error" });
-      setIsAddDialogOpen(true); // إعادة الفتح في حال الخطأ
     } finally { 
       setIsSubmitting(false); 
-      requestAnimationFrame(() => {
-        document.body.style.pointerEvents = 'auto';
-        document.body.style.removeProperty('overflow');
-        document.body.removeAttribute('data-scroll-locked');
-      });
+      forceUIUnlock();
     }
   };
 
@@ -213,7 +224,10 @@ export default function MaterialIssuePage() {
     
     setIsSubmitting(true);
     const targetVoucher = deletingVoucher;
-    setDeletingVoucher(null); // إغلاق المودال مبكراً
+    
+    // إغلاق المودال وتحرير الواجهة فوراً
+    setDeletingVoucher(null);
+    forceUIUnlock();
 
     const batch = writeBatch(db);
     try {
@@ -230,11 +244,7 @@ export default function MaterialIssuePage() {
       console.error(err);
     } finally { 
       setIsSubmitting(false); 
-      requestAnimationFrame(() => {
-        document.body.style.pointerEvents = 'auto';
-        document.body.style.removeProperty('overflow');
-        document.body.removeAttribute('data-scroll-locked');
-      });
+      forceUIUnlock();
     }
   };
 
@@ -293,13 +303,13 @@ export default function MaterialIssuePage() {
       />
 
       <IssuePrintPreview 
-        isOpen={!!printingVoucher} onClose={() => setPrintingVoucher(null)} voucher={printingVoucher}
+        isOpen={!!printingVoucher} onClose={() => { setPrintingVoucher(null); forceUIUnlock(); }} voucher={printingVoucher}
         lang={lang} allOrders={allOrders || []} allWorkers={allWorkers || []} allDepartments={allDepartments || []}
         allProducts={allProducts || []} isDownloading={isDownloading} handleDownload={handleDownloadImage}
       />
 
       <IssueDeleteDialog 
-        isOpen={!!deletingVoucher} onClose={() => setDeletingVoucher(null)} lang={lang}
+        isOpen={!!deletingVoucher} onClose={() => { setDeletingVoucher(null); forceUIUnlock(); }} lang={lang}
         isSubmitting={isSubmitting} handleDelete={handleDeleteVoucher}
       />
 
